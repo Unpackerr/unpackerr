@@ -2,7 +2,7 @@ PACKAGES=`find ./cmd -mindepth 1 -maxdepth 1 -type d`
 LIBRARYS=./deluge ./starr
 NAME=unpacker-poller
 ID=com.github.davidnewhall
-all: clean man build
+all: clean build
 
 clean:
 	for p in $(PACKAGES); do rm -f `echo $${p}|cut -d/ -f3`{,.1,.1.gz}; done
@@ -44,6 +44,5 @@ man:
 	script/build_manpages.sh ./
 
 deps:
-	rm -rf Godeps vendor
-	godep save ./...
-	godep update ./...
+	dep ensure -update
+	dep status

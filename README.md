@@ -33,6 +33,7 @@ before I started getting data from the APIs. Once I realized I was able to match
 ## Installation
 
 - Setup a working Go build environment.
+- Install `ronn`: `gem install ronn`
 - `make install` (mac) or `sudo make install` (linux)
 - cross your fingers.
 
@@ -49,7 +50,7 @@ in `/usr/local/etc/unpacker-poller/up.conf`. The app works without Sonarr or Rad
 configs, but you should have at least one to make it useful.
 
 - Start the service, Linux: `sudo systemctl daemon-reload ; sudo systemctl start unapcker-poller`
-- Start the service, macOS: `sudo launchctl load ~/Library/LaunchAgents/com.github.davidnewhall.unpacker-poller.plist`
+- Start the service, macOS: `launchctl load ~/Library/LaunchAgents/com.github.davidnewhall.unpacker-poller.plist`
 
 ## Troubleshooting
 

@@ -1,0 +1,99 @@
+package main
+
+import (
+	"log"
+	"os"
+	"time"
+
+	unrar "github.com/jagadeesh-kotra/gorar"
+)
+
+/*
+  Extracts refers the transfers identified as completed and now eligible for
+  decompression. Only completed transfers that have a .rar file will end up
+  "with a status."
+*/
+
+// CreateStatus for a newly-started extraction.
+func (r *runningData) CreateStatus(name, path, file, status, app string) {
+	r.hisS.Lock()
+	defer r.hisS.Unlock()
+	r.History[name] = extracts{
+		RARFile:  file,
+		BasePath: path,
+		App:      app,
+		Status:   status,
+		Time:     time.Now(),
+	}
+}
+
+// GetHistory returns a copy of the extracts map.
+func (r *runningData) GetHistory() map[string]extracts {
+	r.hisS.RLock()
+	defer r.hisS.RUnlock()
+	return r.History
+}
+
+// GetStatus returns the status history for an extraction.
+func (r *runningData) GetStatus(name string) (e extracts) {
+	if data, ok := r.GetHistory()[name]; ok {
+		e = data
+	}
+	return
+}
+
+// UpdateStatus for an on-going tracked extraction.
+func (r *runningData) UpdateStatus(name, status string, fileList []string) {
+	r.hisS.Lock()
+	defer r.hisS.Unlock()
+	if _, ok := r.History[name]; !ok {
+		// .. this doesn't happen.
+		log.Println("ERROR: Unable to update missing History for", name)
+		return
+	}
+	h := extracts{
+		RARFile:  r.History[name].RARFile,
+		BasePath: r.History[name].BasePath,
+		App:      r.History[name].App,
+		FileList: r.History[name].FileList,
+		Status:   status,
+		Time:     time.Now(),
+	}
+	if fileList != nil {
+		h.FileList = fileList
+	}
+	r.History[name] = h
+}
+
+// Extracts a rar archive with history updates, and some meta data display.
+func (r *runningData) extractFile(name, path, file string) {
+	log.Println("Extraction Queued:", file)
+	r.rarS.Lock() // One extraction at a time.
+	defer r.rarS.Unlock()
+	log.Println("Extracting:", file)
+	r.UpdateStatus(name, "extracting", nil)
+	files := getFileList(path) // get the "before extraction" file list
+	start := time.Now()
+	if err := unrar.RarExtractor(file, path); err != nil {
+		log.Printf("Extraction Error: %v to %v (elapsed %v): %v", file, path, time.Now().Sub(start).Round(time.Second), err)
+		r.UpdateStatus(name, "failed", nil)
+	} else {
+		r.UpdateStatus(name, "extracted", difference(files, getFileList(path)))
+		log.Printf("Extracted: %v (%d files, elapsed %v)", file, len(r.GetStatus(name).FileList), time.Now().Sub(start).Round(time.Second))
+	}
+}
+
+// Deletes extracted files after Sonarr/Radarr imports them.
+func (r *runningData) deleteFiles(name string, files []string) {
+	status := "deleted"
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			log.Println("Error Removing File:", file)
+			status = "delete_problem"
+			// TODO: clean this up another way? It just goes stale like this.
+			continue
+		}
+		log.Println("Deleted", file)
+	}
+	r.UpdateStatus(name, status, nil)
+}

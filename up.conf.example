@@ -1,0 +1,16 @@
+# Unpacker Poller Example Configuration File
+interval="30s"
+
+[deluge]
+password="deluge"
+address="http://127.0.0.1:3112"
+
+#[sonarr]
+#api_key="cb3afda6559445f1ae1d0299dd696e38"
+#url="http://127.0.0.1:8989"
+#tag="tv-sonarr"
+
+#[radarr]
+#api_key="4bc34281deda4846a2fdab2c15bc8de8"
+#url="http://127.0.0.1:7878"
+#tag="radarr"

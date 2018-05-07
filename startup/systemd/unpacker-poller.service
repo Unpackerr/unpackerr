@@ -1,0 +1,17 @@
+# untested, feedback welcomed.
+[Unit]
+Description=Unpacker Poller - Polls Deluge to extract completed downloads
+After=network.target
+Requires=network.target
+
+[Service]
+ExecStart=/usr/local/bin/unpacker-poller ---config=/usr/local/etc/unpacker-poller/up.conf
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=unpacker-poller
+Type=simple
+User=nobody
+
+[Install]
+WantedBy=multi-user.target

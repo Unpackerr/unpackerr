@@ -2,6 +2,5 @@
 /unpacker-poller
 /*.1.gz
 /*.1
-/vendor
 .DS_Store
 *~

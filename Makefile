@@ -1,13 +1,22 @@
-PACKAGES=`find ./cmd -mindepth 1 -maxdepth 1 -type d`
-LIBRARYS=./deluge ./starr
+# binary name.
 NAME=unpacker-poller
+# library folders. so they can be tested and linted.
+LIBRARYS=./deluge ./starr
+# used for plist file name on macOS.
 ID=com.github.davidnewhall
-all: clean build
+
+# dont change this one.
+PACKAGES=`find ./cmd -mindepth 1 -maxdepth 1 -type d`
+
+all: clean build test
+	@echo Finished.
 
 clean:
+	@echo "Cleaning Local Build"
 	for p in $(PACKAGES); do rm -f `echo $${p}|cut -d/ -f3`{,.1,.1.gz}; done
 
 build:
+	@echo "Building Binary"
 	for p in $(PACKAGES); do go build -ldflags "-w -s" $${p}; done
 
 linux:
@@ -31,9 +40,12 @@ uninstall:
 	rm -f /etc/systemd/system/$(NAME).service
 
 test: lint
+	@echo "Running Go Tests"
 	for p in $(PACKAGES) $(LIBRARYS); do go test -race -covermode=atomic $${p}; done
 
+# TODO: look into gometalinter
 lint:
+	@echo "Running Go Linters"
 	goimports -l $(PACKAGES) $(LIBRARYS)
 	gofmt -l $(PACKAGES) $(LIBRARYS)
 	errcheck $(PACKAGES) $(LIBRARYS)
@@ -41,8 +53,10 @@ lint:
 	go vet $(PACKAGES) $(LIBRARYS)
 
 man:
+	@echo "Build Man Page(s)"
 	script/build_manpages.sh ./
 
 deps:
+	@echo "Gathering Vendors"
 	dep ensure -update
 	dep status

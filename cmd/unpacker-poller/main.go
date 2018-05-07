@@ -27,7 +27,7 @@ var (
 	Debug = false
 	// ConfigFile is the file we get configuration from.
 	ConfigFile = ""
-	// StopChan is how we exit.
+	// StopChan is how we exit. Can be used in tests.
 	StopChan = make(chan os.Signal, 1)
 )
 
@@ -82,8 +82,8 @@ func GetConfig(configFile string) (Config, error) {
 
 // StartUp all the go routines.
 func StartUp(d *deluge.Deluge, config Config) {
-	var r runningData
-	r.History = make(map[string]extracts)
+	var r RunningData
+	r.History = make(map[string]Extracts)
 	log.Println("Starting Deluge Poller:", config.Deluge.URL)
 	go r.PollDeluge(d, config.Interval.value)
 	if config.Sonarr.APIKey != "" {
@@ -99,8 +99,8 @@ func StartUp(d *deluge.Deluge, config Config) {
 	go r.PollChange()
 }
 
-// PollDeluge at an interval and look for things to extract.
-func (r *runningData) PollDeluge(d *deluge.Deluge, interval time.Duration) {
+// PollDeluge at an interval and save the transfer list to r.Deluge
+func (r *RunningData) PollDeluge(d *deluge.Deluge, interval time.Duration) {
 	ticker := time.NewTicker(interval).C
 	for range ticker {
 		var err error
@@ -114,8 +114,8 @@ func (r *runningData) PollDeluge(d *deluge.Deluge, interval time.Duration) {
 	}
 }
 
-// PollSonarr and save the Queue to r.SonarrQ
-func (r *runningData) PollSonarr(s *starr.Config, interval time.Duration) {
+// PollSonarr saves the Sonarr Queue to r.SonarrQ
+func (r *RunningData) PollSonarr(s *starr.Config, interval time.Duration) {
 	ticker := time.NewTicker(interval).C
 	for range ticker {
 		var err error
@@ -129,8 +129,8 @@ func (r *runningData) PollSonarr(s *starr.Config, interval time.Duration) {
 	}
 }
 
-// PollRadarr and save the Queue to r.RadarrQ
-func (r *runningData) PollRadarr(s *starr.Config, interval time.Duration) {
+// PollRadarr saves the Radarr Queue to r.RadarrQ
+func (r *RunningData) PollRadarr(s *starr.Config, interval time.Duration) {
 	ticker := time.NewTicker(interval).C
 	for range ticker {
 		var err error
@@ -144,13 +144,15 @@ func (r *runningData) PollRadarr(s *starr.Config, interval time.Duration) {
 	}
 }
 
-// PollChange kicks off other tasks.
+// PollChange runs other tasks.
 // Those tasks: a) look for things to extract, b) look for things to delete.
-func (r *runningData) PollChange() {
+func (r *RunningData) PollChange() {
 	// Don't start this for 2 whole minutes.
-	time.Sleep(60 * time.Second)
+	time.Sleep(time.Minute)
 	log.Println("Starting Completion Handler Routine")
-	ticker := time.NewTicker(60 * time.Second).C
+	// This runs more often because of the cleanup tasks.
+	// It doesn't poll external data, unless it finds something to extract.
+	ticker := time.NewTicker(time.Minute).C
 	for range ticker {
 		if r.Deluge == nil {
 			// No data.
@@ -167,23 +169,22 @@ func (r *runningData) PollChange() {
 }
 
 // CheckExtractDone checks if an extracted item has been imported so it may be deleted.
-func (r *runningData) CheckExtractDone() {
+func (r *RunningData) CheckExtractDone() {
 	for name, data := range r.GetHistory() {
 		if data.Status != "deleted" {
-			log.Println("History:", name, "Status:", data.Status, "In This State:", time.Now().Sub(data.Time).Round(time.Second))
+			log.Println("History:", name, "Status:", data.Status, "In This State:", time.Now().Sub(data.Updated).Round(time.Second))
 		}
-		// Only check for and process items that have finished extraction.
-		if data.Status != "extracted" {
+		switch {
+		case data.Status != "extracted":
+			// Only check for and process items that have finished extraction.
 			continue
-		}
-		switch data.App {
-		case "Sonarr":
+		case data.App == "Sonarr":
 			if sq := r.getSonarQitem(name); sq.Status == "" {
 				go r.deleteFiles(name, data.FileList)
 			} else {
 				log.Println("Sonarr Status:", name, "->", sq.Status)
 			}
-		case "Radarr":
+		case data.App == "Radarr":
 			if rq := r.getRadarQitem(name); rq.Status == "" {
 				go r.deleteFiles(name, data.FileList)
 			} else {
@@ -194,26 +195,26 @@ func (r *runningData) CheckExtractDone() {
 }
 
 // CheckSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
-func (r *runningData) CheckSonarrQueue() {
+func (r *RunningData) CheckSonarrQueue() {
 	r.sonS.RLock()
 	defer r.sonS.RUnlock()
 	for _, q := range r.SonarrQ {
 		// Only process Completed items.
 		if q.Status != "Completed" {
-			log.Printf("Sonarr: (status: %v) Unfinished (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+			//log.Printf("Sonarr: (status: %v) Unfinished (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 			continue
 		}
 		go r.HandleCompleted(q.Title, "Sonarr")
 	}
 }
 
-// CheckSonarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
-func (r *runningData) CheckRadarrQueue() {
+// CheckRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
+func (r *RunningData) CheckRadarrQueue() {
 	r.radS.RLock()
 	defer r.radS.RUnlock()
 	for _, q := range r.RadarrQ {
 		if q.Status != "Completed" {
-			log.Printf("Radarr: (status: %v) Unfinished (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			//log.Printf("Radarr: (status: %v) Unfinished (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 			continue
 		}
 		go r.HandleCompleted(q.Title, "Radarr")
@@ -221,7 +222,7 @@ func (r *runningData) CheckRadarrQueue() {
 }
 
 // HandleCompleted checks if a completed sonarr or radarr item needs to be extracted.
-func (r *runningData) HandleCompleted(name, app string) {
+func (r *RunningData) HandleCompleted(name, app string) {
 	d := r.getXfer(name)
 	if d.Name == "" {
 		log.Printf("%v: Transfer not found in Deluge: %v", app, name)

@@ -15,27 +15,27 @@ import (
 */
 
 // CreateStatus for a newly-started extraction.
-func (r *runningData) CreateStatus(name, path, file, status, app string) {
+func (r *RunningData) CreateStatus(name, path, file, status, app string) {
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
-	r.History[name] = extracts{
+	r.History[name] = Extracts{
 		RARFile:  file,
 		BasePath: path,
 		App:      app,
 		Status:   status,
-		Time:     time.Now(),
+		Updated:  time.Now(),
 	}
 }
 
 // GetHistory returns a copy of the extracts map.
-func (r *runningData) GetHistory() map[string]extracts {
+func (r *RunningData) GetHistory() map[string]Extracts {
 	r.hisS.RLock()
 	defer r.hisS.RUnlock()
 	return r.History
 }
 
 // GetStatus returns the status history for an extraction.
-func (r *runningData) GetStatus(name string) (e extracts) {
+func (r *RunningData) GetStatus(name string) (e Extracts) {
 	if data, ok := r.GetHistory()[name]; ok {
 		e = data
 	}
@@ -43,7 +43,7 @@ func (r *runningData) GetStatus(name string) (e extracts) {
 }
 
 // UpdateStatus for an on-going tracked extraction.
-func (r *runningData) UpdateStatus(name, status string, fileList []string) {
+func (r *RunningData) UpdateStatus(name, status string, fileList []string) {
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
 	if _, ok := r.History[name]; !ok {
@@ -51,13 +51,13 @@ func (r *runningData) UpdateStatus(name, status string, fileList []string) {
 		log.Println("ERROR: Unable to update missing History for", name)
 		return
 	}
-	h := extracts{
+	h := Extracts{
 		RARFile:  r.History[name].RARFile,
 		BasePath: r.History[name].BasePath,
 		App:      r.History[name].App,
 		FileList: r.History[name].FileList,
 		Status:   status,
-		Time:     time.Now(),
+		Updated:  time.Now(),
 	}
 	if fileList != nil {
 		h.FileList = fileList
@@ -66,7 +66,7 @@ func (r *runningData) UpdateStatus(name, status string, fileList []string) {
 }
 
 // Extracts a rar archive with history updates, and some meta data display.
-func (r *runningData) extractFile(name, path, file string) {
+func (r *RunningData) extractFile(name, path, file string) {
 	log.Println("Extraction Queued:", file)
 	r.rarS.Lock() // One extraction at a time.
 	defer r.rarS.Unlock()
@@ -84,7 +84,7 @@ func (r *runningData) extractFile(name, path, file string) {
 }
 
 // Deletes extracted files after Sonarr/Radarr imports them.
-func (r *runningData) deleteFiles(name string, files []string) {
+func (r *RunningData) deleteFiles(name string, files []string) {
 	status := "deleted"
 	for _, file := range files {
 		if err := os.Remove(file); err != nil {

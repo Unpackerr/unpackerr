@@ -60,7 +60,7 @@ func findRarFile(path string) string {
 
 // gets a radarr queue item based on name. returns first match
 // there may be more than one match if it involes an "episode pack" (full season)
-func (r *runningData) getSonarQitem(name string) (s starr.SonarQueue) {
+func (r *RunningData) getSonarQitem(name string) (s starr.SonarQueue) {
 	r.sonS.RLock()
 	defer r.sonS.RUnlock()
 	for i := range r.SonarrQ {
@@ -72,7 +72,7 @@ func (r *runningData) getSonarQitem(name string) (s starr.SonarQueue) {
 }
 
 // gets a radarr queue item based on name. returns first match
-func (r *runningData) getRadarQitem(name string) (s starr.RadarQueue) {
+func (r *RunningData) getRadarQitem(name string) (s starr.RadarQueue) {
 	r.radS.RLock()
 	defer r.radS.RUnlock()
 	for i := range r.RadarrQ {
@@ -84,7 +84,7 @@ func (r *runningData) getRadarQitem(name string) (s starr.RadarQueue) {
 }
 
 // Get a Deluge transfer based on name.
-func (r *runningData) getXfer(name string) (d deluge.XferStatus) {
+func (r *RunningData) getXfer(name string) (d deluge.XferStatus) {
 	r.delS.RLock()
 	defer r.delS.RUnlock()
 	for _, data := range r.Deluge {

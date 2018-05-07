@@ -1,16 +1,22 @@
 # Unpacker Poller Example Configuration File
-interval="30s"
+
+# How often to poll deluge, sonarr and radarr.
+# Recommend 2m-10m. Uses Go Duration.
+interval = "4m"
+
+# How long must a file must have been extracted before deletion. The file must
+# also not be part of an active queue item. Set this to "1s" to make sure files
+# are deleted immediately after being imported. Recommend 5m. Uses Go Duration.
+#delete_delay="5m" # not yet working, just an idea.
 
 [deluge]
+url="http://127.0.0.1:3112"
 password="deluge"
-address="http://127.0.0.1:3112"
 
 #[sonarr]
-#api_key="cb3afda6559445f1ae1d0299dd696e38"
 #url="http://127.0.0.1:8989"
-#tag="tv-sonarr"
+#api_key="cb3afda6559445f1ae1d0299dd696e38"
 
 #[radarr]
-#api_key="4bc34281deda4846a2fdab2c15bc8de8"
 #url="http://127.0.0.1:7878"
-#tag="radarr"
+#api_key="4bc34281deda4846a2fdab2c15bc8de8"

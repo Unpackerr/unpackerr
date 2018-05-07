@@ -75,6 +75,16 @@ the Deluge log file, I found that the app was running out of open files. Turns o
 this was causing a lot of issues on my server. I have a Mac. Check this out if you're
 in the same boat: http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit
 
+## TODO
+
+- Add configurable HTTP timeouts.
+- Add code for `delete_delay`.
+- Remove deleted items from `remember` after a configurable amount of time.
+- Make sure Deluge is "working" before deleting files. Add health window.
+- Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
+- Integrate `expvar`.
+- Tests. Maybe. Would likely have to refactor things into better interfaces.
+
 ## License
 
 [MIT](MIT-LICENSE) - Copyright (c) 2018 David Newhall II

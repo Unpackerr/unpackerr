@@ -14,8 +14,8 @@ import (
   "with a status."
 */
 
-// CreateStatus for a newly-started extraction.
-func (r *RunningData) CreateStatus(name, path, file, status, app string) {
+// CreateStatus for a newly-started extraction. It will also overwrite.
+func (r *RunningData) CreateStatus(name, path, file, app string, status ExtractStatus) {
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
 	r.History[name] = Extracts{
@@ -43,11 +43,11 @@ func (r *RunningData) GetStatus(name string) (e Extracts) {
 }
 
 // UpdateStatus for an on-going tracked extraction.
-func (r *RunningData) UpdateStatus(name, status string, fileList []string) {
+func (r *RunningData) UpdateStatus(name string, status ExtractStatus, fileList []string) {
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
 	if _, ok := r.History[name]; !ok {
-		// .. this doesn't happen.
+		// .. this only happens if you mess up in the code.
 		log.Println("ERROR: Unable to update missing History for", name)
 		return
 	}
@@ -71,29 +71,29 @@ func (r *RunningData) extractFile(name, path, file string) {
 	r.rarS.Lock() // One extraction at a time.
 	defer r.rarS.Unlock()
 	log.Println("Extracting:", file)
-	r.UpdateStatus(name, "extracting", nil)
+	r.UpdateStatus(name, EXTRACTING, nil)
 	files := getFileList(path) // get the "before extraction" file list
 	start := time.Now()
 	if err := unrar.RarExtractor(file, path); err != nil {
 		log.Printf("Extraction Error: %v to %v (elapsed %v): %v", file, path, time.Now().Sub(start).Round(time.Second), err)
-		r.UpdateStatus(name, "failed", nil)
+		r.UpdateStatus(name, EXTRACTFAILED, nil)
 	} else {
-		r.UpdateStatus(name, "extracted", difference(files, getFileList(path)))
+		r.UpdateStatus(name, EXTRACTED, difference(files, getFileList(path)))
 		log.Printf("Extracted: %v (%d files, elapsed %v)", file, len(r.GetStatus(name).FileList), time.Now().Sub(start).Round(time.Second))
 	}
 }
 
 // Deletes extracted files after Sonarr/Radarr imports them.
 func (r *RunningData) deleteFiles(name string, files []string) {
-	status := "deleted"
+	status := DELETED
 	for _, file := range files {
 		if err := os.Remove(file); err != nil {
-			log.Println("Error Removing File:", file)
-			status = "delete_problem"
+			log.Println("Delete Error:", file)
+			status = DELFAILED
 			// TODO: clean this up another way? It just goes stale like this.
 			continue
 		}
-		log.Println("Deleted", file)
+		log.Println("Deleted:", file)
 	}
 	r.UpdateStatus(name, status, nil)
 }

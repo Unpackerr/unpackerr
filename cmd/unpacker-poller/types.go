@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,6 +18,38 @@ type Config struct {
 	Radarr   *starr.Config  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
 	Lidarr   *starr.Config  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
 	Others   []*OtherConfig `json:"others" toml:"others" xml:"others" yaml:"others"` // not used.
+}
+
+// ExtractStatus is our enum for an extract's status.
+type ExtractStatus uint8
+
+// Extract Statuses.
+const (
+	UNKNOWN = ExtractStatus(iota)
+	QUEUED
+	EXTRACTING
+	EXTRACTFAILED
+	EXTRACTFAILED2
+	EXTRACTED
+	IMPORTED
+	DELETING
+	DELFAILED
+	DELETED
+	FORGOTTEN
+)
+
+// String makes ExtractStatus human readable, but it's not used much.
+func (s ExtractStatus) String() string {
+	name := []string{
+		"Queued", "Extracting", "Extract Failed", "Extracted, Waiting for Import",
+		"Imported", "Deleting", "Delete Failed", "Deleted", "Forgotten",
+	}
+	switch i := s; {
+	case i <= FORGOTTEN:
+		return name[i]
+	default:
+		return strconv.Itoa(int(i))
+	}
 }
 
 // RunningData stores all the running data.
@@ -40,7 +73,7 @@ type Extracts struct {
 	BasePath string
 	App      string
 	FileList []string
-	Status   string
+	Status   ExtractStatus
 	Updated  time.Time
 }
 

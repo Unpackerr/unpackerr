@@ -7,7 +7,6 @@
         <key>ProgramArguments</key>
         <array>
             <string>/usr/local/bin/unpacker-poller</string>
-            <string>-D</string>
             <string>-c</string>
             <string>/usr/local/etc/unpacker-poller/up.conf</string>
         </array>

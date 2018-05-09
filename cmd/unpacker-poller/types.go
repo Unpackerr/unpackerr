@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"github.com/davidnewhall/unpacker-poller/deluge"
+	"github.com/davidnewhall/unpacker-poller/exp"
 	"github.com/davidnewhall/unpacker-poller/starr"
 )
 
 // Config defines the configuration data used to start the application.
 type Config struct {
 	Dababase string         `json:"database" toml:"database" xml:"database" yaml:"database"` // not used.
-	Interval Dur            `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Interval exp.Dur        `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout  exp.Dur        `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	Deluge   *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
 	Sonarr   *starr.Config  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
 	Radarr   *starr.Config  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
@@ -33,23 +35,22 @@ const (
 	EXTRACTED
 	IMPORTED
 	DELETING
-	DELFAILED
+	DELETEFAILED
 	DELETED
 	FORGOTTEN
 )
 
-// String makes ExtractStatus human readable, but it's not used much.
-func (s ExtractStatus) String() string {
-	name := []string{
-		"Queued", "Extracting", "Extract Failed", "Extracted, Waiting for Import",
-		"Imported", "Deleting", "Delete Failed", "Deleted", "Forgotten",
+// String makes ExtractStatus human readable.
+func (status ExtractStatus) String() string {
+	if status > FORGOTTEN {
+		return strconv.Itoa(int(status)) + " Unknown"
 	}
-	switch i := s; {
-	case i <= FORGOTTEN:
-		return name[i]
-	default:
-		return strconv.Itoa(int(i))
-	}
+	return []string{
+		// The oder must not be be faulty.
+		"Unknown", "Queued", "Extraction Progressing", "Extraction Failed",
+		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
+		"Deleting", "Delete Failed", "Deleted", "Forgotten",
+	}[status]
 }
 
 // RunningData stores all the running data.
@@ -82,18 +83,5 @@ type OtherConfig struct {
 	ExtractTo    string   `json:"extract_to" toml:"extract_to" xml:"extract_to" yaml:"extract_to"`
 	CreateFolder bool     `json:"create_folder" toml:"create_folder" xml:"create_folder" yaml:"create_folder"`
 	Tags         []string `json:"tags" toml:"tags" xml:"tags" yaml:"tags"`
-	DeleteAfter  Dur      `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
-}
-
-// Dur is used to UnmarshalTOML into a time.Duration value.
-type Dur struct{ value time.Duration }
-
-// UnmarshalTOML parses a duration type from a config file.
-func (v *Dur) UnmarshalTOML(data []byte) error {
-	unquoted := string(data[1 : len(data)-1])
-	dur, err := time.ParseDuration(unquoted)
-	if err == nil {
-		v.value = dur
-	}
-	return err
+	DeleteAfter  exp.Dur  `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 }

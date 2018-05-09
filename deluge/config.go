@@ -2,6 +2,8 @@ package deluge
 
 import (
 	"encoding/json"
+
+	"github.com/davidnewhall/unpacker-poller/exp"
 )
 
 // Deluge methods.
@@ -14,15 +16,14 @@ const (
 	GetAllTorrents = "core.get_torrents_status"
 )
 
-// Debug Logs.
-var Debug = false
-
 // Config is the data needed to poll Deluge.
 type Config struct {
-	URL      string `json:"url" toml:"url" xml:"url" yaml:"url"`
-	Password string `json:"password" toml:"password" xml:"password" yaml:"password"`
-	HTTPPass string `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
-	HTTPUser string `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	URL      string  `json:"url" toml:"url" xml:"url" yaml:"url"`
+	Password string  `json:"password" toml:"password" xml:"password" yaml:"password"`
+	HTTPPass string  `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
+	HTTPUser string  `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	Timeout  exp.Dur `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	Interval exp.Dur `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 }
 
 // Response from Deluge

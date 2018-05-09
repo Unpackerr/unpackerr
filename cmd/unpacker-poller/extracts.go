@@ -67,19 +67,19 @@ func (r *RunningData) UpdateStatus(name string, status ExtractStatus, fileList [
 
 // Extracts a rar archive with history updates, and some meta data display.
 func (r *RunningData) extractFile(name, path, file string) {
-	log.Println("Extraction Queued:", file)
+	log.Println("Extract Enqueued:", file)
 	r.rarS.Lock() // One extraction at a time.
 	defer r.rarS.Unlock()
-	log.Println("Extracting:", file)
+	log.Println("Extract Starting:", file)
 	r.UpdateStatus(name, EXTRACTING, nil)
 	files := getFileList(path) // get the "before extraction" file list
 	start := time.Now()
 	if err := unrar.RarExtractor(file, path); err != nil {
-		log.Printf("Extraction Error: %v to %v (elapsed %v): %v", file, path, time.Now().Sub(start).Round(time.Second), err)
+		log.Printf("Extract Error: %v to %v (elapsed %v): %v", file, path, time.Now().Sub(start).Round(time.Second), err)
 		r.UpdateStatus(name, EXTRACTFAILED, nil)
 	} else {
 		r.UpdateStatus(name, EXTRACTED, difference(files, getFileList(path)))
-		log.Printf("Extracted: %v (%d files, elapsed %v)", file, len(r.GetStatus(name).FileList), time.Now().Sub(start).Round(time.Second))
+		log.Printf("Extract Complete: %v (%d files, elapsed %v)", file, len(r.GetStatus(name).FileList), time.Now().Sub(start).Round(time.Second))
 	}
 }
 
@@ -89,7 +89,7 @@ func (r *RunningData) deleteFiles(name string, files []string) {
 	for _, file := range files {
 		if err := os.Remove(file); err != nil {
 			log.Println("Delete Error:", file)
-			status = DELFAILED
+			status = DELETEFAILED
 			// TODO: clean this up another way? It just goes stale like this.
 			continue
 		}

@@ -17,9 +17,10 @@ import (
 // Deluge is what you get for providing a password.
 type Deluge struct {
 	*http.Client
-	url  string
-	auth string
-	id   int
+	URL      string
+	auth     string
+	id       int
+	Interval time.Duration
 }
 
 // New creates a http.Client with authenticated cookies.
@@ -45,8 +46,8 @@ func New(config Config) (*Deluge, error) {
 	deluge := &Deluge{&http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Jar:       jar,
-		Timeout:   10 * time.Second,
-	}, config.URL, config.HTTPUser, 0}
+		Timeout:   config.Timeout.Value(),
+	}, config.URL, config.HTTPUser, 0, config.Interval.Value()}
 
 	// This []string{config.Password} line is how you send auth creds. It's weird.
 	if req, err := deluge.DelReq(AuthLogin, []string{config.Password}); err != nil {
@@ -66,7 +67,7 @@ func (d Deluge) DelReq(method string, params interface{}) (req *http.Request, er
 	paramMap := map[string]interface{}{"method": method, "id": d.id, "params": params}
 	if data, errr := json.Marshal(paramMap); errr != nil {
 		return req, errors.Wrap(errr, "json.Marshal(params)")
-	} else if req, err = http.NewRequest("POST", d.url, bytes.NewBuffer(data)); err == nil {
+	} else if req, err = http.NewRequest("POST", d.URL, bytes.NewBuffer(data)); err == nil {
 		if d.auth != "" {
 			// In case Deluge is also behind HTTP auth.
 			req.Header.Add("Authorization", d.auth)

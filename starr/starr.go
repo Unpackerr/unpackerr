@@ -7,25 +7,28 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
+
+	"github.com/davidnewhall/unpacker-poller/exp"
 
 	"github.com/pkg/errors"
 )
 
 // Config is the data needed to poll Radarr or Sonarr.
 type Config struct {
-	APIKey   string `json:"api_key" toml:"api_key" xml:"api_key" yaml:"api_key"`
-	URL      string `json:"url" toml:"url" xml:"url" yaml:"url"`
-	Tag      string `json:"tag" toml:"tag" xml:"tag" yaml:"tag"` // not used
-	HTTPPass string `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
-	HTTPUser string `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	APIKey   string  `json:"api_key" toml:"api_key" xml:"api_key" yaml:"api_key"`
+	URL      string  `json:"url" toml:"url" xml:"url" yaml:"url"`
+	Tag      string  `json:"tag" toml:"tag" xml:"tag" yaml:"tag"` // not used
+	HTTPPass string  `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
+	HTTPUser string  `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	Timeout  exp.Dur `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	Interval exp.Dur `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 }
 
 // Req makes a http request, with some additions.
 // path = "/query", params = "sort_by=timeleft&order=asc" (as url.Values)
 func (c *Config) Req(path string, params url.Values) ([]byte, error) {
 	client := &http.Client{
-		Timeout:   10 * time.Second,
+		Timeout:   c.Timeout.Value(),
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 	path = c.fixPath(path)

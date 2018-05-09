@@ -1,8 +1,12 @@
 # Unpacker Poller Example Configuration File
 
-# How often to poll deluge, sonarr and radarr.
+# How often to poll deluge, sonarr and radarr. Can also be set per-app.
 # Recommend 2m-10m. Uses Go Duration.
 interval = "4m"
+
+# How long to wait for a reply from the backends: Deluge, Sonarr, Radarr.
+# This can also be set per-app. Uses Go Duration.
+timeout = "10s"
 
 # How long must a file must have been extracted before deletion. The file must
 # also not be part of an active queue item. Set this to "1s" to make sure files

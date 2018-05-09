@@ -21,11 +21,12 @@ import (
 const (
 	defaultConfFile = "/usr/local/etc/unpacker-poller/up.conf"
 	minimumInterval = 1 * time.Minute
+	defaultTimeout  = 10 * time.Second
 )
 
 var (
 	// Version of the aplication.
-	Version = "0.1.1"
+	Version = "0.1.2"
 	// Debug turns on the noise.
 	Debug = false
 	// ConfigFile is the file we get configuration from.
@@ -66,7 +67,6 @@ func ParseFlags() {
 	}
 	if log.SetFlags(log.LstdFlags); Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-		deluge.Debug = true
 	}
 }
 
@@ -83,9 +83,38 @@ func GetConfig(configFile string) (Config, error) {
 	} else if err := toml.Unmarshal(buf, &config); err != nil {
 		return config, errors.Wrap(err, "invalid config")
 	}
-	if config.Interval.value < minimumInterval {
+	return ValidateConfig(config)
+}
+
+// ValidateConfig makes sure config values are ok.
+func ValidateConfig(config Config) (Config, error) {
+	// Fix up intervals.
+	if config.Timeout.Value() == 0 {
+		log.Println("Setting Default Timeout:", defaultTimeout.String())
+		config.Timeout.Set(defaultTimeout)
+	}
+	if config.Deluge.Timeout.Value() == 0 {
+		config.Deluge.Timeout.Set(config.Timeout.Value())
+	}
+	if config.Radarr.Timeout.Value() == 0 {
+		config.Radarr.Timeout.Set(config.Timeout.Value())
+	}
+	if config.Sonarr.Timeout.Value() == 0 {
+		config.Sonarr.Timeout.Set(config.Timeout.Value())
+	}
+
+	if config.Interval.Value() < minimumInterval {
 		log.Println("Setting Minimum Interval:", minimumInterval.String())
-		config.Interval.value = minimumInterval
+		config.Interval.Set(minimumInterval)
+	}
+	if config.Deluge.Interval.Value() == 0 {
+		config.Deluge.Interval.Set(config.Interval.Value())
+	}
+	if config.Radarr.Interval.Value() == 0 {
+		config.Radarr.Interval.Set(config.Interval.Value())
+	}
+	if config.Sonarr.Interval.Value() == 0 {
+		config.Sonarr.Interval.Set(config.Interval.Value())
 	}
 	return config, nil
 }
@@ -94,61 +123,61 @@ func GetConfig(configFile string) (Config, error) {
 func StartUp(d *deluge.Deluge, config Config) {
 	var r RunningData
 	r.History = make(map[string]Extracts)
-	log.Printf("Deluge Poller Starting: %v (interval: %v)", config.Deluge.URL, config.Interval.value.String())
-	go r.PollDeluge(d, config.Interval.value)
+	go r.PollDeluge(d)
 	if config.Sonarr.APIKey != "" {
 		time.Sleep(time.Second * 5) // spread out the http checks a bit.
-		log.Printf("Sonarr Poller Starting: %v (interval: %v)", config.Sonarr.URL, config.Interval.value.String())
-		go r.PollSonarr(config.Sonarr, config.Interval.value)
+		go r.PollSonarr(config.Sonarr)
 	}
 	if config.Radarr.APIKey != "" {
 		time.Sleep(time.Second * 5)
-		log.Printf("Radarr Poller Starting: %v (interval: %v)", config.Sonarr.URL, config.Interval.value.String())
-		go r.PollRadarr(config.Radarr, config.Interval.value)
+		go r.PollRadarr(config.Radarr)
 	}
 	go r.PollChange()
 }
 
 // PollDeluge at an interval and save the transfer list to r.Deluge
-func (r *RunningData) PollDeluge(d *deluge.Deluge, interval time.Duration) {
-	ticker := time.NewTicker(interval).C
+func (r *RunningData) PollDeluge(d *deluge.Deluge) {
+	log.Printf("Deluge Poller Starting: %v (interval: %v)", d.URL, d.Interval.String())
+	ticker := time.NewTicker(d.Interval).C
 	for range ticker {
 		var err error
 		r.delS.Lock()
 		if r.Deluge, err = d.GetXfers(); err != nil {
 			log.Println("Deluge Error:", err)
 		} else {
-			log.Println("Deluge:", len(r.Deluge), "Transfers")
+			log.Println("Deluge Updated:", len(r.Deluge), "Transfers")
 		}
 		r.delS.Unlock()
 	}
 }
 
 // PollSonarr saves the Sonarr Queue to r.SonarrQ
-func (r *RunningData) PollSonarr(s *starr.Config, interval time.Duration) {
-	ticker := time.NewTicker(interval).C
+func (r *RunningData) PollSonarr(s *starr.Config) {
+	log.Printf("Sonarr Poller Starting: %v (interval: %v)", s.URL, s.Interval.String())
+	ticker := time.NewTicker(s.Interval.Value()).C
 	for range ticker {
 		var err error
 		r.sonS.Lock()
 		if r.SonarrQ, err = starr.SonarrQueue(*s); err != nil {
 			log.Println("Sonarr Error:", err)
 		} else {
-			log.Println("Sonarr:", len(r.SonarrQ), "Items Queued")
+			log.Println("Sonarr Updated:", len(r.SonarrQ), "Items Queued")
 		}
 		r.sonS.Unlock()
 	}
 }
 
 // PollRadarr saves the Radarr Queue to r.RadarrQ
-func (r *RunningData) PollRadarr(s *starr.Config, interval time.Duration) {
-	ticker := time.NewTicker(interval).C
+func (r *RunningData) PollRadarr(s *starr.Config) {
+	log.Printf("Radarr Poller Starting: %v (interval: %v)", s.URL, s.Interval.String())
+	ticker := time.NewTicker(s.Interval.Value()).C
 	for range ticker {
 		var err error
 		r.radS.Lock()
 		if r.RadarrQ, err = starr.RadarrQueue(*s); err != nil {
 			log.Println("Radarr Error:", err)
 		} else {
-			log.Println("Radarr:", len(r.RadarrQ), "Items Queued")
+			log.Println("Radarr Updated:", len(r.RadarrQ), "Items Queued")
 		}
 		r.radS.Unlock()
 	}
@@ -182,7 +211,7 @@ func (r *RunningData) PollChange() {
 func (r *RunningData) CheckExtractDone() {
 	for name, data := range r.GetHistory() {
 		if data.Status < DELETED {
-			log.Printf("Extraction: %v (status: %v, duration: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
+			log.Printf("Extract Statuses: %v (status: %v, elapsed: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
 		}
 		switch {
 		case data.Status != EXTRACTED:
@@ -191,16 +220,16 @@ func (r *RunningData) CheckExtractDone() {
 		case data.App == "Sonarr":
 			if sq := r.getSonarQitem(name); sq.Status == "" {
 				// TODO: delete_delay -> r.UpdateStatus(name, IMPORTED, nil) -> timer
+				log.Println("Sonarr Imported:", name)
 				r.UpdateStatus(name, DELETING, nil)
-				log.Println("Sonarr Extracted Item Imported:", name)
 				go r.deleteFiles(name, data.FileList)
 			} else if Debug {
 				log.Println("Sonarr Item Waiting For Import:", name, "->", sq.Status)
 			}
 		case data.App == "Radarr":
 			if rq := r.getRadarQitem(name); rq.Status == "" {
+				log.Println("Radarr Imported:", name)
 				r.UpdateStatus(name, DELETING, nil)
-				log.Println("Radarr Extracted Item Imported:", name)
 				go r.deleteFiles(name, data.FileList)
 			} else if Debug {
 				log.Println("Radarr Item Waiting For Import:", name, "->", rq.Status)
@@ -214,14 +243,11 @@ func (r *RunningData) CheckSonarrQueue() {
 	r.sonS.RLock()
 	defer r.sonS.RUnlock()
 	for _, q := range r.SonarrQ {
-		if Debug {
+		if q.Status == "Completed" {
+			go r.HandleCompleted(q.Title, "Sonarr")
+		} else if Debug {
 			log.Printf("Sonarr: %v (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 		}
-		if q.Status != "Completed" {
-			// Only process Completed items.
-			continue
-		}
-		go r.HandleCompleted(q.Title, "Sonarr")
 	}
 }
 
@@ -230,13 +256,11 @@ func (r *RunningData) CheckRadarrQueue() {
 	r.radS.RLock()
 	defer r.radS.RUnlock()
 	for _, q := range r.RadarrQ {
-		if Debug {
+		if q.Status == "Completed" {
+			go r.HandleCompleted(q.Title, "Radarr")
+		} else if Debug {
 			log.Printf("Radarr: %v (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 		}
-		if q.Status != "Completed" {
-			continue
-		}
-		go r.HandleCompleted(q.Title, "Radarr")
 	}
 }
 
@@ -244,14 +268,20 @@ func (r *RunningData) CheckRadarrQueue() {
 func (r *RunningData) HandleCompleted(name, app string) {
 	d := r.getXfer(name)
 	if d.Name == "" {
-		log.Printf("%v: Unusual, transfer not found in Deluge: %v", app, name)
+		if Debug {
+			log.Printf("%v: Transfer not found in Deluge: %v", app, name)
+		}
 		return
 	}
 	path := filepath.Join(d.SavePath, d.Name)
 	file := findRarFile(path)
-	if file != "" && d.IsFinished && r.GetStatus(name).Status == UNKNOWN {
-		log.Printf("%v: Found extractable item in Deluge: %v -rar-file-> %v", app, name, file)
-		r.CreateStatus(name, path, file, app, QUEUED)
-		r.extractFile(name, path, file)
+	if d.IsFinished && r.GetStatus(name).Status == UNKNOWN {
+		if file != "" {
+			log.Printf("%v: Found extractable item in Deluge: %v -rar-file-> %v", app, name, file)
+			r.CreateStatus(name, path, file, app, QUEUED)
+			r.extractFile(name, path, file)
+		} else if Debug {
+			log.Printf("%v: Completed Item still in Queue: %v", app, name)
+		}
 	}
 }

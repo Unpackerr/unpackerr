@@ -77,13 +77,10 @@ in the same boat: http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-f
 
 ## TODO
 
-- Add code for `delete_delay`.
-- Remove deleted items from `remember` after a configurable amount of time.
 - Make sure Deluge is "working" before deleting files. Add health window.
 - Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
 - Integrate `expvar`.
 - Tests. Maybe. Would likely have to refactor things into better interfaces.
-- Handle transfers with multiple archives. (typically happens with season downloads)
 
 ## License
 

@@ -108,12 +108,12 @@ type XferStatus struct {
 		Tier         int64       `json:"tier"`
 		Updating     bool        `json:"updating"`
 	} `json:"trackers"`
-	TotalPayloadDownload int64   `json:"total_payload_download"`
-	IsAutoManaged        bool    `json:"is_auto_managed"`
-	SeedsPeersRatio      float64 `json:"seeds_peers_ratio"`
-	Queue                int64   `json:"queue"`
-	NumFiles             int64   `json:"num_files"`
-	Eta                  int64   `json:"eta"`
-	StopRatio            float64 `json:"stop_ratio"`
-	IsFinished           bool    `json:"is_finished"`
+	TotalPayloadDownload int64       `json:"total_payload_download"`
+	IsAutoManaged        bool        `json:"is_auto_managed"`
+	SeedsPeersRatio      float64     `json:"seeds_peers_ratio"`
+	Queue                int64       `json:"queue"`
+	NumFiles             int64       `json:"num_files"`
+	Eta                  json.Number `json:"eta"`
+	StopRatio            float64     `json:"stop_ratio"`
+	IsFinished           bool        `json:"is_finished"`
 }

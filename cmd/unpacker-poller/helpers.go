@@ -44,13 +44,18 @@ func difference(slice1 []string, slice2 []string) (diff []string) {
 }
 
 // Returns the (a) .rar file from a path.
-func findRarFile(path string) string {
-	for _, file := range getFileList(path) {
-		if strings.HasSuffix(file, ".rar") {
-			return file
+func findRarFiles(path string) (files []string) {
+	if fileList, err := ioutil.ReadDir(path); err == nil {
+		for _, file := range fileList {
+			if !file.IsDir() && strings.HasSuffix(file.Name(), ".rar") {
+				files = append(files, filepath.Join(path, file.Name()))
+			} else if file.IsDir() {
+				// Recurse.
+				files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
+			}
 		}
 	}
-	return ""
+	return
 }
 
 /*

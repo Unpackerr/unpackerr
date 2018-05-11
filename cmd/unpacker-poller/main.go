@@ -19,14 +19,15 @@ import (
 )
 
 const (
-	defaultConfFile = "/usr/local/etc/unpacker-poller/up.conf"
-	minimumInterval = 1 * time.Minute
-	defaultTimeout  = 10 * time.Second
+	defaultConfFile    = "/usr/local/etc/unpacker-poller/up.conf"
+	minimumInterval    = 1 * time.Minute
+	minimumDeleteDelay = 1 * time.Minute
+	defaultTimeout     = 10 * time.Second
 )
 
 var (
 	// Version of the aplication.
-	Version = "0.1.2"
+	Version = "0.1.3"
 	// Debug turns on the noise.
 	Debug = false
 	// ConfigFile is the file we get configuration from.
@@ -74,9 +75,7 @@ func ParseFlags() {
 func GetConfig(configFile string) (Config, error) {
 	// Preload our defaults.
 	config := Config{}
-	if Debug {
-		log.Println("Reading Config File:", configFile)
-	}
+	DeLogf("Reading Config File: %v", configFile)
 	if buf, err := ioutil.ReadFile(configFile); err != nil {
 		return config, err
 		// This is where the defaults in the config variable are overwritten.
@@ -88,9 +87,19 @@ func GetConfig(configFile string) (Config, error) {
 
 // ValidateConfig makes sure config values are ok.
 func ValidateConfig(config Config) (Config, error) {
+	if config.DeleteDelay.Value() < minimumDeleteDelay {
+		DeLogf("Setting Minimum Delete Delay: %v", minimumDeleteDelay.String())
+		config.DeleteDelay.Set(minimumDeleteDelay)
+	}
+	if config.ConcurrentExtracts < 1 {
+		config.ConcurrentExtracts = 1
+	} else if config.ConcurrentExtracts > 10 {
+		config.ConcurrentExtracts = 10
+	}
+	DeLogf("Maximum Concurrent Extractions: %d", config.ConcurrentExtracts)
 	// Fix up intervals.
 	if config.Timeout.Value() == 0 {
-		log.Println("Setting Default Timeout:", defaultTimeout.String())
+		DeLogf("Setting Default Timeout: %v", defaultTimeout.String())
 		config.Timeout.Set(defaultTimeout)
 	}
 	if config.Deluge.Timeout.Value() == 0 {
@@ -104,7 +113,7 @@ func ValidateConfig(config Config) (Config, error) {
 	}
 
 	if config.Interval.Value() < minimumInterval {
-		log.Println("Setting Minimum Interval:", minimumInterval.String())
+		DeLogf("Setting Minimum Interval: %v", minimumInterval.String())
 		config.Interval.Set(minimumInterval)
 	}
 	if config.Deluge.Interval.Value() == 0 {
@@ -121,7 +130,10 @@ func ValidateConfig(config Config) (Config, error) {
 
 // StartUp all the go routines.
 func StartUp(d *deluge.Deluge, config Config) {
-	var r RunningData
+	r := RunningData{
+		DeleteDelay: config.DeleteDelay.Value(),
+		maxExtracts: config.ConcurrentExtracts,
+	}
 	r.History = make(map[string]Extracts)
 	go r.PollDeluge(d)
 	if config.Sonarr.APIKey != "" {
@@ -194,8 +206,7 @@ func (r *RunningData) PollChange() {
 	ticker := time.NewTicker(time.Minute).C
 	for range ticker {
 		if r.Deluge == nil {
-			// No data.
-			continue
+			continue // No data.
 		}
 		r.CheckExtractDone()
 		if r.SonarrQ != nil {
@@ -207,34 +218,46 @@ func (r *RunningData) PollChange() {
 	}
 }
 
-// CheckExtractDone checks if an extracted item has been imported so it may be deleted.
+// CheckExtractDone checks if an extracted item has been imported.
 func (r *RunningData) CheckExtractDone() {
+	log.Printf("Extract Statuses: %d actively extracting, %d queued, %d extracted, %d imported, %d failed, %d deleted",
+		r.eCount().extracting, r.eCount().queued, r.eCount().extracted, r.eCount().imported, r.eCount().failed, r.eCount().deleted)
 	for name, data := range r.GetHistory() {
-		if data.Status < DELETED {
-			log.Printf("Extract Statuses: %v (status: %v, elapsed: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
-		}
-		switch {
-		case data.Status != EXTRACTED:
-			// Only check for and process items that have finished extraction.
+		DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
+		switch elapsed := time.Now().Sub(r.GetStatus(name).Updated); {
+		case data.Status >= DELETED && elapsed >= r.DeleteDelay:
+			// Remove the item from history some time after it's deleted.
+			log.Printf("%v: Removing History: %v", data.App, name)
+			r.DeleteStatus(name)
+		case data.Status < EXTRACTED || data.Status > IMPORTED:
+			// Only process items that have finished extraction and are not deleted.
 			continue
 		case data.App == "Sonarr":
-			if sq := r.getSonarQitem(name); sq.Status == "" {
-				// TODO: delete_delay -> r.UpdateStatus(name, IMPORTED, nil) -> timer
-				log.Println("Sonarr Imported:", name)
-				r.UpdateStatus(name, DELETING, nil)
-				go r.deleteFiles(name, data.FileList)
-			} else if Debug {
-				log.Println("Sonarr Item Waiting For Import:", name, "->", sq.Status)
+			if q := r.getSonarQitem(name); q.Status == "" {
+				r.HandleExtractDone(data.App, name, data.Status, data.FileList, elapsed)
+			} else {
+				DeLogf("Sonarr Item Waiting For Import: %v -> %v", name, q.Status)
 			}
 		case data.App == "Radarr":
-			if rq := r.getRadarQitem(name); rq.Status == "" {
-				log.Println("Radarr Imported:", name)
-				r.UpdateStatus(name, DELETING, nil)
-				go r.deleteFiles(name, data.FileList)
-			} else if Debug {
-				log.Println("Radarr Item Waiting For Import:", name, "->", rq.Status)
+			if q := r.getRadarQitem(name); q.Status == "" {
+				r.HandleExtractDone(data.App, name, data.Status, data.FileList, elapsed)
+			} else {
+				DeLogf("Radarr Item Waiting For Import: %v -> %v", name, q.Status)
 			}
 		}
+	}
+}
+
+// HandleExtractDone checks if files should be deleted.
+func (r *RunningData) HandleExtractDone(app, name string, status ExtractStatus, files []string, elapsed time.Duration) {
+	switch {
+	case status != IMPORTED:
+		log.Printf("%v Imported: %v (delete in %v)", app, name, r.DeleteDelay)
+		r.UpdateStatus(name, IMPORTED, nil)
+	case elapsed >= r.DeleteDelay:
+		go r.deleteFiles(name, files)
+	default:
+		DeLogf("%v: Awaiting Delete Delay (%v remains): %v", app, r.DeleteDelay-elapsed.Round(time.Second), name)
 	}
 }
 
@@ -244,9 +267,9 @@ func (r *RunningData) CheckSonarrQueue() {
 	defer r.sonS.RUnlock()
 	for _, q := range r.SonarrQ {
 		if q.Status == "Completed" {
-			go r.HandleCompleted(q.Title, "Sonarr")
-		} else if Debug {
-			log.Printf("Sonarr: %v (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+			r.HandleCompleted(q.Title, "Sonarr")
+		} else {
+			DeLogf("Sonarr: %v (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 		}
 	}
 }
@@ -257,9 +280,9 @@ func (r *RunningData) CheckRadarrQueue() {
 	defer r.radS.RUnlock()
 	for _, q := range r.RadarrQ {
 		if q.Status == "Completed" {
-			go r.HandleCompleted(q.Title, "Radarr")
-		} else if Debug {
-			log.Printf("Radarr: %v (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			r.HandleCompleted(q.Title, "Radarr")
+		} else {
+			DeLogf("Radarr: %v (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 		}
 	}
 }
@@ -268,20 +291,25 @@ func (r *RunningData) CheckRadarrQueue() {
 func (r *RunningData) HandleCompleted(name, app string) {
 	d := r.getXfer(name)
 	if d.Name == "" {
-		if Debug {
-			log.Printf("%v: Transfer not found in Deluge: %v", app, name)
-		}
+		DeLogf("%v: Transfer not found in Deluge: %v (Deluge may be unresponsive?)", app, name)
 		return
 	}
 	path := filepath.Join(d.SavePath, d.Name)
-	file := findRarFile(path)
-	if d.IsFinished && r.GetStatus(name).Status == UNKNOWN {
-		if file != "" {
-			log.Printf("%v: Found extractable item in Deluge: %v -rar-file-> %v", app, name, file)
-			r.CreateStatus(name, path, file, app, QUEUED)
-			r.extractFile(name, path, file)
-		} else if Debug {
-			log.Printf("%v: Completed Item still in Queue: %v", app, name)
+	files := findRarFiles(path)
+	if d.IsFinished && r.GetStatus(name).Status == MISSING {
+		if len(files) > 0 {
+			log.Printf("%v: Found %v extractable item(s) in Deluge: %v ", app, len(files), name)
+			r.CreateStatus(name, path, app, files)
+			go r.extractFiles(name, path, files)
+		} else {
+			DeLogf("%v: Completed Item still in Queue: %v", app, name)
 		}
+	}
+}
+
+// DeLogf writes Debug log lines.
+func DeLogf(msg string, v ...interface{}) {
+	if Debug {
+		log.Printf("[DEBUG] "+msg, v...)
 	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strconv"
 	"sync"
 	"time"
 
@@ -12,14 +11,15 @@ import (
 
 // Config defines the configuration data used to start the application.
 type Config struct {
-	Dababase string         `json:"database" toml:"database" xml:"database" yaml:"database"` // not used.
-	Interval exp.Dur        `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout  exp.Dur        `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	Deluge   *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
-	Sonarr   *starr.Config  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
-	Radarr   *starr.Config  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
-	Lidarr   *starr.Config  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
-	Others   []*OtherConfig `json:"others" toml:"others" xml:"others" yaml:"others"` // not used.
+	Interval           exp.Dur        `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout            exp.Dur        `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay        exp.Dur        `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	ConcurrentExtracts int            `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
+	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
+	Sonarr             *starr.Config  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
+	Radarr             *starr.Config  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
+	Lidarr             *starr.Config  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
+	Others             []*OtherConfig `json:"others" toml:"others" xml:"others" yaml:"others"` // not used.
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -27,7 +27,7 @@ type ExtractStatus uint8
 
 // Extract Statuses.
 const (
-	UNKNOWN = ExtractStatus(iota)
+	MISSING = ExtractStatus(iota)
 	QUEUED
 	EXTRACTING
 	EXTRACTFAILED
@@ -43,34 +43,44 @@ const (
 // String makes ExtractStatus human readable.
 func (status ExtractStatus) String() string {
 	if status > FORGOTTEN {
-		return strconv.Itoa(int(status)) + " Unknown"
+		return "Unknown"
 	}
 	return []string{
 		// The oder must not be be faulty.
-		"Unknown", "Queued", "Extraction Progressing", "Extraction Failed",
+		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",
 		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
 		"Deleting", "Delete Failed", "Deleted", "Forgotten",
 	}[status]
 }
 
+// Use in r.eCount to return activity counters.
+type eCounters struct {
+	queued     int
+	extracting int
+	failed     int
+	extracted  int
+	imported   int
+	deleted    int
+}
+
 // RunningData stores all the running data.
 type RunningData struct {
-	Deluge  map[string]*deluge.XferStatus
-	SonarrQ []*starr.SonarQueue
-	RadarrQ []*starr.RadarQueue
-	History map[string]Extracts
+	DeleteDelay time.Duration
+	Deluge      map[string]*deluge.XferStatus
+	SonarrQ     []*starr.SonarQueue
+	RadarrQ     []*starr.RadarQueue
+	History     map[string]Extracts
 	// Locks for the above maps and slices.
 	hisS sync.RWMutex
 	delS sync.RWMutex
 	radS sync.RWMutex
 	sonS sync.RWMutex
-	// Only allow one extraction at a time.
-	rarS sync.Mutex
+	// Only allow N extractions at a time.
+	maxExtracts int
 }
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	RARFile  string
 	BasePath string
 	App      string
 	FileList []string

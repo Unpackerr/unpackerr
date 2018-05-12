@@ -4,7 +4,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -176,7 +175,8 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 	// Move the extracted files back into their original folder.
 	newFiles, err := moveFiles(tmpPath, path)
 	if err != nil {
-		log.Printf("Extract Error: %v", err.Error())
+		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
+			name, len(archives), extras, len(newFiles), time.Now().Sub(start).Round(time.Second), err.Error())
 		r.UpdateStatus(name, EXTRACTFAILED, newFiles)
 		return
 	}
@@ -184,40 +184,4 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
 		name, len(archives), extras, len(newFiles), time.Now().Sub(start).Round(time.Second))
 	r.UpdateStatus(name, EXTRACTED, newFiles)
-}
-
-// Moves files then removes the folder they were in.
-func moveFiles(fromPath string, toPath string) ([]string, error) {
-	files := getFileList(fromPath)
-	var err error
-	for i, file := range files {
-		newFile := filepath.Join(toPath, filepath.Base(file))
-		if err = os.Rename(file, newFile); err != nil {
-			log.Printf("Extract Error: Renaming %v to %v: %v", file, newFile, err.Error())
-			// keep trying.
-		}
-		files[i] = newFile
-	}
-	if errr := os.Remove(fromPath); errr != nil {
-		log.Println("Extract Error: Removing temporary extract folder:", errr.Error())
-		// If we made it this far, it's ok.
-	}
-	// Since this is the last step, we tried to rename all the files, bubble the
-	// os.Rename error up, so it gets flagged as failed. It may have worked, but
-	// it should get attention.
-	return files, err
-}
-
-// Deletes extracted files after Sonarr/Radarr imports them.
-func (r *RunningData) deleteFiles(name string, files []string) {
-	status := DELETED
-	for _, file := range files {
-		if err := os.Remove(file); err != nil {
-			log.Println("Delete Error:", file)
-			status = DELETEFAILED
-			continue
-		}
-		log.Println("Deleted:", file)
-	}
-	r.UpdateStatus(name, status, nil)
 }

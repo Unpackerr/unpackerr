@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -54,6 +55,45 @@ func findRarFiles(path string) (files []string) {
 		}
 	}
 	return
+}
+
+// Moves files then removes the folder they were in.
+// Returns the new file paths.
+func moveFiles(fromPath string, toPath string) ([]string, error) {
+	files := getFileList(fromPath)
+	var keepErr error
+	for i, file := range files {
+		newFile := filepath.Join(toPath, filepath.Base(file))
+		if err := os.Rename(file, newFile); err != nil {
+			keepErr = err
+			log.Printf("Error Renaming: %v to %v: %v", file, newFile, err.Error())
+			// keep trying.
+			continue
+		}
+		files[i] = newFile
+	}
+	if errr := os.Remove(fromPath); errr != nil {
+		log.Printf("Error Removing Folder: %v: %v", fromPath, errr.Error())
+		// If we made it this far, it's ok.
+	}
+	// Since this is the last step, we tried to rename all the files, bubble the
+	// os.Rename error up, so it gets flagged as failed. It may have worked, but
+	// it should get attention.
+	return files, keepErr
+}
+
+// Deletes extracted files after Sonarr/Radarr imports them.
+func deleteFiles(name string, files []string) error {
+	var keepErr error
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			keepErr = err
+			log.Println("Delete Error:", file)
+			continue
+		}
+		log.Println("Deleted:", file)
+	}
+	return keepErr
 }
 
 /*

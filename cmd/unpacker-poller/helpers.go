@@ -14,9 +14,7 @@ import (
 func getFileList(path string) (files []string) {
 	if fileList, err := ioutil.ReadDir(path); err == nil {
 		for _, file := range fileList {
-			if !file.IsDir() {
-				files = append(files, filepath.Join(path, file.Name()))
-			}
+			files = append(files, filepath.Join(path, file.Name()))
 		}
 	} else {
 		log.Println("Error reading path", path, err.Error())
@@ -43,15 +41,15 @@ func difference(slice1 []string, slice2 []string) (diff []string) {
 	return diff
 }
 
-// Returns the (a) .rar file from a path.
+// Returns all the rar files in a path.
 func findRarFiles(path string) (files []string) {
 	if fileList, err := ioutil.ReadDir(path); err == nil {
 		for _, file := range fileList {
-			if !file.IsDir() && strings.HasSuffix(file.Name(), ".rar") {
-				files = append(files, filepath.Join(path, file.Name()))
-			} else if file.IsDir() {
+			if file.IsDir() {
 				// Recurse.
 				files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
+			} else if strings.HasSuffix(file.Name(), ".rar") {
+				files = append(files, filepath.Join(path, file.Name()))
 			}
 		}
 	}
@@ -60,7 +58,6 @@ func findRarFiles(path string) (files []string) {
 
 /*
   The following functions pull data from the internal map and slices.
-  Those slices and map are populated by their respective go routines.
 */
 
 // gets a radarr queue item based on name. returns first match

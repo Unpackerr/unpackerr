@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,10 +22,10 @@ func (r *RunningData) CreateStatus(name, path string, app string, files []string
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
 	r.History[name] = Extracts{
-		BasePath: path,
-		App:      app,
-		Status:   QUEUED,
-		Updated:  time.Now(),
+		Path:    path,
+		App:     app,
+		Status:  QUEUED,
+		Updated: time.Now(),
 	}
 }
 
@@ -83,11 +84,11 @@ func (r *RunningData) UpdateStatus(name string, status ExtractStatus, fileList [
 		return
 	}
 	r.History[name] = Extracts{
-		BasePath: r.History[name].BasePath,
-		App:      r.History[name].App,
-		FileList: append(r.History[name].FileList, fileList...),
-		Status:   status,
-		Updated:  time.Now(),
+		Path:    r.History[name].Path,
+		App:     r.History[name].App,
+		Files:   append(r.History[name].Files, fileList...),
+		Status:  status,
+		Updated: time.Now(),
 	}
 }
 
@@ -103,11 +104,11 @@ func (r *RunningData) extractMayProceed(name string) bool {
 	}
 	if count < r.maxExtracts {
 		r.History[name] = Extracts{
-			BasePath: r.History[name].BasePath,
-			App:      r.History[name].App,
-			FileList: r.History[name].FileList,
-			Status:   EXTRACTING,
-			Updated:  time.Now(),
+			Path:    r.History[name].Path,
+			App:     r.History[name].App,
+			Files:   r.History[name].Files,
+			Status:  EXTRACTING,
+			Updated: time.Now(),
 		}
 		return true
 	}
@@ -126,47 +127,85 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 	for !r.extractMayProceed(name) {
 		time.Sleep(time.Duration(rand.Float64()) * time.Second)
 	}
+
 	log.Printf("Extract Starting (%d active): %d file(s) - %v", r.eCount().extracting, len(archives), name)
-	beforeAllFiles := getFileList(path) // get the "before all extractions" file list
+	// Extract into a temporary path so Sonarr doesn't import episodes prematurely.
+	tmpPath := path + "_unpacker"
+	if err := os.Mkdir(tmpPath, 0755); err != nil {
+		log.Println("Extract Error: Creating temporary extract folder:", err.Error())
+		r.UpdateStatus(name, EXTRACTFAILED, nil)
+		return
+	}
+
 	start := time.Now()
 	extras := 0
 
 	// Extract one archive at a time, then check if it contained any more archives.
 	for i, file := range archives {
 		fileStart := time.Now()
-		beforeFiles := getFileList(path) // get the "before this extraction" file list
-		if err := unrar.RarExtractor(file, path); err != nil {
+		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
+		if err := unrar.RarExtractor(file, tmpPath); err != nil {
 			log.Printf("Extract Error: [%d/%d] %v to %v (%v elapsed): %v",
-				i+1, len(archives), file, path, time.Now().Sub(fileStart).Round(time.Second), err)
-			r.UpdateStatus(name, EXTRACTFAILED, difference(beforeAllFiles, getFileList(path)))
+				i+1, len(archives), file, tmpPath, time.Now().Sub(fileStart).Round(time.Second), err)
+			r.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 			return
 		}
 
-		newFiles := difference(beforeFiles, getFileList(path))
+		newFiles := difference(beforeFiles, getFileList(tmpPath))
 		log.Printf("Extract Complete: [%d/%d] %v (%v elapsed, %d files)",
 			i+1, len(archives), file, time.Now().Sub(fileStart).Round(time.Second), len(newFiles))
-		// Do this now, instead of re-queuing, so subs are imported.
-		for j, file := range newFiles {
-			// Check if we just extracted more archives.
+
+		// Check if we just extracted more archives.
+		for _, file := range newFiles {
+			// Do this now, instead of re-queuing, so subs are imported.
 			if strings.HasSuffix(file, ".rar") {
 				log.Printf("Extracted RAR Archive, Extracting Additional File: %v", file)
-				if err := unrar.RarExtractor(file, path); err != nil {
-					log.Printf("Extract Error: [%d/%d](%d/%d) %v to %v (%v elapsed): %v",
-						i+1, len(archives), j+1, len(newFiles), file, path, time.Now().Sub(fileStart).Round(time.Second), err)
-					r.UpdateStatus(name, EXTRACTFAILED, difference(beforeAllFiles, getFileList(path)))
+				if err := unrar.RarExtractor(file, tmpPath); err != nil {
+					log.Printf("Extract Error: [%d/%d](extra) %v to %v (%v elapsed): %v",
+						i+1, len(archives), file, tmpPath, time.Now().Sub(fileStart).Round(time.Second), err)
+					r.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 					return
 				}
-				log.Printf("Extract Complete: [%d/%d](%d/%d) %v (%v elapsed)",
-					i+1, len(archives), j+1, len(newFiles), file, time.Now().Sub(fileStart).Round(time.Second))
+				log.Printf("Extract Complete: [%d/%d](extra) %v (%v elapsed)",
+					i+1, len(archives), file, time.Now().Sub(fileStart).Round(time.Second))
 				extras++
 			}
 		}
 	}
 
-	newFiles := difference(beforeAllFiles, getFileList(path))
+	// Move the extracted files back into their original folder.
+	newFiles, err := moveFiles(tmpPath, path)
+	if err != nil {
+		log.Printf("Extract Error: %v", err.Error())
+		r.UpdateStatus(name, EXTRACTFAILED, newFiles)
+		return
+	}
+
 	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
 		name, len(archives), extras, len(newFiles), time.Now().Sub(start).Round(time.Second))
 	r.UpdateStatus(name, EXTRACTED, newFiles)
+}
+
+// Moves files then removes the folder they were in.
+func moveFiles(fromPath string, toPath string) ([]string, error) {
+	files := getFileList(fromPath)
+	var err error
+	for i, file := range files {
+		newFile := filepath.Join(toPath, filepath.Base(file))
+		if err = os.Rename(file, newFile); err != nil {
+			log.Printf("Extract Error: Renaming %v to %v: %v", file, newFile, err.Error())
+			// keep trying.
+		}
+		files[i] = newFile
+	}
+	if errr := os.Remove(fromPath); errr != nil {
+		log.Println("Extract Error: Removing temporary extract folder:", errr.Error())
+		// If we made it this far, it's ok.
+	}
+	// Since this is the last step, we tried to rename all the files, bubble the
+	// os.Rename error up, so it gets flagged as failed. It may have worked, but
+	// it should get attention.
+	return files, err
 }
 
 // Deletes extracted files after Sonarr/Radarr imports them.

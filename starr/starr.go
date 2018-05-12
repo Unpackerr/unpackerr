@@ -21,7 +21,6 @@ type Config struct {
 	HTTPPass string  `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
 	HTTPUser string  `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
 	Timeout  exp.Dur `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	Interval exp.Dur `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 }
 
 // Req makes a http request, with some additions.

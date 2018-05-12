@@ -23,8 +23,9 @@ Another go routine checks (the internal data) for completed downloads. When it
 finds an item in Deluge that matches an item in Sonarr or Radarr the download
 location is checked for a `.rar` file. If an extractable archive exists, and
 **Sonarr/Radarr have `status=Completed` from Deluge** this application will
-extract the file. When the item falls out of the (Radarr/Sonarr) queue, the
-extracted files are removed.
+extract the file. Files are extracted to a temporary folder, and then moved back
+into the download location for Completed Download Handling to import them. When
+the item falls out of the (Radarr/Sonarr) queue, the extracted files are removed.
 
 Tags are currently mentioned, but nothing uses them. I figured I would match tags
 before I started getting data from the APIs. Once I realized I was able to match
@@ -77,7 +78,6 @@ in the same boat: http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-f
 
 ## TODO
 
-- Make sure Deluge is "working" before deleting files. Add health window.
 - Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
 - Integrate `expvar`.
 - Tests. Maybe. Would likely have to refactor things into better interfaces.

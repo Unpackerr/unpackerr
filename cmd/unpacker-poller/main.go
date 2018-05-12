@@ -27,7 +27,7 @@ const (
 
 var (
 	// Version of the aplication.
-	Version = "0.1.3"
+	Version = "0.1.4"
 	// Debug turns on the noise.
 	Debug = false
 	// ConfigFile is the file we get configuration from.
@@ -116,15 +116,6 @@ func ValidateConfig(config Config) (Config, error) {
 		DeLogf("Setting Minimum Interval: %v", minimumInterval.String())
 		config.Interval.Set(minimumInterval)
 	}
-	if config.Deluge.Interval.Value() == 0 {
-		config.Deluge.Interval.Set(config.Interval.Value())
-	}
-	if config.Radarr.Interval.Value() == 0 {
-		config.Radarr.Interval.Set(config.Interval.Value())
-	}
-	if config.Sonarr.Interval.Value() == 0 {
-		config.Sonarr.Interval.Set(config.Interval.Value())
-	}
 	return config, nil
 }
 
@@ -133,65 +124,62 @@ func StartUp(d *deluge.Deluge, config Config) {
 	r := RunningData{
 		DeleteDelay: config.DeleteDelay.Value(),
 		maxExtracts: config.ConcurrentExtracts,
+		History:     make(map[string]Extracts),
 	}
-	r.History = make(map[string]Extracts)
+	go r.PollChange()
+	go func() {
+		r.pollAllApps(config, d)
+		ticker := time.NewTicker(config.Interval.Value()).C
+		for range ticker {
+			r.pollAllApps(config, d)
+		}
+	}()
+}
+
+// Poll Deluge, Sonarr and Radarr. All at the same time.
+func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 	go r.PollDeluge(d)
 	if config.Sonarr.APIKey != "" {
-		time.Sleep(time.Second * 5) // spread out the http checks a bit.
 		go r.PollSonarr(config.Sonarr)
 	}
 	if config.Radarr.APIKey != "" {
-		time.Sleep(time.Second * 5)
 		go r.PollRadarr(config.Radarr)
 	}
-	go r.PollChange()
 }
 
 // PollDeluge at an interval and save the transfer list to r.Deluge
 func (r *RunningData) PollDeluge(d *deluge.Deluge) {
-	log.Printf("Deluge Poller Starting: %v (interval: %v)", d.URL, d.Interval.String())
-	ticker := time.NewTicker(d.Interval).C
-	for range ticker {
-		var err error
-		r.delS.Lock()
-		if r.Deluge, err = d.GetXfers(); err != nil {
-			log.Println("Deluge Error:", err)
-		} else {
-			log.Println("Deluge Updated:", len(r.Deluge), "Transfers")
-		}
-		r.delS.Unlock()
+	var err error
+	r.delS.Lock()
+	defer r.delS.Unlock()
+	if r.Deluge, err = d.GetXfers(); err != nil {
+		log.Println("Deluge Error:", err)
+	} else {
+		log.Println("Deluge Updated:", len(r.Deluge), "Transfers")
 	}
 }
 
 // PollSonarr saves the Sonarr Queue to r.SonarrQ
 func (r *RunningData) PollSonarr(s *starr.Config) {
-	log.Printf("Sonarr Poller Starting: %v (interval: %v)", s.URL, s.Interval.String())
-	ticker := time.NewTicker(s.Interval.Value()).C
-	for range ticker {
-		var err error
-		r.sonS.Lock()
-		if r.SonarrQ, err = starr.SonarrQueue(*s); err != nil {
-			log.Println("Sonarr Error:", err)
-		} else {
-			log.Println("Sonarr Updated:", len(r.SonarrQ), "Items Queued")
-		}
-		r.sonS.Unlock()
+	var err error
+	r.sonS.Lock()
+	defer r.sonS.Unlock()
+	if r.SonarrQ, err = starr.SonarrQueue(*s); err != nil {
+		log.Println("Sonarr Error:", err)
+	} else {
+		log.Println("Sonarr Updated:", len(r.SonarrQ), "Items Queued")
 	}
 }
 
 // PollRadarr saves the Radarr Queue to r.RadarrQ
 func (r *RunningData) PollRadarr(s *starr.Config) {
-	log.Printf("Radarr Poller Starting: %v (interval: %v)", s.URL, s.Interval.String())
-	ticker := time.NewTicker(s.Interval.Value()).C
-	for range ticker {
-		var err error
-		r.radS.Lock()
-		if r.RadarrQ, err = starr.RadarrQueue(*s); err != nil {
-			log.Println("Radarr Error:", err)
-		} else {
-			log.Println("Radarr Updated:", len(r.RadarrQ), "Items Queued")
-		}
-		r.radS.Unlock()
+	var err error
+	r.radS.Lock()
+	defer r.radS.Unlock()
+	if r.RadarrQ, err = starr.RadarrQueue(*s); err != nil {
+		log.Println("Radarr Error:", err)
+	} else {
+		log.Println("Radarr Updated:", len(r.RadarrQ), "Items Queued")
 	}
 }
 
@@ -225,7 +213,7 @@ func (r *RunningData) CheckExtractDone() {
 	for name, data := range r.GetHistory() {
 		DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
 		switch elapsed := time.Now().Sub(r.GetStatus(name).Updated); {
-		case data.Status >= DELETED && elapsed >= r.DeleteDelay:
+		case data.Status >= DELETED && elapsed >= r.DeleteDelay*2:
 			// Remove the item from history some time after it's deleted.
 			log.Printf("%v: Removing History: %v", data.App, name)
 			r.DeleteStatus(name)
@@ -234,13 +222,13 @@ func (r *RunningData) CheckExtractDone() {
 			continue
 		case data.App == "Sonarr":
 			if q := r.getSonarQitem(name); q.Status == "" {
-				r.HandleExtractDone(data.App, name, data.Status, data.FileList, elapsed)
+				r.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed)
 			} else {
 				DeLogf("Sonarr Item Waiting For Import: %v -> %v", name, q.Status)
 			}
 		case data.App == "Radarr":
 			if q := r.getRadarQitem(name); q.Status == "" {
-				r.HandleExtractDone(data.App, name, data.Status, data.FileList, elapsed)
+				r.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed)
 			} else {
 				DeLogf("Radarr Item Waiting For Import: %v -> %v", name, q.Status)
 			}

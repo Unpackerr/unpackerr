@@ -81,11 +81,11 @@ type RunningData struct {
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	BasePath string
-	App      string
-	FileList []string
-	Status   ExtractStatus
-	Updated  time.Time
+	Path    string
+	App     string
+	Files   []string
+	Status  ExtractStatus
+	Updated time.Time
 }
 
 // OtherConfig describes what to do with other tags. not used.

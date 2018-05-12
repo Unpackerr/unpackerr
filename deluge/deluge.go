@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 )
@@ -17,10 +16,9 @@ import (
 // Deluge is what you get for providing a password.
 type Deluge struct {
 	*http.Client
-	URL      string
-	auth     string
-	id       int
-	Interval time.Duration
+	URL  string
+	auth string
+	id   int
 }
 
 // New creates a http.Client with authenticated cookies.
@@ -47,7 +45,7 @@ func New(config Config) (*Deluge, error) {
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Jar:       jar,
 		Timeout:   config.Timeout.Value(),
-	}, config.URL, config.HTTPUser, 0, config.Interval.Value()}
+	}, config.URL, config.HTTPUser, 0}
 
 	// This []string{config.Password} line is how you send auth creds. It's weird.
 	if req, err := deluge.DelReq(AuthLogin, []string{config.Password}); err != nil {

@@ -95,6 +95,10 @@ func (r *RunningData) UpdateStatus(name string, status ExtractStatus, fileList [
 func (r *RunningData) extractMayProceed(name string) bool {
 	r.hisS.Lock()
 	defer r.hisS.Unlock()
+	if r.History[name].Updated.Add(time.Minute).After(time.Now()) {
+		// Item must be queued for at least 1 minute to prevent Deluge races.
+		return false
+	}
 	var count int
 	for _, r := range r.History {
 		if r.Status == EXTRACTING {
@@ -130,7 +134,7 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 	log.Printf("Extract Starting (%d active): %d file(s) - %v", r.eCount().extracting, len(archives), name)
 	// Extract into a temporary path so Sonarr doesn't import episodes prematurely.
 	tmpPath := path + "_unpacker"
-	if err := os.Mkdir(tmpPath, 0755); err != nil {
+	if err := os.MkdirAll(tmpPath, 0755); err != nil {
 		log.Println("Extract Error: Creating temporary extract folder:", err.Error())
 		r.UpdateStatus(name, EXTRACTFAILED, nil)
 		return

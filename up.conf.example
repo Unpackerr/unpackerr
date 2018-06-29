@@ -18,8 +18,9 @@ delete_delay="10m"
 concurrent_extracts=1
 
 [deluge]
-url="http://127.0.0.1:3112"
+url="http://127.0.0.1:8112"
 password="deluge"
+timeout = "60s"
 
 #[sonarr]
 #url="http://127.0.0.1:8989"

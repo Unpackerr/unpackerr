@@ -49,8 +49,12 @@ func findRarFiles(path string) (files []string) {
 			if file.IsDir() {
 				// Recurse.
 				files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
-			} else if strings.HasSuffix(file.Name(), ".rar") {
-				files = append(files, filepath.Join(path, file.Name()))
+			} else if name := strings.ToLower(file.Name()); strings.HasSuffix(name, ".rar") {
+				// Some archives are named poorly. Only return part01 or part001, not all.
+				m, _ := filepath.Match("*.part[0-9]*.rar", name)
+				if !m || strings.HasSuffix(name, ".part01.rar") || strings.HasSuffix(name, ".part001.rar") {
+					files = append(files, filepath.Join(path, file.Name()))
+				}
 			}
 		}
 	}
@@ -70,11 +74,14 @@ func moveFiles(fromPath string, toPath string) ([]string, error) {
 			// keep trying.
 			continue
 		}
+		DeLogf("Renamed File: %v -> %v", file, newFile)
 		files[i] = newFile
 	}
 	if errr := os.Remove(fromPath); errr != nil {
 		log.Printf("Error Removing Folder: %v: %v", fromPath, errr.Error())
 		// If we made it this far, it's ok.
+	} else {
+		DeLogf("Removed Folder: %v", fromPath)
 	}
 	// Since this is the last step, we tried to rename all the files, bubble the
 	// os.Rename error up, so it gets flagged as failed. It may have worked, but
@@ -88,7 +95,7 @@ func deleteFiles(name string, files []string) error {
 	for _, file := range files {
 		if err := os.Remove(file); err != nil {
 			keepErr = err
-			log.Println("Delete Error:", file)
+			log.Printf("Error Deleting %v: %v", file, err.Error())
 			continue
 		}
 		log.Println("Deleted:", file)

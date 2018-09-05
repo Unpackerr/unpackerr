@@ -10,15 +10,16 @@ import (
 )
 
 // PollDeluge at an interval and save the transfer list to r.Deluge
-func (r *RunningData) PollDeluge(d *deluge.Deluge) {
+func (r *RunningData) PollDeluge(d *deluge.Deluge) error {
 	var err error
 	r.delS.Lock()
 	defer r.delS.Unlock()
 	if r.Deluge, err = d.GetXfers(); err != nil {
 		log.Println("Deluge Error:", err)
-	} else {
-		log.Println("Deluge Updated:", len(r.Deluge), "Transfers")
+		return err
 	}
+	log.Println("Deluge Updated:", len(r.Deluge), "Transfers")
+	return nil
 }
 
 // PollSonarr saves the Sonarr Queue to r.SonarrQ

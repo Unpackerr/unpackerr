@@ -146,6 +146,7 @@ func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 				// if r.eCount().extracting == 0 && r.eCount().extracted == 0 && r.eCount().imported == 0 && r.eCount().queued == 0 {
 				// 	os.Exit(2)
 				// }
+				return
 			}
 			*d = *newDeluge
 		}

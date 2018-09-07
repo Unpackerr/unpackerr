@@ -51,7 +51,7 @@ func (r *RunningData) PollRadarr(s *starr.Config) {
 func (r *RunningData) PollChange() {
 	// Don't start this for 2 whole minutes.
 	time.Sleep(time.Minute)
-	log.Println("Starting Cleanup Routine (interval: 1m0s)")
+	log.Println("Starting Cleanup Routine (interval: 1 minute)")
 	// This runs more often because of the cleanup tasks.
 	// It doesn't poll external data, unless it finds something to extract.
 	ticker := time.NewTicker(time.Minute).C
@@ -159,7 +159,7 @@ func (r *RunningData) HandleCompleted(name, app string) {
 			r.CreateStatus(name, path, app, files)
 			go r.extractFiles(name, path, files)
 		} else {
-			DeLogf("%v: Completed Item still in Queue: %v", app, name)
+			DeLogf("%v: Completed Item still in Queue: %v (no extractable files found)", app, name)
 		}
 	}
 }

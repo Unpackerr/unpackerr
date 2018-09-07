@@ -46,7 +46,7 @@ func (status ExtractStatus) String() string {
 		return "Unknown"
 	}
 	return []string{
-		// The oder must not be be faulty.
+		// The order must not be be faulty.
 		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",
 		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
 		"Deleting", "Delete Failed", "Deleted", "Forgotten",

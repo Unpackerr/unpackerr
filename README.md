@@ -76,6 +76,9 @@ the Deluge log file, I found that the app was running out of open files. Turns o
 this was causing a lot of issues on my server. I have a Mac. Check this out if you're
 in the same boat: http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit
 
+Deluge takes a while to reply with a lot of transfers. Set the timeout to 30+s.
+I use 60s on my server and it seems to be okay.
+
 ## TODO
 
 - Add code for tagged downloads. Allow extracting things besides radarr/sonarr.

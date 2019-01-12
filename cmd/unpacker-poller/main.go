@@ -137,7 +137,20 @@ func StartUp(d *deluge.Deluge, config Config) {
 
 // Poll Deluge, Sonarr and Radarr. All at the same time.
 func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
-	go r.PollDeluge(d)
+	go func() {
+		if r.PollDeluge(d) != nil {
+			newDeluge, err := deluge.New(*config.Deluge)
+			if err != nil {
+				log.Println("Deluge Authentication Error:", err)
+				// When auth fails > 1 time while running, just exit. Only exit if things are not pending.
+				// if r.eCount().extracting == 0 && r.eCount().extracted == 0 && r.eCount().imported == 0 && r.eCount().queued == 0 {
+				// 	os.Exit(2)
+				// }
+				return
+			}
+			*d = *newDeluge
+		}
+	}()
 	if config.Sonarr.APIKey != "" {
 		go r.PollSonarr(config.Sonarr)
 	}

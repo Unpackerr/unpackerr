@@ -26,6 +26,14 @@
 
 
 [[constraint]]
+  name = "github.com/golift/deluge"
+  version = "0.9.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golift/starr"
+
+[[constraint]]
   branch = "master"
   name = "github.com/jagadeesh-kotra/gorar"
 
@@ -39,7 +47,7 @@
 
 [[constraint]]
   name = "github.com/pkg/errors"
-  version = "0.8.0"
+  version = "0.8.1"
 
 [prune]
   go-tests = true

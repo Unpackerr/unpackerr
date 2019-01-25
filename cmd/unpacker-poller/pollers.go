@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davidnewhall/unpacker-poller/deluge"
-	"github.com/davidnewhall/unpacker-poller/starr"
+	"github.com/golift/deluge"
+	"github.com/golift/starr"
 )
 
 // PollDeluge at an interval and save the transfer list to r.Deluge
@@ -27,7 +27,7 @@ func (r *RunningData) PollSonarr(s *starr.Config) {
 	var err error
 	r.sonS.Lock()
 	defer r.sonS.Unlock()
-	if r.SonarrQ, err = starr.SonarrQueue(*s); err != nil {
+	if r.SonarrQ, err = s.SonarrQueue(); err != nil {
 		log.Println("Sonarr Error:", err)
 	} else {
 		log.Println("Sonarr Updated:", len(r.SonarrQ), "Items Queued")
@@ -39,7 +39,7 @@ func (r *RunningData) PollRadarr(s *starr.Config) {
 	var err error
 	r.radS.Lock()
 	defer r.radS.Unlock()
-	if r.RadarrQ, err = starr.RadarrQueue(*s); err != nil {
+	if r.RadarrQ, err = s.RadarrQueue(); err != nil {
 		log.Println("Radarr Error:", err)
 	} else {
 		log.Println("Radarr Updated:", len(r.RadarrQ), "Items Queued")

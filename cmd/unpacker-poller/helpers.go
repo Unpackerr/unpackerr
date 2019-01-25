@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/davidnewhall/unpacker-poller/deluge"
-	"github.com/davidnewhall/unpacker-poller/starr"
+	"github.com/golift/deluge"
+	"github.com/golift/starr"
 )
 
 // Returns all the files in a path.

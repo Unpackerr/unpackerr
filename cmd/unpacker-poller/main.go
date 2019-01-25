@@ -9,7 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davidnewhall/unpacker-poller/deluge"
+	"github.com/golift/deluge"
+	"github.com/golift/starr"
 
 	"github.com/naoina/toml"
 	flg "github.com/ogier/pflag"
@@ -25,7 +26,7 @@ const (
 
 var (
 	// Version of the aplication.
-	Version = "0.1.4"
+	Version = "0.2.0"
 	// Debug turns on the noise.
 	Debug = false
 	// ConfigFile is the file we get configuration from.
@@ -41,13 +42,38 @@ func main() {
 	if err != nil {
 		log.Fatalln("ERROR (config):", err)
 	}
-	d, err := deluge.New(*config.Deluge)
+	config.copyConfig()
+	d, err := deluge.New(config.deluge)
 	if err != nil {
 		log.Fatalln("ERROR (deluge):", err)
 	}
 	go StartUp(d, config)
 	signal.Notify(StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("\nExiting! Caught Signal:", <-StopChan)
+}
+
+func (c *Config) copyConfig() {
+	c.deluge = deluge.Config{
+		URL:      c.Deluge.URL,
+		Password: c.Deluge.Password,
+		HTTPPass: c.Deluge.HTTPPass,
+		HTTPUser: c.Deluge.HTTPUser,
+		Timeout:  c.Deluge.Timeout.Duration,
+	}
+	c.sonarr = &starr.Config{
+		APIKey:   c.Sonarr.APIKey,
+		URL:      c.Sonarr.URL,
+		HTTPPass: c.Sonarr.HTTPPass,
+		HTTPUser: c.Sonarr.HTTPUser,
+		Timeout:  c.Sonarr.Timeout.Duration,
+	}
+	c.radarr = &starr.Config{
+		APIKey:   c.Radarr.APIKey,
+		URL:      c.Radarr.URL,
+		HTTPPass: c.Radarr.HTTPPass,
+		HTTPUser: c.Radarr.HTTPUser,
+		Timeout:  c.Radarr.Timeout.Duration,
+	}
 }
 
 // ParseFlags turns CLI args into usable data.
@@ -85,9 +111,9 @@ func GetConfig(configFile string) (Config, error) {
 
 // ValidateConfig makes sure config values are ok.
 func ValidateConfig(config Config) (Config, error) {
-	if config.DeleteDelay.Value() < minimumDeleteDelay {
+	if config.DeleteDelay.Duration < minimumDeleteDelay {
 		DeLogf("Setting Minimum Delete Delay: %v", minimumDeleteDelay.String())
-		config.DeleteDelay.Set(minimumDeleteDelay)
+		config.DeleteDelay.Duration = minimumDeleteDelay
 	}
 	if config.ConcurrentExtracts < 1 {
 		config.ConcurrentExtracts = 1
@@ -96,23 +122,23 @@ func ValidateConfig(config Config) (Config, error) {
 	}
 	DeLogf("Maximum Concurrent Extractions: %d", config.ConcurrentExtracts)
 	// Fix up intervals.
-	if config.Timeout.Value() == 0 {
+	if config.Timeout.Duration == 0 {
 		DeLogf("Setting Default Timeout: %v", defaultTimeout.String())
-		config.Timeout.Set(defaultTimeout)
+		config.Timeout.Duration = defaultTimeout
 	}
-	if config.Deluge.Timeout.Value() == 0 {
-		config.Deluge.Timeout.Set(config.Timeout.Value())
+	if config.Deluge.Timeout.Duration == 0 {
+		config.Deluge.Timeout = config.Timeout
 	}
-	if config.Radarr.Timeout.Value() == 0 {
-		config.Radarr.Timeout.Set(config.Timeout.Value())
+	if config.Radarr.Timeout.Duration == 0 {
+		config.Radarr.Timeout = config.Timeout
 	}
-	if config.Sonarr.Timeout.Value() == 0 {
-		config.Sonarr.Timeout.Set(config.Timeout.Value())
+	if config.Sonarr.Timeout.Duration == 0 {
+		config.Sonarr.Timeout = config.Timeout
 	}
 
-	if config.Interval.Value() < minimumInterval {
+	if config.Interval.Duration < minimumInterval {
 		DeLogf("Setting Minimum Interval: %v", minimumInterval.String())
-		config.Interval.Set(minimumInterval)
+		config.Interval.Duration = minimumInterval
 	}
 	return config, nil
 }
@@ -120,15 +146,15 @@ func ValidateConfig(config Config) (Config, error) {
 // StartUp all the go routines.
 func StartUp(d *deluge.Deluge, config Config) {
 	r := RunningData{
-		DeleteDelay: config.DeleteDelay.Value(),
+		DeleteDelay: config.DeleteDelay.Duration,
 		maxExtracts: config.ConcurrentExtracts,
 		History:     make(map[string]Extracts),
 	}
-	go r.PollChange() // This has its own ticker tha runs every minute.
+	go r.PollChange() // This has its own ticker that runs every minute.
 	go func() {
 		// Run all pollers once at startup.
 		r.pollAllApps(config, d)
-		ticker := time.NewTicker(config.Interval.Value()).C
+		ticker := time.NewTicker(config.Interval.Duration).C
 		for range ticker {
 			r.pollAllApps(config, d)
 		}
@@ -139,7 +165,8 @@ func StartUp(d *deluge.Deluge, config Config) {
 func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 	go func() {
 		if r.PollDeluge(d) != nil {
-			newDeluge, err := deluge.New(*config.Deluge)
+			// We got an error polling deluge, try to reconnect.
+			newDeluge, err := deluge.New(config.deluge)
 			if err != nil {
 				log.Println("Deluge Authentication Error:", err)
 				// When auth fails > 1 time while running, just exit. Only exit if things are not pending.
@@ -152,10 +179,10 @@ func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 		}
 	}()
 	if config.Sonarr.APIKey != "" {
-		go r.PollSonarr(config.Sonarr)
+		go r.PollSonarr(config.sonarr)
 	}
 	if config.Radarr.APIKey != "" {
-		go r.PollRadarr(config.Radarr)
+		go r.PollRadarr(config.radarr)
 	}
 }
 

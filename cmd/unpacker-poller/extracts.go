@@ -149,14 +149,14 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
 		if err := unrar.RarExtractor(file, tmpPath); err != nil {
 			log.Printf("Extract Error: [%d/%d] %v to %v (%v elapsed): %v",
-				i+1, len(archives), file, tmpPath, time.Now().Sub(fileStart).Round(time.Second), err)
+				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			r.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 			return
 		}
 
 		newFiles := difference(beforeFiles, getFileList(tmpPath))
 		log.Printf("Extract Complete: [%d/%d] %v (%v elapsed, %d files)",
-			i+1, len(archives), file, time.Now().Sub(fileStart).Round(time.Second), len(newFiles))
+			i+1, len(archives), file, time.Since(fileStart).Round(time.Second), len(newFiles))
 
 		// Check if we just extracted more archives.
 		for _, file := range newFiles {
@@ -165,12 +165,12 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 				log.Printf("Extracted RAR Archive, Extracting Additional File: %v", file)
 				if err := unrar.RarExtractor(file, tmpPath); err != nil {
 					log.Printf("Extract Error: [%d/%d](extra) %v to %v (%v elapsed): %v",
-						i+1, len(archives), file, tmpPath, time.Now().Sub(fileStart).Round(time.Second), err)
+						i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 					r.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 					return
 				}
 				log.Printf("Extract Complete: [%d/%d](extra) %v (%v elapsed)",
-					i+1, len(archives), file, time.Now().Sub(fileStart).Round(time.Second))
+					i+1, len(archives), file, time.Since(fileStart).Round(time.Second))
 				extras++
 			}
 		}
@@ -180,12 +180,12 @@ func (r *RunningData) extractFiles(name, path string, archives []string) {
 	newFiles, err := moveFiles(tmpPath, path)
 	if err != nil {
 		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
-			name, len(archives), extras, len(newFiles), time.Now().Sub(start).Round(time.Second), err.Error())
+			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
 		r.UpdateStatus(name, EXTRACTFAILED, newFiles)
 		return
 	}
 
 	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
-		name, len(archives), extras, len(newFiles), time.Now().Sub(start).Round(time.Second))
+		name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second))
 	r.UpdateStatus(name, EXTRACTED, newFiles)
 }

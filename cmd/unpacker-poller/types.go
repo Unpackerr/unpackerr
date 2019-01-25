@@ -4,22 +4,39 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davidnewhall/unpacker-poller/deluge"
-	"github.com/davidnewhall/unpacker-poller/exp"
-	"github.com/davidnewhall/unpacker-poller/starr"
+	"github.com/golift/deluge"
+	"github.com/golift/starr"
 )
 
 // Config defines the configuration data used to start the application.
 type Config struct {
-	Interval           exp.Dur        `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout            exp.Dur        `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	DeleteDelay        exp.Dur        `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	ConcurrentExtracts int            `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
-	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
-	Sonarr             *starr.Config  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
-	Radarr             *starr.Config  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
-	Lidarr             *starr.Config  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
-	Others             []*OtherConfig `json:"others" toml:"others" xml:"others" yaml:"others"` // not used.
+	Interval           Duration     `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout            Duration     `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay        Duration     `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	ConcurrentExtracts int          `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
+	Deluge             delugeConfig `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
+	Sonarr             starrConfig  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
+	Radarr             starrConfig  `json:"radarr" toml:"radarr" xml:"wharadarrt" yaml:"radarr"`
+	Lidarr             starrConfig  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
+	deluge             deluge.Config
+	radarr             *starr.Config
+	sonarr             *starr.Config
+}
+
+type starrConfig struct {
+	APIKey   string   `json:"api_key" toml:"api_key" xml:"api_key" yaml:"api_key"`
+	URL      string   `json:"url" toml:"url" xml:"url" yaml:"url"`
+	HTTPPass string   `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
+	HTTPUser string   `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	Timeout  Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+}
+
+type delugeConfig struct {
+	URL      string   `json:"url" toml:"url" xml:"url" yaml:"url"`
+	Password string   `json:"password" toml:"password" xml:"password" yaml:"password"`
+	HTTPPass string   `json:"http_pass" toml:"http_pass" xml:"http_pass" yaml:"http_pass"`
+	HTTPUser string   `json:"http_user" toml:"http_user" xml:"http_user" yaml:"http_user"`
+	Timeout  Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -88,10 +105,22 @@ type Extracts struct {
 	Updated time.Time
 }
 
-// OtherConfig describes what to do with other tags. not used.
-type OtherConfig struct {
-	ExtractTo    string   `json:"extract_to" toml:"extract_to" xml:"extract_to" yaml:"extract_to"`
-	CreateFolder bool     `json:"create_folder" toml:"create_folder" xml:"create_folder" yaml:"create_folder"`
-	Tags         []string `json:"tags" toml:"tags" xml:"tags" yaml:"tags"`
-	DeleteAfter  exp.Dur  `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
+// Duration is used to UnmarshalTOML into a time.Duration value.
+type Duration struct {
+	time.Duration
+}
+
+// UnmarshalTOML parses a duration type from a config file.
+func (v *Duration) UnmarshalTOML(data []byte) error {
+	unquoted := string(data[1 : len(data)-1])
+	dur, err := time.ParseDuration(unquoted)
+	if err == nil {
+		v.Duration = dur
+	}
+	return err
+}
+
+// UnmarshalJSON parses a duration type from a config file.
+func (v *Duration) UnmarshalJSON(data []byte) error {
+	return v.UnmarshalTOML(data)
 }

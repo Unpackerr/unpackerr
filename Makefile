@@ -1,7 +1,7 @@
 # binary name.
 NAME=unpacker-poller
 # library folders. so they can be tested and linted.
-LIBRARYS=./deluge ./starr
+LIBRARYS=
 # used for plist file name on macOS.
 ID=com.github.davidnewhall
 

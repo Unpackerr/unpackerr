@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/golift/deluge"
+  packages = ["."]
+  revision = "84366a93ad3c72d249b6a88745e7cef4ed7627c7"
+  version = "0.9.0"
+
+[[projects]]
+  name = "github.com/golift/starr"
+  packages = ["."]
+  revision = "318e11be5194dedec8bf996d781db3ad4604926f"
+  version = "0.9.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/jagadeesh-kotra/gorar"
   packages = ["."]
@@ -23,10 +35,10 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/nwaples/rardecode"
   packages = ["."]
-  revision = "e06696f847aeda6f39a8f0b7cdff193b7690aef6"
+  revision = "cc3e4b2381762c56dbcdf9f93be03349a1dc1c14"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/ogier/pflag"
@@ -37,12 +49,12 @@
 [[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "335b0e6975b038291074bd53b9fb5ef0adc7a853f28876e9a791704944bbd795"
+  inputs-digest = "d85ee9286b637d520d603d485aa5fdeac5e8b7231ab53bb414cc37ad915ade1a"
   solver-name = "gps-cdcl"
   solver-version = 1

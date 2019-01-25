@@ -26,7 +26,7 @@ const (
 
 var (
 	// Version of the aplication.
-	Version = "0.2.0"
+	Version = "0.2.1"
 	// Debug turns on the noise.
 	Debug = false
 	// ConfigFile is the file we get configuration from.

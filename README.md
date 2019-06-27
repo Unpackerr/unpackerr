@@ -36,10 +36,11 @@ before I started getting data from the APIs. Once I realized I was able to match
 #### Docker
 
 -   Copy the [example config file](examples/up.conf.example) from this repo (or find it in the container).
--   Then grab the image form docker hub and run it using an overlay for the config file.
+-   Then grab the image from docker hub and run it using an overlay for the config file.
 ```
 docker pull golift/unifi-poller:stable
 docker run -d -v /your/config/up.conf:/etc/unifi-poller/up.conf golift/unifi-poller:stable
+docker logs <container id from docker run>
 ```
 
 #### Linux

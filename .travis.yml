@@ -60,5 +60,6 @@ deploy:
       repo: davidnewhall/unpacker-poller
 env:
   global:
+  - VERSION=#{version}
   - GH_USER_NAME=unpacker-auto-releaser
   - GH_USER_EMAIL=unpacker@auto.releaser

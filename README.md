@@ -38,8 +38,8 @@ before I started getting data from the APIs. Once I realized I was able to match
 -   Copy the [example config file](examples/up.conf.example) from this repo (or find it in the container).
 -   Then grab the image from docker hub and run it using an overlay for the config file.
 ```
-docker pull golift/unifi-poller:stable
-docker run -d -v /your/config/up.conf:/etc/unifi-poller/up.conf golift/unifi-poller:stable
+docker pull golift/unpacker-poller:stable
+docker run -d -v /your/config/up.conf:/etc/unpacker-poller/up.conf golift/unpacker-poller:stable
 docker logs <container id from docker run>
 ```
 

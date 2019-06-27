@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Deploys a new unpacker-poller.rb formula file to golift/homebrew-tap.
 # Requires SSH credentials in ssh-agent to work.
 # Run by Travis-CI when a new release is created on GitHub.
 
 make unpacker-poller.rb
-VERSION=$(grep -E '^\s*version\s*"' unpacker-poller.rb | cut -d\" -f 2)
+VERSION=$(grep -E 'archive/v.*tar.gz\s*"' unpacker-poller.rb | grep -Eo 'v([0-9]+\.[0-9]+\.[0-9]*)' | tr -d v)
 
 rm -rf homebrew-mugs
 git config --global user.email "unpacker@auto.releaser"

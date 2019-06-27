@@ -17,12 +17,9 @@ RUN make dep \
   && CGO_ENABLED=0 make linux
 
 #
-# creating container for run
-# to use this container use the following command:
+# To use this container run the following command:
 #
 # docker run -d -v /your/config/up.conf:/etc/unpacker-poller/up.conf golift/unpacker-poller
-#
-# by using "-e UNIFI_PASSWORD=your-secret-pasword" you can avoid this configuration in the config file
 #
 FROM scratch
 

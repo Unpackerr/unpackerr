@@ -1,4 +1,4 @@
-package main
+package unpackerpoller
 
 import (
 	"fmt"
@@ -35,21 +35,23 @@ var (
 	StopChan = make(chan os.Signal, 1)
 )
 
-func main() {
+// Start runs the app.
+func Start() error {
 	ParseFlags()
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
 	config, err := GetConfig(ConfigFile)
 	if err != nil {
-		log.Fatalln("ERROR (config):", err)
+		return errors.Wrap(err, "config")
 	}
 	config.copyConfig()
 	d, err := deluge.New(config.deluge)
 	if err != nil {
-		log.Fatalln("ERROR (deluge):", err)
+		return errors.Wrap(err, "deluge")
 	}
 	go StartUp(d, config)
 	signal.Notify(StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("\nExiting! Caught Signal:", <-StopChan)
+	return nil
 }
 
 func (c *Config) copyConfig() {

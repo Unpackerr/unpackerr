@@ -1,26 +1,22 @@
 # binary name.
 NAME=unpacker-poller
-# library folders. so they can be tested and linted.
-LIBRARYS=
 # used for plist file name on macOS.
 ID=com.github.davidnewhall
-
-# dont change this one.
-PACKAGES=`find ./cmd -mindepth 1 -maxdepth 1 -type d`
+GOLANGCI_LINT_ARGS=--enable-all -D gochecknoglobals
 
 all: clean build test
 	@echo Finished.
 
 clean:
 	@echo "Cleaning Local Build"
-	for p in $(PACKAGES); do rm -f `echo $${p}|cut -d/ -f3`{,.1,.1.gz}; done
+	rm -f `echo $${p}|cut -d/ -f3`{,.1,.1.gz}
 
 build:
 	@echo "Building Binary"
-	for p in $(PACKAGES); do go build -ldflags "-w -s" $${p}; done
+	go build -ldflags "-w -s"
 
 linux:
-	for p in $(PACKAGES); do GOOS=linux go build -ldflags "-w -s" $${p}; done
+	GOOS=linux go build -ldflags "-w -s"
 
 install: man
 	@echo "If you get errors, you may need sudo."
@@ -39,18 +35,13 @@ uninstall:
 	rm -f ~/Library/LaunchAgents/$(ID).$(NAME).plist
 	rm -f /etc/systemd/system/$(NAME).service
 
+# Run code tests and lint.
 test: lint
-	@echo "Running Go Tests"
-	for p in $(PACKAGES) $(LIBRARYS); do go test -race -covermode=atomic $${p}; done
-
-# TODO: look into gometalinter
+	# Testing.
+	go test -race -covermode=atomic ./...
 lint:
-	@echo "Running Go Linters"
-	goimports -l $(PACKAGES) $(LIBRARYS)
-	gofmt -l $(PACKAGES) $(LIBRARYS)
-	errcheck $(PACKAGES) $(LIBRARYS)
-	golint $(PACKAGES) $(LIBRARYS)
-	go vet $(PACKAGES) $(LIBRARYS)
+	# Checking lint.
+	#golangci-lint run $(GOLANGCI_LINT_ARGS)
 
 man:
 	@echo "Build Man Page(s)"

@@ -12,48 +12,47 @@ addons:
 go:
 - 1.12.x
 services:
-  - docker
+- docker
 install:
 - mkdir -p $GOPATH/bin
-  # Download the `dep` binary to bin folder in $GOPATH
+# Download the `dep` binary to bin folder in $GOPATH
 - curl -sLo $GOPATH/bin/dep https://github.com/golang/dep/releases/download/v0.5.3/dep-linux-amd64
 - chmod +x $GOPATH/bin/dep
-  # download super-linter: golangci-lint
-- curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
-#- curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
+# download super-linter: golangci-lint
+- curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
 - rvm install 2.0.0
 - rvm 2.0.0 do gem install --no-document fpm
 - make docker
 script:
-  # Test built docker image.
+# Test built docker image.
 - docker run golift/unpacker-poller 2>&1 | grep -Eq "open /usr/local/etc/unpacker-poller/up.conf[:] no such file or directory"
 # test and build everything
 - rvm 2.0.0 do make release
 after_success:
-  # Display Release Folder
-  - ls -l release/
-  - |
-      declare -r SSH_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
-      echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-      # Get deploy key for golift/homebrew-mugs.
-      openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in ".travis/github_deploy_key.enc" -out "$SSH_FILE" -d
-      chmod 600 "$SSH_FILE" \
-        && printf "%s\n" \
-          "Host github.com" \
-          "  IdentityFile $SSH_FILE" \
-          "  StrictHostKeyChecking no" \
-          "  LogLevel ERROR" >> ~/.ssh/config
+# Display Release Folder
+- ls -l release/
+- |
+  declare -r SSH_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
+  echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+  # Get deploy key for golift/homebrew-mugs.
+  openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in ".travis/github_deploy_key.enc" -out "$SSH_FILE" -d
+  chmod 600 "$SSH_FILE" \
+    && printf "%s\n" \
+      "Host github.com" \
+      "  IdentityFile $SSH_FILE" \
+      "  StrictHostKeyChecking no" \
+      "  LogLevel ERROR" >> ~/.ssh/config
 deploy:
   - provider: releases
-    api_key:
-      secure: GsvW0m+EnRELQMk8DjH63VXinqbwse4FJ4vNUslOE6CZ8PBXPrH0ZgaI7ic/uxRtm7CYj0sir4CZq62W5l6uhoXCCQfjOnmJspqnQcrFZ1xRdWktsNXaRwM6hlzaUThsJ/1PD9Psc66uKXBYTg0IlUz0yjZAZk7tCUE4libuj41z40ZKxUcbfcNvH4Njc9IpNB4QSA3ss+a9/6ZwBz4tHVamsGIrzaE0Zf99ItNBYvaOwhM2rC/NWIsFmwt8w4rIA2NIrkZgMDV+Z2Niqh4JRLAWCQNx/RjC5U52lG2yhqivUC3TromZ+q4O4alUltsyIzF2nVanLWgJmbeFo8uXT5A+gd3ovSkFLU9medXd9i4kap7kN/o5m9p5QZvrdEYHEmIU4ml5rjT2EQQVy5CtSmpiRAbhpEJIvA1wDtRq8rdz8IVfJXkHNjg2XdouNmMMWqa3OkEPw21+uxsqv4LscW/6ZjsavzL5SSdnBRU9n79EfGJE/tJLKiNumah/vLuJ5buNhgqmCdtX/Tg+DhQS1BOyYg4l4L8s9IIKZgFRwrOPsZnA/KsrWg4ZsjJ87cqKCaT/qs2EJx5odZcZWJYLBngeO8Tc6cQtLgJdieY2oEKo51Agq4rgikZDt21m6TY9/R5lPN0piwdpy3ZGKfv1ijXx74raMT03qskputzMCvc=
     overwrite: true
     skip_cleanup: true
     file_glob: true
+    api_key:
+      secure: GAU7o2KZuhl9pfUcZD/Nz1/67ridwVBXH/L4vtHGtD+xso+28t6M123RMFLVVXtH6x5b8pS+x7wqJp2cL319hhklMRfa6JOx3H9tG0CrChzvokYAeM91qPznIs/QyWKCK3Jgf0ABzqHJmCeQCbMdV9ydDSY/HYCBin+Ny14cFcPawXFu/85wpnmqc68BG0Gji12nn8fA4iESDDUKsKC7qOFwYe2cN4p48eHF+g+LRDQv6+aKoGDHP1JFW4TR/VdwzJ0uK+lZ7JSZXS92fl6rjIBUjFLrrZrN2oqIM1DBGEcP0K4x1u4Ia1yRx1Af8MBpZpH3+bbcc93NLFtEphHZzsEYySao7PfhIECcSLv4LoXuZXGGNzEKWxYmV8wiule1UaTPt62hV2KBB4rj99h0lH5BQ/eq8SZ1py/1HJyi1ps0ouxvktVMc0iRrSK8Gf3qscYsq1KGku2VNDF6btIP20b86DGsKQjIdi58Wn8Zyo1s07SpnHCpE+F5xM6hl180vtqnNqaCKcFtvi12jCSWKc5uDYnx/sCRPQsxcS/dFp4SmUhGmfYbB5/h0uJWxJpOlubUlExoN218ovRgbXFlGp8mkAlKv3IlWNYqV2o0h3SxaCA7i0Bo+pemQRjsXU7zgjBgVoLozrxPYF31fwo81i8cBJ7jW72qmlFxSXAPICE=
     file: release/*
     on:
-      repo: davidnewhall/unpacker-poller
       tags: true
+      repo: davidnewhall/unpacker-poller
   - provider: script
     script: scripts/formula-deploy.sh
     on:
@@ -61,5 +60,5 @@ deploy:
       repo: davidnewhall/unpacker-poller
 env:
   global:
-    - GH_USER_NAME=unpacker-auto-releaser
-    - GH_USER_EMAIL=unpacker@auto.releaser
+  - GH_USER_NAME=unpacker-auto-releaser
+  - GH_USER_EMAIL=unpacker@auto.releaser

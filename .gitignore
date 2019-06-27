@@ -1,7 +1,14 @@
 /up.conf
 /unpacker-poller
+/unpacker-poller.*
 /*.1.gz
 /*.1
 .DS_Store
 *~
 /vendor
+*.sha256
+README.html
+README
+MANUAL
+/release
+/package_build_linux

@@ -33,25 +33,35 @@ before I started getting data from the APIs. Once I realized I was able to match
 
 ## Installation
 
-- Setup a working Go build environment.
-- Install `ronn`: `gem install ronn`
-- `make install` (mac) or `sudo make install` (linux)
-- cross your fingers.
+#### Linux
 
-If you don't want to use the Makefile, manual installation is pretty easy.
-- Build the app like any other Go app (or run `make`).
-- Copy the binary to `/usr/local/bin`
-- Make a config folder: `sudo mkdir /usr/local/etc/unpacker-poller`
-- Copy the example config: `sudo cp up.conf.example /usr/local/etc/unpacker-poller/up.conf`
-- On macOS, copy the launchd file: `cp startup/launchd/* ~/Library/LaunchAgents`
-- On Linux, copy the systemd unit: `sudo cp startup/systemd/* /etc/systemd/system`
+-   Download a package from the [Releases](Releases) page.
+-   These are new and barely tested. Feedback welcomed.
+
+#### macOS
+
+-   Use homebrew.
+```shell
+brew tap golift/mugs
+brew install unpacker-poller
+```
+
+#### Manually
+
+-   Setup a working Go build environment.
+-   Build the app like any other Go app (or run `make`).
+-   Copy the binary to `/usr/local/bin` (mac) or `/usr/bin` (linux)
+-   Make a config folder: `sudo mkdir /usr/local/etc/unpacker-poller` (mac) or `/etc/unpacker-poller` (linux)
+-   Copy the example config: `sudo cp up.conf.example /etc/unpacker-poller/`
+-   On macOS, copy the launchd file: `cp init/launchd/* ~/Library/LaunchAgents`
+-   On Linux, copy the systemd unit: `sudo cp init/systemd/* /etc/systemd/system`
 
 After the app is installed, update your deluge, sonarr and radarr configuration
-in `/usr/local/etc/unpacker-poller/up.conf`. The app works without Sonarr or Radarr
+in `/etc/unpacker-poller/up.conf`. The app works without Sonarr or Radarr
 configs, but you should have at least one to make it useful.
 
-- Start the service, Linux: `sudo systemctl daemon-reload ; sudo systemctl start unapcker-poller`
-- Start the service, macOS: `launchctl load ~/Library/LaunchAgents/com.github.davidnewhall.unpacker-poller.plist`
+-   Start the service, Linux: `sudo systemctl daemon-reload ; sudo systemctl restart unapcker-poller`
+-   Start the service, macOS: `launchctl load ~/Library/LaunchAgents/com.github.davidnewhall.unpacker-poller.plist`
 
 ## Troubleshooting
 
@@ -62,9 +72,9 @@ or may not work for that. If you need different features, open an Issue and let 
 know. Generally, you'll point all endpoints at localhost, without nginx and without
 basic auth.
 
-- Log file is (hopefully) at `/usr/local/var/log/unpacker-poller.log`
-- On macOS, Deluge log is at `~/.config/deluge/deluged.log`
-- I haven't tested any of this on Linux, feedback welcomed.
+-   Log file is (hopefully) at `/usr/local/var/log/unpacker-poller.log` (it's in syslog or messages on Linux)
+-   On macOS, Deluge log is at `~/.config/deluge/deluged.log`
+-   This works on Linux, others use it, but I personally run it on a mac. Feedback welcomed.
 
 If transfers are in a Warning or Error state they will not be extracted. Try
 the Force Recheck option in Deluge.
@@ -81,10 +91,10 @@ I use 60s on my server and it seems to be okay.
 
 ## TODO
 
-- Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
-- Integrate `expvar`.
-- Tests. Maybe. Would likely have to refactor things into better interfaces.
+-   Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
+-   Integrate `expvar`.
+-   Tests. Maybe. Would likely have to refactor things into better interfaces.
 
 ## License
 
-[MIT](MIT-LICENSE) - Copyright (c) 2018 David Newhall II
+[MIT](LICENSE) - Copyright (c) 2018 David Newhall II

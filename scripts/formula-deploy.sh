@@ -11,7 +11,7 @@ fi
 make unpacker-poller.rb VERSION=$VERSION
 
 if [ -z "$VERSION"]; then
-  VERSION=$(grep -E 'archive/v.*tar.gz\s*"' unpacker-poller.rb | grep -Eo 'v([0-9]+\.[0-9]+\.[0-9]*)' | tr -d v)
+  VERSION=$(grep -E 'archive/v.*tar.gz\s*"' unpacker-poller.rb | grep -Eo 'v([0-9]+\.[0-9]+\.[0-9]*)')
 fi
 
 rm -rf homebrew-mugs
@@ -21,6 +21,6 @@ git clone git@github.com:golift/homebrew-mugs.git
 
 cp unpacker-poller.rb homebrew-mugs/Formula
 pushd homebrew-mugs
-git commit -m "Update unpacker-poller on Release: v${VERSION}" Formula/unpacker-poller.rb
+git commit -m "Update unpacker-poller on Release: ${VERSION}" Formula/unpacker-poller.rb
 git push
 popd

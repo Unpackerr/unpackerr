@@ -9,5 +9,6 @@
 *.sha256
 README.html
 README
+MANUAL
 /release
 /package_build_linux

@@ -4,13 +4,13 @@
 # Requires SSH credentials in ssh-agent to work.
 # Run by Travis-CI when a new release is created on GitHub.
 
-if [ -z "$VERSION"]; then
+if [ -z "$VERSION" ]; then
   VERSION=$TRAVIS_TAG
 fi
 
 make unpacker-poller.rb VERSION=$VERSION
 
-if [ -z "$VERSION"]; then
+if [ -z "$VERSION" ]; then
   VERSION=$(grep -E 'archive/v.*tar.gz\s*"' unpacker-poller.rb | grep -Eo 'v([0-9]+\.[0-9]+\.[0-9]*)')
 fi
 

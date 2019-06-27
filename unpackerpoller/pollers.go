@@ -71,11 +71,14 @@ func (r *RunningData) PollChange() {
 
 // CheckExtractDone checks if an extracted item has been imported.
 func (r *RunningData) CheckExtractDone() {
-	log.Printf("Extract Statuses: %d actively extracting, %d queued, %d extracted, %d imported, %d failed, %d deleted",
-		r.eCount().extracting, r.eCount().queued, r.eCount().extracted, r.eCount().imported, r.eCount().failed, r.eCount().deleted)
+	log.Printf("Extract Statuses: %d actively extracting, %d queued, "+
+		"%d extracted, %d imported, %d failed, %d deleted",
+		r.eCount().extracting, r.eCount().queued, r.eCount().extracted,
+		r.eCount().imported, r.eCount().failed, r.eCount().deleted)
 	for name, data := range r.GetHistory() {
-		DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(), time.Now().Sub(data.Updated).Round(time.Second))
-		switch elapsed := time.Now().Sub(r.GetStatus(name).Updated); {
+		DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
+			time.Since(data.Updated).Round(time.Second))
+		switch elapsed := time.Since(r.GetStatus(name).Updated); {
 		case data.Status >= DELETED && elapsed >= r.DeleteDelay*2:
 			// Remove the item from history some time after it's deleted.
 			log.Printf("%v: Removing History: %v", data.App, name)
@@ -108,7 +111,7 @@ func (r *RunningData) HandleExtractDone(app, name string, status ExtractStatus, 
 	case elapsed >= r.DeleteDelay:
 		go func() {
 			status := DELETED
-			if err := deleteFiles(name, files); err != nil {
+			if err := deleteFiles(files); err != nil {
 				status = DELETEFAILED
 			}
 			r.UpdateStatus(name, status, nil)

@@ -45,7 +45,7 @@ docker logs <container id from docker run>
 
 #### Linux
 
--   Download a package from the [Releases](Releases) page.
+-   Download a package from the [Releases](https://github.com/davidnewhall/unpacker-poller/releases) page.
 -   These are new and barely tested. Feedback welcomed.
 -   Install it, edit config, start it.
 ```shell

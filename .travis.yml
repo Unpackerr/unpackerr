@@ -26,7 +26,7 @@ install:
 - make docker
 script:
   # Test built docker image.
-- docker run golift/unpacker-poller 2>&1 | grep -Eq "[ERROR] config[:] open /usr/local/etc/unpacker-poller/up.conf[:] no such file or directory"
+- docker run golift/unpacker-poller 2>&1 | grep -Eq "open /usr/local/etc/unpacker-poller/up.conf[:] no such file or directory"
 # test and build everything
 - rvm 2.0.0 do make release
 after_success:

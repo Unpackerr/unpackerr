@@ -60,7 +60,7 @@ uninstall:
 	rm -f /etc/systemd/system/$(BINARY).service
 
 # Prepare a release. Called in Travis CI.
-release: clean vendor test macos windows formula $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
+release: clean vendor test macos windows $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
 	# Prepareing a release!
 	mkdir -p release
 	mv $(BINARY).linux $(BINARY).macos release/

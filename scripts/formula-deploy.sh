@@ -7,6 +7,10 @@
 if [ -z "$VERSION" ]; then
   VERSION=$TRAVIS_TAG
 fi
+VERSION=$(echo $VERSION|tr -d v)
+
+make unpacker-poller.rb VERSION=$VERSION
+
 if [ -z "$VERSION" ]; then
   VERSION=$(grep -E 'archive/v.*tar.gz\s*"' unpacker-poller.rb | grep -Eo 'v([0-9]+\.[0-9]+\.[0-9]*)')
 fi

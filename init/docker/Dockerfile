@@ -3,15 +3,15 @@
 #
 FROM golang:stretch as builder
 
-RUN mkdir -p $GOPATH/pkg/mod $GOPATH/bin
+RUN mkdir -p $GOPATH/pkg/mod $GOPATH/bin $GOPATH/src
 
 RUN apt-get update \
   && apt-get install -y curl  \
   && curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh \
   && mkdir -p $GOPATH/src/github.com/davidnewhall
 
-COPY . $GOPATH/src/app
-WORKDIR $GOPATH/src/app
+  COPY . $GOPATH/src/github.com/davidnewhall/unpacker-poller
+  WORKDIR $GOPATH/src/github.com/davidnewhall/unpacker-poller
 
 RUN make dep \
   && CGO_ENABLED=0 make linux

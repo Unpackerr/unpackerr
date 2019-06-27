@@ -12,9 +12,9 @@ class UnpackerPoller < Formula
   def install
     ENV["GOPATH"] = buildpath
 
-    bin_path = buildpath/"src/app"
+    bin_path = buildpath/"src/github.com/davidnewhall/unpacker-poller"
     # Copy all files from their current location (GOPATH root)
-    # to $GOPATH/src/app
+    # to $GOPATH/src/github.com/davidnewhall/unpacker-poller
     bin_path.install Dir["*"]
     cd bin_path do
       system "dep", "ensure", "-vendor-only"

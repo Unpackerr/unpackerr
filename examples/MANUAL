@@ -1,0 +1,67 @@
+.TH "unpacker-poller" "1" "Thu Jun 27 01:02:49 PDT 2019" "0.2.1" "unpacker-poller"
+.nh
+.ad l
+.SH "NAME"
+unpacker\-poller \- Utility to poll Deluge and Unpack files for tracking clients.
+.SH "SYNOPSIS"
+.P
+\fB\fCunpacker\-poller \-c /usr/local/etc/unpacker\-poller/up.conf\fR
+.SH "DESCRIPTION"
+.IP \(bu 4
+This application polls Deluge (and maybe other clients in the future),
+to find finished transfers. It extracts the downloaded files, then polls
+Radarr and Sonarr to make sure they've imported the extracted files before
+deleting them.
+.IP \(bu 4
+Other tunable and configurable options are available in the config file.
+.br
+.SH "OPTIONS"
+.P
+\fB\fCunpacker\-poller [\-c <config file>] [\-h] [\-v]\fR
+.PP
+.RS 4
+.nf
+\-c, \-\-config <var>file\_path</var>
+    Provide a configuration file.
+    Default: /usr/local/etc/unpacker\-poller/up.conf
+
+\-v, \-\-version
+    Display version and exit.
+
+\-D, \-\-debug
+    Turn on verbose output.
+
+\-h, \-\-help
+    Display usage and exit.
+.fi
+.RE
+.SH "GO DURATION"
+.P
+This application uses the Go Time Durations for a polling interval.
+The format is an integer followed by a time unit. You may append
+multiple time units to add them together. Some valid time units are:
+.PP
+.RS 4
+.nf
+ `us` (microsecond)
+ `ns` (nanosecond)
+ `ms` (millisecond)
+ `s`  (second)
+ `m`  (minute)
+ `h`  (hour)
+.fi
+.RE
+.P
+Example Use: \fB\fC1m\fR, \fB\fC5h\fR, \fB\fC100ms\fR, \fB\fC17s\fR, \fB\fC1s45ms\fR, \fB\fC1m3s\fR
+.SH "AUTHOR"
+.IP \(bu 2.3
+David Newhall II \- 5/6/2018
+.br
+.SH "LOCATION"
+.IP \(bu 2.3
+https://github.com/davidnewhall/unpacker\-poller
+.sp -1
+.IP \(bu 2.3
+/usr/local/bin/unpacker\-poller
+.br
+

@@ -33,10 +33,26 @@ before I started getting data from the APIs. Once I realized I was able to match
 
 ## Installation
 
+#### Docker
+
+-   Copy the [example config file](examples/up.conf.example) from this repo (or find it in the container).
+-   Then grab the image from docker hub and run it using an overlay for the config file.
+```
+docker pull golift/unifi-poller:stable
+docker run -d -v /your/config/up.conf:/etc/unifi-poller/up.conf golift/unifi-poller:stable
+docker logs <container id from docker run>
+```
+
 #### Linux
 
 -   Download a package from the [Releases](Releases) page.
 -   These are new and barely tested. Feedback welcomed.
+-   Install it, edit config, start it.
+```shell
+dpkg -i unpacker-poller*.deb || rpm -Uvh unpacker-poller*.rpm
+edit /etc/unpacker-poller/up.conf
+sudo systemctl restart unpacker-poller
+```
 
 #### macOS
 
@@ -44,6 +60,11 @@ before I started getting data from the APIs. Once I realized I was able to match
 ```shell
 brew tap golift/mugs
 brew install unpacker-poller
+```
+-   Edit config file at `/usr/local/etc/unpacker-poller/up.conf`
+-   Start it
+```shell
+brew services start unapcker-poller
 ```
 
 #### Manually
@@ -84,7 +105,8 @@ the Force Recheck option in Deluge.
 While writing this, I kept finding Deluge unresponsive. After finding and inspecting
 the Deluge log file, I found that the app was running out of open files. Turns out
 this was causing a lot of issues on my server. I have a Mac. Check this out if you're
-in the same boat: http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit
+in the same boat:
+[http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit](http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit)
 
 Deluge takes a while to reply with a lot of transfers. Set the timeout to 30+s.
 I use 60s on my server and it seems to be okay.

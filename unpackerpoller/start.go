@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	// Version of the aplication.
+	// Version of the application.
 	Version = "0.4.0"
 	// Debug turns on the noise.
 	Debug = false
@@ -172,7 +172,8 @@ func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 			if err != nil {
 				log.Println("Deluge Authentication Error:", err)
 				// When auth fails > 1 time while running, just exit. Only exit if things are not pending.
-				// if r.eCount().extracting == 0 && r.eCount().extracted == 0 && r.eCount().imported == 0 && r.eCount().queued == 0 {
+				// if r.eCount().extracting == 0 && r.eCount().extracted == 0 &&
+				// r.eCount().imported == 0 && r.eCount().queued == 0 {
 				// 	os.Exit(2)
 				// }
 				return

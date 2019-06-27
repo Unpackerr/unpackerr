@@ -3,7 +3,7 @@ BINARY:=unpacker-poller
 URL:=https://github.com/davidnewhall/$(BINARY)
 MAINT=David Newhall II <david at sleepers dot pro>
 DESC=Extracts Deluge downloads so Radarr or Sonarr may import them.
-GOLANGCI_LINT_ARGS=--enable-all -D gochecknoglobals
+GOLANGCI_LINT_ARGS=--enable-all -D gochecknoglobals -D lll
 DOCKER_REPO=golift
 MD2ROFF_BIN=github.com/github/hub/md2roff-bin
 
@@ -180,7 +180,7 @@ test: lint
 	go test -race -covermode=atomic ./...
 lint:
 	# Checking lint.
-	#golangci-lint run $(GOLANGCI_LINT_ARGS)
+	golangci-lint run $(GOLANGCI_LINT_ARGS)
 
 # This is safe; recommended even.
 dep: vendor

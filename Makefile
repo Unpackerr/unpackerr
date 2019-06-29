@@ -128,6 +128,7 @@ $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm: check_fpm package_build_linux
 		--url $(URL) \
 		--maintainer "$(MAINT)" \
 		--description "$(DESC)" \
+		--config-files "/etc/$(BINARY)/" \
 		--chdir package_build_linux
 
 deb: $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
@@ -143,6 +144,7 @@ $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb: check_fpm package_build_linux
 		--url $(URL) \
 		--maintainer "$(MAINT)" \
 		--description "$(DESC)" \
+		--config-files "/etc/$(BINARY)/" \
 		--chdir package_build_linux
 
 docker:

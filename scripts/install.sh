@@ -49,7 +49,7 @@ if [ "$CMD" = "" ]; then
 fi
 
 # Grab latest release file from github.
-URL=$($CMD ${LATEST} | egrep "browser_download_url.*\.${FILE}" | cut -d\" -f 4)
+URL=$($CMD ${LATEST} | egrep "browser_download_url.*\.${FILE}\"" | cut -d\" -f 4)
 
 if [ "$?" != "0" ] || [ "$URL" = "" ]; then
   echo "Error locating latest release at ${LATEST}"
@@ -61,18 +61,18 @@ if [ "$FILE" = "deb" ]; then
   INSTALLER="dpkg -i"
 fi
 
-echo "Downloading: ${URL}"
 FILE=$(basename ${URL})
-$CMD ${URL} > $FILE
+echo "Downloading: ${URL} to /tmp/${FILE}"
+$CMD ${URL} > /tmp/${FILE}
 
 # Install it.
 if [ "$(id -u)" = "0" ]; then
   echo "==================================="
   echo "Downloaded. Installing the package!"
-  echo "Running: ${INSTALLER} ${FILE}"
-  $INSTALLER $FILE
+  echo "Running: ${INSTALLER} /tmp/${FILE}"
+  $INSTALLER /tmp/${FILE}
 else
   echo "================================"
   echo "Downloaded. Install the package:"
-  echo "sudo $INSTALLER $FILE"
+  echo "sudo $INSTALLER /tmp/${FILE}"
 fi

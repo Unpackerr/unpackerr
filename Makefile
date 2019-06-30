@@ -1,63 +1,37 @@
-# binary name.
-BINARY:=unpacker-poller
-URL:=https://github.com/davidnewhall/$(BINARY)
+# This Makefile is written as generic as possible.
+# Setting these variables and creating the necesarry paths in your GitHub repo will make this file work.
+#
+# github username
+GHUSER=davidnewhall
+# docker hub username
+DHUSER=golift
 MAINT=David Newhall II <david at sleepers dot pro>
 DESC=Extracts Deluge downloads so Radarr or Sonarr may import them.
 GOLANGCI_LINT_ARGS=--enable-all -D gochecknoglobals -D lll
-DOCKER_REPO=golift
-MD2ROFF_BIN=github.com/github/hub/md2roff-bin
-
-# used for plist file name on macOS.
-ID=com.github.davidnewhall
+BINARY:=$(shell basename $(shell pwd))
+URL:=https://github.com/$(GHUSER)/$(BINARY)
+CONFIG_FILE=up.conf
 
 # These don't generally need to be changed.
+
+# md2roff turns markdown into man files and html files.
+MD2ROFF_BIN=github.com/github/hub/md2roff-bin
+# This produces a 0 in some envirnoments (like Docker), but it's only used for packages.
 ITERATION:=$(shell git rev-list --count HEAD || echo 0)
+# Travis CI passes the version in. Local builds get it from the current git tag.
 ifeq ($(VERSION),)
 	VERSION:=$(shell git tag -l --merged | tail -n1 | tr -d v || echo development)
 endif
 # rpm is wierd and changes - to _ in versions.
 RPMVERSION:=$(shell echo $(VERSION) | tr -- - _)
+DATE:=$(shell date)
 
-all: test man build
-	@echo Finished.
+# This parameter is passed in as -X to go build. Used to override the Version variable in a package.
+# This makes a path like github.com/davidnewhall/unpacker-poller/unpackerpoller.Version=1.3.3
+# Name the Version-containing library the same as the github repo, without dashes.
+VERSION_PATH:=github.com/$(GHUSER)/$(BINARY)/$(shell echo $(BINARY) | tr -d -- -).Version=$(VERSION)
 
-# Delete all build assets.
-clean:
-	# Cleaning up.
-	rm -f $(BINARY){.macos,.linux,.1.gz,.exe,.rb} $(BINARY){_,-}*.{deb,rpm}
-	rm -f examples/MANUAL ./$(BINARY).html README{,.html} v*.tar.gz.sha256
-	rm -rf package_build_* release
-
-build:
-	@echo "Building Binary"
-	go build -ldflags "-w -s"
-
-# Used for Homebrew only. Other disros can create packages.
-install: man readme $(BINARY)
-	@echo -  Done Building!  -
-	@echo -  Local installation with the Makefile is only supported on macOS.
-	@echo If you wish to install the application manually on Linux, download a package.
-	@echo -  Otherwise, build and install a package: make rpm -or- make deb
-	@[ "$(shell uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
-	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
-	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
-	# Copying the binary, config file, unit file, and man page into the env.
-	/usr/bin/install -m 0755 -d $(PREFIX)/bin $(PREFIX)/share/man/man1 $(ETC)/$(BINARY) $(PREFIX)/share/doc/$(BINARY)
-	/usr/bin/install -m 0755 -cp $(BINARY) $(PREFIX)/bin/$(BINARY)
-	/usr/bin/install -m 0644 -cp $(BINARY).1.gz $(PREFIX)/share/man/man1
-	/usr/bin/install -m 0644 -cp examples/up.conf.example $(ETC)/$(BINARY)/
-	[ -f $(ETC)/$(BINARY)/up.conf ] || /usr/bin/install -m 0644 -cp  examples/up.conf.example $(ETC)/$(BINARY)/up.conf
-	/usr/bin/install -m 0644 -cp LICENSE *.html examples/* $(PREFIX)/share/doc/$(BINARY)/
-	# These go to their own folder so the img src in the html pages continue to work.
-
-# Run this before you install a package.
-uninstall:
-	@echo "If you get errors, you may need sudo."
-	test -f ~/Library/LaunchAgents/$(ID).$(BINARY).plist && launchctl unload ~/Library/LaunchAgents/$(ID).$(BINARY).plist || true
-	test -f /etc/systemd/system/$(BINARY).service && systemctl stop $(BINARY) || true
-	rm -rf /usr/local/{etc,bin}/$(BINARY) /usr/local/share/man/man1/$(BINARY).1.gz
-	rm -f ~/Library/LaunchAgents/$(ID).$(BINARY).plist
-	rm -f /etc/systemd/system/$(BINARY).service
+all: man build
 
 # Prepare a release. Called in Travis CI.
 release: clean vendor test macos windows $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
@@ -70,6 +44,13 @@ release: clean vendor test macos windows $(BINARY)-$(RPMVERSION)-$(ITERATION).x8
 	# Generating File Hashes
 	for i in release/*; do /bin/echo -n "$$i " ; (openssl dgst -r -sha256 "$$i" | head -c64 ; echo) | tee "$$i.sha256.txt"; done
 
+# Delete all build assets.
+clean:
+	# Cleaning up.
+	rm -f $(BINARY){.macos,.linux,.1,}{,.gz} $(BINARY).rb
+	rm -f $(BINARY){_,-}*.{deb,rpm} v*.tar.gz.sha256
+	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html
+	rm -rf package_build_* release
 
 # Build a man page from a markdown file using md2roff.
 # This also turns the repo readme into an html file.
@@ -77,9 +58,9 @@ release: clean vendor test macos windows $(BINARY)-$(RPMVERSION)-$(ITERATION).x8
 man: $(BINARY).1.gz
 $(BINARY).1.gz: md2roff
 	# Building man page. Build dependency first: md2roff
-	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(shell date)" examples/MANUAL.md
+	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(DATE)" examples/MANUAL.md
 	gzip -9nc examples/MANUAL > $(BINARY).1.gz
-	mv -n examples/MANUAL.html $(BINARY).html
+	mv examples/MANUAL.html $(BINARY)_manual.html
 
 md2roff:
 	go get $(MD2ROFF_BIN)
@@ -88,29 +69,29 @@ md2roff:
 readme: README.html
 README.html: md2roff
 	# This turns README.md into README.html
-	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(shell date)" README.md
+	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(DATE)" README.md
 
 # Binaries
 
 build: $(BINARY)
 $(BINARY):
-	go build -o $(BINARY) -ldflags "-w -s -X github.com/davidnewhall/unpacker-poller/unpackerpoller.Version=$(VERSION)"
+	go build -o $(BINARY) -ldflags "-w -s -X $(VERSION_PATH)"
 
 linux: $(BINARY).linux
 $(BINARY).linux:
 	# Building linux binary.
-	GOOS=linux go build -o $(BINARY).linux -ldflags "-w -s -X github.com/davidnewhall/unpacker-poller/unpackerpoller.Version=$(VERSION)"
+	GOOS=linux go build -o $(BINARY).linux -ldflags "-w -s -X $(VERSION_PATH)"
 
 macos: $(BINARY).macos
 $(BINARY).macos:
 	# Building darwin binary.
-	GOOS=darwin go build -o $(BINARY).macos -ldflags "-w -s -X github.com/davidnewhall/unpacker-poller/unpackerpoller.Version=$(VERSION)"
+	GOOS=darwin go build -o $(BINARY).macos -ldflags "-w -s -X $(VERSION_PATH)"
 
 exe: $(BINARY).exe
 windows: $(BINARY).exe
 $(BINARY).exe:
 	# Building windows binary.
-	GOOS=windows go build -o $(BINARY).exe -ldflags "-w -s -X github.com/davidnewhall/unpacker-poller/unpackerpoller.Version=$(VERSION)"
+	GOOS=windows go build -o $(BINARY).exe -ldflags "-w -s -X $(VERSION_PATH)"
 
 # Packages
 
@@ -128,6 +109,7 @@ $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm: check_fpm package_build_linux
 		--url $(URL) \
 		--maintainer "$(MAINT)" \
 		--description "$(DESC)" \
+		--config-files "/etc/$(BINARY)/$(CONFIG_FILE)" \
 		--chdir package_build_linux
 
 deb: $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
@@ -135,6 +117,7 @@ $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb: check_fpm package_build_linux
 	@echo "Building 'deb' package for $(BINARY) version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb \
 		--name $(BINARY) \
+		--deb-no-default-config-files \
 		--version $(VERSION) \
 		--iteration $(ITERATION) \
 		--after-install scripts/after-install.sh \
@@ -143,10 +126,11 @@ $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb: check_fpm package_build_linux
 		--url $(URL) \
 		--maintainer "$(MAINT)" \
 		--description "$(DESC)" \
+		--config-files "/etc/$(BINARY)/$(CONFIG_FILE)" \
 		--chdir package_build_linux
 
 docker:
-	docker build -f init/docker/Dockerfile -t $(DOCKER_REPO)/$(BINARY) .
+	docker build -f init/docker/Dockerfile -t $(DHUSER)/$(BINARY) .
 
 # Build an environment that can be packaged for linux.
 package_build_linux: readme man linux
@@ -156,8 +140,8 @@ package_build_linux: readme man linux
 	# Copying the binary, config file, unit file, and man page into the env.
 	cp $(BINARY).linux $@/usr/bin/$(BINARY)
 	cp *.1.gz $@/usr/share/man/man1
-	cp examples/up.conf.example $@/etc/$(BINARY)/
-	cp examples/up.conf.example $@/etc/$(BINARY)/up.conf
+	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/
+	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/$(CONFIG_FILE)
 	cp LICENSE *.html examples/* $@/usr/share/doc/$(BINARY)/
 	# These go to their own folder so the img src in the html pages continue to work.
 	cp init/systemd/$(BINARY).service $@/lib/systemd/system/
@@ -166,6 +150,8 @@ check_fpm:
 	@fpm --version > /dev/null || (echo "FPM missing. Install FPM: https://fpm.readthedocs.io/en/latest/installing.html" && false)
 
 # This builds a Homebrew formula file that can be used to install this app from source.
+# The source used comes from the released version on GitHub. This will not work with local source.
+# This target is used by Travis CI to update the released Forumla when a new tag is created.
 formula: $(BINARY).rb
 v$(VERSION).tar.gz.sha256:
 	# Calculate the SHA from the Github source file.
@@ -173,6 +159,8 @@ v$(VERSION).tar.gz.sha256:
 $(BINARY).rb: v$(VERSION).tar.gz.sha256
 	# Creating formula from template using sed.
 	sed "s/{{Version}}/$(VERSION)/g;s/{{SHA256}}/`head -c64 v$(VERSION).tar.gz.sha256`/g;s/{{Desc}}/$(DESC)/g;s%{{URL}}%$(URL)%g" init/homebrew/$(BINARY).rb.tmpl | tee $(BINARY).rb
+
+# Extras
 
 # Run code tests and lint.
 test: lint
@@ -185,8 +173,38 @@ lint:
 # This is safe; recommended even.
 dep: vendor
 vendor:
-	dep ensure --vendor-only
+	dep ensure
 
 # Don't run this unless you're ready to debug untested vendored dependencies.
 deps:
-	dep ensure --update
+	dep ensure -update
+
+# Homebrew stuff. macOS only.
+
+# Used for Homebrew only. Other distros can create packages.
+install: man readme $(BINARY)
+	@echo -  Done Building!  -
+	@echo -  Local installation with the Makefile is only supported on macOS.
+	@echo If you wish to install the application manually on Linux, check out the wiki: $(URL)/wiki/Installation
+	@echo -  Otherwise, build and install a package: make rpm -or- make deb
+	@echo See the Package Install wiki for more info: $(URL)/wiki/Package-Install
+	@[ "$$(uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
+	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
+	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
+	# Copying the binary, config file, unit file, and man page into the env.
+	/usr/bin/install -m 0755 -d $(PREFIX)/bin $(PREFIX)/share/man/man1 $(ETC)/$(BINARY) $(PREFIX)/share/doc/$(BINARY)
+	/usr/bin/install -m 0755 -cp $(BINARY) $(PREFIX)/bin/$(BINARY)
+	/usr/bin/install -m 0644 -cp $(BINARY).1.gz $(PREFIX)/share/man/man1
+	/usr/bin/install -m 0644 -cp examples/$(CONFIG_FILE).example $(ETC)/$(BINARY)/
+	[ -f $(ETC)/$(BINARY)/$(CONFIG_FILE) ] || /usr/bin/install -m 0644 -cp  examples/$(CONFIG_FILE).example $(ETC)/$(BINARY)/$(CONFIG_FILE)
+	/usr/bin/install -m 0644 -cp LICENSE *.html examples/* $(PREFIX)/share/doc/$(BINARY)/
+	# These go to their own folder so the img src in the html pages continue to work.
+
+# Run this before you install a package. This will not uninstall a Linux package. It's supposed to undo make install.
+uninstall:
+	@echo "If you get errors, you may need sudo."
+	test -f ~/Library/LaunchAgents/com.github.$(GHUSER).$(BINARY).plist && launchctl unload ~/Library/LaunchAgents/com.github.$(GHUSER).$(BINARY).plist || true
+	test -f /etc/systemd/system/$(BINARY).service && systemctl stop $(BINARY) || true
+	rm -rf /usr/local/{etc,bin}/$(BINARY) /usr/local/share/man/man1/$(BINARY).1.gz
+	rm -f ~/Library/LaunchAgents/com.github.$(GHUSER).$(BINARY).plist
+	rm -f /etc/systemd/system/$(BINARY).service

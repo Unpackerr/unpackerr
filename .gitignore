@@ -1,5 +1,6 @@
 /up.conf
 /unpacker-poller
+/unpacker-poller_manual.*
 /unpacker-poller.*
 /*.1.gz
 /*.1

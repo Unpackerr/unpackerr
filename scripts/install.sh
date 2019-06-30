@@ -1,0 +1,78 @@
+#!/bin/sh
+
+# This is a quick and drity script to install the latest Linux package.
+#
+# Use it like this:
+# ===
+#   curl https://raw.githubusercontent.com/davidnewhall/unpacker-poller/master/scripts/install.sh | sudo sh
+# ===
+# If you're on redhat, this installs the latest rpm. If you're on Debian, it installs the latest deb package.
+#
+
+REPO=davidnewhall/unpacker-poller
+LATEST=https://api.github.com/repos/${REPO}/releases/latest
+
+if [ "$1" == "deb" ] || [ "$1" == "rpm" ]; then
+  FILE=$1
+else
+  # If you have both, rpm wins.
+  rpm --version > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
+    FILE=rpm
+  else
+   dpkg --version > /dev/null 2>&1
+   if [ "$?" = "0" ]; then
+     FILE=deb
+   fi
+  fi
+fi
+
+if [ "$FILE" = "" ]; then
+  echo "No dpkg or rpm package managers found!"
+  exit 1
+fi
+
+# curl or wget?
+curl --version > /dev/null 2>&1
+if [ "$?" = "0" ]; then
+  CMD="curl -L"
+else
+  wget --version > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
+    CMD="wget -O-"
+  fi
+fi
+
+if [ "$CMD" = "" ]; then
+  echo "Need curl or wget - could not find either!"
+  exit 1
+fi
+
+# Grab latest release file from github.
+URL=$($CMD ${LATEST} | egrep "browser_download_url.*\.${FILE}" | cut -d\" -f 4)
+
+if [ "$?" != "0" ] || [ "$URL" = "" ]; then
+  echo "Error locating latest release at ${LATEST}"
+  exit 1
+fi
+
+INSTALLER="rpm -Uvh"
+if [ "$FILE" = "deb" ]; then
+  INSTALLER="dpkg -i"
+fi
+
+echo "Downloading: ${URL}"
+FILE=$(basename ${URL})
+$CMD ${URL} > $FILE
+
+# Install it.
+if [ "$(id -u)" = "0" ]; then
+  echo "==================================="
+  echo "Downloaded. Installing the package!"
+  echo "Running: ${INSTALLER} ${FILE}"
+  $INSTALLER $FILE
+else
+  echo "================================"
+  echo "Downloaded. Install the package:"
+  echo "sudo $INSTALLER $FILE"
+fi

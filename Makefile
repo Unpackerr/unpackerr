@@ -142,7 +142,7 @@ package_build_linux: readme man linux
 	cp *.1.gz $@/usr/share/man/man1
 	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/
 	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/$(CONFIG_FILE)
-	cp LICENSE *.html examples/* $@/usr/share/doc/$(BINARY)/
+	cp LICENSE *.html examples/*.* $@/usr/share/doc/$(BINARY)/
 	# These go to their own folder so the img src in the html pages continue to work.
 	cp init/systemd/$(BINARY).service $@/lib/systemd/system/
 

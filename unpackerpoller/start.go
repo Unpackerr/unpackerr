@@ -44,7 +44,7 @@ func Start() error {
 		return errors.Wrap(err, "config")
 	}
 	config.copyConfig()
-	d, err := deluge.New(config.deluge)
+	d, err := deluge.New(config.Deluge)
 	if err != nil {
 		return errors.Wrap(err, "deluge")
 	}
@@ -55,13 +55,6 @@ func Start() error {
 }
 
 func (c *Config) copyConfig() {
-	c.deluge = deluge.Config{
-		URL:      c.Deluge.URL,
-		Password: c.Deluge.Password,
-		HTTPPass: c.Deluge.HTTPPass,
-		HTTPUser: c.Deluge.HTTPUser,
-		Timeout:  c.Deluge.Timeout.Duration,
-	}
 	c.sonarr = &starr.Config{
 		APIKey:   c.Sonarr.APIKey,
 		URL:      c.Sonarr.URL,
@@ -129,7 +122,7 @@ func ValidateConfig(config Config) (Config, error) {
 		config.Timeout.Duration = defaultTimeout
 	}
 	if config.Deluge.Timeout.Duration == 0 {
-		config.Deluge.Timeout = config.Timeout
+		config.Deluge.Timeout.Duration = config.Timeout.Duration
 	}
 	if config.Radarr.Timeout.Duration == 0 {
 		config.Radarr.Timeout = config.Timeout
@@ -168,7 +161,7 @@ func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
 	go func() {
 		if r.PollDeluge(d) != nil {
 			// We got an error polling deluge, try to reconnect.
-			newDeluge, err := deluge.New(config.deluge)
+			newDeluge, err := deluge.New(config.Deluge)
 			if err != nil {
 				log.Println("Deluge Authentication Error:", err)
 				// When auth fails > 1 time while running, just exit. Only exit if things are not pending.

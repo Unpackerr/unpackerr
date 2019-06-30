@@ -14,7 +14,7 @@ func (r *RunningData) PollDeluge(d *deluge.Deluge) error {
 	var err error
 	r.delS.Lock()
 	defer r.delS.Unlock()
-	if r.Deluge, err = d.GetXfers(); err != nil {
+	if r.Deluge, err = d.GetXfersCompat(); err != nil {
 		log.Println("Deluge Error:", err)
 		return err
 	}

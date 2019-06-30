@@ -135,7 +135,7 @@ func (r *RunningData) getRadarQitem(name string) (s starr.RadarQueue) {
 }
 
 // Get a Deluge transfer based on name.
-func (r *RunningData) getXfer(name string) (d deluge.XferStatus) {
+func (r *RunningData) getXfer(name string) (d deluge.XferStatusCompat) {
 	r.delS.RLock()
 	defer r.delS.RUnlock()
 	for _, data := range r.Deluge {

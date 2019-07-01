@@ -11,11 +11,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:84c90e7c71077b850a9b792af015579c1e59c03ab5fef7213511a9796e9aaed3"
+  digest = "1:2f0c139d166b09a51ce617baa4cd5e0d0e785622285d4db5bc75556585e7f003"
   name = "github.com/golift/starr"
   packages = ["."]
   pruneopts = "UT"
-  revision = "318e11be5194dedec8bf996d781db3ad4604926f"
+  revision = "d94d7c5dd77fac19e0592d5eedd5182f3c229fd6"
 
 [[projects]]
   branch = "master"

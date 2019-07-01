@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golift/deluge"
-	"github.com/golift/starr"
 
 	"github.com/naoina/toml"
 	flg "github.com/ogier/pflag"
@@ -18,177 +17,146 @@ import (
 )
 
 const (
-	defaultConfFile    = "/usr/local/etc/unpacker-poller/up.conf"
+	defaultConfFile    = "/etc/unpacker-poller/up.conf"
 	minimumInterval    = 1 * time.Minute
 	minimumDeleteDelay = 1 * time.Minute
 	defaultTimeout     = 10 * time.Second
 )
 
-var (
-	// Version of the application.
-	Version = "0.4.0"
-	// Debug turns on the noise.
-	Debug = false
-	// ConfigFile is the file we get configuration from.
-	ConfigFile = ""
-	// StopChan is how we exit. Can be used in tests.
-	StopChan = make(chan os.Signal, 1)
-)
+// Version of the application. Injected at build time.
+var Version = "development"
 
 // Start runs the app.
 func Start() error {
-	debug := ParseFlags()
+	u := &UnpackerPoller{
+		History:  &History{Map: make(map[string]Extracts)},
+		StopChan: make(chan os.Signal, 0),
+	}
+	u.ParseFlags()
+	if u.verReq {
+		fmt.Println("unpacker-poller version:", Version)
+		return nil // don't run anything else.
+	}
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
-	config, err := GetConfig(ConfigFile)
+	err := u.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "config")
 	}
-	config.copyConfig()
-	d, err := deluge.New(config.Deluge)
+	u.Deluge, err = deluge.New(*u.Config.Deluge)
 	if err != nil {
 		return errors.Wrap(err, "deluge")
 	}
-	if debug {
-		d.DebugLog = log.Printf
+	if u.Debug {
+		u.Deluge.DebugLog = log.Printf
 	}
-	go StartUp(d, config)
-	signal.Notify(StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("\nExiting! Caught Signal:", <-StopChan)
+	u.Run()
 	return nil
 }
 
-func (c *Config) copyConfig() {
-	c.sonarr = &starr.Config{
-		APIKey:   c.Sonarr.APIKey,
-		URL:      c.Sonarr.URL,
-		HTTPPass: c.Sonarr.HTTPPass,
-		HTTPUser: c.Sonarr.HTTPUser,
-		Timeout:  c.Sonarr.Timeout.Duration,
-	}
-	c.radarr = &starr.Config{
-		APIKey:   c.Radarr.APIKey,
-		URL:      c.Radarr.URL,
-		HTTPPass: c.Radarr.HTTPPass,
-		HTTPUser: c.Radarr.HTTPUser,
-		Timeout:  c.Radarr.Timeout.Duration,
-	}
+// Run starts the go routines and waits for an exit signal.
+func (u *UnpackerPoller) Run() {
+	// Run all pollers once at startup.
+	u.pollAllApps()
+	go u.PollChange() // This has its own ticker that runs every minute.
+	go func() {
+		ticker := time.NewTicker(u.Interval.Duration)
+		for range ticker.C {
+			u.pollAllApps()
+		}
+	}()
+	signal.Notify(u.StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	log.Println("\nExiting! Caught Signal:", <-u.StopChan)
 }
 
 // ParseFlags turns CLI args into usable data.
-func ParseFlags() bool {
+func (u *UnpackerPoller) ParseFlags() {
 	flg.Usage = func() {
 		fmt.Println("Usage: unpacker-poller [--config=filepath] [--debug] [--version]")
 		flg.PrintDefaults()
 	}
-	flg.StringVarP(&ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
-	flg.BoolVarP(&Debug, "debug", "D", false, "Turn on the Spam (default false)")
-	version := flg.BoolP("version", "v", false, "Print the version and exit.")
+	flg.StringVarP(&u.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
+	flg.BoolVarP(&u.Debug, "debug", "D", false, "Turn on the Spam (default false)")
+	flg.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
 	flg.Parse()
-	if *version {
-		fmt.Println("unpacker-poller version:", Version)
-		os.Exit(0) // don't run anything else.
-	}
-	if log.SetFlags(log.LstdFlags); Debug {
+	if log.SetFlags(log.LstdFlags); u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
-	return Debug
 }
 
 // GetConfig parses and returns our configuration data.
-func GetConfig(configFile string) (Config, error) {
+func (u *UnpackerPoller) GetConfig() error {
 	// Preload our defaults.
-	config := Config{}
-	DeLogf("Reading Config File: %v", configFile)
-	if buf, err := ioutil.ReadFile(configFile); err != nil {
-		return config, err
+	u.Config = &Config{}
+	u.DeLogf("Reading Config File: %v", u.Flags.ConfigFile)
+	if buf, err := ioutil.ReadFile(u.Flags.ConfigFile); err != nil {
+		return err
 		// This is where the defaults in the config variable are overwritten.
-	} else if err := toml.Unmarshal(buf, &config); err != nil {
-		return config, errors.Wrap(err, "invalid config")
+	} else if err := toml.Unmarshal(buf, &u.Config); err != nil {
+		return errors.Wrap(err, "invalid config")
 	}
-	return ValidateConfig(config)
+	return u.ValidateConfig()
 }
 
 // ValidateConfig makes sure config values are ok.
-func ValidateConfig(config Config) (Config, error) {
-	if config.DeleteDelay.Duration < minimumDeleteDelay {
-		DeLogf("Setting Minimum Delete Delay: %v", minimumDeleteDelay.String())
-		config.DeleteDelay.Duration = minimumDeleteDelay
+func (u *UnpackerPoller) ValidateConfig() error {
+	if u.DeleteDelay.Duration < minimumDeleteDelay {
+		u.DeLogf("Setting Minimum Delete Delay: %v", minimumDeleteDelay.String())
+		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
-	if config.ConcurrentExtracts < 1 {
-		config.ConcurrentExtracts = 1
-	} else if config.ConcurrentExtracts > 10 {
-		config.ConcurrentExtracts = 10
+	if u.ConcurrentExtracts < 1 {
+		u.ConcurrentExtracts = 1
+	} else if u.ConcurrentExtracts > 10 {
+		u.ConcurrentExtracts = 10
 	}
-	DeLogf("Maximum Concurrent Extractions: %d", config.ConcurrentExtracts)
+	u.DeLogf("Maximum Concurrent Extractions: %d", u.ConcurrentExtracts)
 	// Fix up intervals.
-	if config.Timeout.Duration == 0 {
-		DeLogf("Setting Default Timeout: %v", defaultTimeout.String())
-		config.Timeout.Duration = defaultTimeout
+	if u.Timeout.Duration == 0 {
+		u.DeLogf("Setting Default Timeout: %v", defaultTimeout.String())
+		u.Timeout.Duration = defaultTimeout
 	}
-	if config.Deluge.Timeout.Duration == 0 {
-		config.Deluge.Timeout.Duration = config.Timeout.Duration
+	if u.Config.Deluge.Timeout.Duration == 0 {
+		u.Config.Deluge.Timeout.Duration = u.Timeout.Duration
 	}
-	if config.Radarr.Timeout.Duration == 0 {
-		config.Radarr.Timeout = config.Timeout
+	if u.Radarr.Timeout.Duration == 0 {
+		u.Radarr.Timeout.Duration = u.Timeout.Duration
 	}
-	if config.Sonarr.Timeout.Duration == 0 {
-		config.Sonarr.Timeout = config.Timeout
+	if u.Sonarr.Timeout.Duration == 0 {
+		u.Sonarr.Timeout.Duration = u.Timeout.Duration
 	}
 
-	if config.Interval.Duration < minimumInterval {
-		DeLogf("Setting Minimum Interval: %v", minimumInterval.String())
-		config.Interval.Duration = minimumInterval
+	if u.Interval.Duration < minimumInterval {
+		u.DeLogf("Setting Minimum Interval: %v", minimumInterval.String())
+		u.Interval.Duration = minimumInterval
 	}
-	return config, nil
-}
-
-// StartUp all the go routines.
-func StartUp(d *deluge.Deluge, config Config) {
-	r := RunningData{
-		DeleteDelay: config.DeleteDelay.Duration,
-		maxExtracts: config.ConcurrentExtracts,
-		History:     make(map[string]Extracts),
-	}
-	go r.PollChange() // This has its own ticker that runs every minute.
-	go func() {
-		// Run all pollers once at startup.
-		r.pollAllApps(config, d)
-		ticker := time.NewTicker(config.Interval.Duration).C
-		for range ticker {
-			r.pollAllApps(config, d)
-		}
-	}()
+	return nil
 }
 
 // Poll Deluge, Sonarr and Radarr. All at the same time.
-func (r *RunningData) pollAllApps(config Config, d *deluge.Deluge) {
-	go func() {
-		if r.PollDeluge(d) != nil {
-			// We got an error polling deluge, try to reconnect.
-			newDeluge, err := deluge.New(config.Deluge)
-			if err != nil {
-				log.Println("Deluge Authentication Error:", err)
-				// When auth fails > 1 time while running, just exit. Only exit if things are not pending.
-				// if r.eCount().extracting == 0 && r.eCount().extracted == 0 &&
-				// r.eCount().imported == 0 && r.eCount().queued == 0 {
-				// 	os.Exit(2)
-				// }
-				return
-			}
-			*d = *newDeluge
-		}
-	}()
-	if config.Sonarr.APIKey != "" {
-		go r.PollSonarr(config.sonarr)
+func (u *UnpackerPoller) pollAllApps() {
+	if u.Sonarr.APIKey != "" {
+		go u.PollSonarr()
 	}
-	if config.Radarr.APIKey != "" {
-		go r.PollRadarr(config.radarr)
+	if u.Radarr.APIKey != "" {
+		go u.PollRadarr()
+	}
+	if err := u.PollDeluge(); err != nil {
+		// We got an error polling deluge, try to reconnect.
+		u.Deluge, err = deluge.New(*u.Config.Deluge)
+		if err != nil {
+			log.Println("Deluge Authentication Error:", err)
+			// When auth fails > 1 time while running, just exit. Only exit if things are not pending.
+			// if r.eCount().extracting == 0 && r.eCount().extracted == 0 &&
+			// r.eCount().imported == 0 && r.eCount().queued == 0 {
+			// 	os.Exit(2)
+			// }
+			return
+		}
 	}
 }
 
 // DeLogf writes Debug log lines.
-func DeLogf(msg string, v ...interface{}) {
-	if Debug {
+func (u *UnpackerPoller) DeLogf(msg string, v ...interface{}) {
+	if u.Debug {
 		log.Printf("[DEBUG] "+msg, v...)
 	}
 }

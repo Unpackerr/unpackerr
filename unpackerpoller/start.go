@@ -12,8 +12,8 @@ import (
 	"github.com/golift/deluge"
 
 	"github.com/naoina/toml"
-	flg "github.com/ogier/pflag"
 	"github.com/pkg/errors"
+	flg "github.com/spf13/pflag"
 )
 
 const (

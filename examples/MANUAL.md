@@ -25,9 +25,6 @@ deleting them.
     -v, --version
         Display version and exit.
 
-    -D, --debug
-        Turn on verbose output.
-
     -h, --help
         Display usage and exit.
 
@@ -38,8 +35,6 @@ This application uses the Go Time Durations for a polling interval.
 The format is an integer followed by a time unit. You may append
 multiple time units to add them together. Some valid time units are:
 
-     `us` (microsecond)
-     `ns` (nanosecond)
      `ms` (millisecond)
      `s`  (second)
      `m`  (minute)

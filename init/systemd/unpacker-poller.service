@@ -5,7 +5,7 @@ After=network.target
 Requires=network.target
 
 [Service]
-ExecStart=/usr/bin/unpacker-poller --config=/etc/unpacker-poller/up.conf $DAEMON_OPTS
+ExecStart=/usr/bin/unpacker-poller $DAEMON_OPTS
 EnvironmentFile=-/etc/default/unpacker-poller
 EnvironmentFile=-/etc/sysconfig/unpacker-poller
 Restart=on-failure

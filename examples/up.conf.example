@@ -1,5 +1,8 @@
 # Unpacker Poller Example Configuration File
 
+# [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
+debug = false
+
 # How often to poll deluge, sonarr and radarr.
 # Recommend 2m-10m. Uses Go Duration.
 interval = "4m"

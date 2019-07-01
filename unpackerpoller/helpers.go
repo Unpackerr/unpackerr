@@ -65,7 +65,7 @@ func findRarFiles(path string) (files []string) {
 
 // Moves files then removes the folder they were in.
 // Returns the new file paths.
-func moveFiles(fromPath string, toPath string) ([]string, error) {
+func (u *UnpackerPoller) moveFiles(fromPath string, toPath string) ([]string, error) {
 	files := getFileList(fromPath)
 	var keepErr error
 	for i, file := range files {
@@ -76,14 +76,14 @@ func moveFiles(fromPath string, toPath string) ([]string, error) {
 			// keep trying.
 			continue
 		}
-		DeLogf("Renamed File: %v -> %v", file, newFile)
+		u.DeLogf("Renamed File: %v -> %v", file, newFile)
 		files[i] = newFile
 	}
 	if errr := os.Remove(fromPath); errr != nil {
 		log.Printf("Error Removing Folder: %v: %v", fromPath, errr.Error())
 		// If we made it this far, it's ok.
 	} else {
-		DeLogf("Removed Folder: %v", fromPath)
+		u.DeLogf("Removed Folder: %v", fromPath)
 	}
 	// Since this is the last step, we tried to rename all the files, bubble the
 	// os.Rename error up, so it gets flagged as failed. It may have worked, but
@@ -111,34 +111,34 @@ func deleteFiles(files []string) error {
 
 // gets a radarr queue item based on name. returns first match
 // there may be more than one match if it involes an "episode pack" (full season)
-func (r *RunningData) getSonarQitem(name string) (s starr.SonarQueue) {
-	r.sonS.RLock()
-	defer r.sonS.RUnlock()
-	for i := range r.SonarrQ {
-		if r.SonarrQ[i].Title == name {
-			return *r.SonarrQ[i]
+func (u *UnpackerPoller) getSonarQitem(name string) (s starr.SonarQueue) {
+	u.SonarrQ.RLock()
+	defer u.SonarrQ.RUnlock()
+	for i := range u.SonarrQ.List {
+		if u.SonarrQ.List[i].Title == name {
+			return *u.SonarrQ.List[i]
 		}
 	}
 	return s
 }
 
 // gets a radarr queue item based on name. returns first match
-func (r *RunningData) getRadarQitem(name string) (s starr.RadarQueue) {
-	r.radS.RLock()
-	defer r.radS.RUnlock()
-	for i := range r.RadarrQ {
-		if r.RadarrQ[i].Title == name {
-			return *r.RadarrQ[i]
+func (u *UnpackerPoller) getRadarQitem(name string) (s starr.RadarQueue) {
+	u.RadarrQ.RLock()
+	defer u.RadarrQ.RUnlock()
+	for i := range u.RadarrQ.List {
+		if u.RadarrQ.List[i].Title == name {
+			return *u.RadarrQ.List[i]
 		}
 	}
 	return s
 }
 
 // Get a Deluge transfer based on name.
-func (r *RunningData) getXfer(name string) (d deluge.XferStatus) {
-	r.delS.RLock()
-	defer r.delS.RUnlock()
-	for _, data := range r.Deluge {
+func (u *UnpackerPoller) getXfer(name string) (d deluge.XferStatusCompat) {
+	u.Xfers.RLock()
+	defer u.Xfers.RUnlock()
+	for _, data := range u.Xfers.Map {
 		if data.Name == name {
 			return *data
 		}

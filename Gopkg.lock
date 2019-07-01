@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:b3615eb9aa523f9c740b66305219b92e1f9e61e796c0ef47eeef4064ddcda4ed"
+  digest = "1:be7fd6695939540aaaafde3662ecce9a41995aa3b8086dea5eb60fef2c653664"
   name = "github.com/golift/deluge"
   packages = ["."]
   pruneopts = "UT"
-  revision = "84366a93ad3c72d249b6a88745e7cef4ed7627c7"
-  version = "0.9.0"
+  revision = "8fba78e7f59790d643ee36d65113d9d1969a5d88"
+  version = "v0.9.1"
 
 [[projects]]
   branch = "master"

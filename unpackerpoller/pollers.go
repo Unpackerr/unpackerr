@@ -12,7 +12,6 @@ func (u *UnpackerPoller) PollDeluge() error {
 	u.Xfers.Lock()
 	defer u.Xfers.Unlock()
 	if u.Xfers.Map, err = u.Deluge.GetXfersCompat(); err != nil {
-		log.Println("Deluge Error:", err)
 		return err
 	}
 	log.Println("Deluge Updated:", len(u.Xfers.Map), "Transfers")
@@ -20,49 +19,40 @@ func (u *UnpackerPoller) PollDeluge() error {
 }
 
 // PollSonarr saves the Sonarr Queue to r.SonarrQ
-func (u *UnpackerPoller) PollSonarr() {
+func (u *UnpackerPoller) PollSonarr() error {
 	var err error
 	u.SonarrQ.Lock()
 	defer u.SonarrQ.Unlock()
 	if u.SonarrQ.List, err = u.Sonarr.SonarrQueue(); err != nil {
-		log.Println("Sonarr Error:", err)
-	} else {
-		log.Println("Sonarr Updated:", len(u.SonarrQ.List), "Items Queued")
+		return err
 	}
+	log.Println("Sonarr Updated:", len(u.SonarrQ.List), "Items Queued")
+	return nil
 }
 
 // PollRadarr saves the Radarr Queue to r.RadarrQ
-func (u *UnpackerPoller) PollRadarr() {
+func (u *UnpackerPoller) PollRadarr() error {
 	var err error
 	u.RadarrQ.Lock()
 	defer u.RadarrQ.Unlock()
 	if u.RadarrQ.List, err = u.Radarr.RadarrQueue(); err != nil {
-		log.Println("Radarr Error:", err)
-	} else {
-		log.Println("Radarr Updated:", len(u.RadarrQ.List), "Items Queued")
+		return err
 	}
+	log.Println("Radarr Updated:", len(u.RadarrQ.List), "Items Queued")
+	return nil
 }
 
 // PollChange runs other tasks.
 // Those tasks: a) look for things to extract, b) look for things to delete.
+// This runs more often because of the cleanup tasks.
+// It doesn't poll external data, unless it finds something to extract.
 func (u *UnpackerPoller) PollChange() {
-	// Don't start this for 2 whole minutes.
-	time.Sleep(time.Minute)
 	log.Println("Starting Cleanup Routine (interval: 1 minute)")
-	// This runs more often because of the cleanup tasks.
-	// It doesn't poll external data, unless it finds something to extract.
-	ticker := time.NewTicker(time.Minute).C
-	for range ticker {
-		if u.Xfers.Map == nil {
-			continue // No data.
-		}
+	ticker := time.NewTicker(time.Minute)
+	for range ticker.C {
 		u.CheckExtractDone()
-		if u.SonarrQ.List != nil {
-			u.CheckSonarrQueue()
-		}
-		if u.RadarrQ.List != nil {
-			u.CheckRadarrQueue()
-		}
+		u.CheckSonarrQueue()
+		u.CheckRadarrQueue()
 	}
 }
 

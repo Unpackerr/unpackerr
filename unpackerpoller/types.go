@@ -11,14 +11,15 @@ import (
 
 // Config defines the configuration data used to start the application.
 type Config struct {
+	Debug              bool           `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
 	Interval           starr.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout            starr.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay        starr.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	ConcurrentExtracts int            `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
 	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
-	Sonarr             *starr.Config  `json:"sonarr" toml:"sonarr" xml:"sonarr" yaml:"sonarr"`
-	Radarr             *starr.Config  `json:"radarr" toml:"radarr" xml:"radarr" yaml:"radarr"`
-	Lidarr             *starr.Config  `json:"lidarr" toml:"lidarr" xml:"lidarr" yaml:"lidarr"`
+	Sonarr             *starr.Config  `json:"sonarr,_omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,_omitempty"`
+	Radarr             *starr.Config  `json:"radarr,_omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,_omitempty"`
+	Lidarr             *starr.Config  `json:"lidarr,_omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,_omitempty"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -65,7 +66,6 @@ type eCounters struct {
 // Flags are our CLI input flags.
 type Flags struct {
 	verReq     bool
-	Debug      bool
 	ConfigFile string
 }
 

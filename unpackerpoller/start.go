@@ -80,6 +80,8 @@ func Start() (err error) {
 // Run starts the go routines and waits for an exit signal.
 func (u *UnpackerPoller) Run() {
 	if u.StopChan != nil {
+		// one poller wont run twice unless you get creative.
+		// just make a second one if you want to poller moar.
 		return
 	}
 	u.StopChan = make(chan bool)
@@ -101,6 +103,9 @@ func (u *UnpackerPoller) Stop() {
 	if u.StopChan != nil {
 		close(u.StopChan)
 	}
+	// Arbitrary, just give the two routines time to bail.
+	// This wont work if they're in the middle of something.. oh well.
+	time.Sleep(100 * time.Millisecond)
 }
 
 // ParseFlags turns CLI args into usable data.

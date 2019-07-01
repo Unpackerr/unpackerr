@@ -47,12 +47,17 @@ func (u *UnpackerPoller) PollRadarr() error {
 // This runs more often because of the cleanup tasks.
 // It doesn't poll external data, unless it finds something to extract.
 func (u *UnpackerPoller) PollChange() {
-	log.Println("Starting Cleanup Routine (interval: 1 minute)")
+	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
 	ticker := time.NewTicker(time.Minute)
-	for range ticker.C {
-		u.CheckExtractDone()
-		u.CheckSonarrQueue()
-		u.CheckRadarrQueue()
+	for {
+		select {
+		case <-ticker.C:
+			u.CheckExtractDone()
+			u.CheckSonarrQueue()
+			u.CheckRadarrQueue()
+		case <-u.StopChan:
+			return
+		}
 	}
 }
 

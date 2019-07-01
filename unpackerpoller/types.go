@@ -78,10 +78,11 @@ type UnpackerPoller struct {
 	*SonarrQ
 	*RadarrQ
 	*History
-	StopChan chan os.Signal
+	SigChan  chan os.Signal
+	StopChan chan bool
 }
 
-// Xfers holds the last list of transfered pulled form Deluge.
+// Xfers holds the last list of transferred pulled form Deluge.
 type Xfers struct {
 	sync.RWMutex
 	Map map[string]*deluge.XferStatusCompat

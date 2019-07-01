@@ -40,12 +40,12 @@ func New() *UnpackerPoller {
 			Lidarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
 			Deluge:  &deluge.Config{Timeout: deluge.Duration{Duration: defaultTimeout}},
 		},
-		Xfers:    &Xfers{Map: make(map[string]*deluge.XferStatusCompat)},
-		SonarrQ:  &SonarrQ{List: []*starr.SonarQueue{}},
-		RadarrQ:  &RadarrQ{List: []*starr.RadarQueue{}},
-		History:  &History{Map: make(map[string]Extracts)},
-		Deluge:   &deluge.Deluge{},
-		StopChan: make(chan os.Signal, 0),
+		Xfers:   &Xfers{Map: make(map[string]*deluge.XferStatusCompat)},
+		SonarrQ: &SonarrQ{List: []*starr.SonarQueue{}},
+		RadarrQ: &RadarrQ{List: []*starr.RadarQueue{}},
+		History: &History{Map: make(map[string]Extracts)},
+		Deluge:  &deluge.Deluge{},
+		SigChan: make(chan os.Signal),
 	}
 	u.Config.Deluge.DebugLog = u.DeLogf
 	return u
@@ -54,64 +54,81 @@ func New() *UnpackerPoller {
 // Start runs the app.
 func Start() (err error) {
 	log.SetFlags(log.LstdFlags)
-	u := New()
-	u.ParseFlags()
-	if u.verReq {
+	u := New().ParseFlags()
+	if u.Flags.verReq {
 		fmt.Println("unpacker-poller version:", Version)
 		return nil // don't run anything else.
 	}
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
-	if err := u.ParseConfig(); err != nil {
+	if _, err := u.ParseConfig(); err != nil {
 		return errors.Wrap(err, "config")
 	}
+	u.validateConfig()
 	if u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 	if u.Deluge, err = deluge.New(*u.Config.Deluge); err != nil {
 		return errors.Wrap(err, "deluge")
 	}
-	u.pollAllApps()   // Run all pollers once at startup.
-	go u.PollChange() // This has its own ticker that runs every minute.
 	go u.Run()
-	signal.Notify(u.StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("\nExiting! Caught Signal:", <-u.StopChan)
+	defer u.Stop()
+	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
 	return nil
 }
 
 // Run starts the go routines and waits for an exit signal.
 func (u *UnpackerPoller) Run() {
+	if u.StopChan != nil {
+		return
+	}
+	u.StopChan = make(chan bool)
+	go u.PollChange() // This has its own ticker that runs every minute.
+	u.PollAllApps()   // Run all pollers once at startup.
 	ticker := time.NewTicker(u.Interval.Duration)
-	for range ticker.C {
-		u.pollAllApps()
+	for {
+		select {
+		case <-ticker.C:
+			u.PollAllApps()
+		case <-u.StopChan:
+			return
+		}
+	}
+}
+
+// Stop brings the go routines to a halt.
+func (u *UnpackerPoller) Stop() {
+	if u.StopChan != nil {
+		close(u.StopChan)
 	}
 }
 
 // ParseFlags turns CLI args into usable data.
-func (u *UnpackerPoller) ParseFlags() {
+func (u *UnpackerPoller) ParseFlags() *UnpackerPoller {
 	flg.Usage = func() {
 		fmt.Println("Usage: unpacker-poller [--config=filepath] [--version]")
 		flg.PrintDefaults()
 	}
-	flg.StringVarP(&u.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
-	flg.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
+	flg.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
+	flg.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
 	flg.Parse()
+	return u // so you can chain into ParseConfig.
 }
 
 // ParseConfig parses and returns our configuration data.
-func (u *UnpackerPoller) ParseConfig() error {
+func (u *UnpackerPoller) ParseConfig() (*UnpackerPoller, error) {
 	log.Printf("Reading Config File: %v", u.ConfigFile)
 	if buf, err := ioutil.ReadFile(u.ConfigFile); err != nil {
-		return err
+		return u, err
 		// This is where the defaults in the config variable are overwritten.
 	} else if err := toml.Unmarshal(buf, &u.Config); err != nil {
-		return errors.Wrap(err, "invalid config")
+		return u, errors.Wrap(err, "invalid config")
 	}
-	u.ValidateConfig()
-	return nil
+	return u, nil
 }
 
-// ValidateConfig makes sure config values are ok.
-func (u *UnpackerPoller) ValidateConfig() {
+// validateConfig makes sure config file values are ok.
+func (u *UnpackerPoller) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
@@ -126,8 +143,8 @@ func (u *UnpackerPoller) ValidateConfig() {
 	u.DeLogf("Minimum Interval: %v", minimumInterval.String())
 }
 
-// Poll Deluge, Sonarr and Radarr. All at the same time.
-func (u *UnpackerPoller) pollAllApps() {
+// PollAllApps Polls Deluge, Sonarr and Radarr. All at the same time.
+func (u *UnpackerPoller) PollAllApps() {
 	var wg sync.WaitGroup
 	if u.Sonarr.APIKey != "" {
 		wg.Add(1)

@@ -37,7 +37,7 @@ var (
 
 // Start runs the app.
 func Start() error {
-	ParseFlags()
+	debug := ParseFlags()
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
 	config, err := GetConfig(ConfigFile)
 	if err != nil {
@@ -47,6 +47,9 @@ func Start() error {
 	d, err := deluge.New(config.Deluge)
 	if err != nil {
 		return errors.Wrap(err, "deluge")
+	}
+	if debug {
+		d.DebugLog = log.Printf
 	}
 	go StartUp(d, config)
 	signal.Notify(StopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -72,7 +75,7 @@ func (c *Config) copyConfig() {
 }
 
 // ParseFlags turns CLI args into usable data.
-func ParseFlags() {
+func ParseFlags() bool {
 	flg.Usage = func() {
 		fmt.Println("Usage: unpacker-poller [--config=filepath] [--debug] [--version]")
 		flg.PrintDefaults()
@@ -88,6 +91,7 @@ func ParseFlags() {
 	if log.SetFlags(log.LstdFlags); Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
+	return Debug
 }
 
 // GetConfig parses and returns our configuration data.

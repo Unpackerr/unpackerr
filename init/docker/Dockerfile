@@ -14,7 +14,7 @@ RUN apt-get update \
 COPY . $GOPATH/src/github.com/davidnewhall/unpacker-poller
 WORKDIR $GOPATH/src/github.com/davidnewhall/unpacker-poller
 
-RUN make dep --vendor-only \
+RUN dep ensure --vendor-only \
   && CGO_ENABLED=0 make unpacker-poller.${ARCH}.${OS} \
   && mv unpacker-poller.${ARCH}.${OS} unpacker-poller
 #

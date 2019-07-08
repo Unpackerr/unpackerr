@@ -1,16 +1,35 @@
-#!/bin/sh
+#!/bin/bash
 
 # This is a quick and drity script to install the latest Linux package.
 #
-# Use it like this:
+# Use it like this:  (sudo is optional)
 # ===
-#   curl https://raw.githubusercontent.com/davidnewhall/unpacker-poller/master/scripts/install.sh | sudo sh
+#   curl https://raw.githubusercontent.com/davidnewhall/unifi-poller/master/scripts/install.sh | sudo bash
 # ===
 # If you're on redhat, this installs the latest rpm. If you're on Debian, it installs the latest deb package.
 #
 
 REPO=davidnewhall/unpacker-poller
 LATEST=https://api.github.com/repos/${REPO}/releases/latest
+ARCH=$(uname -m)
+
+# $ARCH is passed into egrep to find the right file.
+if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
+  ARCH="x86_64|amd64"
+elif [[ $ARCH == *386* ]] || [[ $ARCH == *686* ]]; then
+  ARCH="i386"
+elif [[ $ARCH == *arm64* ]] || [[ $ARCH == *armv8* ]]; then
+  echo "Unsupported Architecture: ${ARCH}, sorry!"
+  exit 1
+elif [[ $ARCH == *armv6* ]] || [[ $ARCH == *armv7* ]]; then
+  ARCH="armhf"
+elif [[ $ARCH == *arm* ]]; then
+  ARCH="arm"
+else
+  echo "Unknown Architecture. Submit a pull request to fix this, please."
+  echo ==> $ARCH
+  exit 1
+fi
 
 if [ "$1" == "deb" ] || [ "$1" == "rpm" ]; then
   FILE=$1
@@ -49,7 +68,7 @@ if [ "$CMD" = "" ]; then
 fi
 
 # Grab latest release file from github.
-URL=$($CMD ${LATEST} | egrep "browser_download_url.*\.${FILE}\"" | cut -d\" -f 4)
+URL=$($CMD ${LATEST} | egrep "browser_download_url.*\.(${ARCH})\.${FILE}\"" | cut -d\" -f 4)
 
 if [ "$?" != "0" ] || [ "$URL" = "" ]; then
   echo "Error locating latest release at ${LATEST}"

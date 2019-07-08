@@ -2,20 +2,20 @@
 
 
 [[projects]]
-  digest = "1:b3615eb9aa523f9c740b66305219b92e1f9e61e796c0ef47eeef4064ddcda4ed"
+  digest = "1:4b0d75349267b6a2b0706b0ca6a19ab83e764601e3b49a22cdcac979da48be12"
   name = "github.com/golift/deluge"
   packages = ["."]
   pruneopts = "UT"
-  revision = "84366a93ad3c72d249b6a88745e7cef4ed7627c7"
-  version = "0.9.0"
+  revision = "b5b0792aec34bbe9f566943839c9f845489d00fc"
+  version = "v0.9.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:84c90e7c71077b850a9b792af015579c1e59c03ab5fef7213511a9796e9aaed3"
+  digest = "1:2f0c139d166b09a51ce617baa4cd5e0d0e785622285d4db5bc75556585e7f003"
   name = "github.com/golift/starr"
   packages = ["."]
   pruneopts = "UT"
-  revision = "318e11be5194dedec8bf996d781db3ad4604926f"
+  revision = "d94d7c5dd77fac19e0592d5eedd5182f3c229fd6"
 
 [[projects]]
   branch = "master"
@@ -53,20 +53,20 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:8fd3a15613c7e70cceff3aa03dd57560dba87c4868864e397d5eb2f14addd3f5"
-  name = "github.com/ogier/pflag"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "32a05c62658bd1d7c7e75cbc8195de5d585fde0f"
-  version = "v0.0.1"
-
-[[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = "UT"
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
+
+[[projects]]
+  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -76,8 +76,8 @@
     "github.com/golift/starr",
     "github.com/jagadeesh-kotra/gorar",
     "github.com/naoina/toml",
-    "github.com/ogier/pflag",
     "github.com/pkg/errors",
+    "github.com/spf13/pflag",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

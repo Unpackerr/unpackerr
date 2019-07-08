@@ -264,7 +264,11 @@ $(BINARY)_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf check_fpm
 		--chdir $<
 
 docker:
-	docker build -f init/docker/Dockerfile -t $(DHUSER)/$(BINARY):local .
+	docker build -f init/docker/Dockerfile \
+		--build-arg "BUILD_DATE=${DATE}" \
+		--build-arg "COMMIT=${COMMIT}" \
+		--build-arg "VERSION=${VERSION}" \
+		--tag $(DHUSER)/$(BINARY):local .
 
 # Build an environment that can be packaged for linux.
 package_build_linux: readme man linux

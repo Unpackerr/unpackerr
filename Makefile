@@ -32,7 +32,8 @@ ifeq ($(VERSION),)
 endif
 # rpm is wierd and changes - to _ in versions.
 RPMVERSION:=$(shell echo $(VERSION) | tr -- - _)
-DATE:=$(shell date)
+DATE:=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+COMMIT:=$(shell git rev-parse --short HEAD || echo 0)
 
 # Makefile targets follow.
 

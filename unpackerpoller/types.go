@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golift/deluge"
-	"github.com/golift/starr"
+	"golift.io/deluge"
+	"golift.io/starr"
 )
 
 // Config defines the configuration data used to start the application.

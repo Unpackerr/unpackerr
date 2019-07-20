@@ -2,20 +2,12 @@
 
 
 [[projects]]
-  digest = "1:4b0d75349267b6a2b0706b0ca6a19ab83e764601e3b49a22cdcac979da48be12"
-  name = "github.com/golift/deluge"
+  digest = "1:9f3b30d9f8e0d7040f729b82dcbc8f0dead820a133b3147ce355fc451f32d761"
+  name = "github.com/BurntSushi/toml"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b5b0792aec34bbe9f566943839c9f845489d00fc"
-  version = "v0.9.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:2f0c139d166b09a51ce617baa4cd5e0d0e785622285d4db5bc75556585e7f003"
-  name = "github.com/golift/starr"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "d94d7c5dd77fac19e0592d5eedd5182f3c229fd6"
+  revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
+  version = "v0.3.1"
 
 [[projects]]
   branch = "master"
@@ -24,25 +16,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "0fdbcd39d83bfd62ac7216cf1b355741c68c2d6d"
-
-[[projects]]
-  digest = "1:b56c589214f01a5601e0821387db484617392d0042f26234bf2da853a2f498a1"
-  name = "github.com/naoina/go-stringutil"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "6b638e95a32d0c1131db0e7fe83775cbea4a0d0b"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:f58c3d0e46b64878d00652fedba24ee879725191ab919dca7b62586859281c04"
-  name = "github.com/naoina/toml"
-  packages = [
-    ".",
-    "ast",
-  ]
-  pruneopts = "UT"
-  revision = "e6f5723bf2a66af014955e0888881314cf294129"
-  version = "v0.1.1"
 
 [[projects]]
   digest = "1:b93a939355dc613ca1c23bf39f6d4c207da431a31dd8af001cc334ad24cab9d3"
@@ -68,16 +41,32 @@
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
 
+[[projects]]
+  digest = "1:4b0d75349267b6a2b0706b0ca6a19ab83e764601e3b49a22cdcac979da48be12"
+  name = "golift.io/deluge"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b5b0792aec34bbe9f566943839c9f845489d00fc"
+  version = "v0.9.2"
+
+[[projects]]
+  digest = "1:2f0c139d166b09a51ce617baa4cd5e0d0e785622285d4db5bc75556585e7f003"
+  name = "golift.io/starr"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d94d7c5dd77fac19e0592d5eedd5182f3c229fd6"
+  version = "v0.9.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/golift/deluge",
-    "github.com/golift/starr",
+    "github.com/BurntSushi/toml",
     "github.com/jagadeesh-kotra/gorar",
-    "github.com/naoina/toml",
     "github.com/pkg/errors",
     "github.com/spf13/pflag",
+    "golift.io/deluge",
+    "golift.io/starr",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

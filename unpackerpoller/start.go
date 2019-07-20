@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golift/deluge"
-	"github.com/golift/starr"
+	"golift.io/deluge"
+	"golift.io/starr"
 
-	"github.com/naoina/toml"
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	flg "github.com/spf13/pflag"
 )

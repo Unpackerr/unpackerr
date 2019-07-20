@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golift/deluge"
-	"github.com/golift/starr"
+	"golift.io/deluge"
+	"golift.io/starr"
 )
 
 // Returns all the files in a path.

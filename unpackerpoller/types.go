@@ -15,7 +15,7 @@ type Config struct {
 	Interval           starr.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout            starr.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay        starr.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	ConcurrentExtracts int            `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
+	ConcurrentExtracts uint           `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
 	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
 	Sonarr             *starr.Config  `json:"sonarr,_omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,_omitempty"`
 	Radarr             *starr.Config  `json:"radarr,_omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,_omitempty"`
@@ -37,30 +37,30 @@ const (
 	DELETING
 	DELETEFAILED
 	DELETED
-	FORGOTTEN
 )
 
 // String makes ExtractStatus human readable.
 func (status ExtractStatus) String() string {
-	if status > FORGOTTEN {
+	if status > DELETED {
 		return "Unknown"
 	}
 	return []string{
 		// The order must not be be faulty.
 		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",
 		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
-		"Deleting", "Delete Failed", "Deleted", "Forgotten",
+		"Deleting", "Delete Failed", "Deleted",
 	}[status]
 }
 
 // Use in r.eCount to return activity counters.
 type eCounters struct {
-	queued     int
-	extracting int
-	failed     int
-	extracted  int
-	imported   int
-	deleted    int
+	queued     uint
+	extracting uint
+	failed     uint
+	extracted  uint
+	imported   uint
+	deleted    uint
+	finished   uint
 }
 
 // Flags are our CLI input flags.
@@ -103,7 +103,8 @@ type RadarrQ struct {
 // History holds the history of extracted items.
 type History struct {
 	sync.RWMutex
-	Map map[string]Extracts
+	Finished uint
+	Map      map[string]Extracts
 }
 
 // Extracts holds data for files being extracted.

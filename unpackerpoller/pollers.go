@@ -63,10 +63,11 @@ func (u *UnpackerPoller) PollChange() {
 
 // CheckExtractDone checks if an extracted item has been imported.
 func (u *UnpackerPoller) CheckExtractDone() {
-	log.Printf("Extract Statuses: %d actively extracting, %d queued, "+
-		"%d extracted, %d imported, %d failed, %d deleted",
-		u.eCount().extracting, u.eCount().queued, u.eCount().extracted,
-		u.eCount().imported, u.eCount().failed, u.eCount().deleted)
+	ec := u.eCount()
+	log.Printf("Extract Statuses: %d extracting, %d queued, "+
+		"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
+		ec.extracting, ec.queued, ec.extracted,
+		ec.imported, ec.failed, ec.deleted, ec.finished)
 	for name, data := range u.GetHistory() {
 		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
 			time.Since(data.Updated).Round(time.Second))

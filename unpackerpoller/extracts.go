@@ -37,9 +37,10 @@ func (u *UnpackerPoller) GetHistory() map[string]Extracts {
 
 // DeleteStatus deletes a deleted item from internal history.
 func (u *UnpackerPoller) DeleteStatus(name string) {
-	u.History.RLock()
-	defer u.History.RUnlock()
+	u.History.Lock()
+	defer u.History.Unlock()
 	delete(u.History.Map, name)
+	u.History.Finished++
 }
 
 // GetStatus returns the status history for an extraction.
@@ -54,6 +55,7 @@ func (u *UnpackerPoller) GetStatus(name string) (e Extracts) {
 func (u *UnpackerPoller) eCount() (e eCounters) {
 	u.History.RLock()
 	defer u.History.RUnlock()
+	e.finished = u.Finished
 	for _, r := range u.History.Map {
 		switch r.Status {
 		case QUEUED:
@@ -99,7 +101,7 @@ func (u *UnpackerPoller) extractMayProceed(name string) bool {
 		// Item must be queued for at least 1 minute to prevent Deluge races.
 		return false
 	}
-	var count int
+	var count uint
 	for _, r := range u.History.Map {
 		if r.Status == EXTRACTING {
 			count++

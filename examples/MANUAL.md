@@ -1,21 +1,22 @@
 unpacker-poller(1) -- Utility to poll Deluge and Unpack files for tracking clients.
 ===
 
-## SYNOPSIS
+SYNOPSIS
+---
 
 `unpacker-poller -c /usr/local/etc/unpacker-poller/up.conf`
 
-## DESCRIPTION
-
-* This application polls Deluge (and maybe other clients in the future),
+DESCRIPTION
+---
+*   This application polls Deluge (and maybe other clients in the future),
 to find finished transfers. It extracts the downloaded files, then polls
 Radarr and Sonarr to make sure they've imported the extracted files before
 deleting them.
 
-* Other tunable and configurable options are available in the config file.
+*   Other tunable and configurable options are available in the config file.
 
-## OPTIONS
-
+OPTIONS
+---
 `unpacker-poller [-c <config file>] [-h] [-v]`
 
     -c, --config <file_path>
@@ -29,8 +30,8 @@ deleting them.
         Display usage and exit.
 
 
-## GO DURATION
-
+GO DURATION
+---
 This application uses the Go Time Durations for a polling interval.
 The format is an integer followed by a time unit. You may append
 multiple time units to add them together. Some valid time units are:
@@ -42,11 +43,11 @@ multiple time units to add them together. Some valid time units are:
 
 Example Use: `1m`, `5h`, `100ms`, `17s`, `1s45ms`, `1m3s`
 
-## AUTHOR
+AUTHOR
+---
+*   David Newhall II - 5/6/2018
 
-* David Newhall II - 5/6/2018
-
-## LOCATION
-
-* https://github.com/davidnewhall/unpacker-poller
-* /usr/local/bin/unpacker-poller
+LOCATION
+---
+*   [github.com/davidnewhall/unpacker-poller](https://github.com/davidnewhall/unpacker-poller)
+*   /usr/local/bin/unpacker-poller

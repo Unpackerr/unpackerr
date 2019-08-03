@@ -10,38 +10,49 @@ addons:
     - fakeroot
     - zip
 go:
-- 1.12.x
+  - 1.12.x
 services:
-- docker
+  - docker
 install:
-- mkdir -p $GOPATH/bin
-# Download the `dep` binary to bin folder in $GOPATH
-- curl -sLo $GOPATH/bin/dep https://github.com/golang/dep/releases/download/v0.5.3/dep-linux-amd64
-- chmod +x $GOPATH/bin/dep
-# download super-linter: golangci-lint
-- curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
-- rvm install 2.0.0
-- rvm 2.0.0 do gem install --no-document fpm
-- make docker
+  - mkdir -p $GOPATH/bin
+  # Download the `dep` binary to bin folder in $GOPATH
+  - curl -sLo $GOPATH/bin/dep https://github.com/golang/dep/releases/download/v0.5.3/dep-linux-amd64
+  - chmod +x $GOPATH/bin/dep
+  # download super-linter: golangci-lint
+  - curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
+  - rvm install 2.0.0
+  - rvm 2.0.0 do gem install --no-document fpm
+before_script:
+  # Create your own deploy key, tar it, and encrypt the file to make this work. Optionally add a bitly_token file to the archive.
+  - openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in ".travis/github_deploy_key.enc" -out "$SSH_FILE" -d
+  - tar -xf .secret_files.tar
+  - source .metadata.sh
+  - make vendor
 script:
-# Test built docker image.
-- docker run golift/unpacker-poller:local 2>&1 | grep -Eq "Unpacker Poller Starting"
-# test and build everything
-- rvm 2.0.0 do make release
+  # Test Go and Docker.
+  - make test
+  - make docker
+  # Test built docker image.
+  - docker run $BINARY -v 2>&1 | grep -Eq "^$BINARY v$VERSION"
+  # Build everything
+  - rvm 2.0.0 do make release
 after_success:
-# Display Release Folder
-- ls -l release/
-- |
-  declare -r SSH_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
-  echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-  # Get deploy key for golift/homebrew-mugs.
-  openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in ".travis/github_deploy_key.enc" -out "$SSH_FILE" -d
-  chmod 600 "$SSH_FILE" \
-    && printf "%s\n" \
-      "Host github.com" \
-      "  IdentityFile $SSH_FILE" \
-      "  StrictHostKeyChecking no" \
-      "  LogLevel ERROR" >> ~/.ssh/config
+  # Display Release Folder
+  - ls -l release/
+  # Setup the ssh client so we can clone and push to the homebrew formula repo.
+  # You must put github_deploy_file into .secret_files.tar.enc
+  # This is an ssh key added to your homebrew forumla repo.
+  - |
+    mkdir -p $HOME/.ssh
+    declare -r SSH_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
+    echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> $HOME/.ssh/config
+    [ ! -f github_deploy_key ] || (mv github_deploy_key $SSH_FILE \
+      && chmod 600 "$SSH_FILE" \
+      && printf "%s\n" \
+        "Host github.com" \
+        "  IdentityFile $SSH_FILE" \
+        "  StrictHostKeyChecking no" \
+        "  LogLevel ERROR" >> $HOME/.ssh/config)
 deploy:
   - provider: releases
     overwrite: true
@@ -52,13 +63,7 @@ deploy:
     file: release/*
     on:
       tags: true
-      repo: davidnewhall/unpacker-poller
   - provider: script
     script: scripts/formula-deploy.sh
     on:
       tags: true
-      repo: davidnewhall/unpacker-poller
-env:
-  global:
-  - GH_USER_NAME=unpacker-auto-releaser
-  - GH_USER_EMAIL=unpacker@auto.releaser

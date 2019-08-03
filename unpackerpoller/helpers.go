@@ -54,7 +54,8 @@ func findRarFiles(path string) (files []string) {
 				m, _ := filepath.Match("*.part[0-9]*.rar", name)
 				if !m || strings.HasSuffix(name, ".part01.rar") ||
 					strings.HasSuffix(name, ".part001.rar") ||
-					strings.HasSuffix(name, ".part1.rar") {
+					strings.HasSuffix(name, ".part1.rar") ||
+					strings.HasSuffix(name, ".r00") {
 					files = append(files, filepath.Join(path, file.Name()))
 				}
 			}

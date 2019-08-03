@@ -63,7 +63,6 @@
   input-imports = [
     "github.com/BurntSushi/toml",
     "github.com/jagadeesh-kotra/gorar",
-    "github.com/pkg/errors",
     "github.com/spf13/pflag",
     "golift.io/deluge",
     "golift.io/starr",

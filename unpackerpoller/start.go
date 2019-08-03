@@ -14,7 +14,6 @@ import (
 	"golift.io/starr"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 	flg "github.com/spf13/pflag"
 )
 
@@ -56,19 +55,19 @@ func Start() (err error) {
 	log.SetFlags(log.LstdFlags)
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Println("unpacker-poller version:", Version)
+		fmt.Printf("unpacker-poller v%s\n", Version)
 		return nil // don't run anything else.
 	}
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
 	if _, err := u.ParseConfig(); err != nil {
-		return errors.Wrap(err, "config")
+		return err
 	}
 	u.validateConfig()
 	if u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 	if u.Deluge, err = deluge.New(*u.Config.Deluge); err != nil {
-		return errors.Wrap(err, "deluge")
+		return err
 	}
 	go u.Run()
 	defer u.Stop()
@@ -127,7 +126,7 @@ func (u *UnpackerPoller) ParseConfig() (*UnpackerPoller, error) {
 		return u, err
 		// This is where the defaults in the config variable are overwritten.
 	} else if err := toml.Unmarshal(buf, &u.Config); err != nil {
-		return u, errors.Wrap(err, "invalid config")
+		return u, err
 	}
 	return u, nil
 }

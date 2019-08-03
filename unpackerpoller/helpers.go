@@ -43,25 +43,39 @@ func difference(slice1 []string, slice2 []string) (diff []string) {
 }
 
 // Returns all the rar files in a path.
-func findRarFiles(path string) (files []string) {
-	if fileList, err := ioutil.ReadDir(path); err == nil {
-		for _, file := range fileList {
-			if file.IsDir() {
-				// Recurse.
-				files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
-			} else if name := strings.ToLower(file.Name()); strings.HasSuffix(name, ".rar") || strings.HasSuffix(name, ".r00") {
-				// Some archives are named poorly. Only return part01 or part001, not all.
-				m, _ := filepath.Match("*.part[0-9]*.rar", name)
-				if !m || strings.HasSuffix(name, ".part01.rar") ||
-					strings.HasSuffix(name, ".part001.rar") ||
-					strings.HasSuffix(name, ".part1.rar") ||
-					strings.HasSuffix(name, ".r00") {
-					files = append(files, filepath.Join(path, file.Name()))
-				}
+func findRarFiles(path string) []string {
+	fileList, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil
+	}
+	// Check (save) if the current path has any rar files.
+	var hasrar bool
+	if r, err := filepath.Glob(filepath.Join(path, "*.rar")); err == nil && len(r) > 0 {
+		hasrar = true
+	}
+
+	var files []string
+	for _, file := range fileList {
+		switch lowerName := strings.ToLower(file.Name()); {
+		case file.IsDir(): // Recurse.
+			files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
+		case strings.HasSuffix(lowerName, ".rar"):
+			// Some archives are named poorly. Only return part01 or part001, not all.
+			m, _ := filepath.Match("*.part[0-9]*.rar", lowerName)
+			// This if statements says:
+			// If the current file does not have "part0-9" in the name, add it to our list (all .rar files).
+			// If it does have "part0-9" in the name, then make sure it's part 1.
+			if !m || strings.HasSuffix(lowerName, ".part01.rar") ||
+				strings.HasSuffix(lowerName, ".part001.rar") ||
+				strings.HasSuffix(lowerName, ".part1.rar") {
+				files = append(files, filepath.Join(path, file.Name()))
 			}
+		case !hasrar && strings.HasSuffix(lowerName, ".r00"):
+			// Accept .r00 as the first file file if no .rar files are present in the path.
+			files = append(files, filepath.Join(path, file.Name()))
 		}
 	}
-	return
+	return files
 }
 
 // Moves files then removes the folder they were in.

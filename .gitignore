@@ -25,3 +25,4 @@ README.html
 
 .secret-files.tar
 github_deploy_key*
+.metadata.make

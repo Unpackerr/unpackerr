@@ -49,7 +49,7 @@ func findRarFiles(path string) (files []string) {
 			if file.IsDir() {
 				// Recurse.
 				files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
-			} else if name := strings.ToLower(file.Name()); strings.HasSuffix(name, ".rar") {
+			} else if name := strings.ToLower(file.Name()); strings.HasSuffix(name, ".rar") || strings.HasSuffix(name, ".r00") {
 				// Some archives are named poorly. Only return part01 or part001, not all.
 				m, _ := filepath.Match("*.part[0-9]*.rar", name)
 				if !m || strings.HasSuffix(name, ".part01.rar") ||

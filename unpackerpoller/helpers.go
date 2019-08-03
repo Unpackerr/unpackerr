@@ -42,8 +42,12 @@ func difference(slice1 []string, slice2 []string) (diff []string) {
 	return diff
 }
 
-// Returns all the rar files in a path.
-func findRarFiles(path string) []string {
+// FindRarFiles returns all the rar files in a path. This attempts to grab only the first
+// file in a multi-part archive. Sometimes there are multiple archives, so if the archive
+// does not have "part" followed by a number in the name, then it will be considered
+// an independent archive. Some packagers seem to use different naming schemes, so this
+// will need to be updated as time progresses. So far it's working well. -dn2@8/3/19
+func FindRarFiles(path string) []string {
 	fileList, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil
@@ -58,7 +62,7 @@ func findRarFiles(path string) []string {
 	for _, file := range fileList {
 		switch lowerName := strings.ToLower(file.Name()); {
 		case file.IsDir(): // Recurse.
-			files = append(files, findRarFiles(filepath.Join(path, file.Name()))...)
+			files = append(files, FindRarFiles(filepath.Join(path, file.Name()))...)
 		case strings.HasSuffix(lowerName, ".rar"):
 			// Some archives are named poorly. Only return part01 or part001, not all.
 			m, _ := filepath.Match("*.part[0-9]*.rar", lowerName)

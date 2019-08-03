@@ -147,7 +147,7 @@ func (u *UnpackerPoller) HandleCompleted(name, app string) {
 		return
 	}
 	path := filepath.Join(d.SavePath, d.Name)
-	files := findRarFiles(path)
+	files := FindRarFiles(path)
 	if d.IsFinished && u.GetStatus(name).Status == MISSING {
 		if len(files) > 0 {
 			log.Printf("%v: Found %v extractable item(s) in Deluge: %v ", app, len(files), name)

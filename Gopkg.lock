@@ -10,14 +10,6 @@
   version = "v0.3.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:62944449a80deca0ac8d443cdc35dd3227d25e68ef8484ea30dc56c9c74c8b3e"
-  name = "github.com/jagadeesh-kotra/gorar"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0fdbcd39d83bfd62ac7216cf1b355741c68c2d6d"
-
-[[projects]]
   digest = "1:b93a939355dc613ca1c23bf39f6d4c207da431a31dd8af001cc334ad24cab9d3"
   name = "github.com/nwaples/rardecode"
   packages = ["."]
@@ -50,6 +42,14 @@
   version = "v0.9.2"
 
 [[projects]]
+  digest = "1:62944449a80deca0ac8d443cdc35dd3227d25e68ef8484ea30dc56c9c74c8b3e"
+  name = "golift.io/rar"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0fdbcd39d83bfd62ac7216cf1b355741c68c2d6d"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:2f0c139d166b09a51ce617baa4cd5e0d0e785622285d4db5bc75556585e7f003"
   name = "golift.io/starr"
   packages = ["."]
@@ -62,9 +62,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/BurntSushi/toml",
-    "github.com/jagadeesh-kotra/gorar",
     "github.com/spf13/pflag",
     "golift.io/deluge",
+    "golift.io/rar",
     "golift.io/starr",
   ]
   solver-name = "gps-cdcl"

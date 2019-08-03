@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	unrar "github.com/jagadeesh-kotra/gorar"
+	rar "golift.io/rar"
 )
 
 /*
@@ -147,7 +147,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 	for i, file := range archives {
 		fileStart := time.Now()
 		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
-		if err := unrar.RarExtractor(file, tmpPath); err != nil {
+		if err := rar.RarExtractor(file, tmpPath); err != nil {
 			log.Printf("Extract Error: [%d/%d] %v to %v (%v elapsed): %v",
 				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
@@ -163,7 +163,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 			// Do this now, instead of re-queuing, so subs are imported.
 			if strings.HasSuffix(file, ".rar") {
 				log.Printf("Extracted RAR Archive, Extracting Additional File: %v", file)
-				if err := unrar.RarExtractor(file, tmpPath); err != nil {
+				if err := rar.RarExtractor(file, tmpPath); err != nil {
 					log.Printf("Extract Error: [%d/%d](extra) %v to %v (%v elapsed): %v",
 						i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 					u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))

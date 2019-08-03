@@ -55,7 +55,7 @@ func Start() (err error) {
 	log.SetFlags(log.LstdFlags)
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpacker-poller v%s", Version)
+		fmt.Printf("unpacker-poller v%s\n", Version)
 		return nil // don't run anything else.
 	}
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())

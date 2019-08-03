@@ -1,8 +1,11 @@
 # Homebrew Formula Template. Built by Makefile: `make fomula`
-class UnpackerPoller < Formula
+# This is part of Application Builder.
+# https://github.com/golift/application-builder
+# This file is used when FORMULA is set to 'service'.
+class {{Class}} < Formula
   desc "{{Desc}}"
   homepage "{{URL}}"
-  url "{{URL}}/archive/v{{Version}}.tar.gz"
+  url "{{SOURCE_PATH}}"
   sha256 "{{SHA256}}"
   head "{{URL}}"
 
@@ -12,27 +15,29 @@ class UnpackerPoller < Formula
   def install
     ENV["GOPATH"] = buildpath
 
-    bin_path = buildpath/"src/github.com/davidnewhall/unpacker-poller"
+    bin_path = buildpath/"src/{{IMPORT_PATH}}"
     # Copy all files from their current location (GOPATH root)
-    # to $GOPATH/src/github.com/davidnewhall/unpacker-poller
-    bin_path.install Dir["*"]
+    # to $GOPATH/src/{{IMPORT_PATH}}
+    bin_path.install Dir["*",".??*"]
     cd bin_path do
-      system "dep", "ensure", "-vendor-only"
-      system "make", "install", "VERSION=#{version}", "PREFIX=#{prefix}", "ETC=#{etc}"
+      system "dep", "ensure", "--vendor-only"
+      system "make", "install", "VERSION=#{version}", "ITERATION={{Iter}}", "PREFIX=#{prefix}", "ETC=#{etc}"
       # If this fails, the user gets a nice big warning about write permissions on their
       # #{var}/log folder. The alternative could be letting the app silently fail
       # to start when it cannot write logs. This is better. Fix perms; reinstall.
-      touch("#{var}/log/unpacker-poller.log")
+      touch("#{var}/log/#{name}.log")
     end
   end
 
   def caveats
     <<-EOS
-  Thanks for trying this app!
+  Edit the config file at #{etc}/#{name}/{{CONFIG_FILE}} then start #{name} with
+  brew services start #{name} ~ log file: #{var}/log/#{name}.log
+  The manual explains the config file options: man #{name}
     EOS
   end
 
-  plist_options :startup => true
+  plist_options :startup => false
 
   def plist
     <<-EOS
@@ -44,24 +49,24 @@ class UnpackerPoller < Formula
          <string>#{plist_name}</string>
          <key>ProgramArguments</key>
          <array>
-             <string>#{bin}/unpacker-poller</string>
-             <string>-c</string>
-             <string>#{etc}/unpacker-poller/up.conf</string>
+             <string>#{bin}/#{name}</string>
+             <string>--config</string>
+             <string>#{etc}/#{name}/{{CONFIG_FILE}}</string>
          </array>
          <key>RunAtLoad</key>
          <true/>
          <key>KeepAlive</key>
          <true/>
          <key>StandardErrorPath</key>
-         <string>#{var}/log/unpacker-poller.log</string>
+         <string>#{var}/log/#{name}.log</string>
          <key>StandardOutPath</key>
-         <string>#{var}/log/unpacker-poller.log</string>
+         <string>#{var}/log/#{name}.log</string>
      </dict>
   </plist>
     EOS
   end
 
   test do
-    assert_match "unpacker-poller v#{version}", shell_output("#{bin}/unpacker-poller -v 2>&1", 2)
+    assert_match "#{name} v#{version}", shell_output("#{bin}/#{name} -v 2>&1", 2)
   end
 end

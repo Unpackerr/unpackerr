@@ -22,3 +22,6 @@ README
 README.html
 /unpacker-poller_manual.html
 /homebrew-mugs
+
+.secret-files.tar
+github_deploy_key*

@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// torrent is what we care about. no usenet..
+const torrent = "torrent"
+
 // PollDeluge at an interval and save the transfer list to r.Deluge
 func (u *UnpackerPoller) PollDeluge() error {
 	var err error
@@ -94,7 +97,7 @@ func (u *UnpackerPoller) CheckExtractDone() {
 				u.DeLogf("Sonarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
 				continue
 			}
-			if item.Protocol != "torrent" && item.Protocol != "" {
+			if item.Protocol != torrent && item.Protocol != "" {
 				continue
 			}
 			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
@@ -109,7 +112,7 @@ func (u *UnpackerPoller) CheckExtractDone() {
 				u.DeLogf("Radarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
 				continue
 			}
-			if item.Protocol != "torrent" && item.Protocol != "" {
+			if item.Protocol != torrent && item.Protocol != "" {
 				continue
 			}
 			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
@@ -143,7 +146,7 @@ func (u *UnpackerPoller) CheckSonarrQueue() {
 	u.SonarrQ.RLock()
 	defer u.SonarrQ.RUnlock()
 	for _, q := range u.SonarrQ.List {
-		if q.Status == "Completed" && q.Protocol == "torrent" {
+		if q.Status == "Completed" && q.Protocol == torrent {
 			go u.HandleCompleted(q.Title, "Sonarr")
 		} else {
 			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
@@ -156,7 +159,7 @@ func (u *UnpackerPoller) CheckRadarrQueue() {
 	u.RadarrQ.RLock()
 	defer u.RadarrQ.RUnlock()
 	for _, q := range u.RadarrQ.List {
-		if q.Status == "Completed" && q.Protocol == "torrent" {
+		if q.Status == "Completed" && q.Protocol == torrent {
 			go u.HandleCompleted(q.Title, "Radarr")
 		} else {
 			u.DeLogf("Radarr: %s (%s:%d%%): %v", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)

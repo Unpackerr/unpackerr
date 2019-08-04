@@ -28,16 +28,6 @@ func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []str
 	}
 }
 
-// GetStatus returns the status history for an extraction.
-func (u *UnpackerPoller) GetStatus(name string) Extracts {
-	u.History.RLock()
-	defer u.History.RUnlock()
-	if data, ok := u.History.Map[name]; ok {
-		return data
-	}
-	return Extracts{}
-}
-
 // eCount returns the number of things happening.
 func (u *UnpackerPoller) eCount() (e eCounters) {
 	u.History.RLock()
@@ -68,7 +58,7 @@ func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileLis
 	defer u.History.Unlock()
 	if _, ok := u.History.Map[name]; !ok {
 		// .. this only happens if you mess up in the code.
-		log.Println("ERROR: Unable to update missing History for", name)
+		log.Println("[ERROR] Unable to update missing History for", name)
 		return
 	}
 	u.History.Map[name] = Extracts{

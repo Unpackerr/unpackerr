@@ -99,7 +99,9 @@ func (u *UnpackerPoller) CheckExtractDone() {
 			}
 		}
 	}
+	u.History.Unlock()
 	ec := u.eCount()
+	u.History.Lock()
 	log.Printf("Extract Statuses: %d extracting, %d queued, "+
 		"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
 		ec.extracting, ec.queued, ec.extracted,
@@ -158,7 +160,9 @@ func (u *UnpackerPoller) HandleCompleted(name, app string) {
 	}
 	path := filepath.Join(d.SavePath, d.Name)
 	files := FindRarFiles(path)
-	if d.IsFinished && u.GetStatus(name).Status == MISSING {
+	u.History.RLock()
+	defer u.History.RUnlock()
+	if _, ok := u.History.Map[name]; !ok && d.IsFinished {
 		if len(files) > 0 {
 			log.Printf("%v: Found %v extractable item(s) in Deluge: %v ", app, len(files), name)
 			u.CreateStatus(name, path, app, files)

@@ -28,27 +28,14 @@ func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []str
 	}
 }
 
-// GetHistory returns a copy of the extracts map.
-func (u *UnpackerPoller) GetHistory() map[string]Extracts {
+// GetStatus returns the status history for an extraction.
+func (u *UnpackerPoller) GetStatus(name string) Extracts {
 	u.History.RLock()
 	defer u.History.RUnlock()
-	return u.History.Map
-}
-
-// DeleteStatus deletes a deleted item from internal history.
-func (u *UnpackerPoller) DeleteStatus(name string) {
-	u.History.Lock()
-	defer u.History.Unlock()
-	delete(u.History.Map, name)
-	u.History.Finished++
-}
-
-// GetStatus returns the status history for an extraction.
-func (u *UnpackerPoller) GetStatus(name string) (e Extracts) {
-	if data, ok := u.GetHistory()[name]; ok {
-		e = data
+	if data, ok := u.History.Map[name]; ok {
+		return data
 	}
-	return
+	return Extracts{}
 }
 
 // eCount returns the number of things happening.

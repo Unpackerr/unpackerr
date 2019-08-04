@@ -63,55 +63,64 @@ func (u *UnpackerPoller) PollChange() {
 
 // CheckExtractDone checks if an extracted item has been imported.
 func (u *UnpackerPoller) CheckExtractDone() {
+	u.History.Lock()
+	defer u.History.Unlock()
+	for name, data := range u.History.Map {
+		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
+			time.Since(data.Updated).Round(time.Second))
+		switch elapsed := time.Since(data.Updated); {
+		case data.Status >= DELETED && elapsed >= u.DeleteDelay.Duration*2:
+			// Remove the item from history some time after it's deleted.
+			u.History.Finished++
+			log.Printf("%v: Finished, Removing History: %v", data.App, name)
+			delete(u.History.Map, name)
+		case data.Status < EXTRACTED || data.Status > IMPORTED:
+			// Only process items that have finished extraction and are not deleted.
+			continue
+		case data.App == "Sonarr":
+			if q := u.getSonarQitem(name); q.Status != "" {
+				u.DeLogf("Sonarr Item Waiting For Import: %v -> %v", name, q.Status)
+				continue
+			}
+			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
+				u.History.Unlock()
+				u.UpdateStatus(name, s, nil)
+				u.History.Lock()
+			}
+		case data.App == "Radarr":
+			if q := u.getRadarQitem(name); q.Status != "" {
+				u.DeLogf("Radarr Item Waiting For Import: %v -> %v", name, q.Status)
+				continue
+			}
+			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
+				u.History.Unlock()
+				u.UpdateStatus(name, s, nil)
+				u.History.Lock()
+			}
+		}
+	}
 	ec := u.eCount()
 	log.Printf("Extract Statuses: %d extracting, %d queued, "+
 		"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
 		ec.extracting, ec.queued, ec.extracted,
 		ec.imported, ec.failed, ec.deleted, ec.finished)
-	for name, data := range u.GetHistory() {
-		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
-		switch elapsed := time.Since(u.GetStatus(name).Updated); {
-		case data.Status >= DELETED && elapsed >= u.DeleteDelay.Duration*2:
-			// Remove the item from history some time after it's deleted.
-			log.Printf("%v: Removing History: %v", data.App, name)
-			u.DeleteStatus(name)
-		case data.Status < EXTRACTED || data.Status > IMPORTED:
-			// Only process items that have finished extraction and are not deleted.
-			continue
-		case data.App == "Sonarr":
-			if q := u.getSonarQitem(name); q.Status == "" {
-				u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed)
-			} else {
-				u.DeLogf("Sonarr Item Waiting For Import: %v -> %v", name, q.Status)
-			}
-		case data.App == "Radarr":
-			if q := u.getRadarQitem(name); q.Status == "" {
-				u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed)
-			} else {
-				u.DeLogf("Radarr Item Waiting For Import: %v -> %v", name, q.Status)
-			}
-		}
-	}
 }
 
 // HandleExtractDone checks if files should be deleted.
-func (u *UnpackerPoller) HandleExtractDone(app, name string, status ExtractStatus, files []string, elapsed time.Duration) {
+func (u *UnpackerPoller) HandleExtractDone(app, name string, status ExtractStatus, files []string, elapsed time.Duration) ExtractStatus {
 	switch {
 	case status != IMPORTED:
 		log.Printf("%v Imported: %v (delete in %v)", app, name, u.DeleteDelay)
-		u.UpdateStatus(name, IMPORTED, nil)
+		return IMPORTED
 	case elapsed >= u.DeleteDelay.Duration:
-		go func() {
-			status := DELETED
-			if err := deleteFiles(files); err != nil {
-				status = DELETEFAILED
-			}
-			u.UpdateStatus(name, status, nil)
-		}()
+		if err := deleteFiles(files); err != nil {
+			return DELETEFAILED
+		}
+		return DELETED
 	default:
 		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v", app, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
 	}
+	return status
 }
 
 // CheckSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.

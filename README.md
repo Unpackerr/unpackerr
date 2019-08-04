@@ -10,7 +10,7 @@ Deluge downloads them. I just didn't care for any of them, so I wrote my own. I
 wanted a small single-binary with reasonable logging that can extract downloaded
 archives and clean up the mess after they've been imported. Why a separate binary
 instead of a Deluge plugin? Because I like Go more than Python and I wanted a fun
-project to work on over a weekend.
+project to work on over a weekend. At this point though, I'm weeks and weeks in.
 
 ## Logic
 
@@ -109,7 +109,7 @@ in the same boat:
 [http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit](http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit)
 
 Deluge takes a while to reply with a lot of transfers. Set the timeout to 30+s.
-I use 60s on my server and it seems to be okay.
+I use 60s on my server and it seems to be okay with around 600-800 transfers.
 
 ## TODO
 

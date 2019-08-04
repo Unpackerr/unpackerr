@@ -28,32 +28,11 @@ func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []str
 	}
 }
 
-// GetHistory returns a copy of the extracts map.
-func (u *UnpackerPoller) GetHistory() map[string]Extracts {
-	u.History.RLock()
-	defer u.History.RUnlock()
-	return u.History.Map
-}
-
-// DeleteStatus deletes a deleted item from internal history.
-func (u *UnpackerPoller) DeleteStatus(name string) {
-	u.History.RLock()
-	defer u.History.RUnlock()
-	delete(u.History.Map, name)
-}
-
-// GetStatus returns the status history for an extraction.
-func (u *UnpackerPoller) GetStatus(name string) (e Extracts) {
-	if data, ok := u.GetHistory()[name]; ok {
-		e = data
-	}
-	return
-}
-
 // eCount returns the number of things happening.
 func (u *UnpackerPoller) eCount() (e eCounters) {
 	u.History.RLock()
 	defer u.History.RUnlock()
+	e.finished = u.Finished
 	for _, r := range u.History.Map {
 		switch r.Status {
 		case QUEUED:
@@ -79,7 +58,7 @@ func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileLis
 	defer u.History.Unlock()
 	if _, ok := u.History.Map[name]; !ok {
 		// .. this only happens if you mess up in the code.
-		log.Println("ERROR: Unable to update missing History for", name)
+		log.Println("[ERROR] Unable to update missing History for", name)
 		return
 	}
 	u.History.Map[name] = Extracts{
@@ -99,7 +78,7 @@ func (u *UnpackerPoller) extractMayProceed(name string) bool {
 		// Item must be queued for at least 1 minute to prevent Deluge races.
 		return false
 	}
-	var count int
+	var count uint
 	for _, r := range u.History.Map {
 		if r.Status == EXTRACTING {
 			count++

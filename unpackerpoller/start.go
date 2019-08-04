@@ -135,16 +135,16 @@ func (u *UnpackerPoller) ParseConfig() (*UnpackerPoller, error) {
 func (u *UnpackerPoller) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
+		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
-	u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	if u.ConcurrentExtracts < 1 {
 		u.ConcurrentExtracts = 1
+		u.DeLogf("Maximum Concurrent Extractions: %d", u.ConcurrentExtracts)
 	}
-	u.DeLogf("Maximum Concurrent Extractions: %d", u.ConcurrentExtracts)
 	if u.Interval.Duration < minimumInterval {
 		u.Interval.Duration = minimumInterval
+		u.DeLogf("Minimum Interval: %v", minimumInterval.String())
 	}
-	u.DeLogf("Minimum Interval: %v", minimumInterval.String())
 }
 
 // PollAllApps Polls Deluge, Sonarr and Radarr. All at the same time.
@@ -185,6 +185,6 @@ func (u *UnpackerPoller) PollAllApps() {
 // DeLogf writes Debug log lines.
 func (u *UnpackerPoller) DeLogf(msg string, v ...interface{}) {
 	if u.Debug {
-		log.Printf("[DEBUG] "+msg, v...)
+		_ = log.Output(2, fmt.Sprintf("[DEBUG] "+msg, v...))
 	}
 }

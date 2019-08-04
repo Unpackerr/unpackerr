@@ -64,48 +64,61 @@ func (u *UnpackerPoller) PollChange() {
 // CheckExtractDone checks if an extracted item has been imported.
 func (u *UnpackerPoller) CheckExtractDone() {
 	u.History.Lock()
-	defer u.History.Unlock()
+	defer func() {
+		u.History.Unlock()
+		ec := u.eCount()
+		log.Printf("Extract Statuses: %d extracting, %d queued, "+
+			"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
+			ec.extracting, ec.queued, ec.extracted,
+			ec.imported, ec.failed, ec.deleted, ec.finished)
+	}()
+
 	for name, data := range u.History.Map {
 		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
 			time.Since(data.Updated).Round(time.Second))
+
 		switch elapsed := time.Since(data.Updated); {
 		case data.Status >= DELETED && elapsed >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.History.Finished++
 			log.Printf("%v: Finished, Removing History: %v", data.App, name)
 			delete(u.History.Map, name)
+
 		case data.Status < EXTRACTED || data.Status > IMPORTED:
 			// Only process items that have finished extraction and are not deleted.
 			continue
+
 		case data.App == "Sonarr":
-			if q := u.getSonarQitem(name); q.Status != "" {
-				u.DeLogf("Sonarr Item Waiting For Import: %v -> %v", name, q.Status)
+			item := u.getSonarQitem(name)
+			if item.Status != "" {
+				u.DeLogf("Sonarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
+				continue
+			}
+			if item.Protocol != "torrent" && item.Protocol != "" {
 				continue
 			}
 			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
-				u.History.Unlock()
-				u.UpdateStatus(name, s, nil)
-				u.History.Lock()
+				data.Status = s
+				data.Updated = time.Now()
+				u.History.Map[name] = data
 			}
+
 		case data.App == "Radarr":
-			if q := u.getRadarQitem(name); q.Status != "" {
-				u.DeLogf("Radarr Item Waiting For Import: %v -> %v", name, q.Status)
+			item := u.getRadarQitem(name)
+			if item.Status != "" {
+				u.DeLogf("Radarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
+				continue
+			}
+			if item.Protocol != "torrent" && item.Protocol != "" {
 				continue
 			}
 			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
-				u.History.Unlock()
-				u.UpdateStatus(name, s, nil)
-				u.History.Lock()
+				data.Status = s
+				data.Updated = time.Now()
+				u.History.Map[name] = data
 			}
 		}
 	}
-	u.History.Unlock()
-	ec := u.eCount()
-	u.History.Lock()
-	log.Printf("Extract Statuses: %d extracting, %d queued, "+
-		"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
-		ec.extracting, ec.queued, ec.extracted,
-		ec.imported, ec.failed, ec.deleted, ec.finished)
 }
 
 // HandleExtractDone checks if files should be deleted.
@@ -121,8 +134,8 @@ func (u *UnpackerPoller) HandleExtractDone(app, name string, status ExtractStatu
 		return DELETED
 	default:
 		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v", app, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
+		return status
 	}
-	return status
 }
 
 // CheckSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
@@ -130,10 +143,10 @@ func (u *UnpackerPoller) CheckSonarrQueue() {
 	u.SonarrQ.RLock()
 	defer u.SonarrQ.RUnlock()
 	for _, q := range u.SonarrQ.List {
-		if q.Status == "Completed" {
-			u.HandleCompleted(q.Title, "Sonarr")
+		if q.Status == "Completed" && q.Protocol == "torrent" {
+			go u.HandleCompleted(q.Title, "Sonarr")
 		} else {
-			u.DeLogf("Sonarr: %v (%d%%): %v (Ep: %v)", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 		}
 	}
 }
@@ -143,10 +156,10 @@ func (u *UnpackerPoller) CheckRadarrQueue() {
 	u.RadarrQ.RLock()
 	defer u.RadarrQ.RUnlock()
 	for _, q := range u.RadarrQ.List {
-		if q.Status == "Completed" {
-			u.HandleCompleted(q.Title, "Radarr")
+		if q.Status == "Completed" && q.Protocol == "torrent" {
+			go u.HandleCompleted(q.Title, "Radarr")
 		} else {
-			u.DeLogf("Radarr: %v (%d%%): %v", q.Status, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			u.DeLogf("Radarr: %s (%s:%d%%): %v", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 		}
 	}
 }
@@ -161,12 +174,13 @@ func (u *UnpackerPoller) HandleCompleted(name, app string) {
 	path := filepath.Join(d.SavePath, d.Name)
 	files := FindRarFiles(path)
 	u.History.RLock()
-	defer u.History.RUnlock()
-	if _, ok := u.History.Map[name]; !ok && d.IsFinished {
+	_, ok := u.History.Map[name]
+	u.History.RUnlock()
+	if !ok && d.IsFinished {
 		if len(files) > 0 {
 			log.Printf("%v: Found %v extractable item(s) in Deluge: %v ", app, len(files), name)
 			u.CreateStatus(name, path, app, files)
-			go u.extractFiles(name, path, files)
+			u.extractFiles(name, path, files)
 		} else {
 			u.DeLogf("%v: Completed Item still in Queue: %v (no extractable files found)", app, name)
 		}

@@ -81,10 +81,10 @@ func (u *UnpackerPoller) PollChange() {
 
 // CheckExtractDone checks if an extracted item has been imported.
 func (u *UnpackerPoller) CheckExtractDone() {
-	u.History.Lock()
+	u.History.RLock()
 
 	defer func() {
-		u.History.Unlock()
+		u.History.RUnlock()
 		ec := u.eCount()
 		log.Printf("Extract Statuses: %d extracting, %d queued, "+
 			"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
@@ -96,49 +96,62 @@ func (u *UnpackerPoller) CheckExtractDone() {
 		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
 			time.Since(data.Updated).Round(time.Second))
 
-		switch elapsed := time.Since(data.Updated); {
-		case data.Status >= DELETED && elapsed >= u.DeleteDelay.Duration*2:
+		switch {
+		case data.Status >= DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
-			u.History.Finished++
-
-			log.Printf("%v: Finished, Removing History: %v", data.App, name)
-			delete(u.History.Map, name)
+			go u.finishItem(data.App, name)
 		case data.Status < EXTRACTED || data.Status > IMPORTED:
-			// Only process items that have finished extraction and are not deleted.
-			continue
+			continue // Only process items that have finished extraction and are not deleted.
+
 		case data.App == "Sonarr":
-			item := u.getSonarQitem(name)
-			if item.Status != "" {
-				u.DeLogf("Sonarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
-				continue
-			}
-
-			if item.Protocol != torrent && item.Protocol != "" {
-				continue
-			}
-
-			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
-				data.Status = s
-				data.Updated = time.Now()
-				u.History.Map[name] = data
-			}
+			go u.handleSonarr(data, name)
 		case data.App == "Radarr":
-			item := u.getRadarQitem(name)
-			if item.Status != "" {
-				u.DeLogf("Radarr Item Waiting For Import (%s): %v -> %v", item.Protocol, name, item.Status)
-				continue
-			}
-
-			if item.Protocol != torrent && item.Protocol != "" {
-				continue
-			}
-
-			if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, elapsed); s != data.Status {
-				data.Status = s
-				data.Updated = time.Now()
-				u.History.Map[name] = data
-			}
+			go u.handleRadarr(data, name)
 		}
+	}
+}
+
+func (u *UnpackerPoller) finishItem(app, name string) {
+	u.History.Lock()
+	defer u.History.Unlock()
+
+	u.History.Finished++
+
+	log.Printf("%v: Finished, Removing History: %v", app, name)
+	delete(u.History.Map, name)
+}
+
+func (u *UnpackerPoller) handleRadarr(data Extracts, name string) {
+	u.History.Lock()
+	defer u.History.Unlock()
+
+	if item := u.getRadarQitem(name); item.Status != "" {
+		u.DeLogf("%s Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+		return
+	} else if item.Protocol != torrent && item.Protocol != "" {
+		return // We only want torrents.
+	}
+
+	if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, time.Since(data.Updated)); s != data.Status {
+		data.Status, data.Updated = s, time.Now()
+		u.History.Map[name] = data
+	}
+}
+
+func (u *UnpackerPoller) handleSonarr(data Extracts, name string) {
+	u.History.Lock()
+	defer u.History.Unlock()
+
+	if item := u.getSonarQitem(name); item.Status != "" {
+		u.DeLogf("%s Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+		return
+	} else if item.Protocol != torrent && item.Protocol != "" {
+		return // We only want torrents.
+	}
+
+	if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, time.Since(data.Updated)); s != data.Status {
+		data.Status, data.Updated = s, time.Now()
+		u.History.Map[name] = data
 	}
 }
 

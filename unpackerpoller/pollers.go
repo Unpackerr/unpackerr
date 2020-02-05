@@ -99,10 +99,9 @@ func (u *UnpackerPoller) CheckExtractDone() {
 		switch {
 		case data.Status >= DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
-			go u.finishItem(data.App, name)
+			go u.finishFinished(data.App, name)
 		case data.Status < EXTRACTED || data.Status > IMPORTED:
 			continue // Only process items that have finished extraction and are not deleted.
-
 		case data.App == "Sonarr":
 			go u.handleSonarr(data, name)
 		case data.App == "Radarr":
@@ -111,7 +110,7 @@ func (u *UnpackerPoller) CheckExtractDone() {
 	}
 }
 
-func (u *UnpackerPoller) finishItem(app, name string) {
+func (u *UnpackerPoller) finishFinished(app, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
@@ -127,7 +126,7 @@ func (u *UnpackerPoller) handleRadarr(data Extracts, name string) {
 
 	if item := u.getRadarQitem(name); item.Status != "" {
 		u.DeLogf("%s Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
-		return
+		return // We only want finished items.
 	} else if item.Protocol != torrent && item.Protocol != "" {
 		return // We only want torrents.
 	}
@@ -144,7 +143,7 @@ func (u *UnpackerPoller) handleSonarr(data Extracts, name string) {
 
 	if item := u.getSonarQitem(name); item.Status != "" {
 		u.DeLogf("%s Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
-		return
+		return // We only want finished items.
 	} else if item.Protocol != torrent && item.Protocol != "" {
 		return // We only want torrents.
 	}

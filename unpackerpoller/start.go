@@ -75,9 +75,7 @@ func Start() (err error) {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
-	if u.Deluge, err = deluge.New(*u.Config.Deluge); err != nil {
-		return err // TODO: keep trying, do not exit.
-	}
+	u.Deluge = GetDelugeConnection(u.Config.Deluge)
 
 	go u.Run()
 	defer u.Stop()
@@ -85,6 +83,21 @@ func Start() (err error) {
 	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
 
 	return nil
+}
+
+// GetDelugeConnection keeps trying to make a connection to Deluge every 5 seconds.
+func GetDelugeConnection(config *deluge.Config) *deluge.Deluge {
+	for {
+		d, err := deluge.New(*config)
+		if err != nil {
+			log.Println("[ERROR] connecting to Deluge, still trying!", err)
+			time.Sleep(5 * time.Second)
+
+			continue
+		}
+
+		return d
+	}
 }
 
 // Run starts the go routines and waits for an exit signal.

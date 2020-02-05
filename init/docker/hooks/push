@@ -4,8 +4,6 @@
 # This is part of Application Builder.
 # https://github.com/golift/application-builder
 
-set -e -o pipefail
-
 pushd ../..
 source .metadata.sh
 popd

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/deluge"
 	"golift.io/starr"
 )
@@ -12,9 +13,9 @@ import (
 // Config defines the configuration data used to start the application.
 type Config struct {
 	Debug              bool           `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
-	Interval           starr.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout            starr.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	DeleteDelay        starr.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Interval           cnfg.Duration  `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout            cnfg.Duration  `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay        cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	ConcurrentExtracts uint           `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
 	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
 	Sonarr             *starr.Config  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`

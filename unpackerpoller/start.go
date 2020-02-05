@@ -22,7 +22,8 @@ const (
 	defaultConfFile    = "/etc/unpacker-poller/up.conf"
 	minimumInterval    = 10 * time.Second
 	minimumDeleteDelay = 1 * time.Second
-	defaultTimeout     = 10 * time.Second
+	defaultTimeout     = 20 * time.Second
+	reconnectWait      = 5 * time.Second
 )
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -31,7 +32,7 @@ func New() *UnpackerPoller {
 	u := &UnpackerPoller{
 		Flags: &Flags{ConfigFile: defaultConfFile},
 		Config: &Config{
-			Timeout: starr.Duration{Duration: defaultTimeout},
+			Timeout: cnfg.Duration{Duration: defaultTimeout},
 			Radarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
 			Sonarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
 			Lidarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
@@ -45,7 +46,6 @@ func New() *UnpackerPoller {
 		SigChan: make(chan os.Signal),
 	}
 	u.Config.Deluge.DebugLog = u.DeLogf
-
 	return u
 }
 
@@ -59,7 +59,7 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
+	log.Printf("Unpacker Poller v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
 	if err := cnfgfile.Unmarshal(&u.Config, u.ConfigFile); err != nil {
 		return err
@@ -91,7 +91,7 @@ func GetDelugeConnection(config *deluge.Config) *deluge.Deluge {
 		d, err := deluge.New(*config)
 		if err != nil {
 			log.Println("[ERROR] connecting to Deluge, still trying!", err)
-			time.Sleep(5 * time.Second)
+			time.Sleep(reconnectWait)
 
 			continue
 		}

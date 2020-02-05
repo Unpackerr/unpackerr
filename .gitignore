@@ -5,10 +5,12 @@
 /unpacker-poller*.1
 /unpacker-poller*.deb
 /unpacker-poller*.rpm
+/unpacker-poller*.txz
 /unpacker-poller.*.arm
 /unpacker-poller.exe
 /unpacker-poller.*.macos
 /unpacker-poller.*.linux
+/unpacker-poller.*.freebsd
 /unpacker-poller.rb
 *.sha256
 /vendor

@@ -2,7 +2,7 @@
 
 -   formerly `unpacker-poller`
 
-# About
+## About
 
 This application runs as a daemon on your Deluge host. It checks for completed
 downloads and extracts them so Radarr and/or Sonarr may import them.
@@ -40,20 +40,20 @@ before I started getting data from the APIs. Once I realized I was able to match
 -   Copy the [example config file](examples/du.conf.example) from this repo (or find it in the container).
 -   Then grab the image from docker hub and run it using an overlay for the config file.
 ```
-docker pull golift/deluge-unpacker:stable
-docker run -d -v /your/config/du.conf:/etc/deluge-unpacker/du.conf golift/deluge-unpacker:stable
+docker pull golift/deluge-unpacker
+docker run -d -v /your/config/du.conf:/etc/deluge-unpacker/du.conf golift/deluge-unpacker
 docker logs <container id from docker run>
 ```
 
-#### Linux
+#### Linux / FreeBSD
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/deluge-unpacker/releases) page.
 -   These are new and barely tested. Feedback welcomed.
 -   Install it, edit config, start it.
 ```shell
-dpkg -i deluge-unpacker*.deb || rpm -Uvh deluge-unpacker*.rpm
+dpkg -i deluge-unpacker*.deb || rpm -Uvh deluge-unpacker*.rpm || pkg install deluge-unpacker*.txz
 edit /etc/deluge-unpacker/du.conf
-sudo systemctl restart deluge-unpacker
+sudo systemctl start deluge-unpacker || service deluge-unpacker start
 ```
 
 #### macOS
@@ -116,7 +116,7 @@ I use 60s on my server and it seems to be okay with around 600-800 transfers.
 ## TODO
 
 -   Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
--   Integrate `expvar`.
+-   Integrate `prometheus`.
 -   Tests. Maybe. Would likely have to refactor things into better interfaces.
 
 ## License

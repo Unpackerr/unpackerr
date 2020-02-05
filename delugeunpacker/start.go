@@ -158,9 +158,9 @@ func (u *UnpackerPoller) validateConfig() {
 		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
 
-	if u.ConcurrentExtracts < 1 {
-		u.ConcurrentExtracts = 1
-		u.DeLogf("Maximum Concurrent Extractions: %d", u.ConcurrentExtracts)
+	if u.Parallel < 1 {
+		u.Parallel = 1
+		u.DeLogf("Maximum Concurrent Extractions: %d", u.Parallel)
 	}
 
 	if u.Interval.Duration < minimumInterval {

@@ -94,7 +94,7 @@ func (u *UnpackerPoller) extractMayProceed(name string) bool {
 		}
 	}
 
-	if count < u.ConcurrentExtracts {
+	if count < u.Parallel {
 		u.History.Map[name] = Extracts{
 			Path:    u.History.Map[name].Path,
 			App:     u.History.Map[name].App,

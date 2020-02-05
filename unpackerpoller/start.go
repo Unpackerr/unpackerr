@@ -2,7 +2,6 @@ package unpackerpoller
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -10,10 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	"golift.io/cnfg"
+	"golift.io/cnfg/cnfgfile"
 	"golift.io/deluge"
 	"golift.io/starr"
 
-	"github.com/BurntSushi/toml"
+	"github.com/prometheus/common/version"
 	flg "github.com/spf13/pflag"
 )
 
@@ -23,9 +24,6 @@ const (
 	minimumDeleteDelay = 1 * time.Second
 	defaultTimeout     = 10 * time.Second
 )
-
-// Version of the application. Injected at build time.
-var Version = "development"
 
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
@@ -47,32 +45,45 @@ func New() *UnpackerPoller {
 		SigChan: make(chan os.Signal),
 	}
 	u.Config.Deluge.DebugLog = u.DeLogf
+
 	return u
 }
 
 // Start runs the app.
 func Start() (err error) {
 	log.SetFlags(log.LstdFlags)
+
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpacker-poller v%s\n", Version)
+		fmt.Printf("unpacker-poller v%s %s (branch: %s %s) \n", version.Version, version.BuildDate, version.Branch, version.Revision)
 		return nil // don't run anything else.
 	}
+
 	log.Printf("Unpacker Poller Starting! (PID: %v)", os.Getpid())
-	if _, err := u.ParseConfig(); err != nil {
+
+	if err := cnfgfile.Unmarshal(&u.Config, u.ConfigFile); err != nil {
 		return err
 	}
+
+	if _, err := cnfg.UnmarshalENV(&u.Config, "UP"); err != nil {
+		return err
+	}
+
 	u.validateConfig()
+
 	if u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
+
 	if u.Deluge, err = deluge.New(*u.Config.Deluge); err != nil {
-		return err
+		return err // TODO: keep trying, do not exit.
 	}
+
 	go u.Run()
 	defer u.Stop()
 	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
+
 	return nil
 }
 
@@ -83,10 +94,13 @@ func (u *UnpackerPoller) Run() {
 		// just make a second one if you want to poller moar.
 		return
 	}
+
 	u.StopChan = make(chan bool)
+	ticker := time.NewTicker(u.Interval.Duration)
+
 	go u.PollChange() // This has its own ticker that runs every minute.
 	u.PollAllApps()   // Run all pollers once at startup.
-	ticker := time.NewTicker(u.Interval.Duration)
+
 	for {
 		select {
 		case <-ticker.C:
@@ -102,6 +116,7 @@ func (u *UnpackerPoller) Stop() {
 	if u.StopChan != nil {
 		close(u.StopChan)
 	}
+
 	// Arbitrary, just give the two routines time to bail.
 	// This wont work if they're in the middle of something.. oh well.
 	time.Sleep(100 * time.Millisecond)
@@ -113,22 +128,12 @@ func (u *UnpackerPoller) ParseFlags() *UnpackerPoller {
 		fmt.Println("Usage: unpacker-poller [--config=filepath] [--version]")
 		flg.PrintDefaults()
 	}
+
 	flg.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
 	flg.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
 	flg.Parse()
-	return u // so you can chain into ParseConfig.
-}
 
-// ParseConfig parses and returns our configuration data.
-func (u *UnpackerPoller) ParseConfig() (*UnpackerPoller, error) {
-	log.Printf("Reading Config File: %v", u.ConfigFile)
-	if buf, err := ioutil.ReadFile(u.ConfigFile); err != nil {
-		return u, err
-		// This is where the defaults in the config variable are overwritten.
-	} else if err := toml.Unmarshal(buf, &u.Config); err != nil {
-		return u, err
-	}
-	return u, nil
+	return u // so you can chain into ParseConfig.
 }
 
 // validateConfig makes sure config file values are ok.
@@ -137,10 +142,12 @@ func (u *UnpackerPoller) validateConfig() {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
+
 	if u.ConcurrentExtracts < 1 {
 		u.ConcurrentExtracts = 1
 		u.DeLogf("Maximum Concurrent Extractions: %d", u.ConcurrentExtracts)
 	}
+
 	if u.Interval.Duration < minimumInterval {
 		u.Interval.Duration = minimumInterval
 		u.DeLogf("Minimum Interval: %v", minimumInterval.String())
@@ -150,25 +157,33 @@ func (u *UnpackerPoller) validateConfig() {
 // PollAllApps Polls Deluge, Sonarr and Radarr. All at the same time.
 func (u *UnpackerPoller) PollAllApps() {
 	var wg sync.WaitGroup
+
 	if u.Sonarr.APIKey != "" {
 		wg.Add(1)
+
 		go func() {
 			if err := u.PollSonarr(); err != nil {
 				log.Printf("[ERROR] Sonarr: %v", err)
 			}
+
 			wg.Done()
 		}()
 	}
+
 	if u.Radarr.APIKey != "" {
 		wg.Add(1)
+
 		go func() {
 			if err := u.PollRadarr(); err != nil {
 				log.Printf("[ERROR] Radarr: %v", err)
 			}
+
 			wg.Done()
 		}()
 	}
+
 	wg.Add(1)
+
 	go func() {
 		if err := u.PollDeluge(); err != nil {
 			log.Printf("[ERROR] Deluge: %v", err)
@@ -177,8 +192,10 @@ func (u *UnpackerPoller) PollAllApps() {
 				log.Printf("Deluge Authentication Error: %v", err)
 			}
 		}
+
 		wg.Done()
 	}()
+
 	wg.Wait()
 }
 

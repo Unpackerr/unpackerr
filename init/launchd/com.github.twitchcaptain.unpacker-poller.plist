@@ -3,7 +3,7 @@
 <plist version="1.0">
     <dict>
         <key>Label</key>
-        <string>com.github.davidnewhall.unpacker-poller</string>
+        <string>com.github.twitchcaptain.unpacker-poller</string>
         <key>ProgramArguments</key>
         <array>
             <string>/usr/local/bin/unpacker-poller</string>

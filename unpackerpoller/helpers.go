@@ -20,6 +20,7 @@ func getFileList(path string) (files []string) {
 	} else {
 		log.Println("Error reading path", path, err.Error())
 	}
+
 	return
 }
 
@@ -27,18 +28,21 @@ func getFileList(path string) (files []string) {
 // Finds new files in a file list from a path. ie. those we extracted.
 func difference(slice1 []string, slice2 []string) (diff []string) {
 	for _, s2 := range slice2 {
-		found := false
+		var found bool
+
 		for _, s1 := range slice1 {
 			if s1 == s2 {
 				found = true
 				break
 			}
 		}
+
 		if !found {
 			// String not found.
 			diff = append(diff, s2)
 		}
 	}
+
 	return diff
 }
 
@@ -52,13 +56,16 @@ func FindRarFiles(path string) []string {
 	if err != nil {
 		return nil
 	}
-	// Check (save) if the current path has any rar files.
+
 	var hasrar bool
+
+	var files []string
+
+	// Check (save) if the current path has any rar files.
 	if r, err := filepath.Glob(filepath.Join(path, "*.rar")); err == nil && len(r) > 0 {
 		hasrar = true
 	}
 
-	var files []string
 	for _, file := range fileList {
 		switch lowerName := strings.ToLower(file.Name()); {
 		case file.IsDir(): // Recurse.
@@ -79,6 +86,7 @@ func FindRarFiles(path string) []string {
 			files = append(files, filepath.Join(path, file.Name()))
 		}
 	}
+
 	return files
 }
 
@@ -86,7 +94,9 @@ func FindRarFiles(path string) []string {
 // Returns the new file paths.
 func (u *UnpackerPoller) moveFiles(fromPath string, toPath string) ([]string, error) {
 	files := getFileList(fromPath)
+
 	var keepErr error
+
 	for i, file := range files {
 		newFile := filepath.Join(toPath, filepath.Base(file))
 		if err := os.Rename(file, newFile); err != nil {
@@ -95,15 +105,19 @@ func (u *UnpackerPoller) moveFiles(fromPath string, toPath string) ([]string, er
 			// keep trying.
 			continue
 		}
+
 		u.DeLogf("Renamed File: %v -> %v", file, newFile)
+
 		files[i] = newFile
 	}
+
 	if errr := os.Remove(fromPath); errr != nil {
 		log.Printf("Error Removing Folder: %v: %v", fromPath, errr.Error())
-		// If we made it this far, it's ok.
 	} else {
+		// If we made it this far, it's ok.
 		u.DeLogf("Removed Folder: %v", fromPath)
 	}
+
 	// Since this is the last step, we tried to rename all the files, bubble the
 	// os.Rename error up, so it gets flagged as failed. It may have worked, but
 	// it should get attention.
@@ -111,17 +125,15 @@ func (u *UnpackerPoller) moveFiles(fromPath string, toPath string) ([]string, er
 }
 
 // Deletes extracted files after Sonarr/Radarr imports them.
-func deleteFiles(files []string) error {
-	var keepErr error
+func deleteFiles(files []string) {
 	for _, file := range files {
 		if err := os.Remove(file); err != nil {
-			keepErr = err
 			log.Printf("Error Deleting %v: %v", file, err.Error())
 			continue
 		}
+
 		log.Println("Deleted:", file)
 	}
-	return keepErr
 }
 
 /*
@@ -133,11 +145,13 @@ func deleteFiles(files []string) error {
 func (u *UnpackerPoller) getSonarQitem(name string) (s starr.SonarQueue) {
 	u.SonarrQ.RLock()
 	defer u.SonarrQ.RUnlock()
+
 	for i := range u.SonarrQ.List {
 		if u.SonarrQ.List[i].Title == name {
 			return *u.SonarrQ.List[i]
 		}
 	}
+
 	return s
 }
 
@@ -145,11 +159,13 @@ func (u *UnpackerPoller) getSonarQitem(name string) (s starr.SonarQueue) {
 func (u *UnpackerPoller) getRadarQitem(name string) (s starr.RadarQueue) {
 	u.RadarrQ.RLock()
 	defer u.RadarrQ.RUnlock()
+
 	for i := range u.RadarrQ.List {
 		if u.RadarrQ.List[i].Title == name {
 			return *u.RadarrQ.List[i]
 		}
 	}
+
 	return s
 }
 
@@ -157,10 +173,12 @@ func (u *UnpackerPoller) getRadarQitem(name string) (s starr.RadarQueue) {
 func (u *UnpackerPoller) getXfer(name string) (d deluge.XferStatusCompat) {
 	u.Xfers.RLock()
 	defer u.Xfers.RUnlock()
+
 	for _, data := range u.Xfers.Map {
 		if data.Name == name {
 			return *data
 		}
 	}
+
 	return d
 }

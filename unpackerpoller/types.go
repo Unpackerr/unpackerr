@@ -17,9 +17,9 @@ type Config struct {
 	DeleteDelay        starr.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	ConcurrentExtracts uint           `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
 	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
-	Sonarr             *starr.Config  `json:"sonarr,_omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,_omitempty"`
-	Radarr             *starr.Config  `json:"radarr,_omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,_omitempty"`
-	Lidarr             *starr.Config  `json:"lidarr,_omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,_omitempty"`
+	Sonarr             *starr.Config  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
+	Radarr             *starr.Config  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Lidarr             *starr.Config  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -35,7 +35,7 @@ const (
 	EXTRACTED
 	IMPORTED
 	DELETING
-	DELETEFAILED
+	DELETEFAILED // unused
 	DELETED
 )
 
@@ -44,6 +44,7 @@ func (status ExtractStatus) String() string {
 	if status > DELETED {
 		return "Unknown"
 	}
+
 	return []string{
 		// The order must not be be faulty.
 		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",

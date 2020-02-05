@@ -20,6 +20,7 @@ import (
 func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []string) {
 	u.History.Lock()
 	defer u.History.Unlock()
+
 	u.History.Map[name] = Extracts{
 		Path:    path,
 		App:     app,
@@ -32,7 +33,9 @@ func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []str
 func (u *UnpackerPoller) eCount() (e eCounters) {
 	u.History.RLock()
 	defer u.History.RUnlock()
+
 	e.finished = u.Finished
+
 	for _, r := range u.History.Map {
 		switch r.Status {
 		case QUEUED:
@@ -49,6 +52,7 @@ func (u *UnpackerPoller) eCount() (e eCounters) {
 			e.imported++
 		}
 	}
+
 	return
 }
 
@@ -56,11 +60,13 @@ func (u *UnpackerPoller) eCount() (e eCounters) {
 func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileList []string) {
 	u.History.Lock()
 	defer u.History.Unlock()
+
 	if _, ok := u.History.Map[name]; !ok {
 		// .. this only happens if you mess up in the code.
 		log.Println("[ERROR] Unable to update missing History for", name)
 		return
 	}
+
 	u.History.Map[name] = Extracts{
 		Path:    u.History.Map[name].Path,
 		App:     u.History.Map[name].App,
@@ -74,16 +80,20 @@ func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileLis
 func (u *UnpackerPoller) extractMayProceed(name string) bool {
 	u.History.Lock()
 	defer u.History.Unlock()
-	if u.History.Map[name].Updated.Add(time.Minute).After(time.Now()) {
+
+	if time.Since(u.History.Map[name].Updated) < time.Minute {
 		// Item must be queued for at least 1 minute to prevent Deluge races.
 		return false
 	}
+
 	var count uint
+
 	for _, r := range u.History.Map {
 		if r.Status == EXTRACTING {
 			count++
 		}
 	}
+
 	if count < u.ConcurrentExtracts {
 		u.History.Map[name] = Extracts{
 			Path:    u.History.Map[name].Path,
@@ -92,30 +102,36 @@ func (u *UnpackerPoller) extractMayProceed(name string) bool {
 			Status:  EXTRACTING,
 			Updated: time.Now(),
 		}
+
 		return true
 	}
+
 	return false
 }
 
 // Extracts rar archives with history updates, and some meta data display.
 func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	if len(archives) == 1 {
 		log.Printf("Extract Enqueued: (1 file) - %v", name)
 	} else {
 		log.Printf("Extract Group Enqueued: %d file(s) - %v", len(archives), name)
 	}
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	// This works because extractMayProceed has a lock on the checking and setting of the value.
 	for !u.extractMayProceed(name) {
 		time.Sleep(time.Duration(rand.Float64()) * time.Second)
 	}
 
 	log.Printf("Extract Starting (%d active): %d file(s) - %v", u.eCount().extracting, len(archives), name)
+
 	// Extract into a temporary path so Sonarr doesn't import episodes prematurely.
 	tmpPath := path + "_unpacker"
 	if err := os.MkdirAll(tmpPath, 0755); err != nil {
 		log.Println("Extract Error: Creating temporary extract folder:", err.Error())
 		u.UpdateStatus(name, EXTRACTFAILED, nil)
+
 		return
 	}
 
@@ -126,14 +142,17 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 	for i, file := range archives {
 		fileStart := time.Now()
 		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
+
 		if err := rar.RarExtractor(file, tmpPath); err != nil {
 			log.Printf("Extract Error: [%d/%d] %v to %v (%v elapsed): %v",
 				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
+
 			return
 		}
 
 		newFiles := difference(beforeFiles, getFileList(tmpPath))
+
 		log.Printf("Extract Complete: [%d/%d] %v (%v elapsed, %d files)",
 			i+1, len(archives), file, time.Since(fileStart).Round(time.Second), len(newFiles))
 
@@ -142,14 +161,18 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 			// Do this now, instead of re-queuing, so subs are imported.
 			if strings.HasSuffix(file, ".rar") {
 				log.Printf("Extracted RAR Archive, Extracting Additional File: %v", file)
+
 				if err := rar.RarExtractor(file, tmpPath); err != nil {
 					log.Printf("Extract Error: [%d/%d](extra) %v to %v (%v elapsed): %v",
 						i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 					u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
+
 					return
 				}
+
 				log.Printf("Extract Complete: [%d/%d](extra) %v (%v elapsed)",
 					i+1, len(archives), file, time.Since(fileStart).Round(time.Second))
+
 				extras++
 			}
 		}
@@ -161,6 +184,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
 			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
 		u.UpdateStatus(name, EXTRACTFAILED, newFiles)
+
 		return
 	}
 

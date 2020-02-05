@@ -11,7 +11,7 @@ HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
 DESC="Extracts Deluge downloads so Radarr or Sonarr may import them."
-GOLANGCI_LINT_ARGS="--enable-all -D gochecknoglobals -D lll"
+GOLANGCI_LINT_ARGS="--enable-all -D gochecknoglobals -D lll -D gomnd"
 # Example must exist at examples/$CONFIG_FILE.example
 CONFIG_FILE="up.conf"
 LICENSE="MIT"
@@ -25,12 +25,10 @@ export BINARY GHUSER HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE LIC
 # Fix the repo if it doesn't match the binary name.
 # Provide a better URL if one exists.
 
-# Used as go import path in docker and homebrew builds.
-IMPORT_PATH="github.com/${GHUSER}/${BINARY}"
 # Used for source links and wiki links.
-SOURCE_URL="https://${IMPORT_PATH}"
+SOURCE_URL="https://${GHUSER}/${BINARY}/"
 # Used for documentation links.
-URL="https://github.com/${GHUSER}/${BINARY}"
+URL="${SOURCE_URL}"
 
 # This parameter is passed in as -X to go build. Used to override the Version variable in a package.
 # This makes a path like github.com/user/hello-world/helloworld.Version=1.3.3
@@ -45,8 +43,11 @@ ITERATION=$(git rev-list --count --all || echo 0)
 DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 COMMIT="$(git rev-parse --short HEAD || echo 0)"
 
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD || echo unknown)"
+BRANCH="${TRAVIS_BRANCH:-${GIT_BRANCH}}"
+
 # Used by homebrew downloads.
 #SOURCE_PATH=https://codeload.${IMPORT_PATH}/tar.gz/v${VERSION}
 SOURCE_PATH=https://golift.io/${BINARY}/archive/v${VERSION}.tar.gz
 
-export IMPORT_PATH SOURCE_URL URL VERSION_PATH VVERSION VERSION ITERATION DATE COMMIT SOURCE_PATH
+export SOURCE_URL URL VERSION_PATH VVERSION VERSION ITERATION DATE BRANCH COMMIT SOURCE_PATH

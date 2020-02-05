@@ -27,7 +27,6 @@ before_script:
   - openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in .secret_files.tar.enc -out .secret_files.tar -d
   - tar -xf .secret_files.tar
   - source .metadata.sh
-  - make vendor
 script:
   # Test Go and Docker.
   - make test

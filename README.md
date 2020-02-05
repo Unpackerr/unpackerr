@@ -60,8 +60,7 @@ sudo systemctl start deluge-unpacker || service deluge-unpacker start
 
 -   Use homebrew.
 ```shell
-brew tap golift/mugs
-brew install deluge-unpacker
+brew install golift/mugs/deluge-unpacker
 ```
 -   Edit config file at `/etc/deluge-unpacker/du.conf`
 -   Start it

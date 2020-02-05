@@ -19,6 +19,6 @@ require (
 	golift.io/cnfg v0.0.5
 	golift.io/deluge v0.9.2
 	golift.io/rar v0.0.1
-	golift.io/starr v0.9.1
+	golift.io/starr v0.9.2-0.20200205201755-6574db1243e4
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )

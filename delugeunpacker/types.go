@@ -16,7 +16,7 @@ type Config struct {
 	Interval           cnfg.Duration  `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout            cnfg.Duration  `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay        cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	ConcurrentExtracts uint           `json:"concurrent_extracts" toml:"concurrent_extracts" xml:"concurrent_extracts" yaml:"concurrent_extracts"`
+	ConcurrentExtracts uint           `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
 	Deluge             *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
 	Sonarr             *starr.Config  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr             *starr.Config  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`

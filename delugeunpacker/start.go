@@ -56,7 +56,8 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("deluge-unpacker v%s %s (branch: %s %s) \n", version.Version, version.BuildDate, version.Branch, version.Revision)
+		fmt.Printf("deluge-unpacker v%s %s (branch: %s %s) \n",
+			version.Version, version.BuildDate, version.Branch, version.Revision)
 		return nil // don't run anything else.
 	}
 

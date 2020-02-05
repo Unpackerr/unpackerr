@@ -19,7 +19,7 @@ delete_delay="10m"
 
 # How many files may be extracted in parallel. 1 works fine in most cases.
 # Do not wrap the number in quotes.
-concurrent_extracts=1
+parallel=1
 
 [deluge]
 url="http://127.0.0.1:8112"

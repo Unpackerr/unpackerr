@@ -131,7 +131,8 @@ func (u *UnpackerPoller) handleRadarr(data Extracts, name string) {
 		return // We only want torrents.
 	}
 
-	if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, time.Since(data.Updated)); s != data.Status {
+	if s := u.HandleExtractDone(data, name); s != data.Status {
+		// Status changed.
 		data.Status, data.Updated = s, time.Now()
 		u.History.Map[name] = data
 	}
@@ -148,24 +149,25 @@ func (u *UnpackerPoller) handleSonarr(data Extracts, name string) {
 		return // We only want torrents.
 	}
 
-	if s := u.HandleExtractDone(data.App, name, data.Status, data.Files, time.Since(data.Updated)); s != data.Status {
+	if s := u.HandleExtractDone(data, name); s != data.Status {
 		data.Status, data.Updated = s, time.Now()
 		u.History.Map[name] = data
 	}
 }
 
 // HandleExtractDone checks if files should be deleted.
-func (u *UnpackerPoller) HandleExtractDone(app, name string, status ExtractStatus, files []string, elapsed time.Duration) ExtractStatus {
-	switch {
-	case status != IMPORTED:
-		log.Printf("%v Imported: %v (delete in %v)", app, name, u.DeleteDelay)
+func (u *UnpackerPoller) HandleExtractDone(data Extracts, name string) ExtractStatus {
+	switch elapsed := time.Since(data.Updated); {
+	case data.Status != IMPORTED:
+		log.Printf("%v Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 		return IMPORTED
 	case elapsed >= u.DeleteDelay.Duration:
-		deleteFiles(files)
+		deleteFiles(data.Files)
 		return DELETED
 	default:
-		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v", app, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
-		return status
+		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v",
+			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
+		return data.Status
 	}
 }
 
@@ -178,7 +180,8 @@ func (u *UnpackerPoller) CheckSonarrQueue() {
 		if q.Status == "Completed" && q.Protocol == torrent {
 			go u.HandleCompleted(q.Title, "Sonarr")
 		} else {
-			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)",
+				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 		}
 	}
 }
@@ -192,7 +195,8 @@ func (u *UnpackerPoller) CheckRadarrQueue() {
 		if q.Status == "Completed" && q.Protocol == torrent {
 			go u.HandleCompleted(q.Title, "Radarr")
 		} else {
-			u.DeLogf("Radarr: %s (%s:%d%%): %v", q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			u.DeLogf("Radarr: %s (%s:%d%%): %v",
+				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 		}
 	}
 }

@@ -11,7 +11,7 @@ HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
 DESC="Extracts Deluge downloads so Radarr or Sonarr may import them."
-GOLANGCI_LINT_ARGS="--enable-all -D gochecknoglobals -D lll -D gomnd"
+GOLANGCI_LINT_ARGS="--enable-all -D gomnd"
 # Example must exist at examples/$CONFIG_FILE.example
 CONFIG_FILE="du.conf"
 LICENSE="MIT"

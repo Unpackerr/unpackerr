@@ -116,7 +116,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 	if len(archives) == 1 {
 		log.Printf("Extract Enqueued: (1 file) - %v", name)
 	} else {
-		log.Printf("Extract Group Enqueued: %d file(s) - %v", len(archives), name)
+		log.Printf("Extract Group Enqueued: %d files - %v", len(archives), name)
 	}
 
 	// This works because extractMayProceed has a lock on the checking and setting of the value.
@@ -124,7 +124,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 		time.Sleep(time.Duration(rand.Float64()) * time.Second)
 	}
 
-	log.Printf("Extract Starting (%d active): %d file(s) - %v", u.eCount().extracting, len(archives), name)
+	log.Printf("Extract Starting (%d active): %d files - %v", u.eCount().extracting, len(archives), name)
 
 	// Extract into a temporary path so Sonarr doesn't import episodes prematurely.
 	tmpPath := path + "_unpacker"
@@ -136,9 +136,27 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 	}
 
 	start := time.Now()
+	extras := u.processArchives(name, tmpPath, archives)
+
+	// Move the extracted files back into their original folder.
+	newFiles, err := u.moveFiles(tmpPath, path)
+	if err != nil {
+		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
+			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
+		u.UpdateStatus(name, EXTRACTFAILED, newFiles)
+
+		return
+	}
+
+	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
+		name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second))
+	u.UpdateStatus(name, EXTRACTED, newFiles)
+}
+
+// Extract one archive at a time, then check if it contained any more archives.
+func (u *UnpackerPoller) processArchives(name, tmpPath string, archives []string) int {
 	extras := 0
 
-	// Extract one archive at a time, then check if it contained any more archives.
 	for i, file := range archives {
 		fileStart := time.Now()
 		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
@@ -148,7 +166,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 
-			return
+			return extras
 		}
 
 		newFiles := difference(beforeFiles, getFileList(tmpPath))
@@ -167,7 +185,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 						i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 					u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 
-					return
+					return extras
 				}
 
 				log.Printf("Extract Complete: [%d/%d](extra) %v (%v elapsed)",
@@ -178,17 +196,5 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 		}
 	}
 
-	// Move the extracted files back into their original folder.
-	newFiles, err := u.moveFiles(tmpPath, path)
-	if err != nil {
-		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
-			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
-		u.UpdateStatus(name, EXTRACTFAILED, newFiles)
-
-		return
-	}
-
-	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
-		name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second))
-	u.UpdateStatus(name, EXTRACTED, newFiles)
+	return extras
 }

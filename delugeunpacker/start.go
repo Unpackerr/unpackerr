@@ -63,11 +63,11 @@ func Start() (err error) {
 
 	log.Printf("Unpacker Poller v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
-	if err := cnfgfile.Unmarshal(&u.Config, u.ConfigFile); err != nil {
+	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 		return err
 	}
 
-	if _, err := cnfg.UnmarshalENV(&u.Config, "UP"); err != nil {
+	if _, err := cnfg.UnmarshalENV(u.Config, "DU"); err != nil {
 		return err
 	}
 

@@ -46,6 +46,7 @@ func New() *UnpackerPoller {
 		SigChan: make(chan os.Signal),
 	}
 	u.Config.Deluge.DebugLog = u.DeLogf
+
 	return u
 }
 

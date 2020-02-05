@@ -6,6 +6,6 @@
 if [ -x "/bin/systemctl" ]; then
   # Reload and restart - this starts the application as user nobody.
   /bin/systemctl daemon-reload
-  /bin/systemctl enable unpacker-poller
-  /bin/systemctl restart unpacker-poller
+  /bin/systemctl enable deluge-unpacker
+  /bin/systemctl restart deluge-unpacker
 fi

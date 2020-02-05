@@ -3,7 +3,7 @@
 # Powered by Application Builder: https://github.com/golift/application-builder
 
 # Must match the repo name to make things easy. Otherwise, fix some other paths.
-BINARY="unpacker-poller"
+BINARY="deluge-unpacker"
 # github username
 GHUSER="davidnewhall"
 # Github repo containing homebrew formula repo.
@@ -13,7 +13,7 @@ VENDOR="Go Lift"
 DESC="Extracts Deluge downloads so Radarr or Sonarr may import them."
 GOLANGCI_LINT_ARGS="--enable-all -D gochecknoglobals -D lll -D gomnd"
 # Example must exist at examples/$CONFIG_FILE.example
-CONFIG_FILE="up.conf"
+CONFIG_FILE="du.conf"
 LICENSE="MIT"
 # FORMULA is either 'service' or 'tool'. Services run as a daemon, tools do not.
 # This affects the homebrew formula (launchd) and linux packages (systemd).

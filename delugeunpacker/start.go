@@ -1,4 +1,4 @@
-package unpackerpoller
+package delugeunpacker
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defaultConfFile    = "/etc/unpacker-poller/up.conf"
+	defaultConfFile    = "/etc/deluge-unpacker/du.conf"
 	minimumInterval    = 10 * time.Second
 	minimumDeleteDelay = 1 * time.Second
 	defaultTimeout     = 20 * time.Second
@@ -55,7 +55,7 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpacker-poller v%s %s (branch: %s %s) \n", version.Version, version.BuildDate, version.Branch, version.Revision)
+		fmt.Printf("deluge-unpacker v%s %s (branch: %s %s) \n", version.Version, version.BuildDate, version.Branch, version.Revision)
 		return nil // don't run anything else.
 	}
 
@@ -138,7 +138,7 @@ func (u *UnpackerPoller) Stop() {
 // ParseFlags turns CLI args into usable data.
 func (u *UnpackerPoller) ParseFlags() *UnpackerPoller {
 	flg.Usage = func() {
-		fmt.Println("Usage: unpacker-poller [--config=filepath] [--version]")
+		fmt.Println("Usage: deluge-unpacker [--config=filepath] [--version]")
 		flg.PrintDefaults()
 	}
 

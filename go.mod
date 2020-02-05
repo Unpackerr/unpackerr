@@ -1,4 +1,4 @@
-module github.com/davidnewhall/unpacker-poller
+module github.com/davidnewhall/deluge-unpacker
 
 go 1.13
 

@@ -1,4 +1,4 @@
-# Unpacker Poller Example Configuration File
+# Deluge Unpacker Example Configuration File
 
 # [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
 # Recommend trying this so you know what it looks like. I personally leave it on.

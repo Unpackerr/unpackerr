@@ -7,6 +7,6 @@ if [ "$1" = "upgrade" ] || [ "$1" = "1" ] ; then
 fi
 
 if [ -x "/bin/systemctl" ]; then
-  /bin/systemctl stop unpacker-poller
-  /bin/systemctl disable unpacker-poller
+  /bin/systemctl stop deluge-unpacker
+  /bin/systemctl disable deluge-unpacker
 fi

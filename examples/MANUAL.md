@@ -1,10 +1,10 @@
-unpacker-poller(1) -- Utility to poll Deluge and Unpack files for tracking clients.
+deluge-unpacker(1) -- Utility to poll Deluge and Unpack files for tracking clients.
 ===
 
 SYNOPSIS
 ---
 
-`unpacker-poller -c /usr/local/etc/unpacker-poller/up.conf`
+`deluge-unpacker -c /etc/deluge-unpacker/du.conf`
 
 DESCRIPTION
 ---
@@ -17,11 +17,11 @@ deleting them.
 
 OPTIONS
 ---
-`unpacker-poller [-c <config file>] [-h] [-v]`
+`deluge-unpacker [-c <config file>] [-h] [-v]`
 
     -c, --config <file_path>
         Provide a configuration file.
-        Default: /usr/local/etc/unpacker-poller/up.conf
+        Default: /etc/deluge-unpacker/du.conf
 
     -v, --version
         Display version and exit.
@@ -49,5 +49,5 @@ AUTHOR
 
 LOCATION
 ---
-*   [github.com/davidnewhall/unpacker-poller](https://github.com/davidnewhall/unpacker-poller)
-*   /usr/local/bin/unpacker-poller
+*   [github.com/davidnewhall/deluge-unpacker](https://github.com/davidnewhall/deluge-unpacker)
+*   /usr/local/bin/deluge-unpacker

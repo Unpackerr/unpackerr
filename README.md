@@ -79,7 +79,7 @@ If you want a container that has a bit more to it, you can try a third party opt
 The container provided by golift is from scratch so it has nothing more than a binary
 and a config file (with our defaults).
 
-- **[@madcastsu](https://github.com/madcatsu) maintains an
+- **[@madcatsu](https://github.com/madcatsu) maintains an
 [Alpine Docker Container](https://hub.docker.com/r/madcatsu/deluge-unpacker-daemon)
 for Deluge Unpacker.**
 

@@ -25,11 +25,18 @@ the apps need to run on the same machine**; I've never tried anything else.
 
 ### Docker
 
-Several methods for Docker are described below.
+This project builds automatically in [Docker Cloud](https://hub.docker.com/r/golift/deluge-unpacker)
+and creates [ready-to-use multi-architecture images](https://hub.docker.com/r/golift/deluge-unpacker/tags).
+The `latest` tag is always a tagged release in GitHub. The `master` tag corresponds
+to the `master` branch in GitHub and may be broken.
+
+Use the methods below to install using Docker.
 
 #### unRAID (Docker)
 
--   Deluge Unpacker is available in the Community Applications on unRAID.
+-   Deluge Unpacker is available in the
+    [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/master/templates/deluge-unpacker.xml)
+    on unRAID.
 
 #### Docker Config File
 

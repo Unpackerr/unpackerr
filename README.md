@@ -25,6 +25,10 @@ Deluge Unpacker (this app) finds and extracts things.
 
 ### Docker
 
+#### unRAID (Docker)
+
+-   Deluge Unpacker is available in the Community Applications on unRAID.
+
 #### Docker Config File
 
 -   Copy the [example config file](examples/du.conf.example) from this repo (or find it in the container).
@@ -69,6 +73,7 @@ docker logs <container id from docker run>
 -   Download a package from the [Releases](https://github.com/davidnewhall/deluge-unpacker/releases) page.
 -   These are new and barely tested. Feedback welcomed.
 -   Install it, edit config, start it.
+
 ```shell
 dpkg -i deluge-unpacker*.deb || rpm -Uvh deluge-unpacker*.rpm || pkg install deluge-unpacker*.txz
 edit /etc/deluge-unpacker/du.conf
@@ -120,6 +125,8 @@ basic auth.
 If transfers are in a Warning or Error state they will not be extracted. Try
 the Force Recheck option in Deluge.
 
+Still having problems? [Let me know!](https://github.com/davidnewhall/deluge-unpacker/issues/new)
+
 ## Logic
 
 The application kicks up a go routine for Deluge and another for each of Radarr
@@ -143,8 +150,8 @@ before I started getting data from the APIs. Once I realized I was able to match
 
 While writing this, I kept finding Deluge unresponsive. After finding and inspecting
 the Deluge log file, I found that the app was running out of open files. Turns out
-this was causing a lot of issues on my server. I have a Mac. Check this out if you're
-in the same boat:
+this was causing a lot of issues on my server. Check this out if you're
+using a mac:
 [http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit](http://blog.mact.me/2014/10/22/yosemite-upgrade-changes-open-file-limit)
 
 Deluge takes a while to reply with a lot of transfers. Set the timeout to 30+s.

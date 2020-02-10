@@ -28,8 +28,8 @@ const (
 
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
-func New() *UnpackerPoller {
-	u := &UnpackerPoller{
+func New() *DelugeUnpacker {
+	u := &DelugeUnpacker{
 		Flags: &Flags{ConfigFile: defaultConfFile},
 		Config: &Config{
 			Timeout: cnfg.Duration{Duration: defaultTimeout},
@@ -61,7 +61,7 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	log.Printf("Unpacker Poller v%s Starting! (PID: %v)", version.Version, os.Getpid())
+	log.Printf("Deluge Unpacker v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 		return err
@@ -103,10 +103,10 @@ func GetDelugeConnection(config *deluge.Config) *deluge.Deluge {
 }
 
 // Run starts the go routines and waits for an exit signal.
-func (u *UnpackerPoller) Run() {
+// One poller wont run twice unless you get creative.
+// Just make a second one if you want to poller moar.
+func (u *DelugeUnpacker) Run() {
 	if u.StopChan != nil {
-		// one poller wont run twice unless you get creative.
-		// just make a second one if you want to poller moar.
 		return
 	}
 
@@ -127,7 +127,7 @@ func (u *UnpackerPoller) Run() {
 }
 
 // Stop brings the go routines to a halt.
-func (u *UnpackerPoller) Stop() {
+func (u *DelugeUnpacker) Stop() {
 	if u.StopChan != nil {
 		close(u.StopChan)
 	}
@@ -138,7 +138,7 @@ func (u *UnpackerPoller) Stop() {
 }
 
 // ParseFlags turns CLI args into usable data.
-func (u *UnpackerPoller) ParseFlags() *UnpackerPoller {
+func (u *DelugeUnpacker) ParseFlags() *DelugeUnpacker {
 	flg.Usage = func() {
 		fmt.Println("Usage: deluge-unpacker [--config=filepath] [--version]")
 		flg.PrintDefaults()
@@ -152,7 +152,7 @@ func (u *UnpackerPoller) ParseFlags() *UnpackerPoller {
 }
 
 // validateConfig makes sure config file values are ok.
-func (u *UnpackerPoller) validateConfig() {
+func (u *DelugeUnpacker) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
@@ -170,7 +170,7 @@ func (u *UnpackerPoller) validateConfig() {
 }
 
 // PollAllApps Polls Deluge, Sonarr and Radarr. All at the same time.
-func (u *UnpackerPoller) PollAllApps() {
+func (u *DelugeUnpacker) PollAllApps() {
 	var wg sync.WaitGroup
 
 	if u.Sonarr.APIKey != "" {
@@ -215,7 +215,7 @@ func (u *UnpackerPoller) PollAllApps() {
 }
 
 // DeLogf writes Debug log lines.
-func (u *UnpackerPoller) DeLogf(msg string, v ...interface{}) {
+func (u *DelugeUnpacker) DeLogf(msg string, v ...interface{}) {
 	if u.Debug {
 		_ = log.Output(2, fmt.Sprintf("[DEBUG] "+msg, v...))
 	}

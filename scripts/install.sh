@@ -15,8 +15,11 @@
 # This is part of application-builder.
 # https://github.com/golift/application-builder
 
+# Set these.
 REPO=davidnewhall/deluge-unpacker
 BREW=golift/mugs/deluge-unpacker
+
+# Don't set these.
 LATEST=https://api.github.com/repos/${REPO}/releases/latest
 ISSUES=https://github.com/${REPO}/issues/new
 ARCH=$(uname -m)

@@ -17,7 +17,7 @@ import (
 */
 
 // CreateStatus for a newly-started extraction. It will also overwrite.
-func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []string) {
+func (u *DelugeUnpacker) CreateStatus(name, path string, app string, files []string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
@@ -30,7 +30,7 @@ func (u *UnpackerPoller) CreateStatus(name, path string, app string, files []str
 }
 
 // eCount returns the number of things happening.
-func (u *UnpackerPoller) eCount() (e eCounters) {
+func (u *DelugeUnpacker) eCount() (e eCounters) {
 	u.History.RLock()
 	defer u.History.RUnlock()
 
@@ -57,15 +57,16 @@ func (u *UnpackerPoller) eCount() (e eCounters) {
 }
 
 // UpdateStatus for an on-going tracked extraction.
-func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileList []string) {
-	u.History.Lock()
-	defer u.History.Unlock()
-
-	if _, ok := u.History.Map[name]; !ok {
+func (u *DelugeUnpacker) UpdateStatus(name string, status ExtractStatus, fileList []string) {
+	if !u.historyExists(name) {
 		// .. this only happens if you mess up in the code.
 		log.Println("[ERROR] Unable to update missing History for", name)
 		return
 	}
+
+	// Lock _after_ you run historyExists()
+	u.History.Lock()
+	defer u.History.Unlock()
 
 	u.History.Map[name] = Extracts{
 		Path:    u.History.Map[name].Path,
@@ -77,7 +78,7 @@ func (u *UnpackerPoller) UpdateStatus(name string, status ExtractStatus, fileLis
 }
 
 // Count the extracts, check if too many are active, then grant or deny another.
-func (u *UnpackerPoller) extractMayProceed(name string) bool {
+func (u *DelugeUnpacker) extractMayProceed(name string) bool {
 	u.History.Lock()
 	defer u.History.Unlock()
 
@@ -110,7 +111,7 @@ func (u *UnpackerPoller) extractMayProceed(name string) bool {
 }
 
 // Extracts rar archives with history updates, and some meta data display.
-func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
+func (u *DelugeUnpacker) extractFiles(name, path string, archives []string) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	if len(archives) == 1 {
@@ -154,7 +155,7 @@ func (u *UnpackerPoller) extractFiles(name, path string, archives []string) {
 }
 
 // Extract one archive at a time, then check if it contained any more archives.
-func (u *UnpackerPoller) processArchives(name, tmpPath string, archives []string) int {
+func (u *DelugeUnpacker) processArchives(name, tmpPath string, archives []string) int {
 	extras := 0
 
 	for i, file := range archives {

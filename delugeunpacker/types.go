@@ -71,8 +71,8 @@ type Flags struct {
 	ConfigFile string
 }
 
-// UnpackerPoller stores all the running data.
-type UnpackerPoller struct {
+// DelugeUnpacker stores all the running data.
+type DelugeUnpacker struct {
 	*Flags
 	*Config
 	*deluge.Deluge

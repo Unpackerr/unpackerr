@@ -339,10 +339,7 @@ test:
 # Used for Homebrew only. Other distros can create packages.
 install: man readme $(BINARY) plugins_darwin
 	@echo -  Done Building!  -
-	@echo -  Local installation with the Makefile is only supported on macOS.
-	@echo If you wish to install the application manually on Linux, check out the wiki: https://$(SOURCE_URL)/wiki/Installation
-	@echo -  Otherwise, build and install a package: make rpm -or- make deb
-	@echo See the Package Install wiki for more info: https://$(SOURCE_URL)/wiki/Package-Install
+	@echo -  Local installation with the Makefile is only supported on macOS (for Homebrew).
 	@[ "$(shell uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
 	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
 	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)

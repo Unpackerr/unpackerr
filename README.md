@@ -11,8 +11,7 @@ There are a handful of options out there for extracting and deleting files after
 Deluge downloads them. I just didn't care for any of them, so I wrote my own. I
 wanted a small single-binary with reasonable logging that can extract downloaded
 archives and clean up the mess after they've been imported. Why a separate binary
-instead of a Deluge plugin? Because I like Go more than Python and I wanted a fun
-project to work on over a weekend. At this point though, I'm weeks and weeks in.
+instead of a Deluge plugin? Because I like Go more than Python, but I do love Python!
 
 ## Installation
 
@@ -21,7 +20,8 @@ project to work on over a weekend. At this point though, I'm weeks and weeks in.
 **The download paths for Deluge, Sonarr and Radarr must all match!** In Docker,
 I just map everything to `/downloads` (in all four containers). You need to make
 sure all the apps _see_ the downloaded items in the same location. This is how
-Deluge Unpacker (this app) finds and extracts things.
+Deluge Unpacker (this app) finds and extracts things. **This _probably_ means all
+the apps need to run on the same machine**; I've never tried anything else.
 
 ### Docker
 
@@ -33,21 +33,22 @@ Several methods for Docker are described below.
 
 #### Docker Config File
 
--   Copy the [example config file](examples/du.conf.example) from this repo (or find it in the container).
+-   Copy the [example config file](examples/du.conf.example) from this repo.
 -   Then grab the image from docker hub and run it using an overlay for the config file.
 
 ```shell
 docker pull golift/deluge-unpacker
-docker run -d -v /your/config/du.conf:/etc/deluge-unpacker/du.conf golift/deluge-unpacker
+docker run -d -v /mnt/HostDownloads:/downloads -v /your/config/du.conf:/etc/deluge-unpacker/du.conf golift/deluge-unpacker
 docker logs <container id from docker run>
 ```
 
+
 #### Docker Env Variables
 
--   Instead of a config file, you may configure the docker container with environment
-    variables.
--   Any variable not passed, just takes the default.
--   Must pass in URL and API key for at least 1 of Sonarr or Radarr.
+-   Instead of a config file, you may configure the docker container
+    with environment variables.
+-   Any variable not provided takes the default.
+-   Must provide URL and API key for Sonarr or Radarr, or both.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
@@ -68,7 +69,7 @@ radarr.api_key|DU_RADARR_API_KEY|No Default. Provide URL and API key if you use 
 
 ```shell
 docker pull golift/deluge-unpacker
-docker run -d -e "DU_SONARR_URL=http://localhost:8989" -e "DU_SONARR_API_KEY=kjsdkasjdaksdj" golift/deluge-unpacker
+docker run -d -v /mnt/HostDownloads:/downloads -e "DU_SONARR_URL=http://localhost:8989" -e "DU_SONARR_API_KEY=kjsdkasjdaksdj" golift/deluge-unpacker
 docker logs <container id from docker run>
 ```
 
@@ -78,66 +79,56 @@ If you want a container that has a bit more to it, you can try a third party opt
 The container provided by golift is from scratch so it has nothing more than a binary
 and a config file (with our defaults).
 
-[@madcastsu](https://github.com/madcatsu) maintains an Alpine container for Deluge Unpacker.
-Available here: https://hub.docker.com/r/madcatsu/deluge-unpacker-daemon
+- **[@madcastsu](https://github.com/madcatsu) maintains an
+[Alpine Docker Container](https://hub.docker.com/r/madcatsu/deluge-unpacker-daemon)
+for Deluge Unpacker.**
 
-### Linux / FreeBSD
+### Linux and FreeBSD Install
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/deluge-unpacker/releases) page.
 -   Install it, edit config, start it.
 
+Example of the above in shell form:
+
 ```shell
-dpkg -i deluge-unpacker*.deb || rpm -Uvh deluge-unpacker*.rpm || pkg install deluge-unpacker*.txz
-edit /etc/deluge-unpacker/du.conf
-sudo systemctl start deluge-unpacker || service deluge-unpacker start
+wget -qO- https://raw.githubusercontent.com/davidnewhall/deluge-unpacker/master/scripts/install.sh | sudo sh
+
+nano /etc/deluge-unpacker/du.conf         # linux
+vi /usr/local/etc/deluge-unpacker/du.conf # freebsd
+
+sudo systemctl restart deluge-unpacker    # linux
+service deluge-unpacker start             # freebsd
 ```
 
-### macOS
+### macOS Install
 
 -   Use homebrew.
+-   Edit config file at `/usr/local/etc/deluge-unpacker/du.conf`
+-   Start it.
+-   Like this:
+
 ```shell
 brew install golift/mugs/deluge-unpacker
-```
--   Edit config file at `/etc/deluge-unpacker/du.conf`
--   Start it
-```shell
+vi /usr/local/etc/deluge-unpacker/du.conf
 brew services start deluge-unpacker
 ```
 
-### Manually
-
--   Setup a working Go build environment.
--   Build the app like any other Go app (or run `make`).
--   Copy the binary to `/usr/local/bin` (mac) or `/usr/bin` (linux)
--   Make a config folder: `sudo mkdir /usr/local/etc/deluge-unpacker` (mac) or `/etc/deluge-unpacker` (linux)
--   Copy the example config: `sudo cp du.conf.example /etc/deluge-unpacker/`
--   On macOS, copy the launchd file: `cp init/launchd/* ~/Library/LaunchAgents`
--   On Linux, copy the systemd unit: `sudo cp init/systemd/* /etc/systemd/system`
-
-After the app is installed, update your deluge, sonarr and radarr configuration
-in `/etc/deluge-unpacker/du.conf`. The app works without Sonarr or Radarr
-configs, but you should have at least one to make it useful.
-
--   Start the service, Linux: `sudo systemctl daemon-reload ; sudo systemctl restart deluge-unpacker`
--   Start the service, macOS: `launchctl load ~/Library/LaunchAgents/com.github.davidnewhall.deluge-unpacker.plist`
-
 ## Troubleshooting
 
-The `http_` config options are for basic http auth. Most users will need to
-leave these blank. I was using them to test my connection through an authenticated
-nginx proxy. I did not test with basic auth enabled in Sonarr/Radarr. They may
-or may not work for that. If you need different features, open an Issue and let me
-know. Generally, you'll point all endpoints at localhost, without nginx and without
-basic auth.
+Make sure your Downloads location matches on all your applications!
 
--   Log file is (hopefully) at `/usr/local/var/log/deluge-unpacker.log` (it's in syslog or messages on Linux)
+Log files:
+
+-   Linux: `/var/log/messages` or `/var/log/syslog` (w/ default syslog)
+-   FreeBSD: `/var/log/syslog` (w/ default syslog)
+-   macOS: `/usr/local/var/log/deluge-unpacker.log`
 -   On macOS, Deluge log is at `~/.config/deluge/deluged.log`
--   This works on Linux, others use it, but I personally run it on a mac. Feedback welcomed.
 
-If transfers are in a Warning or Error state they will not be extracted. Try
-the Force Recheck option in Deluge.
+If transfers are in a Warning or Error state they will not be extracted.
+Try the Force Recheck option in Deluge.
 
-Still having problems? [Let me know!](https://github.com/davidnewhall/deluge-unpacker/issues/new)
+Still having problems?
+[Let me know!](https://github.com/davidnewhall/deluge-unpacker/issues/new)
 
 ## Logic
 
@@ -171,9 +162,19 @@ I use 60s on my server and it seems to be okay with around 600-800 transfers.
 
 ## TODO
 
+Honestly I don't have a lot of time for this app and these things are just a wish list.
+I'm surprised making this work with Deluge 2 was simple and making it with work with Radarr
+and Sonarr v3 has been "easy" too. If these tweaks stay easy, I'll keep making them, and
+keep making this app useful. I didn't expect so many people to want to use this, but I'm
+happy it's working so well!
+
 -   Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
 -   Integrate `prometheus`.
 -   Tests. Maybe. Would likely have to refactor things into better interfaces.
+
+## Contributing
+
+Yes, please.
 
 ## License
 

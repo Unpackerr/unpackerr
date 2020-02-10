@@ -14,38 +14,57 @@ archives and clean up the mess after they've been imported. Why a separate binar
 instead of a Deluge plugin? Because I like Go more than Python and I wanted a fun
 project to work on over a weekend. At this point though, I'm weeks and weeks in.
 
-## Logic
-
-The application kicks up a go routine for Deluge and another for each of Radarr
-and Sonarr (if you include configs for them). These go routines just poll their
-respective applications for transfers/queued items. The items are stored. The
-interval of these pollers is set in the config file. 2-10 minutes is good.
-
-Another go routine checks (the internal data) for completed downloads. When it
-finds an item in Deluge that matches an item in Sonarr or Radarr the download
-location is checked for a `.rar` file. If an extractable archive exists, and
-**Sonarr/Radarr have `status=Completed` from Deluge** this application will
-extract the file. Files are extracted to a temporary folder, and then moved back
-into the download location for Completed Download Handling to import them. When
-the item falls out of the (Radarr/Sonarr) queue, the extracted files are removed.
-
-Tags are currently mentioned, but nothing uses them. I figured I would match tags
-before I started getting data from the APIs. Once I realized I was able to match
-`d.Name` with `q.Title` I didn't need to use tags. It all works out automagically.
-
 ## Installation
 
-#### Docker
+### Setup
+
+**The download paths for Deluge, Sonarr and Radarr must all match!** In Docker,
+I just map everything to `/downloads` (in all four containers). You need to make
+sure all the apps _see_ the downloaded items in the same location. This is how
+Deluge Unpacker (this app) finds and extracts things.
+
+### Docker
+
+#### Docker Config File
 
 -   Copy the [example config file](examples/du.conf.example) from this repo (or find it in the container).
 -   Then grab the image from docker hub and run it using an overlay for the config file.
-```
+
+```shell
 docker pull golift/deluge-unpacker
 docker run -d -v /your/config/du.conf:/etc/deluge-unpacker/du.conf golift/deluge-unpacker
 docker logs <container id from docker run>
 ```
 
-#### Linux / FreeBSD
+#### Docker Env Variables
+
+-   Instead of a config file, you may configure the docker container with environment
+    variables.
+
+|config|ENV|default / note|
+|---|---|---|
+debug|DU_DEBUG|`false` Turns on more logs
+interval|DU_INTERVAL|`4m` How often apps are polled
+timeout|DU_TIMEOUT|`10s` Sonarr and Radarr Timeout (all apps default)
+delete_delay|DU_DELETE_DELAY|`10m` How long after import extracts are deleted
+parallel|DU_PARALLEL|`1` Concurrent extractions
+deluge.url|DU_DELUGE_URL|`http://127.0.0.1:8112` Deluge URL, required!
+deluge.password|DU_DELUGE_PASSWORD|`deluge` Deluge password **_must_** be set.
+deluge.timeout|DU_DELUGE_TIMEOUT|`1m` Deluge API can be slow with lots of downloads
+sonarr.url|DU_SONARR_URL|Something like: `http://localhost:8989`
+sonarr.api_key|DU_SONARR_API_KEY|Provide URL and API key if you use Sonarr
+radarr.url|DU_RADARR_URL|Something like: `http://localhost:7878`
+radarr.api_key|DU_RADARR_API_KEY|Provide URL and API key if you use Radarr
+
+- Example:
+
+```shell
+docker pull golift/deluge-unpacker
+docker run -d -e "DU_SONARR_URL=http://localhost:8989" -e "DU_SONARR_API_KEY=kjsdkasjdaksdj" golift/deluge-unpacker
+docker logs <container id from docker run>
+```
+
+### Linux / FreeBSD
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/deluge-unpacker/releases) page.
 -   These are new and barely tested. Feedback welcomed.
@@ -56,7 +75,7 @@ edit /etc/deluge-unpacker/du.conf
 sudo systemctl start deluge-unpacker || service deluge-unpacker start
 ```
 
-#### macOS
+### macOS
 
 -   Use homebrew.
 ```shell
@@ -68,7 +87,7 @@ brew install golift/mugs/deluge-unpacker
 brew services start deluge-unpacker
 ```
 
-#### Manually
+### Manually
 
 -   Setup a working Go build environment.
 -   Build the app like any other Go app (or run `make`).
@@ -100,6 +119,25 @@ basic auth.
 
 If transfers are in a Warning or Error state they will not be extracted. Try
 the Force Recheck option in Deluge.
+
+## Logic
+
+The application kicks up a go routine for Deluge and another for each of Radarr
+and Sonarr (if you include configs for them). These go routines just poll their
+respective applications for transfers/queued items. The items are stored. The
+interval of these pollers is set in the config file. 2-10 minutes is good.
+
+Another go routine checks (the internal data) for completed downloads. When it
+finds an item in Deluge that matches an item in Sonarr or Radarr the download
+location is checked for a `.rar` file. If an extractable archive exists, and
+**Sonarr/Radarr have `status=Completed` from Deluge** this application will
+extract the file. Files are extracted to a temporary folder, and then moved back
+into the download location for Completed Download Handling to import them. When
+the item falls out of the (Radarr/Sonarr) queue, the extracted files are removed.
+
+Tags are currently mentioned, but nothing uses them. I figured I would match tags
+before I started getting data from the APIs. Once I realized I was able to match
+`d.Name` with `q.Title` I didn't need to use tags. It all works out automagically.
 
 ## Notes
 

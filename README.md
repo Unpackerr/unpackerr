@@ -25,6 +25,8 @@ Deluge Unpacker (this app) finds and extracts things.
 
 ### Docker
 
+Several methods for Docker are described below.
+
 #### unRAID (Docker)
 
 -   Deluge Unpacker is available in the Community Applications on unRAID.
@@ -44,21 +46,23 @@ docker logs <container id from docker run>
 
 -   Instead of a config file, you may configure the docker container with environment
     variables.
+-   Any variable not passed, just takes the default.
+-   Must pass in URL and API key for at least 1 of Sonarr or Radarr.
 
-|config|ENV|default / note|
+|Config Name|Variable Name|Default / Note|
 |---|---|---|
-debug|DU_DEBUG|`false` Turns on more logs
-interval|DU_INTERVAL|`4m` How often apps are polled
-timeout|DU_TIMEOUT|`10s` Sonarr and Radarr Timeout (all apps default)
-delete_delay|DU_DELETE_DELAY|`10m` How long after import extracts are deleted
-parallel|DU_PARALLEL|`1` Concurrent extractions
-deluge.url|DU_DELUGE_URL|`http://127.0.0.1:8112` Deluge URL, required!
-deluge.password|DU_DELUGE_PASSWORD|`deluge` Deluge password **_must_** be set.
-deluge.timeout|DU_DELUGE_TIMEOUT|`1m` Deluge API can be slow with lots of downloads
-sonarr.url|DU_SONARR_URL|Something like: `http://localhost:8989`
-sonarr.api_key|DU_SONARR_API_KEY|Provide URL and API key if you use Sonarr
-radarr.url|DU_RADARR_URL|Something like: `http://localhost:7878`
-radarr.api_key|DU_RADARR_API_KEY|Provide URL and API key if you use Radarr
+debug|DU_DEBUG|`false` / Turns on more logs
+interval|DU_INTERVAL|`4m` / How often apps are polled, recommend `2m`-`10m`
+timeout|DU_TIMEOUT|`10s` / Global API Timeouts (all apps default)
+delete_delay|DU_DELETE_DELAY|`10m` / Extracts are deleted this long long after import
+parallel|DU_PARALLEL|`1` / Concurrent extractions, only recommend `1`
+deluge.url|DU_DELUGE_URL|`http://127.0.0.1:8112` / Deluge URL, **required**!
+deluge.password|DU_DELUGE_PASSWORD|`deluge` / Deluge password **_must_** be set.
+deluge.timeout|DU_DELUGE_TIMEOUT|`1m` / Deluge API can be slow with lots of downloads
+sonarr.url|DU_SONARR_URL|No Default. Something like: `http://localhost:8989`
+sonarr.api_key|DU_SONARR_API_KEY|No Default. Provide URL and API key if you use Sonarr
+radarr.url|DU_RADARR_URL|No Default. Something like: `http://localhost:7878`
+radarr.api_key|DU_RADARR_API_KEY|No Default. Provide URL and API key if you use Radarr
 
 - Example:
 
@@ -68,10 +72,18 @@ docker run -d -e "DU_SONARR_URL=http://localhost:8989" -e "DU_SONARR_API_KEY=kjs
 docker logs <container id from docker run>
 ```
 
+#### Alpine Docker Container
+
+If you want a container that has a bit more to it, you can try a third party option.
+The container provided by golift is from scratch so it has nothing more than a binary
+and a config file (with our defaults).
+
+[@madcastsu](https://github.com/madcatsu) maintains an Alpine container for Deluge Unpacker.
+Available here: https://hub.docker.com/r/madcatsu/deluge-unpacker-daemon
+
 ### Linux / FreeBSD
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/deluge-unpacker/releases) page.
--   These are new and barely tested. Feedback welcomed.
 -   Install it, edit config, start it.
 
 ```shell

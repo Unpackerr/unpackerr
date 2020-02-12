@@ -161,7 +161,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 
 	for _, q := range u.SonarrQ.List {
 		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Sonarr")
+			go u.HandleCompleted(q.Title, "Sonarr", u.Config.SonarrPath)
 		} else {
 			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)",
 				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
@@ -176,7 +176,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 
 	for _, q := range u.RadarrQ.List {
 		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Radarr")
+			go u.HandleCompleted(q.Title, "Radarr", u.Config.RadarrPath)
 		} else {
 			u.DeLogf("Radarr: %s (%s:%d%%): %v",
 				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
@@ -193,17 +193,17 @@ func (u *Unpackerr) historyExists(name string) (ok bool) {
 }
 
 // HandleCompleted checks if a completed sonarr or radarr item needs to be extracted.
-func (u *Unpackerr) HandleCompleted(name, app string) {
-	path := filepath.Join(u.Config.SavePath, name)
+func (u *Unpackerr) HandleCompleted(name, app, path string) {
+	path = filepath.Join(path, name)
 	files := FindRarFiles(path)
 
 	if !u.historyExists(name) {
 		if len(files) > 0 {
-			log.Printf("%v: Found %v extractable item(s): %v ", app, len(files), name)
+			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 			u.CreateStatus(name, path, app, files)
 			u.extractFiles(name, path, files)
 		} else {
-			u.DeLogf("%v: Completed Item still in Queue: %v (no extractable files found)", app, name)
+			u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
 		}
 	}
 }

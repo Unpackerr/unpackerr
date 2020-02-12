@@ -15,6 +15,9 @@ archives and clean up the mess after they've been imported.
 
 ## Installation
 
+-   **Note**: Requires access to your download location.
+    Make sure you set `save_path` correctly in the configuration.
+
 ### Docker
 
 This project builds automatically in [Docker Cloud](https://hub.docker.com/r/golift/unpackerr)
@@ -54,15 +57,16 @@ docker logs <container id from docker run>
 debug|DU_DEBUG|`false` / Turns on more logs
 interval|DU_INTERVAL|`4m` / How often apps are polled, recommend `2m`-`10m`
 timeout|DU_TIMEOUT|`10s` / Global API Timeouts (all apps default)
-delete_delay|DU_DELETE_DELAY|`10m` / Extracts are deleted this long long after import
+delete_delay|DU_DELETE_DELAY|`10m` / Extracts are deleted this long long after import|
 parallel|DU_PARALLEL|`1` / Concurrent extractions, only recommend `1`
-save_path|DU_SAVE_PATH|`/downloads` Path where content is downloaded
+radar_path|DU_RADAR_PATH|`/downloads` Path where content is downloaded for Radarr|
+sonar_path|DU_SONAR_PATH|`/downloads` Path where content is downloaded for Sonarr|
 sonarr.url|DU_SONARR_URL|No Default. Something like: `http://localhost:8989`
 sonarr.api_key|DU_SONARR_API_KEY|No Default. Provide URL and API key if you use Sonarr
 radarr.url|DU_RADARR_URL|No Default. Something like: `http://localhost:7878`
 radarr.api_key|DU_RADARR_API_KEY|No Default. Provide URL and API key if you use Radarr
 
-- Example:
+-   Example:
 
 ```shell
 docker pull golift/unpackerr
@@ -126,7 +130,7 @@ interval of these pollers is set in the config file. 2-10 minutes is good.
 Another go routine checks (the internal data) for completed downloads. When it
 finds an item in Sonarr or Radarr the download
 location is checked for a `.rar` file. If an extractable archive exists, and
-**Sonarr/Radarr have `status=Completed`** this application will
+**Sonarr/Radarr have `status=Completed` from your download client** this application will
 extract the file. Files are extracted to a temporary folder, and then moved back
 into the download location for Completed Download Handling to import them. When
 the item falls out of the (Radarr/Sonarr) queue, the extracted files are deleted.
@@ -142,6 +146,7 @@ happy it's working so well!
 -   Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
 -   Integrate `prometheus`.
 -   Tests. Maybe. Would likely have to refactor things into better interfaces.
+-   Save and reload state. If you shut if off before it deletes something, it never gets deleted.
 
 ## Contributing
 

@@ -31,11 +31,12 @@ func New() *Unpackerr {
 	u := &Unpackerr{
 		Flags: &Flags{ConfigFile: defaultConfFile},
 		Config: &Config{
-			SavePath: defaultSavePath,
-			Timeout:  cnfg.Duration{Duration: defaultTimeout},
-			Radarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Sonarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Lidarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
+			SonarrPath: defaultSavePath,
+			RadarrPath: defaultSavePath,
+			Timeout:    cnfg.Duration{Duration: defaultTimeout},
+			Radarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
+			Sonarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
+			Lidarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
 		},
 		SonarrQ: &SonarrQ{List: []*starr.SonarQueue{}},
 		RadarrQ: &RadarrQ{List: []*starr.RadarQueue{}},

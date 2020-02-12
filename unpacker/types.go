@@ -16,7 +16,8 @@ type Config struct {
 	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Parallel    uint          `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
-	SavePath    string        `json:"save_path" toml:"save_path" xml:"save_path" yaml:"save_path"`
+	SonarrPath  string        `json:"sonar_path" toml:"sonar_path" xml:"sonar_path" yaml:"sonar_path"`
+	RadarrPath  string        `json:"radar_path" toml:"radar_path" xml:"radar_path" yaml:"radar_path"`
 	Sonarr      *starr.Config `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      *starr.Config `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      *starr.Config `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`

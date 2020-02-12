@@ -1,35 +1,33 @@
-# Deluge Unpacker Example Configuration File
+# Unpackerr Example Configuration File
 
 # [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
 # Recommend trying this so you know what it looks like. I personally leave it on.
 debug = false
 
-# How often to poll deluge, sonarr and radarr.
+# How often to poll sonarr and radarr.
 # Recommend 2m-10m. Uses Go Duration.
 interval = "4m"
 
-# How long to wait for a reply from the backends: Deluge, Sonarr, Radarr.
+# How long to wait for a reply from the backends: Sonarr, Radarr.
 # This can also be set per-app. Uses Go Duration.
 timeout = "10s"
 
 # How long must a file must have been extracted before deletion. The file must
 # also not be part of an active queue item. Set this to "1m" to make sure files
 # are deleted quickly after being imported. Recommend "10m". Uses Go Duration.
-delete_delay="10m"
+delete_delay = "10m"
 
 # How many files may be extracted in parallel. 1 works fine in most cases.
 # Do not wrap the number in quotes.
-parallel=1
+parallel = 1
 
-[deluge]
-url="http://127.0.0.1:8112"
-password="deluge"
-timeout = "60s"
+# File system path where downloaded items are located.
+save_path = "/downloads"
 
 #[sonarr]
-#url="http://127.0.0.1:8989"
-#api_key="cb3afda6559445f1ae1d0299dd696e38"
+#url = "http://127.0.0.1:8989"
+#api_key = "cb3afda6559445f1ae1d0299dd696e38"
 
 #[radarr]
-#url="http://127.0.0.1:7878"
-#api_key="4bc34281deda4846a2fdab2c15bc8de8"
+#url = "http://127.0.0.1:7878"
+#api_key = "4bc34281deda4846a2fdab2c15bc8de8"

@@ -1,27 +1,25 @@
-deluge-unpacker(1) -- Utility to poll Deluge and Unpack files for tracking clients.
+unpackerr(1) -- Utility Unpack compressed files for importing by Sonarr and Radarr.
 ===
 
 SYNOPSIS
 ---
 
-`deluge-unpacker -c /etc/deluge-unpacker/du.conf`
+`unpackerr -c /etc/unpackerr/unpackerr.conf`
 
 DESCRIPTION
 ---
-*   This application polls Deluge (and maybe other clients in the future),
-to find finished transfers. It extracts the downloaded files, then polls
-Radarr and Sonarr to make sure they've imported the extracted files before
-deleting them.
+*   This application extracts downloaded files and makes sure
+    Radarr / Sonarr imported the extracted files before deleting them.
 
 *   Other tunable and configurable options are available in the config file.
 
 OPTIONS
 ---
-`deluge-unpacker [-c <config file>] [-h] [-v]`
+`unpackerr [-c <config file>] [-h] [-v]`
 
     -c, --config <file_path>
         Provide a configuration file.
-        Default: /etc/deluge-unpacker/du.conf
+        Default: /etc/unpackerr/unpackerr.conf
 
     -v, --version
         Display version and exit.
@@ -49,5 +47,5 @@ AUTHOR
 
 LOCATION
 ---
-*   [github.com/davidnewhall/deluge-unpacker](https://github.com/davidnewhall/deluge-unpacker)
-*   /usr/local/bin/deluge-unpacker
+*   [github.com/davidnewhall/unpackerr](https://github.com/davidnewhall/unpackerr)
+*   /usr/local/bin/unpackerr

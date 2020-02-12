@@ -3,20 +3,20 @@
 <plist version="1.0">
     <dict>
         <key>Label</key>
-        <string>com.github.twitchcaptain.deluge-unpacker</string>
+        <string>com.github.twitchcaptain.unpackerr</string>
         <key>ProgramArguments</key>
         <array>
-            <string>/usr/local/bin/deluge-unpacker</string>
+            <string>/usr/local/bin/unpackerr</string>
             <string>-c</string>
-            <string>/usr/local/etc/deluge-unpacker/up.conf</string>
+            <string>/usr/local/etc/npackerr/unpackerr.conf</string>
         </array>
         <key>RunAtLoad</key>
         <true/>
         <key>KeepAlive</key>
         <true/>
         <key>StandardErrorPath</key>
-        <string>/usr/local/var/log/deluge-unpacker.log</string>
+        <string>/usr/local/var/log/unpackerr.log</string>
         <key>StandardOutPath</key>
-        <string>/usr/local/var/log/deluge-unpacker.log</string>
+        <string>/usr/local/var/log/unpackerr.log</string>
     </dict>
 </plist>

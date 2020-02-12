@@ -4,8 +4,8 @@
 #
 # Use it like this, pick curl or wget:  (sudo is optional)
 # ----
-#   curl -s https://raw.githubusercontent.com/davidnewhall/deluge-unpacker/master/scripts/install.sh | sudo sh
-#   wget -qO- https://raw.githubusercontent.com/davidnewhall/deluge-unpacker/master/scripts/install.sh | sudo sh
+#   curl -s https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo sh
+#   wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo sh
 # ----
 #
 # - If you're on RedHat/CentOS/Fedora, installs the latest rpm package.
@@ -16,8 +16,8 @@
 # https://github.com/golift/application-builder
 
 # Set these.
-REPO=davidnewhall/deluge-unpacker
-BREW=golift/mugs/deluge-unpacker
+REPO=davidnewhall/unpackerr
+BREW=golift/mugs/unpackerr
 
 # Don't set these.
 LATEST=https://api.github.com/repos/${REPO}/releases/latest

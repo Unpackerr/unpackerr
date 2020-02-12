@@ -1,4 +1,4 @@
-package delugeunpacker
+package unpacker
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
-	"golift.io/deluge"
 	"golift.io/starr"
 
 	"github.com/prometheus/common/version"
@@ -19,33 +18,30 @@ import (
 )
 
 const (
-	defaultConfFile    = "/etc/deluge-unpacker/du.conf"
+	defaultConfFile    = "/etc/unpackerr/unpackerr.conf"
+	defaultSavePath    = "/downloads"
 	minimumInterval    = 10 * time.Second
 	minimumDeleteDelay = 1 * time.Second
 	defaultTimeout     = 20 * time.Second
-	reconnectWait      = 5 * time.Second
 )
 
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
-func New() *DelugeUnpacker {
-	u := &DelugeUnpacker{
+func New() *Unpackerr {
+	u := &Unpackerr{
 		Flags: &Flags{ConfigFile: defaultConfFile},
 		Config: &Config{
-			Timeout: cnfg.Duration{Duration: defaultTimeout},
-			Radarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Sonarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Lidarr:  &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Deluge:  &deluge.Config{Timeout: deluge.Duration{Duration: defaultTimeout}},
+			SavePath: defaultSavePath,
+			Timeout:  cnfg.Duration{Duration: defaultTimeout},
+			Radarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
+			Sonarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
+			Lidarr:   &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
 		},
-		Xfers:   &Xfers{Map: make(map[string]*deluge.XferStatusCompat)},
 		SonarrQ: &SonarrQ{List: []*starr.SonarQueue{}},
 		RadarrQ: &RadarrQ{List: []*starr.RadarQueue{}},
 		History: &History{Map: make(map[string]Extracts)},
-		Deluge:  &deluge.Deluge{},
 		SigChan: make(chan os.Signal),
 	}
-	u.Config.Deluge.DebugLog = u.DeLogf
 
 	return u
 }
@@ -56,12 +52,12 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("deluge-unpacker v%s %s (branch: %s %s) \n",
+		fmt.Printf("unpackerr v%s %s (branch: %s %s) \n",
 			version.Version, version.BuildDate, version.Branch, version.Revision)
 		return nil // don't run anything else.
 	}
 
-	log.Printf("Deluge Unpacker v%s Starting! (PID: %v)", version.Version, os.Getpid())
+	log.Printf("Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 		return err
@@ -77,8 +73,6 @@ func Start() (err error) {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
-	u.Deluge = GetDelugeConnection(u.Config.Deluge)
-
 	go u.Run()
 	defer u.Stop()
 	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -87,25 +81,10 @@ func Start() (err error) {
 	return nil
 }
 
-// GetDelugeConnection keeps trying to make a connection to Deluge every 5 seconds.
-func GetDelugeConnection(config *deluge.Config) *deluge.Deluge {
-	for {
-		d, err := deluge.New(*config)
-		if err != nil {
-			log.Println("[ERROR] connecting to Deluge, still trying!", err)
-			time.Sleep(reconnectWait)
-
-			continue
-		}
-
-		return d
-	}
-}
-
 // Run starts the go routines and waits for an exit signal.
 // One poller wont run twice unless you get creative.
 // Just make a second one if you want to poller moar.
-func (u *DelugeUnpacker) Run() {
+func (u *Unpackerr) Run() {
 	if u.StopChan != nil {
 		return
 	}
@@ -127,7 +106,7 @@ func (u *DelugeUnpacker) Run() {
 }
 
 // Stop brings the go routines to a halt.
-func (u *DelugeUnpacker) Stop() {
+func (u *Unpackerr) Stop() {
 	if u.StopChan != nil {
 		close(u.StopChan)
 	}
@@ -138,9 +117,9 @@ func (u *DelugeUnpacker) Stop() {
 }
 
 // ParseFlags turns CLI args into usable data.
-func (u *DelugeUnpacker) ParseFlags() *DelugeUnpacker {
+func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flg.Usage = func() {
-		fmt.Println("Usage: deluge-unpacker [--config=filepath] [--version]")
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version]")
 		flg.PrintDefaults()
 	}
 
@@ -152,7 +131,7 @@ func (u *DelugeUnpacker) ParseFlags() *DelugeUnpacker {
 }
 
 // validateConfig makes sure config file values are ok.
-func (u *DelugeUnpacker) validateConfig() {
+func (u *Unpackerr) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
@@ -169,8 +148,8 @@ func (u *DelugeUnpacker) validateConfig() {
 	}
 }
 
-// PollAllApps Polls Deluge, Sonarr and Radarr. All at the same time.
-func (u *DelugeUnpacker) PollAllApps() {
+// PollAllApps Polls  Sonarr and Radarr. At the same time.
+func (u *Unpackerr) PollAllApps() {
 	var wg sync.WaitGroup
 
 	if u.Sonarr.APIKey != "" {
@@ -197,25 +176,11 @@ func (u *DelugeUnpacker) PollAllApps() {
 		}()
 	}
 
-	wg.Add(1)
-
-	go func() {
-		if err := u.PollDeluge(); err != nil {
-			log.Printf("[ERROR] Deluge: %v", err)
-			// We got an error polling deluge, try to reconnect.
-			if u.Deluge, err = deluge.New(*u.Config.Deluge); err != nil {
-				log.Printf("Deluge Authentication Error: %v", err)
-			}
-		}
-
-		wg.Done()
-	}()
-
 	wg.Wait()
 }
 
 // DeLogf writes Debug log lines.
-func (u *DelugeUnpacker) DeLogf(msg string, v ...interface{}) {
+func (u *Unpackerr) DeLogf(msg string, v ...interface{}) {
 	if u.Debug {
 		_ = log.Output(2, fmt.Sprintf("[DEBUG] "+msg, v...))
 	}

@@ -3,17 +3,17 @@
 # Powered by Application Builder: https://github.com/golift/application-builder
 
 # Must match the repo name to make things easy. Otherwise, fix some other paths.
-BINARY="deluge-unpacker"
+BINARY="unpackerr"
 # github username
 GHUSER="davidnewhall"
 # Github repo containing homebrew formula repo.
 HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
-DESC="Extracts Deluge downloads so Radarr or Sonarr may import them."
+DESC="Extracts downloads so Radarr or Sonarr may import them."
 GOLANGCI_LINT_ARGS="--enable-all -D gomnd"
 # Example must exist at examples/$CONFIG_FILE.example
-CONFIG_FILE="du.conf"
+CONFIG_FILE="unpackerr.conf"
 LICENSE="MIT"
 # FORMULA is either 'service' or 'tool'. Services run as a daemon, tools do not.
 # This affects the homebrew formula (launchd) and linux packages (systemd).
@@ -29,11 +29,6 @@ export BINARY GHUSER HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE LIC
 SOURCE_URL="https://${GHUSER}/${BINARY}/"
 # Used for documentation links.
 URL="${SOURCE_URL}"
-
-# This parameter is passed in as -X to go build. Used to override the Version variable in a package.
-# This makes a path like github.com/user/hello-world/helloworld.Version=1.3.3
-# Name the Version-containing library the same as the github repo, without dashes.
-VERSION_PATH="${IMPORT_PATH}/$(echo ${BINARY} | tr -d -- -).Version"
 
 # Dynamic. Recommend not changing.
 VVERSION=$(git describe --abbrev=0 --tags $(git rev-list --tags --max-count=1))

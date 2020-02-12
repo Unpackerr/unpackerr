@@ -14,5 +14,5 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golift.io/cnfg v0.0.5
 	golift.io/rar v0.0.1
-	golift.io/starr v0.9.2
+	golift.io/starr v0.9.3-0.20200212214444-86620fac153a
 )

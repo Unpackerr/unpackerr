@@ -148,6 +148,12 @@ func (u *Unpackerr) validateConfig() {
 			u.Sonarr[i].Path = defaultSavePath
 		}
 	}
+
+	for i := range u.Lidarr {
+		if u.Lidarr[i].Timeout.Duration == 0 {
+			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+	}
 }
 
 // PollAllApps Polls  Sonarr and Radarr. At the same time.

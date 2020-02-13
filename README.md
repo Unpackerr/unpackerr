@@ -16,7 +16,7 @@ archives and clean up the mess after they've been imported.
 ## Installation
 
 -   **Note**: Requires access to your download location.
-    Make sure you set `save_path` correctly in the configuration.
+    Make sure you set the `path` variables correctly in the configuration.
 
 ### Docker
 
@@ -51,26 +51,28 @@ docker logs <container id from docker run>
     with environment variables.
 -   Any variable not provided takes the default.
 -   Must provide URL and API key for Sonarr or Radarr, or both.
+-   You may provide multiple sonarr or radarr instances using
+    `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-debug|DU_DEBUG|`false` / Turns on more logs
-interval|DU_INTERVAL|`4m` / How often apps are polled, recommend `2m`-`10m`
-timeout|DU_TIMEOUT|`10s` / Global API Timeouts (all apps default)
-delete_delay|DU_DELETE_DELAY|`10m` / Extracts are deleted this long long after import|
-parallel|DU_PARALLEL|`1` / Concurrent extractions, only recommend `1`
-radar_path|DU_RADAR_PATH|`/downloads` Path where content is downloaded for Radarr|
-sonar_path|DU_SONAR_PATH|`/downloads` Path where content is downloaded for Sonarr|
-sonarr.url|DU_SONARR_URL|No Default. Something like: `http://localhost:8989`
-sonarr.api_key|DU_SONARR_API_KEY|No Default. Provide URL and API key if you use Sonarr
-radarr.url|DU_RADARR_URL|No Default. Something like: `http://localhost:7878`
-radarr.api_key|DU_RADARR_API_KEY|No Default. Provide URL and API key if you use Radarr
+debug|`UN_DEBUG`|`false` / Turns on more logs
+interval|`UN_INTERVAL`|`4m` / How often apps are polled, recommend `2m`-`10m`
+timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)
+delete_delay|`UN_DELETE_DELAY`|`10m` / Extracts are deleted this long long after import|
+parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`
+sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`
+sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr
+sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for Sonarr|
+radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`
+radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr
+radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
 
 -   Example:
 
 ```shell
 docker pull golift/unpackerr
-docker run -d -v /mnt/HostDownloads:/downloads -e "DU_SONARR_URL=http://localhost:8989" -e "DU_SONARR_API_KEY=kjsdkasjdaksdj" golift/unpackerr
+docker run -d -v /mnt/HostDownloads:/downloads -e "UN_SONARR_0_URL=http://localhost:8989" -e "UN_SONARR_0_API_KEY=kjsdkasjdaksdj" golift/unpackerr
 docker logs <container id from docker run>
 ```
 

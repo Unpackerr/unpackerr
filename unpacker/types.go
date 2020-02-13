@@ -11,16 +11,25 @@ import (
 
 // Config defines the configuration data used to start the application.
 type Config struct {
-	Debug       bool          `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
-	Interval    cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Parallel    uint          `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
-	SonarrPath  string        `json:"sonar_path" toml:"sonar_path" xml:"sonar_path" yaml:"sonar_path"`
-	RadarrPath  string        `json:"radar_path" toml:"radar_path" xml:"radar_path" yaml:"radar_path"`
-	Sonarr      *starr.Config `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
-	Radarr      *starr.Config `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
-	Lidarr      *starr.Config `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
+	Debug       bool            `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
+	Parallel    uint            `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	Interval    cnfg.Duration   `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout     cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
+	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+}
+
+type radarrConfig struct {
+	*starr.Config
+	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	List         []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
+}
+
+type sonarrConfig struct {
+	*starr.Config
+	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	List         []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -75,23 +84,8 @@ type Flags struct {
 type Unpackerr struct {
 	*Flags
 	*Config
-	*SonarrQ
-	*RadarrQ
 	*History
-	SigChan  chan os.Signal
-	StopChan chan bool
-}
-
-// SonarrQ holds the queued items in the Sonarr activity list.
-type SonarrQ struct {
-	sync.RWMutex
-	List []*starr.SonarQueue
-}
-
-// RadarrQ holds the queued items in the Radarr activity list.
-type RadarrQ struct {
-	sync.RWMutex
-	List []*starr.RadarQueue
+	SigChan chan os.Signal
 }
 
 // History holds the history of extracted items.

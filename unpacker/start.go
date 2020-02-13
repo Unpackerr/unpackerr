@@ -11,40 +11,26 @@ import (
 
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
-	"golift.io/starr"
 
 	"github.com/prometheus/common/version"
 	flg "github.com/spf13/pflag"
 )
 
 const (
-	defaultConfFile    = "/etc/unpackerr/unpackerr.conf"
-	defaultSavePath    = "/downloads"
+	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 10 * time.Second
-	minimumDeleteDelay = 1 * time.Second
-	defaultTimeout     = 20 * time.Second
+	minimumDeleteDelay = time.Second
 )
 
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
-	u := &Unpackerr{
-		Flags: &Flags{ConfigFile: defaultConfFile},
-		Config: &Config{
-			SonarrPath: defaultSavePath,
-			RadarrPath: defaultSavePath,
-			Timeout:    cnfg.Duration{Duration: defaultTimeout},
-			Radarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Sonarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-			Lidarr:     &starr.Config{Timeout: starr.Duration{Duration: defaultTimeout}},
-		},
-		SonarrQ: &SonarrQ{List: []*starr.SonarQueue{}},
-		RadarrQ: &RadarrQ{List: []*starr.RadarQueue{}},
+	return &Unpackerr{
+		Flags:   &Flags{ConfigFile: defaultConfFile},
+		Config:  &Config{Timeout: cnfg.Duration{Duration: defaultTimeout}},
 		History: &History{Map: make(map[string]Extracts)},
 		SigChan: make(chan os.Signal),
 	}
-
-	return u
 }
 
 // Start runs the app.
@@ -64,7 +50,7 @@ func Start() (err error) {
 		return err
 	}
 
-	if _, err := cnfg.UnmarshalENV(u.Config, "DU"); err != nil {
+	if _, err := cnfg.UnmarshalENV(u.Config, "UN"); err != nil {
 		return err
 	}
 
@@ -75,7 +61,6 @@ func Start() (err error) {
 	}
 
 	go u.Run()
-	defer u.Stop()
 	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
 
@@ -86,35 +71,23 @@ func Start() (err error) {
 // One poller wont run twice unless you get creative.
 // Just make a second one if you want to poller moar.
 func (u *Unpackerr) Run() {
-	if u.StopChan != nil {
-		return
-	}
+	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
 
-	u.StopChan = make(chan bool)
-	ticker := time.NewTicker(u.Interval.Duration)
+	poller := time.NewTicker(u.Interval.Duration)
+	cleaner := time.NewTicker(time.Minute)
 
-	go u.PollChange() // This has its own ticker that runs every minute.
-	u.PollAllApps()   // Run all pollers once at startup.
-
-	for {
-		select {
-		case <-ticker.C:
-			u.PollAllApps()
-		case <-u.StopChan:
-			return
+	go func() {
+		for range cleaner.C {
+			u.CheckExtractDone()
+			u.CheckSonarrQueue()
+			u.CheckRadarrQueue()
 		}
-	}
-}
+	}()
+	u.PollAllApps() // Run all pollers once at startup.
 
-// Stop brings the go routines to a halt.
-func (u *Unpackerr) Stop() {
-	if u.StopChan != nil {
-		close(u.StopChan)
+	for range poller.C {
+		u.PollAllApps()
 	}
-
-	// Arbitrary, just give the two routines time to bail.
-	// This wont work if they're in the middle of something.. oh well.
-	time.Sleep(100 * time.Millisecond)
 }
 
 // ParseFlags turns CLI args into usable data.
@@ -147,34 +120,60 @@ func (u *Unpackerr) validateConfig() {
 		u.Interval.Duration = minimumInterval
 		u.DeLogf("Minimum Interval: %v", minimumInterval.String())
 	}
+
+	for i := range u.Radarr {
+		if u.Radarr[i].Timeout.Duration == 0 {
+			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Radarr[i].Path == "" {
+			u.Radarr[i].Path = defaultSavePath
+		}
+	}
+
+	for i := range u.Sonarr {
+		if u.Sonarr[i].Timeout.Duration == 0 {
+			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Sonarr[i].Path == "" {
+			u.Sonarr[i].Path = defaultSavePath
+		}
+	}
 }
 
 // PollAllApps Polls  Sonarr and Radarr. At the same time.
 func (u *Unpackerr) PollAllApps() {
 	var wg sync.WaitGroup
 
-	if u.Sonarr.APIKey != "" {
-		wg.Add(1)
+	for _, sonarr := range u.Sonarr {
+		if sonarr.APIKey == "" {
+			continue
+		}
 
-		go func() {
-			if err := u.PollSonarr(); err != nil {
-				log.Printf("[ERROR] Sonarr: %v", err)
+		wg.Add(1)
+		go func(sonarr *sonarrConfig) {
+			if err := u.PollSonarr(sonarr); err != nil {
+				log.Printf("[ERROR] Sonarr (%s): %v", sonarr.URL, err)
 			}
 
 			wg.Done()
-		}()
+		}(sonarr)
 	}
 
-	if u.Radarr.APIKey != "" {
-		wg.Add(1)
+	for _, radarr := range u.Radarr {
+		if radarr.APIKey == "" {
+			continue
+		}
 
-		go func() {
-			if err := u.PollRadarr(); err != nil {
-				log.Printf("[ERROR] Radarr: %v", err)
+		wg.Add(1)
+		go func(radarr *radarrConfig) {
+			if err := u.PollRadarr(radarr); err != nil {
+				log.Printf("[ERROR] Radarr (%s): %v", radarr.URL, err)
 			}
 
 			wg.Done()
-		}()
+		}(radarr)
 	}
 
 	wg.Wait()

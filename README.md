@@ -6,7 +6,7 @@
 ## About
 
 This application runs as a daemon on your download host. It checks for completed
-downloads and extracts them so Radarr and/or Sonarr may import them.
+downloads and extracts them so Radarr and/or Sonarr and/or Lidarr may import them.
 
 There are a handful of options out there for extracting and deleting files after
 your client downloads them. I just didn't care for any of them, so I wrote my own. I
@@ -50,8 +50,8 @@ docker logs <container id from docker run>
 -   Instead of a config file, you may configure the docker container
     with environment variables.
 -   Any variable not provided takes the default.
--   Must provide URL and API key for Sonarr or Radarr, or both.
--   You may provide multiple sonarr or radarr instances using
+-   Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
+-   You may provide multiple sonarr, radarr or lidarr instances using
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 |Config Name|Variable Name|Default / Note|
@@ -69,6 +69,9 @@ sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for
 radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr
 radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
+lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`
+lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr
+lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
 
 -   Example:
 

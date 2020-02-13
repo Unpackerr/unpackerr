@@ -20,6 +20,7 @@ type Config struct {
 	RetryDelay  cnfg.Duration   `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
 	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Lidarr      []*lidarrConfig `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 }
 
 type radarrConfig struct {
@@ -32,6 +33,12 @@ type sonarrConfig struct {
 	*starr.Config
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 	List         []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
+}
+
+type lidarrConfig struct {
+	*starr.Config
+	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	List         []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 // ExtractStatus is our enum for an extract's status.

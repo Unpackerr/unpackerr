@@ -17,6 +17,6 @@ require (
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golift.io/cnfg v0.0.6-0.20200213074918-7d3907353075
 	golift.io/rar v0.0.1
-	golift.io/starr v0.9.3
+	golift.io/starr v0.9.4-0.20200213091948-3c6982d6841c
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )

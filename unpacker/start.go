@@ -89,6 +89,7 @@ func (u *Unpackerr) Run() {
 			u.CheckExtractDone()
 			u.CheckSonarrQueue()
 			u.CheckRadarrQueue()
+			u.CheckLidarrQueue()
 		}
 	}()
 	u.PollAllApps() // Run all pollers once at startup.
@@ -183,6 +184,22 @@ func (u *Unpackerr) PollAllApps() {
 
 			wg.Done()
 		}(radarr)
+	}
+
+	for _, lidarr := range u.Lidarr {
+		if lidarr.APIKey == "" {
+			continue
+		}
+
+		wg.Add(1)
+
+		go func(lidarr *lidarrConfig) {
+			if err := u.PollLidarr(lidarr); err != nil {
+				log.Printf("[ERROR] Lidarr (%s): %v", lidarr.URL, err)
+			}
+
+			wg.Done()
+		}(lidarr)
 	}
 
 	wg.Wait()

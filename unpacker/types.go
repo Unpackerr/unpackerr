@@ -1,4 +1,4 @@
-package delugeunpacker
+package unpacker
 
 import (
 	"os"
@@ -6,21 +6,21 @@ import (
 	"time"
 
 	"golift.io/cnfg"
-	"golift.io/deluge"
 	"golift.io/starr"
 )
 
 // Config defines the configuration data used to start the application.
 type Config struct {
-	Debug       bool           `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
-	Interval    cnfg.Duration  `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout     cnfg.Duration  `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	DeleteDelay cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Parallel    uint           `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
-	Deluge      *deluge.Config `json:"deluge" toml:"deluge" xml:"deluge" yaml:"deluge"`
-	Sonarr      *starr.Config  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
-	Radarr      *starr.Config  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
-	Lidarr      *starr.Config  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
+	Debug       bool          `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
+	Interval    cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Parallel    uint          `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	SonarrPath  string        `json:"sonar_path" toml:"sonar_path" xml:"sonar_path" yaml:"sonar_path"`
+	RadarrPath  string        `json:"radar_path" toml:"radar_path" xml:"radar_path" yaml:"radar_path"`
+	Sonarr      *starr.Config `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
+	Radarr      *starr.Config `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Lidarr      *starr.Config `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -71,23 +71,15 @@ type Flags struct {
 	ConfigFile string
 }
 
-// DelugeUnpacker stores all the running data.
-type DelugeUnpacker struct {
+// Unpackerr stores all the running data.
+type Unpackerr struct {
 	*Flags
 	*Config
-	*deluge.Deluge
-	*Xfers
 	*SonarrQ
 	*RadarrQ
 	*History
 	SigChan  chan os.Signal
 	StopChan chan bool
-}
-
-// Xfers holds the last list of transferred pulled form Deluge.
-type Xfers struct {
-	sync.RWMutex
-	Map map[string]*deluge.XferStatusCompat
 }
 
 // SonarrQ holds the queued items in the Sonarr activity list.

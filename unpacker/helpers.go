@@ -1,4 +1,4 @@
-package delugeunpacker
+package unpacker
 
 import (
 	"io/ioutil"
@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golift.io/deluge"
 	"golift.io/starr"
 )
 
@@ -92,7 +91,7 @@ func FindRarFiles(path string) []string {
 
 // Moves files then removes the folder they were in.
 // Returns the new file paths.
-func (u *DelugeUnpacker) moveFiles(fromPath string, toPath string) ([]string, error) {
+func (u *Unpackerr) moveFiles(fromPath string, toPath string) ([]string, error) {
 	files := getFileList(fromPath)
 
 	var keepErr error
@@ -142,7 +141,7 @@ func deleteFiles(files []string) {
 
 // gets a radarr queue item based on name. returns first match
 // there may be more than one match if it involes an "episode pack" (full season)
-func (u *DelugeUnpacker) getSonarQitem(name string) (s starr.SonarQueue) {
+func (u *Unpackerr) getSonarQitem(name string) (s starr.SonarQueue) {
 	u.SonarrQ.RLock()
 	defer u.SonarrQ.RUnlock()
 
@@ -156,7 +155,7 @@ func (u *DelugeUnpacker) getSonarQitem(name string) (s starr.SonarQueue) {
 }
 
 // gets a radarr queue item based on name. returns first match
-func (u *DelugeUnpacker) getRadarQitem(name string) (s starr.RadarQueue) {
+func (u *Unpackerr) getRadarQitem(name string) (s starr.RadarQueue) {
 	u.RadarrQ.RLock()
 	defer u.RadarrQ.RUnlock()
 
@@ -167,18 +166,4 @@ func (u *DelugeUnpacker) getRadarQitem(name string) (s starr.RadarQueue) {
 	}
 
 	return s
-}
-
-// Get a Deluge transfer based on name.
-func (u *DelugeUnpacker) getXfer(name string) (d deluge.XferStatusCompat) {
-	u.Xfers.RLock()
-	defer u.Xfers.RUnlock()
-
-	for _, data := range u.Xfers.Map {
-		if data.Name == name {
-			return *data
-		}
-	}
-
-	return d
 }

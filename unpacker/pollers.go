@@ -1,4 +1,4 @@
-package delugeunpacker
+package unpacker
 
 import (
 	"log"
@@ -9,24 +9,8 @@ import (
 // torrent is what we care about. no usenet..
 const torrent = "torrent"
 
-// PollDeluge at an interval and save the transfer list to r.Deluge
-func (u *DelugeUnpacker) PollDeluge() error {
-	var err error
-
-	u.Xfers.Lock()
-	defer u.Xfers.Unlock()
-
-	if u.Xfers.Map, err = u.Deluge.GetXfersCompat(); err != nil {
-		return err
-	}
-
-	log.Println("Deluge Updated:", len(u.Xfers.Map), "Transfers")
-
-	return nil
-}
-
 // PollSonarr saves the Sonarr Queue to r.SonarrQ
-func (u *DelugeUnpacker) PollSonarr() error {
+func (u *Unpackerr) PollSonarr() error {
 	var err error
 
 	u.SonarrQ.Lock()
@@ -42,7 +26,7 @@ func (u *DelugeUnpacker) PollSonarr() error {
 }
 
 // PollRadarr saves the Radarr Queue to r.RadarrQ
-func (u *DelugeUnpacker) PollRadarr() error {
+func (u *Unpackerr) PollRadarr() error {
 	var err error
 
 	u.RadarrQ.Lock()
@@ -61,7 +45,7 @@ func (u *DelugeUnpacker) PollRadarr() error {
 // Those tasks: a) look for things to extract, b) look for things to delete.
 // This runs more often because of the cleanup tasks.
 // It doesn't poll external data, unless it finds something to extract.
-func (u *DelugeUnpacker) PollChange() {
+func (u *Unpackerr) PollChange() {
 	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
 
 	ticker := time.NewTicker(time.Minute)
@@ -80,7 +64,7 @@ func (u *DelugeUnpacker) PollChange() {
 }
 
 // CheckExtractDone checks if an extracted item has been imported.
-func (u *DelugeUnpacker) CheckExtractDone() {
+func (u *Unpackerr) CheckExtractDone() {
 	u.History.RLock()
 
 	defer func() {
@@ -110,7 +94,7 @@ func (u *DelugeUnpacker) CheckExtractDone() {
 	}
 }
 
-func (u *DelugeUnpacker) finishFinished(app, name string) {
+func (u *Unpackerr) finishFinished(app, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 	u.History.Finished++
@@ -119,7 +103,7 @@ func (u *DelugeUnpacker) finishFinished(app, name string) {
 	delete(u.History.Map, name)
 }
 
-func (u *DelugeUnpacker) handleRadarr(data Extracts, name string) {
+func (u *Unpackerr) handleRadarr(data Extracts, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
@@ -137,7 +121,7 @@ func (u *DelugeUnpacker) handleRadarr(data Extracts, name string) {
 	}
 }
 
-func (u *DelugeUnpacker) handleSonarr(data Extracts, name string) {
+func (u *Unpackerr) handleSonarr(data Extracts, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
@@ -155,7 +139,7 @@ func (u *DelugeUnpacker) handleSonarr(data Extracts, name string) {
 }
 
 // HandleExtractDone checks if files should be deleted.
-func (u *DelugeUnpacker) HandleExtractDone(data Extracts, name string) ExtractStatus {
+func (u *Unpackerr) HandleExtractDone(data Extracts, name string) ExtractStatus {
 	switch elapsed := time.Since(data.Updated); {
 	case data.Status != IMPORTED:
 		log.Printf("%v Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
@@ -171,13 +155,13 @@ func (u *DelugeUnpacker) HandleExtractDone(data Extracts, name string) ExtractSt
 }
 
 // CheckSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
-func (u *DelugeUnpacker) CheckSonarrQueue() {
+func (u *Unpackerr) CheckSonarrQueue() {
 	u.SonarrQ.RLock()
 	defer u.SonarrQ.RUnlock()
 
 	for _, q := range u.SonarrQ.List {
 		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Sonarr")
+			go u.HandleCompleted(q.Title, "Sonarr", u.Config.SonarrPath)
 		} else {
 			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)",
 				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
@@ -186,13 +170,13 @@ func (u *DelugeUnpacker) CheckSonarrQueue() {
 }
 
 // CheckRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
-func (u *DelugeUnpacker) CheckRadarrQueue() {
+func (u *Unpackerr) CheckRadarrQueue() {
 	u.RadarrQ.RLock()
 	defer u.RadarrQ.RUnlock()
 
 	for _, q := range u.RadarrQ.List {
 		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Radarr")
+			go u.HandleCompleted(q.Title, "Radarr", u.Config.RadarrPath)
 		} else {
 			u.DeLogf("Radarr: %s (%s:%d%%): %v",
 				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
@@ -200,7 +184,7 @@ func (u *DelugeUnpacker) CheckRadarrQueue() {
 	}
 }
 
-func (u *DelugeUnpacker) historyExists(name string) (ok bool) {
+func (u *Unpackerr) historyExists(name string) (ok bool) {
 	u.History.RLock()
 	defer u.History.RUnlock()
 	_, ok = u.History.Map[name]
@@ -209,23 +193,17 @@ func (u *DelugeUnpacker) historyExists(name string) (ok bool) {
 }
 
 // HandleCompleted checks if a completed sonarr or radarr item needs to be extracted.
-func (u *DelugeUnpacker) HandleCompleted(name, app string) {
-	d := u.getXfer(name)
-	if d.Name == "" {
-		u.DeLogf("%v: Transfer not found in Deluge: %v (Deluge may be unresponsive?)", app, name)
-		return
-	}
-
-	path := filepath.Join(d.SavePath, d.Name)
+func (u *Unpackerr) HandleCompleted(name, app, path string) {
+	path = filepath.Join(path, name)
 	files := FindRarFiles(path)
 
-	if !u.historyExists(name) && d.IsFinished {
+	if !u.historyExists(name) {
 		if len(files) > 0 {
-			log.Printf("%v: Found %v extractable item(s) in Deluge: %v ", app, len(files), name)
+			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 			u.CreateStatus(name, path, app, files)
 			u.extractFiles(name, path, files)
 		} else {
-			u.DeLogf("%v: Completed Item still in Queue: %v (no extractable files found)", app, name)
+			u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
 		}
 	}
 }

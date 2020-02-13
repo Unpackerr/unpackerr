@@ -3,12 +3,12 @@ package main
 import (
 	"log"
 
-	"github.com/davidnewhall/deluge-unpacker/delugeunpacker"
+	"github.com/davidnewhall/unpackerr/unpacker"
 )
 
 // Keep it simple.
 func main() {
-	if err := delugeunpacker.Start(); err != nil {
+	if err := unpacker.Start(); err != nil {
 		log.Fatalln("[ERROR]", err)
 	}
 }

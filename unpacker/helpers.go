@@ -139,31 +139,49 @@ func deleteFiles(files []string) {
   The following functions pull data from the internal map and slices.
 */
 
-// gets a radarr queue item based on name. returns first match
-// there may be more than one match if it involes an "episode pack" (full season)
-func (u *Unpackerr) getSonarQitem(name string) (s starr.SonarQueue) {
-	u.SonarrQ.RLock()
-	defer u.SonarrQ.RUnlock()
+func (u *Unpackerr) getSonarQitem(name string) *starr.SonarQueue {
+	getItem := func(name string, sonarr *sonarrConfig) *starr.SonarQueue {
+		sonarr.RLock()
+		defer sonarr.RUnlock()
 
-	for i := range u.SonarrQ.List {
-		if u.SonarrQ.List[i].Title == name {
-			return *u.SonarrQ.List[i]
+		for i := range sonarr.List {
+			if sonarr.List[i].Title == name {
+				return sonarr.List[i]
+			}
+		}
+
+		return nil
+	}
+
+	for _, sonarr := range u.Sonarr {
+		if s := getItem(name, sonarr); s != nil {
+			return s
 		}
 	}
 
-	return s
+	return nil
 }
 
 // gets a radarr queue item based on name. returns first match
-func (u *Unpackerr) getRadarQitem(name string) (s starr.RadarQueue) {
-	u.RadarrQ.RLock()
-	defer u.RadarrQ.RUnlock()
+func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
+	getItem := func(name string, radarr *radarrConfig) *starr.RadarQueue {
+		radarr.RLock()
+		defer radarr.RUnlock()
 
-	for i := range u.RadarrQ.List {
-		if u.RadarrQ.List[i].Title == name {
-			return *u.RadarrQ.List[i]
+		for i := range radarr.List {
+			if radarr.List[i].Title == name {
+				return radarr.List[i]
+			}
+		}
+
+		return nil
+	}
+
+	for _, radarr := range u.Radarr {
+		if s := getItem(name, radarr); s != nil {
+			return s
 		}
 	}
 
-	return s
+	return nil
 }

@@ -6,28 +6,31 @@ debug = false
 
 # How often to poll sonarr and radarr.
 # Recommend 2m-10m. Uses Go Duration.
-interval = "4m"
+interval = "2m"
 
 # How long to wait for a reply from the backends: Sonarr, Radarr.
 # This can also be set per-app. Uses Go Duration.
 timeout = "10s"
 
-# How long must a file must have been extracted before deletion. The file must
+# How long ago a file must have been imported before deletion. The file must
 # also not be part of an active queue item. Set this to "1m" to make sure files
-# are deleted quickly after being imported. Recommend "10m". Uses Go Duration.
-delete_delay = "10m"
+# are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+delete_delay = "5m"
 
 # How many files may be extracted in parallel. 1 works fine in most cases.
 # Do not wrap the number in quotes.
 parallel = 1
 
-# File system path where downloaded items are located.
-save_path = "/downloads"
+# The following sections can be repeated if you have more than one Sonarr or Radarr.
 
-#[sonarr]
+#[[sonarr]]
 #url = "http://127.0.0.1:8989"
 #api_key = "cb3afda6559445f1ae1d0299dd696e38"
+# File system path where downloaded Sonarr items are located.
+#path = "/downloads"
 
-#[radarr]
+#[[radarr]]
 #url = "http://127.0.0.1:7878"
 #api_key = "4bc34281deda4846a2fdab2c15bc8de8"
+# File system path where downloaded Radarr items are located.
+#path = "/downloads"

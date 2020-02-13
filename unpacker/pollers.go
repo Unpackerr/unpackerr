@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 	"time"
@@ -10,57 +11,35 @@ import (
 const torrent = "torrent"
 
 // PollSonarr saves the Sonarr Queue to r.SonarrQ
-func (u *Unpackerr) PollSonarr() error {
+func (u *Unpackerr) PollSonarr(sonarr *sonarrConfig) error {
 	var err error
 
-	u.SonarrQ.Lock()
-	defer u.SonarrQ.Unlock()
+	sonarr.Lock()
+	defer sonarr.Unlock()
 
-	if u.SonarrQ.List, err = u.Sonarr.SonarrQueue(); err != nil {
+	if sonarr.List, err = sonarr.SonarrQueue(); err != nil {
 		return err
 	}
 
-	log.Println("Sonarr Updated:", len(u.SonarrQ.List), "Items Queued")
+	log.Printf("Sonarr Updated (%s): %d Items Queued", sonarr.URL, len(sonarr.List))
 
 	return nil
 }
 
 // PollRadarr saves the Radarr Queue to r.RadarrQ
-func (u *Unpackerr) PollRadarr() error {
+func (u *Unpackerr) PollRadarr(radarr *radarrConfig) error {
 	var err error
 
-	u.RadarrQ.Lock()
-	defer u.RadarrQ.Unlock()
+	radarr.Lock()
+	defer radarr.Unlock()
 
-	if u.RadarrQ.List, err = u.Radarr.RadarrQueue(); err != nil {
+	if radarr.List, err = radarr.RadarrQueue(); err != nil {
 		return err
 	}
 
-	log.Println("Radarr Updated:", len(u.RadarrQ.List), "Items Queued")
+	log.Printf("Radarr Updated (%s): %d Items Queued", radarr.URL, len(radarr.List))
 
 	return nil
-}
-
-// PollChange runs other tasks.
-// Those tasks: a) look for things to extract, b) look for things to delete.
-// This runs more often because of the cleanup tasks.
-// It doesn't poll external data, unless it finds something to extract.
-func (u *Unpackerr) PollChange() {
-	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
-
-	ticker := time.NewTicker(time.Minute)
-
-	for {
-		select {
-		case <-ticker.C:
-			u.CheckExtractDone()
-			u.CheckSonarrQueue()
-			u.CheckRadarrQueue()
-		case <-u.StopChan:
-			ticker.Stop()
-			return
-		}
-	}
 }
 
 // CheckExtractDone checks if an extracted item has been imported.
@@ -156,31 +135,45 @@ func (u *Unpackerr) HandleExtractDone(data Extracts, name string) ExtractStatus 
 
 // CheckSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) CheckSonarrQueue() {
-	u.SonarrQ.RLock()
-	defer u.SonarrQ.RUnlock()
+	check := func(sonarr *sonarrConfig) {
+		sonarr.RLock()
+		defer sonarr.RUnlock()
 
-	for _, q := range u.SonarrQ.List {
-		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Sonarr", u.Config.SonarrPath)
-		} else {
-			u.DeLogf("Sonarr: %s (%s:%d%%): %v (Ep: %v)",
-				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+		for _, q := range sonarr.List {
+			if q.Status == "Completed" && q.Protocol == torrent {
+				name := fmt.Sprintf("Sonarr (%s)", sonarr.URL)
+				go u.HandleCompleted(q.Title, name, sonarr.Path)
+			} else {
+				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",
+					sonarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
+			}
 		}
+	}
+
+	for _, sonarr := range u.Sonarr {
+		check(sonarr)
 	}
 }
 
 // CheckRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) CheckRadarrQueue() {
-	u.RadarrQ.RLock()
-	defer u.RadarrQ.RUnlock()
+	check := func(radarr *radarrConfig) {
+		radarr.RLock()
+		defer radarr.RUnlock()
 
-	for _, q := range u.RadarrQ.List {
-		if q.Status == "Completed" && q.Protocol == torrent {
-			go u.HandleCompleted(q.Title, "Radarr", u.Config.RadarrPath)
-		} else {
-			u.DeLogf("Radarr: %s (%s:%d%%): %v",
-				q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+		for _, q := range radarr.List {
+			if q.Status == "Completed" && q.Protocol == torrent {
+				name := fmt.Sprintf("Radarr (%s)", radarr.URL)
+				go u.HandleCompleted(q.Title, name, radarr.Path)
+			} else {
+				u.DeLogf("Radarr (%s): %s (%s:%d%%): %v",
+					radarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			}
 		}
+	}
+
+	for _, radarr := range u.Radarr {
+		check(radarr)
 	}
 }
 

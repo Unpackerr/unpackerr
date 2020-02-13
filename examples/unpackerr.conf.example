@@ -8,7 +8,7 @@ debug = false
 # Recommend 2m-10m. Uses Go Duration.
 interval = "2m"
 
-# How long to wait for a reply from the backends: Sonarr, Radarr.
+# How long to wait for a reply from the backends: Sonarr, Radarr, Lidarr.
 # This can also be set per-app. Uses Go Duration.
 timeout = "10s"
 
@@ -31,7 +31,7 @@ retry_delay = "5m"
 # Do not wrap the number in quotes.
 parallel = 1
 
-# The following sections can be repeated if you have more than one Sonarr or Radarr.
+# The following sections can be repeated if you have more than one Sonarr, Radarr or Lidarr.
 
 #[[sonarr]]
 #url = "http://127.0.0.1:8989"
@@ -43,4 +43,10 @@ parallel = 1
 #url = "http://127.0.0.1:7878"
 #api_key = "4bc34281deda4846a2fdab2c15bc8de8"
 # File system path where downloaded Radarr items are located.
+#path = "/downloads"
+
+#[[lidarr]]
+#url = "http://127.0.0.1:8686"
+#api_key = "32454256defd484ab2fdab2c15bc17af"
+# File system path where downloaded Lidarr items are located.
 #path = "/downloads"

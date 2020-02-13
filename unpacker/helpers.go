@@ -185,3 +185,27 @@ func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
 
 	return nil
 }
+
+// gets a lidarr queue item based on name. returns first match
+func (u *Unpackerr) getLidarQitem(name string) *starr.LidarrRecord {
+	getItem := func(name string, lidarr *lidarrConfig) *starr.LidarrRecord {
+		lidarr.RLock()
+		defer lidarr.RUnlock()
+
+		for i := range lidarr.List {
+			if lidarr.List[i].Title == name {
+				return lidarr.List[i]
+			}
+		}
+
+		return nil
+	}
+
+	for _, lidarr := range u.Lidarr {
+		if s := getItem(name, lidarr); s != nil {
+			return s
+		}
+	}
+
+	return nil
+}

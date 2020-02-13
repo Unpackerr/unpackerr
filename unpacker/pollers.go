@@ -8,9 +8,12 @@ import (
 )
 
 // torrent is what we care about. no usenet..
-const torrent = "torrent"
+const (
+	torrent   = "torrent"
+	completed = "Completed"
+)
 
-// PollSonarr saves the Sonarr Queue to r.SonarrQ
+// PollSonarr saves the Sonarr Queue
 func (u *Unpackerr) PollSonarr(sonarr *sonarrConfig) error {
 	var err error
 
@@ -26,7 +29,7 @@ func (u *Unpackerr) PollSonarr(sonarr *sonarrConfig) error {
 	return nil
 }
 
-// PollRadarr saves the Radarr Queue to r.RadarrQ
+// PollRadarr saves the Radarr Queue
 func (u *Unpackerr) PollRadarr(radarr *radarrConfig) error {
 	var err error
 
@@ -38,6 +41,22 @@ func (u *Unpackerr) PollRadarr(radarr *radarrConfig) error {
 	}
 
 	log.Printf("Radarr Updated (%s): %d Items Queued", radarr.URL, len(radarr.List))
+
+	return nil
+}
+
+// PollLidarr saves the Lidarr Queue
+func (u *Unpackerr) PollLidarr(lidarr *lidarrConfig) error {
+	var err error
+
+	lidarr.Lock()
+	defer lidarr.Unlock()
+
+	if lidarr.List, err = lidarr.LidarrQueue(1000); err != nil {
+		return err
+	}
+
+	log.Printf("Lidarr Updated (%s): %d Items Queued", lidarr.URL, len(lidarr.List))
 
 	return nil
 }
@@ -71,6 +90,8 @@ func (u *Unpackerr) CheckExtractDone() {
 			go u.handleSonarr(data, name)
 		case data.App == "Radarr":
 			go u.handleRadarr(data, name)
+		case data.App == "Lidarr":
+			go u.handleLidarr(data, name)
 		}
 	}
 }
@@ -133,6 +154,23 @@ func (u *Unpackerr) handleSonarr(data Extracts, name string) {
 	}
 }
 
+func (u *Unpackerr) handleLidarr(data Extracts, name string) {
+	u.History.Lock()
+	defer u.History.Unlock()
+
+	if item := u.getLidarQitem(name); item.Status != "" {
+		u.DeLogf("%s Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+		return // We only want finished items.
+	} else if item.Protocol != torrent && item.Protocol != "" {
+		return // We only want torrents.
+	}
+
+	if s := u.HandleExtractDone(data, name); s != data.Status {
+		data.Status, data.Updated = s, time.Now()
+		u.History.Map[name] = data
+	}
+}
+
 // HandleExtractDone checks if files should be deleted.
 func (u *Unpackerr) HandleExtractDone(data Extracts, name string) ExtractStatus {
 	switch elapsed := time.Since(data.Updated); {
@@ -156,7 +194,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 		defer sonarr.RUnlock()
 
 		for _, q := range sonarr.List {
-			if q.Status == "Completed" && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Sonarr (%s)", sonarr.URL)
 				go u.HandleCompleted(q.Title, name, sonarr.Path)
 			} else {
@@ -178,7 +216,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 		defer radarr.RUnlock()
 
 		for _, q := range radarr.List {
-			if q.Status == "Completed" && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Radarr (%s)", radarr.URL)
 				go u.HandleCompleted(q.Title, name, radarr.Path)
 			} else {
@@ -190,6 +228,28 @@ func (u *Unpackerr) CheckRadarrQueue() {
 
 	for _, radarr := range u.Radarr {
 		check(radarr)
+	}
+}
+
+// CheckLidarrQueue passes completed Lidarr-queued downloads to the HandleCompleted method.
+func (u *Unpackerr) CheckLidarrQueue() {
+	check := func(lidarr *lidarrConfig) {
+		lidarr.RLock()
+		defer lidarr.RUnlock()
+
+		for _, q := range lidarr.List {
+			if q.Status == completed && q.Protocol == torrent {
+				name := fmt.Sprintf("Lidarr (%s)", lidarr.URL)
+				go u.HandleCompleted(q.Title, name, lidarr.Path)
+			} else {
+				u.DeLogf("Lidarr (%s): %s (%s:%d%%): %v",
+					lidarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
+			}
+		}
+	}
+
+	for _, lidarr := range u.Lidarr {
+		check(lidarr)
 	}
 }
 

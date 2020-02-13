@@ -8,7 +8,10 @@ import (
 )
 
 // torrent is what we care about. no usenet..
-const torrent = "torrent"
+const (
+	torrent   = "torrent"
+	completed = "Completed"
+)
 
 // PollSonarr saves the Sonarr Queue
 func (u *Unpackerr) PollSonarr(sonarr *sonarrConfig) error {
@@ -191,7 +194,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 		defer sonarr.RUnlock()
 
 		for _, q := range sonarr.List {
-			if q.Status == "Completed" && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Sonarr (%s)", sonarr.URL)
 				go u.HandleCompleted(q.Title, name, sonarr.Path)
 			} else {
@@ -213,7 +216,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 		defer radarr.RUnlock()
 
 		for _, q := range radarr.List {
-			if q.Status == "Completed" && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Radarr (%s)", radarr.URL)
 				go u.HandleCompleted(q.Title, name, radarr.Path)
 			} else {
@@ -235,7 +238,7 @@ func (u *Unpackerr) CheckLidarrQueue() {
 		defer lidarr.RUnlock()
 
 		for _, q := range lidarr.List {
-			if q.Status == "Completed" && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Radarr (%s)", lidarr.URL)
 				go u.HandleCompleted(q.Title, name, lidarr.Path)
 			} else {

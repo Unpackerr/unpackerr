@@ -102,6 +102,10 @@ golift.io/starr v0.9.4-0.20200213085638-14710d2c7377 h1:xB1rYLMYPz0knTWyiHWgwDwJ
 golift.io/starr v0.9.4-0.20200213085638-14710d2c7377/go.mod h1:vL4f1fofWq18m6LVJ/0dreyVLyYDgDYbn/Ro5ZSC+XU=
 golift.io/starr v0.9.4-0.20200213091948-3c6982d6841c h1:xG279A1kFH67j9ZTmALPpHM9StWTahDFi/GXX6vqtvM=
 golift.io/starr v0.9.4-0.20200213091948-3c6982d6841c/go.mod h1:vL4f1fofWq18m6LVJ/0dreyVLyYDgDYbn/Ro5ZSC+XU=
+golift.io/starr v0.9.4-0.20200213105610-4ee793058a21 h1:fv8Od+YUljXp9Ya2P9n6taztXvFJoThoJUyOFbMoMGU=
+golift.io/starr v0.9.4-0.20200213105610-4ee793058a21/go.mod h1:vL4f1fofWq18m6LVJ/0dreyVLyYDgDYbn/Ro5ZSC+XU=
+golift.io/starr v0.9.4-0.20200213111105-8786b3b5ef33 h1:W1XhVuOk0mgoBo2UQ33778ZSU7WSkyaHHaHJfG02B40=
+golift.io/starr v0.9.4-0.20200213111105-8786b3b5ef33/go.mod h1:vL4f1fofWq18m6LVJ/0dreyVLyYDgDYbn/Ro5ZSC+XU=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

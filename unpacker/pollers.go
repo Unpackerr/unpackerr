@@ -196,7 +196,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 		for _, q := range sonarr.List {
 			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Sonarr (%s)", sonarr.URL)
-				go u.HandleCompleted(q.Title, name, sonarr.Path)
+				go u.HandleCompleted(q.Title, name, filepath.Join(sonarr.Path, name))
 			} else {
 				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",
 					sonarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
@@ -218,7 +218,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 		for _, q := range radarr.List {
 			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Radarr (%s)", radarr.URL)
-				go u.HandleCompleted(q.Title, name, radarr.Path)
+				go u.HandleCompleted(q.Title, name, filepath.Join(radarr.Path, name))
 			} else {
 				u.DeLogf("Radarr (%s): %s (%s:%d%%): %v",
 					radarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
@@ -240,7 +240,7 @@ func (u *Unpackerr) CheckLidarrQueue() {
 		for _, q := range lidarr.List {
 			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Lidarr (%s)", lidarr.URL)
-				go u.HandleCompleted(q.Title, name, lidarr.Path)
+				go u.HandleCompleted(q.Title, name, q.OutputPath)
 			} else {
 				u.DeLogf("Lidarr (%s): %s (%s:%d%%): %v",
 					lidarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
@@ -261,18 +261,16 @@ func (u *Unpackerr) historyExists(name string) (ok bool) {
 	return
 }
 
-// HandleCompleted checks if a completed sonarr or radarr item needs to be extracted.
+// HandleCompleted checks if a completed item needs to be extracted.
 func (u *Unpackerr) HandleCompleted(name, app, path string) {
-	path = filepath.Join(path, name)
-	files := FindRarFiles(path)
+	if u.historyExists(name) {
+		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
+		return
+	}
 
-	if !u.historyExists(name) {
-		if len(files) > 0 {
-			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
-			u.CreateStatus(name, path, app, files)
-			u.extractFiles(name, path, files)
-		} else {
-			u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
-		}
+	if files := FindRarFiles(path); len(files) > 0 {
+		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
+		u.CreateStatus(name, path, app, files)
+		u.extractFiles(name, path, files)
 	}
 }

@@ -19,6 +19,8 @@ import (
 const (
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 10 * time.Second
+	defaultStartDelay  = time.Minute
+	defaultRetryDelay  = 5 * time.Minute
 	minimumDeleteDelay = time.Second
 )
 
@@ -27,9 +29,15 @@ const (
 func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile},
-		Config:  &Config{Timeout: cnfg.Duration{Duration: defaultTimeout}},
-		History: &History{Map: make(map[string]Extracts)},
 		SigChan: make(chan os.Signal),
+		History: &History{Map: make(map[string]Extracts)},
+		Config: &Config{
+			Timeout:     cnfg.Duration{Duration: defaultTimeout},
+			Interval:    cnfg.Duration{Duration: minimumInterval},
+			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
+			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
+			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
+		},
 	}
 }
 
@@ -113,7 +121,6 @@ func (u *Unpackerr) validateConfig() {
 
 	if u.Parallel < 1 {
 		u.Parallel = 1
-		u.DeLogf("Maximum Concurrent Extractions: %d", u.Parallel)
 	}
 
 	if u.Interval.Duration < minimumInterval {

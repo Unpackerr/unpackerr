@@ -17,6 +17,16 @@ timeout = "10s"
 # are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
 delete_delay = "5m"
 
+# How long an item must be queued (download complete) before extraction will start.
+# One minute is the historic default and works well. Set higher if your downloads
+# take longer to finalize (or transfer locally).
+start_delay = "1m"
+
+# How long to wait before removing the history for a failed extraction.
+# Once the history is deleted the item will be recognized as new and
+# extraction will start again.
+retry_delay = "5m"
+
 # How many files may be extracted in parallel. 1 works fine in most cases.
 # Do not wrap the number in quotes.
 parallel = 1

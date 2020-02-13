@@ -60,6 +60,8 @@ debug|`UN_DEBUG`|`false` / Turns on more logs
 interval|`UN_INTERVAL`|`4m` / How often apps are polled, recommend `2m`-`10m`
 timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)
 delete_delay|`UN_DELETE_DELAY`|`10m` / Extracts are deleted this long long after import|
+start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
+retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`
 sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr

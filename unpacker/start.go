@@ -84,6 +84,7 @@ func (u *Unpackerr) Run() {
 	poller := time.NewTicker(u.Interval.Duration)
 	cleaner := time.NewTicker(time.Minute)
 
+
 	go func() {
 		for range cleaner.C {
 			u.CheckExtractDone()

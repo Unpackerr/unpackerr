@@ -52,6 +52,7 @@ docker logs <container id from docker run>
 -   Any variable not provided takes the default.
 -   Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
 -   You may provide multiple sonarr, radarr or lidarr instances using
+
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 |Config Name|Variable Name|Default / Note|
@@ -72,6 +73,7 @@ radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr
 lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
+
 
 -   Example:
 

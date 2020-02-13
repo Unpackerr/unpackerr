@@ -159,6 +159,7 @@ func (u *Unpackerr) PollAllApps() {
 		}
 
 		wg.Add(1)
+
 		go func(sonarr *sonarrConfig) {
 			if err := u.PollSonarr(sonarr); err != nil {
 				log.Printf("[ERROR] Sonarr (%s): %v", sonarr.URL, err)
@@ -174,6 +175,7 @@ func (u *Unpackerr) PollAllApps() {
 		}
 
 		wg.Add(1)
+
 		go func(radarr *radarrConfig) {
 			if err := u.PollRadarr(radarr); err != nil {
 				log.Printf("[ERROR] Radarr (%s): %v", radarr.URL, err)

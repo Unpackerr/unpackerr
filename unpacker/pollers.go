@@ -48,11 +48,11 @@ func (u *Unpackerr) CheckExtractDone() {
 
 	defer func() {
 		u.History.RUnlock()
-		ec := u.eCount()
-		log.Printf("Extract Statuses: %d extracting, %d queued, "+
-			"%d extracted, %d imported, %d failed, %d deleted. Finished: %d",
-			ec.extracting, ec.queued, ec.extracted,
-			ec.imported, ec.failed, ec.deleted, ec.finished)
+		e := u.eCount()
+		log.Printf("Extract Statuses: %d extracting, %d queued, %d extracted, "+
+			"%d imported, %d failed, %d deleted. Restarted: %d, Finished: %d",
+			e.extracting, e.queued, e.extracted, e.imported, e.failed, e.deleted,
+			u.Restarted, u.Finished)
 	}()
 
 	for name, data := range u.History.Map {
@@ -60,6 +60,8 @@ func (u *Unpackerr) CheckExtractDone() {
 			time.Since(data.Updated).Round(time.Second))
 
 		switch {
+		case data.Status == EXTRACTFAILED:
+			go u.retryFailedExtract(data, name)
 		case data.Status >= DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			go u.finishFinished(data.App, name)
@@ -71,6 +73,20 @@ func (u *Unpackerr) CheckExtractDone() {
 			go u.handleRadarr(data, name)
 		}
 	}
+}
+
+func (u *Unpackerr) retryFailedExtract(data Extracts, name string) {
+	// Only retry after retry time expires.
+	if time.Since(data.Updated) < u.RetryDelay.Duration {
+		return
+	}
+
+	u.History.Lock()
+	defer u.History.Unlock()
+	u.History.Restarted++
+
+	log.Printf("%v: Extract failed, removing history so it can be restarted: %v", data.App, name)
+	delete(u.History.Map, name)
 }
 
 func (u *Unpackerr) finishFinished(app, name string) {

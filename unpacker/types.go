@@ -16,6 +16,8 @@ type Config struct {
 	Interval    cnfg.Duration   `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StartDelay  cnfg.Duration   `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
+	RetryDelay  cnfg.Duration   `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
 	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 }
@@ -71,7 +73,6 @@ type eCounters struct {
 	extracted  uint
 	imported   uint
 	deleted    uint
-	finished   uint
 }
 
 // Flags are our CLI input flags.
@@ -91,8 +92,9 @@ type Unpackerr struct {
 // History holds the history of extracted items.
 type History struct {
 	sync.RWMutex
-	Finished uint
-	Map      map[string]Extracts
+	Finished  uint
+	Restarted uint
+	Map       map[string]Extracts
 }
 
 // Extracts holds data for files being extracted.

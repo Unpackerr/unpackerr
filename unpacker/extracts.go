@@ -34,8 +34,6 @@ func (u *Unpackerr) eCount() (e eCounters) {
 	u.History.RLock()
 	defer u.History.RUnlock()
 
-	e.finished = u.Finished
-
 	for _, r := range u.History.Map {
 		switch r.Status {
 		case QUEUED:
@@ -82,8 +80,8 @@ func (u *Unpackerr) extractMayProceed(name string) bool {
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	if time.Since(u.History.Map[name].Updated) < time.Minute {
-		// Item must be queued for at least 1 minute to prevent download races.
+	if time.Since(u.History.Map[name].Updated) < u.StartDelay.Duration {
+		// Item must be queued for at least StartDelay (1m+) to prevent download races.
 		return false
 	}
 
@@ -145,6 +143,12 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string) {
 		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
 			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
 		u.UpdateStatus(name, EXTRACTFAILED, newFiles)
+
+		if err = os.RemoveAll(tmpPath); err != nil {
+			log.Printf("Error Removing Folder: %v: %v", tmpPath, err)
+		} else {
+			u.DeLogf("Removed Folder: %v", tmpPath)
+		}
 
 		return
 	}

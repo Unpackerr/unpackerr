@@ -110,8 +110,8 @@ func (u *Unpackerr) moveFiles(fromPath string, toPath string) ([]string, error) 
 		files[i] = newFile
 	}
 
-	if errr := os.Remove(fromPath); errr != nil {
-		log.Printf("Error Removing Folder: %v: %v", fromPath, errr.Error())
+	if err := os.Remove(fromPath); err != nil {
+		log.Printf("Error Removing Folder: %v: %v", fromPath, err)
 	} else {
 		// If we made it this far, it's ok.
 		u.DeLogf("Removed Folder: %v", fromPath)

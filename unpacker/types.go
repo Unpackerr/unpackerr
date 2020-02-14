@@ -9,6 +9,11 @@ import (
 	"golift.io/starr"
 )
 
+const (
+	torrent   = "torrent"
+	completed = "Completed"
+)
+
 // Config defines the configuration data used to start the application.
 type Config struct {
 	Debug       bool            `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
@@ -21,16 +26,19 @@ type Config struct {
 	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      []*lidarrConfig `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
+	Folders     []*folderConfig `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
 }
 
 type radarrConfig struct {
 	*starr.Config
+	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 	List         []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type sonarrConfig struct {
 	*starr.Config
+	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 	List         []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -39,6 +47,13 @@ type lidarrConfig struct {
 	*starr.Config
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 	List         []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
+}
+
+type folderConfig struct {
+	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
+	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
+	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
+	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -93,6 +108,7 @@ type Unpackerr struct {
 	*Flags
 	*Config
 	*History
+	folders *Folders
 	SigChan chan os.Signal
 }
 
@@ -101,7 +117,7 @@ type History struct {
 	sync.RWMutex
 	Finished  uint
 	Restarted uint
-	Map       map[string]Extracts
+	Map       map[string]*Extracts
 }
 
 // Extracts holds data for files being extracted.

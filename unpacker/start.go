@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -19,8 +18,8 @@ import (
 const (
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 10 * time.Second
-	defaultStartDelay  = time.Minute
 	defaultRetryDelay  = 5 * time.Minute
+	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 )
 
@@ -30,12 +29,12 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile},
 		SigChan: make(chan os.Signal),
-		History: &History{Map: make(map[string]Extracts)},
+		History: &History{Map: make(map[string]*Extracts)},
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
-			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
+			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
 		},
 	}
@@ -52,7 +51,7 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	log.Printf("Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
+	log.Printf("[INFO] Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 		return err
@@ -79,7 +78,7 @@ func Start() (err error) {
 // One poller wont run twice unless you get creative.
 // Just make a second one if you want to poller moar.
 func (u *Unpackerr) Run() {
-	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
+	u.DeLogf("[INFO] Starting Cleanup Routine (interval: 1 minute)")
 
 	poller := time.NewTicker(u.Interval.Duration)
 	cleaner := time.NewTicker(time.Minute)
@@ -92,6 +91,7 @@ func (u *Unpackerr) Run() {
 			u.CheckLidarrQueue()
 		}
 	}()
+	go u.PollFolders()
 	u.PollAllApps() // Run all pollers once at startup.
 
 	for range poller.C {
@@ -154,61 +154,6 @@ func (u *Unpackerr) validateConfig() {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
 	}
-}
-
-// PollAllApps Polls  Sonarr and Radarr. At the same time.
-func (u *Unpackerr) PollAllApps() {
-	var wg sync.WaitGroup
-
-	for _, sonarr := range u.Sonarr {
-		if sonarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(sonarr *sonarrConfig) {
-			if err := u.PollSonarr(sonarr); err != nil {
-				log.Printf("[ERROR] Sonarr (%s): %v", sonarr.URL, err)
-			}
-
-			wg.Done()
-		}(sonarr)
-	}
-
-	for _, radarr := range u.Radarr {
-		if radarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(radarr *radarrConfig) {
-			if err := u.PollRadarr(radarr); err != nil {
-				log.Printf("[ERROR] Radarr (%s): %v", radarr.URL, err)
-			}
-
-			wg.Done()
-		}(radarr)
-	}
-
-	for _, lidarr := range u.Lidarr {
-		if lidarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(lidarr *lidarrConfig) {
-			if err := u.PollLidarr(lidarr); err != nil {
-				log.Printf("[ERROR] Lidarr (%s): %v", lidarr.URL, err)
-			}
-
-			wg.Done()
-		}(lidarr)
-	}
-
-	wg.Wait()
 }
 
 // DeLogf writes Debug log lines.

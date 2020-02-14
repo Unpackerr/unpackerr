@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"golift.io/starr"
 )
 
 // Returns all the files in a path.
@@ -19,6 +17,14 @@ func getFileList(path string) (files []string) {
 	} else {
 		log.Println("Error reading path", path, err.Error())
 	}
+
+	return
+}
+
+func (u *Unpackerr) historyExists(name string) (ok bool) {
+	u.History.RLock()
+	defer u.History.RUnlock()
+	_, ok = u.History.Map[name]
 
 	return
 }
@@ -56,9 +62,8 @@ func FindRarFiles(path string) []string {
 		return nil
 	}
 
-	var hasrar bool
-
-	var files []string
+	hasrar := false
+	files := []string{}
 
 	// Check (save) if the current path has any rar files.
 	if r, err := filepath.Glob(filepath.Join(path, "*.rar")); err == nil && len(r) > 0 {
@@ -133,79 +138,4 @@ func deleteFiles(files []string) {
 
 		log.Println("Deleted:", file)
 	}
-}
-
-/*
-  The following functions pull data from the internal map and slices.
-*/
-
-func (u *Unpackerr) getSonarQitem(name string) *starr.SonarQueue {
-	getItem := func(name string, sonarr *sonarrConfig) *starr.SonarQueue {
-		sonarr.RLock()
-		defer sonarr.RUnlock()
-
-		for i := range sonarr.List {
-			if sonarr.List[i].Title == name {
-				return sonarr.List[i]
-			}
-		}
-
-		return nil
-	}
-
-	for _, sonarr := range u.Sonarr {
-		if s := getItem(name, sonarr); s != nil {
-			return s
-		}
-	}
-
-	return nil
-}
-
-// gets a radarr queue item based on name. returns first match
-func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
-	getItem := func(name string, radarr *radarrConfig) *starr.RadarQueue {
-		radarr.RLock()
-		defer radarr.RUnlock()
-
-		for i := range radarr.List {
-			if radarr.List[i].Title == name {
-				return radarr.List[i]
-			}
-		}
-
-		return nil
-	}
-
-	for _, radarr := range u.Radarr {
-		if s := getItem(name, radarr); s != nil {
-			return s
-		}
-	}
-
-	return nil
-}
-
-// gets a lidarr queue item based on name. returns first match
-func (u *Unpackerr) getLidarQitem(name string) *starr.LidarrRecord {
-	getItem := func(name string, lidarr *lidarrConfig) *starr.LidarrRecord {
-		lidarr.RLock()
-		defer lidarr.RUnlock()
-
-		for i := range lidarr.List {
-			if lidarr.List[i].Title == name {
-				return lidarr.List[i]
-			}
-		}
-
-		return nil
-	}
-
-	for _, lidarr := range u.Lidarr {
-		if s := getItem(name, lidarr); s != nil {
-			return s
-		}
-	}
-
-	return nil
 }

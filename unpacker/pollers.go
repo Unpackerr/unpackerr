@@ -68,7 +68,7 @@ func (u *Unpackerr) CheckExtractDone() {
 	defer func() {
 		u.History.RUnlock()
 		e := u.eCount()
-		log.Printf("Extract Statuses: %d extracting, %d queued, %d extracted, "+
+		log.Printf("[INFO] Extract Statuses: %d extracting, %d queued, %d extracted, "+
 			"%d imported, %d failed, %d deleted. Restarted: %d, Finished: %d",
 			e.extracting, e.queued, e.extracted, e.imported, e.failed, e.deleted,
 			u.Restarted, u.Finished)
@@ -122,7 +122,7 @@ func (u *Unpackerr) finishFinished(app, name string) {
 	defer u.History.Unlock()
 	u.History.Finished++
 
-	log.Printf("%v: Finished, Removing History: %v", app, name)
+	log.Printf("[%v] Finished, Removing History: %v", app, name)
 	delete(u.History.Map, name)
 }
 
@@ -130,7 +130,7 @@ func (u *Unpackerr) finishFinished(app, name string) {
 func (u *Unpackerr) HandleExtractDone(data *Extracts, name string) ExtractStatus {
 	switch elapsed := time.Since(data.Updated); {
 	case data.Status != IMPORTED:
-		log.Printf("%v Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
+		log.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 		return IMPORTED
 	case elapsed >= u.DeleteDelay.Duration:
 		deleteFiles(data.Files)
@@ -143,7 +143,7 @@ func (u *Unpackerr) HandleExtractDone(data *Extracts, name string) ExtractStatus
 }
 
 // HandleCompleted checks if a completed item needs to be extracted.
-func (u *Unpackerr) HandleCompleted(name, app, path string, moveBack bool) {
+func (u *Unpackerr) HandleCompleted(name, app, path string) {
 	if u.historyExists(name) {
 		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
 		return
@@ -152,6 +152,6 @@ func (u *Unpackerr) HandleCompleted(name, app, path string, moveBack bool) {
 	if files := FindRarFiles(path); len(files) > 0 {
 		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 		u.CreateStatus(name, path, app, files)
-		u.extractFiles(name, path, files, moveBack)
+		u.extractFiles(name, path, files, true)
 	}
 }

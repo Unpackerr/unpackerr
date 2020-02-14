@@ -78,7 +78,7 @@ func Start() (err error) {
 // One poller wont run twice unless you get creative.
 // Just make a second one if you want to poller moar.
 func (u *Unpackerr) Run() {
-	u.DeLogf("[INFO] Starting Cleanup Routine (interval: 1 minute)")
+	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
 
 	poller := time.NewTicker(u.Interval.Duration)
 	cleaner := time.NewTicker(time.Minute)

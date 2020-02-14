@@ -34,7 +34,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 		for _, q := range radarr.List {
 			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("[Radarr] (%s)", radarr.URL)
-				go u.HandleCompleted(q.Title, name, filepath.Join(radarr.Path, name), true)
+				go u.HandleCompleted(q.Title, name, filepath.Join(radarr.Path, name))
 			} else {
 				u.DeLogf("[Radarr] (%s): %s (%s:%d%%): %v",
 					radarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)

@@ -109,6 +109,7 @@ func (u *Unpackerr) extractMayProceed(name string) bool {
 }
 
 // Extracts rar archives with history updates, and some meta data display.
+// This code needs to be refactored to use a channel instead of piling up go routines.
 func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack bool) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -138,8 +139,7 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack 
 
 	start := time.Now()
 	extras := u.processArchives(name, tmpPath, archives)
-
-	var newFiles []string
+	newFiles := getFileList(tmpPath)
 
 	// Move the extracted files back into their original folder.
 	if moveBack {
@@ -157,8 +157,6 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack 
 
 			return
 		}
-	} else {
-		newFiles = getFileList(tmpPath)
 	}
 
 	log.Printf("[Extract] Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
@@ -178,6 +176,12 @@ func (u *Unpackerr) processArchives(name, tmpPath string, archives []string) int
 			log.Printf("[ERROR] [%d/%d] %v to %v (%v elapsed): %v",
 				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
+
+			if err = os.RemoveAll(tmpPath); err != nil {
+				log.Printf("[ERROR] Removing Folder: %v: %v", tmpPath, err)
+			} else {
+				u.DeLogf("Removed Folder: %v", tmpPath)
+			}
 
 			return extras
 		}

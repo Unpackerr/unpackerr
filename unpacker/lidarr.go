@@ -33,7 +33,7 @@ func (u *Unpackerr) CheckLidarrQueue() {
 		for _, q := range lidarr.List {
 			if q.Status == completed && q.Protocol == torrent {
 				name := fmt.Sprintf("Lidarr (%s)", lidarr.URL)
-				go u.HandleCompleted(q.Title, name, q.OutputPath, true)
+				go u.HandleCompleted(q.Title, name, q.OutputPath)
 			} else {
 				u.DeLogf("[Lidarr] (%s): %s (%s:%d%%): %v",
 					lidarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)

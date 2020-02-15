@@ -69,9 +69,9 @@ func (u *Unpackerr) CheckExtractDone() {
 	defer func() {
 		u.History.RUnlock()
 		e := u.eCount()
-		log.Printf("[INFO] Extract Statuses: %d extracting, %d queued, %d extracted, "+
-			"%d imported, %d failed, %d deleted. Restarted: %d, Finished: %d",
-			e.extracting, e.queued, e.extracted, e.imported, e.failed, e.deleted,
+		log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported] "+
+			"[%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
+			e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
 			u.Restarted, u.Finished)
 	}()
 

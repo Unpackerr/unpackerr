@@ -81,15 +81,19 @@ docker run -d -v /mnt/HostDownloads:/downloads -e "UN_SONARR_0_URL=http://localh
 docker logs <container id from docker run>
 ```
 
-#### Alpine Docker Container
+#### More Dockers!
 
  If you want a container that has a bit more to it, you can try a third party option.
  The container provided by golift is from scratch so it has nothing more than a binary
  and a config file (with our defaults).
 
 -   **[@madcatsu](https://github.com/madcatsu) maintains an
- [Alpine Docker Container](https://hub.docker.com/r/madcatsu/unpackerr-alpine-daemon)
- for Deluge Unpacker.**
+    [Alpine Docker Container](https://hub.docker.com/r/madcatsu/unpackerr-alpine-daemon)
+    for Unpackerr.** ([repo](https://gitlab.com/madcatsu/docker-unpackerr-alpine-daemon))
+
+-   **[@hotio](https://github.com/hotio) maintains a
+    [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
+    for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
 ### Linux and FreeBSD Install
 

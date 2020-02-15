@@ -52,7 +52,6 @@ docker logs <container id from docker run>
 -   Any variable not provided takes the default.
 -   Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
 -   You may provide multiple sonarr, radarr or lidarr instances using
-
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 |Config Name|Variable Name|Default / Note|
@@ -81,6 +80,20 @@ docker pull golift/unpackerr
 docker run -d -v /mnt/HostDownloads:/downloads -e "UN_SONARR_0_URL=http://localhost:8989" -e "UN_SONARR_0_API_KEY=kjsdkasjdaksdj" golift/unpackerr
 docker logs <container id from docker run>
 ```
+
+#### More Dockers!
+
+ If you want a container that has a bit more to it, you can try a third party option.
+ The container provided by golift is from scratch so it has nothing more than a binary
+ and a config file (with our defaults).
+
+-   **[@madcatsu](https://github.com/madcatsu) maintains an
+    [Alpine Docker Container](https://hub.docker.com/r/madcatsu/unpackerr-alpine-daemon)
+    for Unpackerr.** ([repo](https://gitlab.com/madcatsu/docker-unpackerr-alpine-daemon))
+
+-   **[@hotio](https://github.com/hotio) maintains a
+    [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
+    for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
 ### Linux and FreeBSD Install
 

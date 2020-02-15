@@ -1,9 +1,12 @@
 package unpacker
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,7 +24,7 @@ func (u *Unpackerr) CreateStatus(name, path string, app string, files []string) 
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	u.History.Map[name] = Extracts{
+	u.History.Map[name] = &Extracts{
 		Path:    path,
 		App:     app,
 		Status:  QUEUED,
@@ -66,7 +69,7 @@ func (u *Unpackerr) UpdateStatus(name string, status ExtractStatus, fileList []s
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	u.History.Map[name] = Extracts{
+	u.History.Map[name] = &Extracts{
 		Path:    u.History.Map[name].Path,
 		App:     u.History.Map[name].App,
 		Files:   append(u.History.Map[name].Files, fileList...),
@@ -94,7 +97,7 @@ func (u *Unpackerr) extractMayProceed(name string) bool {
 	}
 
 	if count < u.Parallel {
-		u.History.Map[name] = Extracts{
+		u.History.Map[name] = &Extracts{
 			Path:    u.History.Map[name].Path,
 			App:     u.History.Map[name].App,
 			Files:   u.History.Map[name].Files,
@@ -109,13 +112,14 @@ func (u *Unpackerr) extractMayProceed(name string) bool {
 }
 
 // Extracts rar archives with history updates, and some meta data display.
-func (u *Unpackerr) extractFiles(name, path string, archives []string) {
+// This code needs to be refactored to use a channel instead of piling up go routines.
+func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack bool) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	if len(archives) == 1 {
-		log.Printf("Extract Enqueued: (1 file) - %v", name)
+		log.Printf("[Extract] Enqueued: (1 file) - %v", name)
 	} else {
-		log.Printf("Extract Group Enqueued: %d files - %v", len(archives), name)
+		log.Printf("[Extract] Group Enqueued: %d files - %v", len(archives), name)
 	}
 
 	// This works because extractMayProceed has a lock on the checking and setting of the value.
@@ -123,37 +127,45 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string) {
 		time.Sleep(time.Duration(rand.Float64()) * time.Second)
 	}
 
-	log.Printf("Extract Starting (%d active): %d files - %v", u.eCount().extracting, len(archives), name)
+	log.Printf("[Extract] Starting (%d active): %d files - %v", u.eCount().extracting, len(archives), name)
 
 	// Extract into a temporary path so Sonarr doesn't import episodes prematurely.
-	tmpPath := path + "_unpacker"
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
-		log.Println("Extract Error: Creating temporary extract folder:", err.Error())
+	tmpPath := path + suffix
+
+	err := os.MkdirAll(tmpPath, 0755)
+	if err != nil {
+		log.Println("[ERROR] Creating temporary extract folder:", err)
 		u.UpdateStatus(name, EXTRACTFAILED, nil)
 
 		return
 	}
 
-	start := time.Now()
-	extras := u.processArchives(name, tmpPath, archives)
-
-	// Move the extracted files back into their original folder.
-	newFiles, err := u.moveFiles(tmpPath, path)
-	if err != nil {
-		log.Printf("Extract Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
-			name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err.Error())
-		u.UpdateStatus(name, EXTRACTFAILED, newFiles)
-
-		if err = os.RemoveAll(tmpPath); err != nil {
-			log.Printf("Error Removing Folder: %v: %v", tmpPath, err)
-		} else {
-			u.DeLogf("Removed Folder: %v", tmpPath)
-		}
-
-		return
+	msg := fmt.Sprintf("%v unpackerred - this file is removed with the extracted data", time.Now())
+	if err := ioutil.WriteFile(filepath.Join(tmpPath, suffix), []byte(msg), 0744); err != nil {
+		log.Printf("[ERROR] Creating Temporary Tracking File: %v", err)
 	}
 
-	log.Printf("Extract Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
+	start := time.Now()
+	extras := u.processArchives(name, tmpPath, archives)
+	newFiles := getFileList(tmpPath)
+
+	// Move the extracted files back into their original folder.
+	if moveBack {
+		newFiles, err = u.moveFiles(tmpPath, path)
+		if err != nil {
+			log.Printf("[Extract] Rename Error: %v (%d+%d archives, %d files, %v elapsed): %v",
+				name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second), err)
+			u.UpdateStatus(name, EXTRACTFAILED, newFiles)
+
+			if err = os.RemoveAll(tmpPath); err != nil {
+				log.Printf("[ERROR] Removing Folder: %v", err)
+			} else {
+				log.Printf("[Extract] Removed Folder: %v", tmpPath)
+			}
+		}
+	}
+
+	log.Printf("[Extract] Group Complete: %v (%d+%d archives, %d files, %v elapsed)",
 		name, len(archives), extras, len(newFiles), time.Since(start).Round(time.Second))
 	u.UpdateStatus(name, EXTRACTED, newFiles)
 }
@@ -167,33 +179,39 @@ func (u *Unpackerr) processArchives(name, tmpPath string, archives []string) int
 		beforeFiles := getFileList(tmpPath) // get the "before this extraction" file list
 
 		if err := rar.RarExtractor(file, tmpPath); err != nil {
-			log.Printf("Extract Error: [%d/%d] %v to %v (%v elapsed): %v",
+			log.Printf("[ERROR] [%d/%d] %v to %v (%v elapsed): %v",
 				i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
+
+			if err = os.RemoveAll(tmpPath); err != nil {
+				log.Printf("[ERROR] Removing Folder: %v", err)
+			} else {
+				log.Printf("[Extract] Removed Folder: %v", tmpPath)
+			}
 
 			return extras
 		}
 
 		newFiles := difference(beforeFiles, getFileList(tmpPath))
 
-		log.Printf("Extract Complete: [%d/%d] %v (%v elapsed, %d files)",
+		log.Printf("[Extract] Complete: [%d/%d] %v (%v elapsed, %d files)",
 			i+1, len(archives), file, time.Since(fileStart).Round(time.Second), len(newFiles))
 
 		// Check if we just extracted more archives.
 		for _, file := range newFiles {
 			// Do this now, instead of re-queuing, so subs are imported.
 			if strings.HasSuffix(file, ".rar") {
-				log.Printf("Extracted RAR Archive, Extracting Additional File: %v", file)
+				log.Printf("[Extract] RAR Archive Complete, Extracting Additional File: %v", file)
 
 				if err := rar.RarExtractor(file, tmpPath); err != nil {
-					log.Printf("Extract Error: [%d/%d](extra) %v to %v (%v elapsed): %v",
+					log.Printf("[ERROR] [%d/%d](extra) %v to %v (%v elapsed): %v",
 						i+1, len(archives), file, tmpPath, time.Since(fileStart).Round(time.Second), err)
 					u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 
 					return extras
 				}
 
-				log.Printf("Extract Complete: [%d/%d](extra) %v (%v elapsed)",
+				log.Printf("[Extract] Complete: [%d/%d](extra) %v (%v elapsed)",
 					i+1, len(archives), file, time.Since(fileStart).Round(time.Second))
 
 				extras++

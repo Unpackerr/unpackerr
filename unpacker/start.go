@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -19,8 +18,8 @@ import (
 const (
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 10 * time.Second
-	defaultStartDelay  = time.Minute
 	defaultRetryDelay  = 5 * time.Minute
+	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 )
 
@@ -30,12 +29,12 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile},
 		SigChan: make(chan os.Signal),
-		History: &History{Map: make(map[string]Extracts)},
+		History: &History{Map: make(map[string]*Extracts)},
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
-			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
+			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
 		},
 	}
@@ -52,7 +51,7 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	log.Printf("Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
+	log.Printf("[INFO] Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 		return err
@@ -63,6 +62,7 @@ func Start() (err error) {
 	}
 
 	u.validateConfig()
+	u.printStartupInfo()
 
 	if u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
@@ -92,6 +92,7 @@ func (u *Unpackerr) Run() {
 			u.CheckLidarrQueue()
 		}
 	}()
+	go u.PollFolders()
 	u.PollAllApps() // Run all pollers once at startup.
 
 	for range poller.C {
@@ -156,59 +157,49 @@ func (u *Unpackerr) validateConfig() {
 	}
 }
 
-// PollAllApps Polls  Sonarr and Radarr. At the same time.
-func (u *Unpackerr) PollAllApps() {
-	var wg sync.WaitGroup
+func (u *Unpackerr) printStartupInfo() {
+	log.Println("==> Startup Settings <==")
 
-	for _, sonarr := range u.Sonarr {
-		if sonarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(sonarr *sonarrConfig) {
-			if err := u.PollSonarr(sonarr); err != nil {
-				log.Printf("[ERROR] Sonarr (%s): %v", sonarr.URL, err)
-			}
-
-			wg.Done()
-		}(sonarr)
+	if c := len(u.Sonarr); c == 1 {
+		log.Println(" => Sonarr Configured: 1 server:", u.Sonarr[0].URL)
+	} else {
+		log.Println(" => Sonarr Configured:", c, "servers")
 	}
 
-	for _, radarr := range u.Radarr {
-		if radarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(radarr *radarrConfig) {
-			if err := u.PollRadarr(radarr); err != nil {
-				log.Printf("[ERROR] Radarr (%s): %v", radarr.URL, err)
-			}
-
-			wg.Done()
-		}(radarr)
+	if c := len(u.Radarr); c == 1 {
+		log.Println(" => Radarr Configured: 1 server:", u.Radarr[0].URL)
+	} else {
+		log.Println(" => Radarr Configured:", c, "servers")
 	}
 
-	for _, lidarr := range u.Lidarr {
-		if lidarr.APIKey == "" {
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(lidarr *lidarrConfig) {
-			if err := u.PollLidarr(lidarr); err != nil {
-				log.Printf("[ERROR] Lidarr (%s): %v", lidarr.URL, err)
-			}
-
-			wg.Done()
-		}(lidarr)
+	if c := len(u.Lidarr); c == 1 {
+		log.Println(" => Lidarr Configured: 1 server:", u.Lidarr[0].URL)
+	} else {
+		log.Println(" => Lidarr Configured:", c, "servers")
 	}
 
-	wg.Wait()
+	switch c := len(u.Folders); c {
+	default:
+		log.Println(" => Folder Configured:", c, "paths:")
+
+		for _, f := range u.Folders {
+			log.Printf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
+				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
+		}
+	case 0:
+		log.Println(" => Folder Configured: 0 paths")
+	case 1:
+		log.Printf(" => Folder Configured: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
+			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack)
+	}
+
+	log.Println(" => Parallel Extracts:", u.Config.Parallel)
+	log.Println(" => Poll Interval:", u.Config.Interval.Duration)
+	log.Println(" => Poll Timeout:", u.Config.Timeout.Duration)
+	log.Println(" => Delete Delay:", u.Config.DeleteDelay.Duration)
+	log.Println(" => Start Delay:", u.Config.StartDelay.Duration)
+	log.Println(" => Retry Delay:", u.Config.RetryDelay.Duration)
+	log.Println(" => Debug Logs:", u.Config.Debug)
 }
 
 // DeLogf writes Debug log lines.

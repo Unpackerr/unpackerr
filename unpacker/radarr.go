@@ -1,7 +1,6 @@
 package unpacker
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
 	"time"
@@ -33,10 +32,9 @@ func (u *Unpackerr) CheckRadarrQueue() {
 
 		for _, q := range radarr.List {
 			if q.Status == completed && q.Protocol == torrent {
-				name := fmt.Sprintf("[Radarr] (%s)", radarr.URL)
-				go u.HandleCompleted(q.Title, name, filepath.Join(radarr.Path, name))
+				go u.HandleCompleted(q.Title, "Radarr", filepath.Join(radarr.Path, q.Title))
 			} else {
-				u.DeLogf("[Radarr] (%s): %s (%s:%d%%): %v",
+				u.DeLogf("Radarr (%s): %s (%s:%d%%): %v",
 					radarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 			}
 		}
@@ -51,11 +49,9 @@ func (u *Unpackerr) handleRadarr(data *Extracts, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	if item := u.getRadarQitem(name); item.Status != "" {
-		u.DeLogf("[%s] Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+	if item := u.getRadarQitem(name); item != nil {
+		u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
 		return // We only want finished items.
-	} else if item.Protocol != torrent && item.Protocol != "" {
-		return // We only want torrents.
 	}
 
 	if s := u.HandleExtractDone(data, name); s != data.Status {

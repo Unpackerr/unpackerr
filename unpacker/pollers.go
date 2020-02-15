@@ -2,6 +2,7 @@ package unpacker
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -75,7 +76,7 @@ func (u *Unpackerr) CheckExtractDone() {
 	}()
 
 	for name, data := range u.History.Map {
-		u.DeLogf("Extract Status: %v (status: %v, elapsed: %v)", name, data.Status.String(),
+		u.DeLogf("%s: Extract Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
 			time.Since(data.Updated).Round(time.Second))
 
 		switch {
@@ -86,13 +87,13 @@ func (u *Unpackerr) CheckExtractDone() {
 			go u.finishFinished(data.App, name)
 		case data.Status < EXTRACTED || data.Status > IMPORTED:
 			continue // Only process items that have finished extraction and are not deleted.
-		case data.App == "Sonarr":
+		case strings.HasPrefix(data.App, "Sonarr"):
 			go u.handleSonarr(data, name)
-		case data.App == "Radarr":
+		case strings.HasPrefix(data.App, "Radarr"):
 			go u.handleRadarr(data, name)
-		case data.App == "Lidarr":
+		case strings.HasPrefix(data.App, "Lidarr"):
 			go u.handleLidarr(data, name)
-		case data.App == "Folder":
+		case strings.HasPrefix(data.App, "Folder"):
 			go u.handleFolder(data, name)
 		}
 	}
@@ -113,17 +114,16 @@ func (u *Unpackerr) retryFailedExtract(data *Extracts, name string) {
 
 	u.History.Lock()
 	defer u.History.Unlock()
-	delete(u.History.Map, name)
 	u.History.Restarted++
+	delete(u.History.Map, name)
 }
 
 func (u *Unpackerr) finishFinished(app, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 	u.History.Finished++
-
-	log.Printf("[%v] Finished, Removing History: %v", app, name)
 	delete(u.History.Map, name)
+	log.Printf("[%v] Finished, Removed History: %v", app, name)
 }
 
 // HandleExtractDone checks if files should be deleted.
@@ -144,14 +144,14 @@ func (u *Unpackerr) HandleExtractDone(data *Extracts, name string) ExtractStatus
 
 // HandleCompleted checks if a completed item needs to be extracted.
 func (u *Unpackerr) HandleCompleted(name, app, path string) {
-	if u.historyExists(name) {
+	if !u.historyExists(name) {
+		if files := FindRarFiles(path); len(files) > 0 {
+			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
+			u.CreateStatus(name, path, app, files)
+			u.extractFiles(name, path, files, true)
+			return
+		}
+	} else {
 		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
-		return
-	}
-
-	if files := FindRarFiles(path); len(files) > 0 {
-		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
-		u.CreateStatus(name, path, app, files)
-		u.extractFiles(name, path, files, true)
 	}
 }

@@ -59,7 +59,7 @@ func (u *Unpackerr) PollFolders() {
 	var err error
 
 	if u.Config.Folders, flist = u.checkFolders(); len(u.Config.Folders) < 1 {
-		u.DeLogf("[FOLDER] Nothing to watch, or none folders configured.")
+		u.DeLogf("Folder: Nothing to watch, or no folders configured.")
 		return
 	}
 
@@ -126,18 +126,20 @@ func (u *Unpackerr) NewFolderWatcher() (*Folders, error) {
 
 // ExtractFolder checks if a watched folder has extractable items.
 func (u *Unpackerr) ExtractFolder(path string, moveBack bool) ExtractStatus {
-	if u.historyExists(path) {
-		u.DeLogf("Folder: Completed item still in queue: %s, no extractable files found", path)
-		return MISSING
+	if !u.historyExists(path) {
+		if files := FindRarFiles(path); len(files) > 0 {
+			log.Printf("[FOLDER] Found %d extractable item(s): %s", len(files), path)
+			u.CreateStatus(path, path, "Folder", files)
+
+			go u.extractFiles(path, path, files, moveBack)
+		}
+
+		return EXTRACTING
 	}
 
-	if files := FindRarFiles(path); len(files) > 0 {
-		log.Printf("Folder: Found %d extractable item(s): %s", len(files), path)
-		u.CreateStatus(path, path, "Folder", files)
-		go u.extractFiles(path, path, files, moveBack)
-	}
+	u.DeLogf("Folder: Completed item still in queue: %s, no extractable files found", path)
 
-	return EXTRACTING
+	return MISSING
 }
 
 // Watch keeps an eye on the tracked folders.
@@ -207,34 +209,6 @@ func (f *Folders) Track() {
 	}
 }
 
-// Delete cleans up a folder after it has reached the end of its delete timer.
-func (f *Folders) Delete(name string) {
-	folder, ok := f.Folders[name]
-	if !ok {
-		return
-	}
-
-	delete(f.Folders, name)
-
-	if folder.cnfg.DeleteOrig {
-		if err := os.RemoveAll(folder.cnfg.Path); err != nil {
-			log.Println("[ERROR] Deleting:", err)
-		} else {
-			f.DeLogf("Deleted: %s", folder.cnfg.Path)
-		}
-	}
-
-	if folder.cnfg.MoveBack {
-		return
-	}
-
-	if err := os.RemoveAll(folder.cnfg.Path + suffix); err != nil {
-		log.Println("[ERROR] Deleting:", err)
-	} else {
-		f.DeLogf("Deleted: %s", folder.cnfg.Path)
-	}
-}
-
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData) {
 	fullPath := path.Join(event.cnfg.Path, event.name)
@@ -275,21 +249,23 @@ func (f *Folders) processEvent(event *eventData) {
 // checkForWork runs at an interval to see if any folders are ready for extraction.
 func (f *Folders) checkForWork() {
 	for name, folder := range f.Folders {
-		if time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED {
-			// go delete it.
-			f.Delete(name)
-		}
+		switch {
+		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
+			delete(f.Folders, name)
 
-		// If the folder was written to in the last two minutes, skip it, it's not ready.
-		// Or, if it's already begun (or finished) extraction, skip it.
-		if time.Since(folder.last) < time.Minute || folder.step != MISSING {
-			continue
-		}
+			if !folder.cnfg.MoveBack {
+				deleteFiles([]string{folder.cnfg.Path + suffix})
+			}
 
-		// extract it.
-		_ = f.Watcher.Remove(name)
-		f.Folders[name].last = time.Now()
-		f.Folders[name].step = f.Extract(name, folder.cnfg.MoveBack)
+			if folder.cnfg.DeleteOrig {
+				deleteFiles([]string{folder.cnfg.Path})
+			}
+		case time.Since(folder.last) > time.Minute && folder.step == MISSING:
+			// extract it.
+			_ = f.Watcher.Remove(name)
+			f.Folders[name].last = time.Now()
+			f.Folders[name].step = f.Extract(name, folder.cnfg.MoveBack)
+		}
 	}
 }
 
@@ -315,13 +291,15 @@ func (f *Folders) extractCallback(data *Extracts, name string) {
 		return // this likely can't happen.
 	}
 
+	f.Folders[name].list = data.Files
+
 	if folder.cnfg.DeleteAfter.Duration == 0 {
 		delete(f.Folders, name)
-		return
-	}
 
-	// This folder stays in history until it's deleted.
-	f.Folders[name].list = data.Files
+		if folder.cnfg.DeleteOrig {
+			deleteFiles([]string{name})
+		}
+	}
 }
 
 // handleFolder is the initial callback from a completed extraction.

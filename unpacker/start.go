@@ -62,6 +62,7 @@ func Start() (err error) {
 	}
 
 	u.validateConfig()
+	u.printStartupInfo()
 
 	if u.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
@@ -154,6 +155,51 @@ func (u *Unpackerr) validateConfig() {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
 	}
+}
+
+func (u *Unpackerr) printStartupInfo() {
+	log.Println("==> Startup Settings <==")
+
+	if c := len(u.Sonarr); c == 1 {
+		log.Println(" => Sonarr Configured: 1 server:", u.Sonarr[0].URL)
+	} else {
+		log.Println(" => Sonarr Configured:", c, "servers")
+	}
+
+	if c := len(u.Radarr); c == 1 {
+		log.Println(" => Radarr Configured: 1 server:", u.Radarr[0].URL)
+	} else {
+		log.Println(" => Radarr Configured:", c, "servers")
+	}
+
+	if c := len(u.Lidarr); c == 1 {
+		log.Println(" => Lidarr Configured: 1 server:", u.Lidarr[0].URL)
+	} else {
+		log.Println(" => Lidarr Configured:", c, "servers")
+	}
+
+	switch c := len(u.Folders); c {
+	default:
+		log.Println(" => Folder Configured:", c, "paths:")
+
+		for _, f := range u.Folders {
+			log.Printf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
+				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
+		}
+	case 0:
+		log.Println(" => Folder Configured: 0 paths")
+	case 1:
+		log.Printf(" => Folder Configured: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
+			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack)
+	}
+
+	log.Println(" => Parallel Extracts:", u.Config.Parallel)
+	log.Println(" => Poll Interval:", u.Config.Interval.Duration)
+	log.Println(" => Poll Timeout:", u.Config.Timeout.Duration)
+	log.Println(" => Delete Delay:", u.Config.DeleteDelay.Duration)
+	log.Println(" => Start Delay:", u.Config.StartDelay.Duration)
+	log.Println(" => Retry Delay:", u.Config.RetryDelay.Duration)
+	log.Println(" => Debug Logs:", u.Config.Debug)
 }
 
 // DeLogf writes Debug log lines.

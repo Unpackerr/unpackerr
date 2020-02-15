@@ -1,9 +1,12 @@
 package unpacker
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -137,6 +140,11 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack 
 		return
 	}
 
+	msg := fmt.Sprintf("%v unpackerred - this file is removed with the extracted data", time.Now())
+	if err := ioutil.WriteFile(filepath.Join(tmpPath, suffix), []byte(msg), 0744); err != nil {
+		log.Printf("[ERROR] Creating Temporary Tracking File: %v", err)
+	}
+
 	start := time.Now()
 	extras := u.processArchives(name, tmpPath, archives)
 	newFiles := getFileList(tmpPath)
@@ -150,12 +158,10 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack 
 			u.UpdateStatus(name, EXTRACTFAILED, newFiles)
 
 			if err = os.RemoveAll(tmpPath); err != nil {
-				log.Printf("[ERROR] Removing Folder: %v: %v", tmpPath, err)
+				log.Printf("[ERROR] Removing Folder: %v", err)
 			} else {
-				u.DeLogf("Removed Folder: %v", tmpPath)
+				log.Printf("[Extract] Removed Folder: %v", tmpPath)
 			}
-
-			return
 		}
 	}
 
@@ -178,9 +184,9 @@ func (u *Unpackerr) processArchives(name, tmpPath string, archives []string) int
 			u.UpdateStatus(name, EXTRACTFAILED, getFileList(tmpPath))
 
 			if err = os.RemoveAll(tmpPath); err != nil {
-				log.Printf("[ERROR] Removing Folder: %v: %v", tmpPath, err)
+				log.Printf("[ERROR] Removing Folder: %v", err)
 			} else {
-				u.DeLogf("Removed Folder: %v", tmpPath)
+				log.Printf("[Extract] Removed Folder: %v", tmpPath)
 			}
 
 			return extras

@@ -15,7 +15,7 @@ func getFileList(path string) (files []string) {
 			files = append(files, filepath.Join(path, file.Name()))
 		}
 	} else {
-		log.Println("Error reading path", path, err.Error())
+		log.Println("Error reading path", path, err)
 	}
 
 	return
@@ -105,21 +105,21 @@ func (u *Unpackerr) moveFiles(fromPath string, toPath string) ([]string, error) 
 		newFile := filepath.Join(toPath, filepath.Base(file))
 		if err := os.Rename(file, newFile); err != nil {
 			keepErr = err
-			log.Printf("Error Renaming: %v to %v: %v", file, newFile, err.Error())
+			log.Printf("Error Renaming: %v to %v: %v", file, newFile, err)
 			// keep trying.
 			continue
 		}
 
-		u.DeLogf("Renamed File: %v -> %v", file, newFile)
+		u.DeLogf("Renamed Temp File: %v -> %v", file, newFile)
 
 		files[i] = newFile
 	}
 
-	if err := os.Remove(fromPath); err != nil {
+	if err := os.RemoveAll(fromPath); err != nil {
 		log.Printf("Error Removing Folder: %v: %v", fromPath, err)
 	} else {
 		// If we made it this far, it's ok.
-		u.DeLogf("Removed Folder: %v", fromPath)
+		log.Printf("[INFO] Removed Temp Folder: %v", fromPath)
 	}
 
 	// Since this is the last step, we tried to rename all the files, bubble the
@@ -131,11 +131,11 @@ func (u *Unpackerr) moveFiles(fromPath string, toPath string) ([]string, error) 
 // Deletes extracted files after Sonarr/Radarr imports them.
 func deleteFiles(files []string) {
 	for _, file := range files {
-		if err := os.Remove(file); err != nil {
-			log.Printf("Error Deleting %v: %v", file, err.Error())
+		if err := os.RemoveAll(file); err != nil {
+			log.Printf("Error Deleting %v: %v", file, err)
 			continue
 		}
 
-		log.Println("Deleted:", file)
+		log.Println("Deleted (recursively):", file)
 	}
 }

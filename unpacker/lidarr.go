@@ -1,7 +1,6 @@
 package unpacker
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -32,10 +31,9 @@ func (u *Unpackerr) CheckLidarrQueue() {
 
 		for _, q := range lidarr.List {
 			if q.Status == completed && q.Protocol == torrent {
-				name := fmt.Sprintf("Lidarr (%s)", lidarr.URL)
-				go u.HandleCompleted(q.Title, name, q.OutputPath)
+				go u.HandleCompleted(q.Title, "Lidarr", q.OutputPath)
 			} else {
-				u.DeLogf("[Lidarr] (%s): %s (%s:%d%%): %v",
+				u.DeLogf("Lidarr: (%s): %s (%s:%d%%): %v",
 					lidarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title)
 			}
 		}
@@ -50,11 +48,9 @@ func (u *Unpackerr) handleLidarr(data *Extracts, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	if item := u.getLidarQitem(name); item.Status != "" {
-		u.DeLogf("[%s] Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+	if item := u.getLidarQitem(name); item != nil {
+		u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
 		return // We only want finished items.
-	} else if item.Protocol != torrent && item.Protocol != "" {
-		return // We only want torrents.
 	}
 
 	if s := u.HandleExtractDone(data, name); s != data.Status {

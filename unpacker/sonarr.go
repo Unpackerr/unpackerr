@@ -1,7 +1,6 @@
 package unpacker
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
 	"time"
@@ -33,10 +32,9 @@ func (u *Unpackerr) CheckSonarrQueue() {
 
 		for _, q := range sonarr.List {
 			if q.Status == completed && q.Protocol == torrent {
-				name := fmt.Sprintf("Sonarr (%s)", sonarr.URL)
-				go u.HandleCompleted(q.Title, name, filepath.Join(sonarr.Path, name))
+				go u.HandleCompleted(q.Title, "Sonarr", filepath.Join(sonarr.Path, q.Title))
 			} else {
-				u.DeLogf("[Sonarr] (%s): %s (%s:%d%%): %v (Ep: %v)",
+				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",
 					sonarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)
 			}
 		}
@@ -51,11 +49,9 @@ func (u *Unpackerr) handleSonarr(data *Extracts, name string) {
 	u.History.Lock()
 	defer u.History.Unlock()
 
-	if item := u.getSonarQitem(name); item.Status != "" {
-		u.DeLogf("[%s] Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
+	if item := u.getSonarQitem(name); item != nil {
+		u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
 		return // We only want finished items.
-	} else if item.Protocol != torrent && item.Protocol != "" {
-		return // We only want torrents.
 	}
 
 	if s := u.HandleExtractDone(data, name); s != data.Status {

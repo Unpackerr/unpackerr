@@ -32,7 +32,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 
 		for _, q := range sonarr.List {
 			if q.Status == completed && q.Protocol == torrent && !u.historyExists(q.Title) {
-				go u.HandleCompleted(q.Title, "Sonarr", filepath.Join(sonarr.Path, q.Title))
+				u.HandleCompleted(q.Title, "Sonarr", filepath.Join(sonarr.Path, q.Title))
 			} else {
 				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",
 					sonarr.URL, q.Status, q.Protocol, int(100-(q.Sizeleft/q.Size*100)), q.Title, q.Episode.Title)

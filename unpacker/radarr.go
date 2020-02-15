@@ -31,7 +31,7 @@ func (u *Unpackerr) CheckRadarrQueue() {
 		defer radarr.RUnlock()
 
 		for _, q := range radarr.List {
-			if q.Status == completed && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent && !u.historyExists(q.Title) {
 				go u.HandleCompleted(q.Title, "Radarr", filepath.Join(radarr.Path, q.Title))
 			} else {
 				u.DeLogf("Radarr (%s): %s (%s:%d%%): %v",

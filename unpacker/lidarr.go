@@ -30,7 +30,7 @@ func (u *Unpackerr) CheckLidarrQueue() {
 		defer lidarr.RUnlock()
 
 		for _, q := range lidarr.List {
-			if q.Status == completed && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent && !u.historyExists(q.Title) {
 				go u.HandleCompleted(q.Title, "Lidarr", q.OutputPath)
 			} else {
 				u.DeLogf("Lidarr: (%s): %s (%s:%d%%): %v",

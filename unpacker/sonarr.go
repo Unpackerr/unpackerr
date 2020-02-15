@@ -31,7 +31,7 @@ func (u *Unpackerr) CheckSonarrQueue() {
 		defer sonarr.RUnlock()
 
 		for _, q := range sonarr.List {
-			if q.Status == completed && q.Protocol == torrent {
+			if q.Status == completed && q.Protocol == torrent && !u.historyExists(q.Title) {
 				go u.HandleCompleted(q.Title, "Sonarr", filepath.Join(sonarr.Path, q.Title))
 			} else {
 				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",

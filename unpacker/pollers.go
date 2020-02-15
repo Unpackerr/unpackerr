@@ -13,6 +13,7 @@ func (u *Unpackerr) PollAllApps() {
 
 	for _, sonarr := range u.Sonarr {
 		if sonarr.APIKey == "" {
+			u.DeLogf("Sonarr (%s): skipped, no API key", sonarr.URL)
 			continue
 		}
 
@@ -29,6 +30,8 @@ func (u *Unpackerr) PollAllApps() {
 
 	for _, radarr := range u.Radarr {
 		if radarr.APIKey == "" {
+			u.DeLogf("Radarr (%s): skipped, no API key", radarr.URL)
+
 			continue
 		}
 
@@ -45,6 +48,7 @@ func (u *Unpackerr) PollAllApps() {
 
 	for _, lidarr := range u.Lidarr {
 		if lidarr.APIKey == "" {
+			u.DeLogf("Lidarr (%s): skipped, no API key", lidarr.URL)
 			continue
 		}
 
@@ -144,15 +148,13 @@ func (u *Unpackerr) HandleExtractDone(data *Extracts, name string) ExtractStatus
 
 // HandleCompleted checks if a completed item needs to be extracted.
 func (u *Unpackerr) HandleCompleted(name, app, path string) {
-	if !u.historyExists(name) {
-		if files := FindRarFiles(path); len(files) > 0 {
-			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
-			u.CreateStatus(name, path, app, files)
-			u.extractFiles(name, path, files, true)
+	if files := FindRarFiles(path); len(files) > 0 {
+		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
+		u.CreateStatus(name, path, app, files)
+		u.extractFiles(name, path, files, true)
 
-			return
-		}
-	} else {
-		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
+		return
 	}
+
+	u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
 }

@@ -161,7 +161,8 @@ func (u *Unpackerr) printStartupInfo() {
 	log.Println("==> Startup Settings <==")
 
 	if c := len(u.Sonarr); c == 1 {
-		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v)", u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "")
+		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v)",
+			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "")
 	} else {
 		log.Println(" => Sonarr Config:", c, "servers")
 
@@ -171,7 +172,8 @@ func (u *Unpackerr) printStartupInfo() {
 	}
 
 	if c := len(u.Radarr); c == 1 {
-		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v)", u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "")
+		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v)",
+			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "")
 	} else {
 		log.Println(" => Radarr Config:", c, "servers")
 
@@ -181,7 +183,8 @@ func (u *Unpackerr) printStartupInfo() {
 	}
 
 	if c := len(u.Lidarr); c == 1 {
-		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v)", u.Lidarr[0].URL, u.Lidarr[0].APIKey != "")
+		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v)",
+			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "")
 	} else {
 		log.Println(" => Lidarr Config:", c, "servers")
 

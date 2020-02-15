@@ -140,14 +140,16 @@ func (u *Unpackerr) extractFiles(name, path string, archives []string, moveBack 
 		return
 	}
 
-	msg := fmt.Sprintf("%v unpackerred - this file is removed with the extracted data", time.Now())
+	start := time.Now()
+	extras := u.processArchives(name, tmpPath, archives)
+	newFiles := append(getFileList(tmpPath), suffix) // append suffix, then create it (next)
+
+	msg := fmt.Sprintf("upackerr - this file is removed with the extracted data\n"+
+		"name: %s\npath: %s\ntime: %v\nfiles:\n%v",
+		name, path, time.Now(), strings.Join(newFiles, "\n"))
 	if err := ioutil.WriteFile(filepath.Join(tmpPath, suffix), []byte(msg), 0744); err != nil {
 		log.Printf("[ERROR] Creating Temporary Tracking File: %v", err)
 	}
-
-	start := time.Now()
-	extras := u.processArchives(name, tmpPath, archives)
-	newFiles := getFileList(tmpPath)
 
 	// Move the extracted files back into their original folder.
 	if moveBack {

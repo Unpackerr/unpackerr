@@ -150,6 +150,7 @@ func (u *Unpackerr) HandleCompleted(name, app, path string) {
 	if files := FindRarFiles(path); len(files) > 0 {
 		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 		u.CreateStatus(name, path, app, files)
+
 		go u.extractFiles(name, path, files, true)
 
 		return

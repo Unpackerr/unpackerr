@@ -69,8 +69,8 @@ func (u *Unpackerr) CheckExtractDone() {
 	defer func() {
 		u.History.RUnlock()
 		e := u.eCount()
-		log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported] "+
-			"[%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
+		log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
+			" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
 			e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
 			u.Restarted, u.Finished)
 	}()
@@ -149,6 +149,7 @@ func (u *Unpackerr) HandleCompleted(name, app, path string) {
 			log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 			u.CreateStatus(name, path, app, files)
 			u.extractFiles(name, path, files, true)
+
 			return
 		}
 	} else {

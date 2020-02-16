@@ -161,35 +161,37 @@ func (u *Unpackerr) printStartupInfo() {
 	log.Println("==> Startup Settings <==")
 
 	if c := len(u.Sonarr); c == 1 {
-		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v)",
-			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "")
+		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
+			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout)
 	} else {
 		log.Println(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
-			log.Printf(" =>    Server: %s @ %s (apikey: %v)", f.URL, f.Path, f.APIKey != "")
+			log.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
+				f.URL, f.Path, f.APIKey != "", f.Timeout)
 		}
 	}
 
 	if c := len(u.Radarr); c == 1 {
-		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v)",
-			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "")
+		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
+			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout)
 	} else {
 		log.Println(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
-			log.Printf(" =>    Server: %s @ %s (apikey: %v)", f.URL, f.Path, f.APIKey != "")
+			log.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
+				f.URL, f.Path, f.APIKey != "", f.Timeout)
 		}
 	}
 
 	if c := len(u.Lidarr); c == 1 {
-		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v)",
-			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "")
+		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
+			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
 	} else {
 		log.Println(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			log.Printf(" =>    Server: %s (apikey: %v)", f.URL, f.APIKey != "")
+			log.Printf(" =>    Server: %s (apikey: %v, timeout: %v)", f.URL, f.APIKey != "", f.Timeout)
 		}
 	}
 
@@ -207,7 +209,6 @@ func (u *Unpackerr) printStartupInfo() {
 
 	log.Println(" => Parallel:", u.Config.Parallel)
 	log.Println(" => Interval:", u.Config.Interval.Duration)
-	log.Println(" => Timeout:", u.Config.Timeout.Duration)
 	log.Println(" => Delete Delay:", u.Config.DeleteDelay.Duration)
 	log.Println(" => Start Delay:", u.Config.StartDelay.Duration)
 	log.Println(" => Retry Delay:", u.Config.RetryDelay.Duration)

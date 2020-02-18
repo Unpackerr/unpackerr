@@ -11,22 +11,23 @@ const mebiByte = 1024 * 1024
 
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
 func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
-	switch elapsed := time.Since(data.Updated); {
+	elapsed := time.Since(data.Updated)
+
+	switch {
+	case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
+		u.Map[name].Status = DELETED
+		u.Map[name].Updated = time.Now()
+
+		DeleteFiles(data.Files...)
 	case data.Status == IMPORTED:
 		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
-		return
-	case elapsed >= u.DeleteDelay.Duration:
-		u.Map[name].Status = DELETED
-
-		DeleteFiles(data.Files...)
-	default:
+	case data.Status != IMPORTED:
 		u.Map[name].Status = IMPORTED
+		u.Map[name].Updated = time.Now()
 
 		log.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 	}
-
-	u.Map[name].Updated = time.Now()
 }
 
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.

@@ -42,21 +42,25 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 }
 
 // eCount returns the number of things happening.
-func (u *Unpackerr) eCount(e *eCounters, status ExtractStatus) {
-	switch status {
-	case QUEUED:
-		e.queued++
-	case EXTRACTING:
-		e.extracting++
-	case DELETEFAILED, EXTRACTFAILED, EXTRACTFAILED2:
-		e.failed++
-	case EXTRACTED:
-		e.extracted++
-	case DELETED, DELETING:
-		e.deleted++
-	case IMPORTED:
-		e.imported++
+func (u *Unpackerr) eCount() (e *eCounters) {
+	for name := range u.Map {
+		switch u.Map[name].Status {
+		case QUEUED:
+			e.queued++
+		case EXTRACTING:
+			e.extracting++
+		case DELETEFAILED, EXTRACTFAILED, EXTRACTFAILED2:
+			e.failed++
+		case EXTRACTED:
+			e.extracted++
+		case DELETED, DELETING:
+			e.deleted++
+		case IMPORTED:
+			e.imported++
+		}
 	}
+
+	return
 }
 
 // DeleteFiles obliterates things and logs. Use with caution.

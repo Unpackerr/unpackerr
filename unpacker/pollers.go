@@ -5,48 +5,55 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golift.io/xtractr"
 )
 
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
-	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
-
 	poller := time.NewTicker(u.Interval.Duration)
-	cleaner := time.NewTicker(time.Minute)
+	cleaner := time.NewTicker(15 * time.Second)
+	logger := time.NewTicker(u.Interval.Duration / 2)
 
-	// Run all pollers once at startup.
-	u.pollAllApps()
+	// Fill in all app queues once on startup.
+	u.saveAllAppQueues()
 
 	// one go routine to rule them all.
 	for {
 		select {
+		case <-logger.C:
+			// Log counts once in a while.
+			e := u.eCount()
+			log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
+				" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
+				e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
+				u.Restarted, u.Finished)
 		case <-cleaner.C:
 			// Check for state changes and act on them.
 			u.checkExtractDone()
+			u.checkFolderStats()
+		case <-poller.C:
+			// polling interval. pull API data from all apps.
+			u.saveAllAppQueues()
+			// check if things finished downloading and need extraction.
 			u.checkSonarrQueue()
 			u.checkRadarrQueue()
 			u.checkLidarrQueue()
-			u.checkFolderStats()
-		case event := <-u.folders.Events:
-			// file system event for watched folder.
-			u.folders.processEvent(event)
-		case update := <-u.folders.Updates:
-			// xtractr callback for a watched folder extraction.
-			u.processFolderUpdate(update)
-		case <-poller.C:
-			// polling interval. pull API data from all apps.
-			u.pollAllApps()
+			// check if things got imported and now need to be deleted.
+			u.checkImportsDone()
 		case update := <-u.updates:
 			// xtractr callback for app download extraction.
 			u.updateQueueStatus(update)
+		case update := <-u.folders.Updates:
+			// xtractr callback for a watched folder extraction.
+			u.processFolderUpdate(update)
+		case event := <-u.folders.Events:
+			// file system event for watched folder.
+			u.folders.processEvent(event)
 		}
 	}
 }
 
-// pollAllApps polls Sonarr and Radarr. At the same time.
-func (u *Unpackerr) pollAllApps() {
+// getAllAppQueues polls Sonarr and Radarr. At the same time.
+func (u *Unpackerr) saveAllAppQueues() {
 	const threeItems = 3
 
 	var wg *sync.WaitGroup
@@ -54,98 +61,27 @@ func (u *Unpackerr) pollAllApps() {
 	wg.Add(threeItems)
 
 	go func() {
-		u.PollSonarr()
+		u.getSonarrQueue()
 		wg.Done()
 	}()
 
 	go func() {
-		u.PollRadarr()
+		u.getRadarrQueue()
 		wg.Done()
 	}()
 
 	go func() {
-		u.PollLidarr()
+		u.getLidarrQueue()
 		wg.Done()
 	}()
 
 	wg.Wait()
 }
 
-// LidarrQueuePageSize is how many items we request from Lidarr.
-// If you have more than this many items queued.. oof.
-const LidarrQueuePageSize = 2000
-
-// PollLidarr saves the Lidarr Queue
-func (u *Unpackerr) PollLidarr() {
-	var err error
-
-	for _, server := range u.Lidarr {
-		if server.APIKey == "" {
-			u.DeLogf("Lidarr (%s): skipped, no API key", server.URL)
-			continue
-		}
-
-		if server.Queue, err = server.LidarrQueue(LidarrQueuePageSize); err != nil {
-			log.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
-			return
-		}
-
-		log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-	}
-}
-
-// PollSonarr saves the Sonarr Queue
-func (u *Unpackerr) PollSonarr() {
-	var err error
-
-	for _, server := range u.Sonarr {
-		if server.APIKey == "" {
-			u.DeLogf("Sonarr (%s): skipped, no API key", server.URL)
-			continue
-		}
-
-		if server.Queue, err = server.SonarrQueue(); err != nil {
-			log.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
-			return
-		}
-
-		log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-	}
-}
-
-// PollRadarr saves the Radarr Queue
-func (u *Unpackerr) PollRadarr() {
-	var err error
-
-	for _, server := range u.Radarr {
-		if server.APIKey == "" {
-			u.DeLogf("Radarr (%s): skipped, no API key", server.URL)
-			continue
-		}
-
-		if server.Queue, err = server.RadarrQueue(); err != nil {
-			log.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
-		}
-
-		log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-	}
-}
-
-// checkExtractDone checks if an extracted item has been imported.
-// Or an imported items needs to be deleted.
+// checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
-// Runs every minute by the cleanup routine.
 func (u *Unpackerr) checkExtractDone() {
-	e := &eCounters{}
-	defer log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
-		e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
-		u.Restarted, u.Finished)
-
 	for name, data := range u.Map {
-		u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
-
 		switch {
 		case data.Status == EXTRACTFAILED && time.Since(data.Updated) < u.RetryDelay.Duration:
 			u.Restarted++
@@ -157,32 +93,30 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Finished++
 			delete(u.Map, name)
 			log.Printf("[%v] Finished, Removed History: %v", data.App, name)
-		case data.Status != EXTRACTED && data.Status != IMPORTED:
-			break // Only process items that have finished extraction and are not deleted.
-		case strings.HasPrefix(data.App, "Sonarr"):
-			if item := u.getSonarQitem(name); item != nil {
-				u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
-				break // We only want finished items.
-			}
-
-			u.handleFinishedImport(data, name)
-		case strings.HasPrefix(data.App, "Radarr"):
-			if item := u.getRadarQitem(name); item != nil {
-				u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
-				break // We only want finished items.
-			}
-
-			u.handleFinishedImport(data, name)
-		case strings.HasPrefix(data.App, "Lidarr"):
-			if item := u.getLidarQitem(name); item != nil {
-				u.DeLogf("%s: Item Waiting For Import (%s): %v -> %v", data.App, item.Protocol, name, item.Status)
-				break // We only want finished items.
-			}
-
-			u.handleFinishedImport(data, name)
 		}
+	}
+}
 
-		u.eCount(e, data.Status)
+// checkImportsDone checks if extracted items have been imported.
+func (u *Unpackerr) checkImportsDone() {
+	for name, data := range u.Map {
+		u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
+			time.Since(data.Updated).Round(time.Second))
+
+		switch {
+		case strings.HasPrefix(data.App, "Sonarr"):
+			if u.getSonarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		case strings.HasPrefix(data.App, "Radarr"):
+			if u.getRadarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		case strings.HasPrefix(data.App, "Lidarr"):
+			if u.getLidarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		}
 	}
 }
 
@@ -207,27 +141,7 @@ func (u *Unpackerr) checkFolderStats() {
 				DeleteFiles(folder.cnfg.Path)
 			}
 		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:
-			// update status.
-			_ = u.folders.Watcher.Remove(name)
-			u.folders.Folders[name].last = time.Now()
-			u.folders.Folders[name].step = QUEUED
-			// create a queue counter in the main history.
-			u.updateQueueStatus(&Extracts{Path: name, Status: QUEUED})
-
-			// extract it.
-			queueSize, err := u.Extract(&xtractr.Xtract{
-				Name:       folder.cnfg.Path,
-				SearchPath: folder.cnfg.Path,
-				TempFolder: !folder.cnfg.MoveBack,
-				DeleteOrig: false,
-				CBFunction: u.folders.xtractCallback,
-			})
-			if err != nil {
-				log.Println("[ERROR]", err)
-				return
-			}
-
-			log.Printf("[Folder] Queued: %s, queue size: %d", folder.cnfg.Path, queueSize)
+			u.extractFolder(name, folder)
 		}
 	}
 }

@@ -25,7 +25,7 @@ func (u *Unpackerr) PollFolders() {
 
 	time.Sleep(splay)
 
-	u.folders, err = u.NewFolderWatcher()
+	u.folders, err = u.newFolderWatcher()
 	if err != nil {
 		log.Println("[ERROR] Watching Folders:", err)
 		return
@@ -42,9 +42,9 @@ func (u *Unpackerr) PollFolders() {
 	go u.folders.watchFSNotify()
 }
 
-// NewFolderWatcher returns a new folder watcher.
+// newFolderWatcher returns a new folder watcher.
 // You must call folders.Watcher.Close() when you're done with it.
-func (u *Unpackerr) NewFolderWatcher() (*Folders, error) {
+func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -86,6 +86,31 @@ func (u *Unpackerr) checkFolders() ([]*folderConfig, []string) {
 	}
 
 	return goodFolders, goodFlist
+}
+
+// extractFolder starts a folder's extraction after it hasn't been written to in a while.
+func (u *Unpackerr) extractFolder(name string, folder *Folder) {
+	// update status.
+	_ = u.folders.Watcher.Remove(name)
+	u.folders.Folders[name].last = time.Now()
+	u.folders.Folders[name].step = QUEUED
+	// create a queue counter in the main history.
+	u.updateQueueStatus(&Extracts{Path: name, Status: QUEUED})
+
+	// extract it.
+	queueSize, err := u.Extract(&xtractr.Xtract{
+		Name:       folder.cnfg.Path,
+		SearchPath: folder.cnfg.Path,
+		TempFolder: !folder.cnfg.MoveBack,
+		DeleteOrig: false,
+		CBFunction: u.folders.xtractCallback,
+	})
+	if err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	log.Printf("[Folder] Queued: %s, queue size: %d", folder.cnfg.Path, queueSize)
 }
 
 func (u *Unpackerr) processFolderUpdate(update *update) {

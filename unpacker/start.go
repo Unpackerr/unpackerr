@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultTimeout     = 10 * time.Second
-	minimumInterval    = 10 * time.Second
+	minimumInterval    = 15 * time.Second
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second

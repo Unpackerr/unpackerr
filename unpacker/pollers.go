@@ -83,12 +83,12 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Restarted++
 			delete(u.Map, name)
 			log.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
-				data.App, time.Since(data.Updated), name)
+				data.App, time.Since(data.Updated).Round(time.Second), name)
 		case data.Status == DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
-			log.Printf("[%v] Finished, Removed History: %v", data.App, name)
+			log.Printf("[%s] Finished, Removed History: %v", data.App, name)
 		}
 	}
 }

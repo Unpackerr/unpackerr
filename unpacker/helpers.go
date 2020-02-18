@@ -28,10 +28,8 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 			return
 		}
 
-		u.Map[data.Path] = &Extracts{
-			Status: data.Status,
-			Files:  append(u.Map[data.Path].Files, data.Files...),
-		}
+		u.Map[data.Path].Status = data.Status
+		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
 	} else {
 		// This is a new folder being extracted.
 		u.Map[data.Path] = data

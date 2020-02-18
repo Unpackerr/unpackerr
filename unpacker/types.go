@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/xtractr"
@@ -74,6 +75,17 @@ const (
 	DELETED
 )
 
+const (
+	// provide a little splay between timers.
+	splay = 3 * time.Second
+	// suffix for unpacked folders.
+	suffix = "_unpackerred"
+	// Size of update channel. This is sufficiently large
+	updateChanSize = 100
+	// Channel queue size for file system events.
+	queueChanSize = 20000
+)
+
 // String makes ExtractStatus human readable.
 func (status ExtractStatus) String() string {
 	if status > DELETED {
@@ -104,6 +116,16 @@ type Flags struct {
 	ConfigFile string
 }
 
+// Folders holds all known (created) folders in all watch paths.
+type Folders struct {
+	Config  []*folderConfig
+	Folders map[string]*Folder
+	Events  chan *eventData
+	Updates chan *update
+	DeLogf  func(msg string, v ...interface{})
+	Watcher *fsnotify.Watcher
+}
+
 // Unpackerr stores all the running data.
 type Unpackerr struct {
 	*Flags
@@ -111,7 +133,7 @@ type Unpackerr struct {
 	*History
 	*xtractr.Xtractr
 	folders *Folders
-	SigChan chan os.Signal
+	sigChan chan os.Signal
 	updates chan *Extracts // external updates coming in
 }
 
@@ -129,4 +151,24 @@ type Extracts struct {
 	Files   []string
 	Status  ExtractStatus
 	Updated time.Time
+}
+
+// Folder is a "new" watched folder.
+type Folder struct {
+	last time.Time
+	step ExtractStatus
+	cnfg *folderConfig
+	list []string
+}
+
+type eventData struct {
+	cnfg *folderConfig
+	name string
+	file string
+}
+
+type update struct {
+	Step ExtractStatus
+	Name string
+	Resp *xtractr.Response
 }

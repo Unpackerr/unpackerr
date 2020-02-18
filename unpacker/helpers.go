@@ -16,9 +16,9 @@ func (u *Unpackerr) DeLogf(msg string, v ...interface{}) {
 	}
 }
 
-// updateStatus for an on-going tracked extraction.
+// updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
-func (u *Unpackerr) updateStatus(data *Extracts) {
+func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 	if _, ok := u.Map[data.Path]; ok {
 		if data.Status == DELETED {
 			// This is a completed folder.

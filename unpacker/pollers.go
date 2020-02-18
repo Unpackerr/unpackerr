@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golift.io/xtractr"
 )
 
 // Run starts the loop that does the work.
@@ -14,25 +16,37 @@ func (u *Unpackerr) Run() {
 	poller := time.NewTicker(u.Interval.Duration)
 	cleaner := time.NewTicker(time.Minute)
 
-	u.PollAllApps() // Run all pollers once at startup.
+	// Run all pollers once at startup.
+	u.pollAllApps()
 
-	for { // one go routine.
+	// one go routine to rule them all.
+	for {
 		select {
 		case <-cleaner.C:
+			// Check for state changes and act on them.
 			u.checkExtractDone()
 			u.checkSonarrQueue()
 			u.checkRadarrQueue()
 			u.checkLidarrQueue()
+			u.checkFolderStats()
+		case event := <-u.folders.Events:
+			// file system event for watched folder.
+			u.folders.processEvent(event)
+		case update := <-u.folders.Updates:
+			// xtractr callback for a watched folder extraction.
+			u.processFolderUpdate(update)
 		case <-poller.C:
-			u.PollAllApps()
+			// polling interval. pull API data from all apps.
+			u.pollAllApps()
 		case update := <-u.updates:
-			u.updateStatus(update)
+			// xtractr callback for app download extraction.
+			u.updateQueueStatus(update)
 		}
 	}
 }
 
-// PollAllApps Polls  Sonarr and Radarr. At the same time.
-func (u *Unpackerr) PollAllApps() {
+// pollAllApps polls Sonarr and Radarr. At the same time.
+func (u *Unpackerr) pollAllApps() {
 	const threeItems = 3
 
 	var wg *sync.WaitGroup
@@ -169,5 +183,51 @@ func (u *Unpackerr) checkExtractDone() {
 		}
 
 		u.eCount(e, data.Status)
+	}
+}
+
+// checkFolderStats runs at an interval to see if any folders need work done on them.
+func (u *Unpackerr) checkFolderStats() {
+	for name, folder := range u.folders.Folders {
+		switch {
+		case time.Since(folder.last) > time.Minute && folder.step == EXTRACTFAILED:
+			u.folders.Folders[name].last = time.Now()
+			u.folders.Folders[name].step = DOWNLOADING
+
+			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
+		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
+			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
+			delete(u.folders.Folders, name)
+
+			if !folder.cnfg.MoveBack {
+				DeleteFiles(folder.cnfg.Path + suffix)
+			}
+
+			if folder.cnfg.DeleteOrig {
+				DeleteFiles(folder.cnfg.Path)
+			}
+		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:
+			// update status.
+			_ = u.folders.Watcher.Remove(name)
+			u.folders.Folders[name].last = time.Now()
+			u.folders.Folders[name].step = QUEUED
+			// create a queue counter in the main history.
+			u.updateQueueStatus(&Extracts{Path: name, Status: QUEUED})
+
+			// extract it.
+			queueSize, err := u.Extract(&xtractr.Xtract{
+				Name:       folder.cnfg.Path,
+				SearchPath: folder.cnfg.Path,
+				TempFolder: !folder.cnfg.MoveBack,
+				DeleteOrig: false,
+				CBFunction: u.folders.xtractCallback,
+			})
+			if err != nil {
+				log.Println("[ERROR]", err)
+				return
+			}
+
+			log.Printf("[Folder] Queued: %s, queue size: %d", folder.cnfg.Path, queueSize)
+		}
 	}
 }

@@ -29,7 +29,7 @@ const (
 func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile},
-		SigChan: make(chan os.Signal),
+		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extracts)},
 		updates: make(chan *Extracts),
 		Config: &Config{
@@ -77,10 +77,10 @@ func Start() (err error) {
 		Logger:   log.New(os.Stdout, "[Extract]", log.Flags()),
 	})
 
+	u.PollFolders()
 	go u.Run()
-	go u.PollFolders()
-	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
+	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	log.Println("=====> Exiting! Caught Signal:", <-u.sigChan)
 
 	return nil
 }

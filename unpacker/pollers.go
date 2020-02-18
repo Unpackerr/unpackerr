@@ -15,6 +15,10 @@ func (u *Unpackerr) Run() {
 
 	// Fill in all app queues once on startup.
 	u.saveAllAppQueues()
+	// check if things finished downloading and need extraction.
+	u.checkSonarrQueue()
+	u.checkRadarrQueue()
+	u.checkLidarrQueue()
 
 	// one go routine to rule them all.
 	for {

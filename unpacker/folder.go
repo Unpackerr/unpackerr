@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"golift.io/xtractr"
 )
 
 // Folders holds all known (created) folders in all watch paths.
 type Folders struct {
 	Config  []*folderConfig
 	Folders map[string]*Folder
-	NewChan chan *eventData
+	Events  chan *eventData
 	Updates chan *update
 	DeLogf  func(msg string, v ...interface{})
-	Extract func(path string, moveBack bool) ExtractStatus
-	*fsnotify.Watcher
+	Watcher *fsnotify.Watcher
 }
 
 // Folder is a "new" watched folder.
@@ -38,9 +38,9 @@ type eventData struct {
 }
 
 type update struct {
-	Step     ExtractStatus
-	Name     string
-	Extracts *Extracts
+	Step ExtractStatus
+	Name string
+	Resp *xtractr.Response
 }
 
 const (
@@ -48,6 +48,10 @@ const (
 	splay = 3 * time.Second
 	// suffix for unpacked folders.
 	suffix = "_unpackerred"
+	// Size of update channel. This is sufficiently large
+	updateChanSize = 100
+	// Channel queue size for file system events.
+	queueChanSize = 2000
 )
 
 // PollFolders begins the routines to watch folders for changes.
@@ -58,7 +62,7 @@ func (u *Unpackerr) PollFolders() {
 
 	var err error
 
-	if u.Config.Folders, flist = u.checkFolders(); len(u.Config.Folders) < 1 {
+	if u.Config.Folders, flist = u.checkFolders(); len(u.Config.Folders) == 0 {
 		u.DeLogf("Folder: Nothing to watch, or no folders configured.")
 		return
 	}
@@ -70,10 +74,10 @@ func (u *Unpackerr) PollFolders() {
 	if err != nil {
 		log.Println("[ERROR] Watching Folders:", err)
 	}
-	defer u.folders.Close()
+	defer u.folders.Watcher.Close()
 
-	go u.folders.Track()
-	u.folders.Watch()
+	go u.TrackFolders()
+	u.folders.FSNotifyWatch()
 	log.Println("[ERROR] No longer watching any folders!")
 }
 
@@ -116,95 +120,86 @@ func (u *Unpackerr) NewFolderWatcher() (*Folders, error) {
 	return &Folders{
 		Config:  u.Folders,
 		Folders: make(map[string]*Folder),
-		NewChan: make(chan *eventData, 10000),
-		Updates: make(chan *update, 100),
+		Events:  make(chan *eventData, queueChanSize),
+		Updates: make(chan *update, updateChanSize),
 		DeLogf:  u.DeLogf,
 		Watcher: watcher,
-		Extract: u.ExtractFolder,
 	}, nil
 }
 
-// ExtractFolder checks if a watched folder has extractable items.
-func (u *Unpackerr) ExtractFolder(path string, moveBack bool) ExtractStatus {
-	if !u.historyExists(path) {
-		if files := FindRarFiles(path); len(files) > 0 {
-			log.Printf("[FOLDER] Found %d extractable item(s): %s", len(files), path)
-			u.CreateStatus(path, path, "Folder", files)
+// TrackFolders keeps track of things being updated and extracted.
+func (u *Unpackerr) TrackFolders() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
 
-			go u.extractFiles(path, path, files, moveBack)
-		}
-
-		return EXTRACTING
-	}
-
-	u.DeLogf("Folder: Completed item still in queue: %s, no extractable files found", path)
-
-	return MISSING
-}
-
-// Watch keeps an eye on the tracked folders.
-func (f *Folders) Watch() {
 	for {
 		select {
-		case err, ok := <-f.Errors:
+		case event, ok := <-u.folders.Events:
+			// process events from the FSNotify go routine.
+			if !ok {
+				return
+			}
+
+			u.folders.processEvent(event)
+		case update, ok := <-u.folders.Updates:
+			// process updates from xtractr library.
+			if !ok {
+				return
+			}
+
+			if _, ok = u.folders.Folders[update.Name]; !ok {
+				// It doesn't exist? weird. bail out.
+				u.updates <- &Extracts{Path: update.Name, Status: DELETED}
+				break
+			}
+
+			u.updates <- &Extracts{Path: update.Name, Status: update.Step}
+			u.folders.Folders[update.Name].last = time.Now()
+			u.folders.Folders[update.Name].step = update.Step
+
+			// Resp is only set when the extraction is finished.
+			if update.Resp != nil {
+				// This is an extraction callback.
+				u.folders.Folders[update.Name].list = update.Resp.NewFiles
+			}
+		case <-ticker.C:
+			// Look for things to do every minute.
+			u.checkForWork()
+		}
+	}
+}
+
+// FSNotifyWatch reads file system events from a channel and processes them.
+func (f *Folders) FSNotifyWatch() {
+	for {
+		select {
+		case err, ok := <-f.Watcher.Errors:
 			if !ok {
 				return
 			}
 
 			log.Println("[ERROR] fsnotify:", err)
-		case event, ok := <-f.Events:
+		case event, ok := <-f.Watcher.Events:
 			if !ok {
 				return
 			}
 
-			f.Event(event)
-		}
-	}
-}
+			for _, cnfg := range f.Config {
+				// Find the configured folder for the event we just got.
+				if !strings.HasPrefix(event.Name, cnfg.Path) {
+					continue
+				}
 
-// Event turns a raw watched-folder event into an internal event and sends it off.
-func (f *Folders) Event(event fsnotify.Event) {
-	for _, cnfg := range f.Config {
-		// Find the configured folder for the event we just got.
-		if !strings.HasPrefix(event.Name, cnfg.Path) {
-			continue
-		}
-
-		// folder.Path: "/Users/Documents/auto"
-		// event.Name: "/Users/Documents/auto/my_folder/file.rar"
-		// name: "my_folder"
-		p := strings.TrimPrefix(event.Name, cnfg.Path)
-		if np := path.Dir(p); np != "." {
-			p = np
-		}
-
-		if strings.HasSuffix(p, suffix) {
-			// it's our item, ignore it.
-			return
-		}
-
-		f.NewChan <- &eventData{name: p, cnfg: cnfg, file: path.Base(event.Name)}
-
-		return
-	}
-}
-
-// Track keeps track of things being updated and extracted.
-func (f *Folders) Track() {
-	ticker := time.NewTicker(time.Minute)
-
-	for {
-		select {
-		case event, ok := <-f.NewChan:
-			if !ok {
-				return
+				// cnfg.Path: "/Users/Documents/auto"
+				// event.Name: "/Users/Documents/auto/my_folder/file.rar"
+				// p: "my_folder"
+				p := strings.TrimPrefix(event.Name, cnfg.Path)
+				if np := path.Dir(p); np != "." {
+					p = np
+				}
+				// Send this event to processEvent().
+				f.Events <- &eventData{name: p, cnfg: cnfg, file: path.Base(event.Name)}
 			}
-
-			f.processEvent(event)
-		case update := <-f.Updates:
-			f.processUpdate(update) // process extract update
-		case <-ticker.C:
-			f.checkForWork() // Look for things to do every minute.
 		}
 	}
 }
@@ -222,7 +217,7 @@ func (f *Folders) processEvent(event *eventData) {
 
 		return
 	} else if !stat.IsDir() {
-		//		f.DeLogf("Ignoring Item: %v (not a folder)", fullPath)
+		f.DeLogf("Ignoring Item: %v (not a folder)", fullPath)
 		return
 	}
 
@@ -241,74 +236,70 @@ func (f *Folders) processEvent(event *eventData) {
 
 	f.Folders[fullPath] = &Folder{
 		last: time.Now(),
-		step: MISSING,
+		step: DOWNLOADING,
 		cnfg: event.cnfg,
 	}
 }
 
-// checkForWork runs at an interval to see if any folders are ready for extraction.
-func (f *Folders) checkForWork() {
-	for name, folder := range f.Folders {
+// checkForWork runs at an interval to see if any folders need work done on them.
+func (u *Unpackerr) checkForWork() {
+	for name, folder := range u.folders.Folders {
 		switch {
+		case time.Since(folder.last) > time.Minute && folder.step == EXTRACTFAILED:
+			u.folders.Folders[name].last = time.Now()
+			u.folders.Folders[name].step = DOWNLOADING
+
+			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
 		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
-			delete(f.Folders, name)
+			u.updates <- &Extracts{Path: name, Status: DELETED}
+			delete(u.folders.Folders, name)
 
 			if !folder.cnfg.MoveBack {
-				deleteFiles([]string{folder.cnfg.Path + suffix})
+				DeleteFiles(folder.cnfg.Path + suffix)
 			}
 
 			if folder.cnfg.DeleteOrig {
-				deleteFiles([]string{folder.cnfg.Path})
+				DeleteFiles(folder.cnfg.Path)
 			}
-		case time.Since(folder.last) > time.Minute && folder.step == MISSING:
+		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:
+			// update status.
+			_ = u.folders.Watcher.Remove(name)
+			u.folders.Folders[name].last = time.Now()
+			u.folders.Folders[name].step = QUEUED
+			// create a queue counter in the main history.
+			u.updates <- &Extracts{Path: name, Status: QUEUED}
+
 			// extract it.
-			_ = f.Watcher.Remove(name)
-			f.Folders[name].last = time.Now()
-			f.Folders[name].step = f.Extract(name, folder.cnfg.MoveBack)
+			queueSize, err := u.Extract(&xtractr.Xtract{
+				Name:       folder.cnfg.Path,
+				SearchPath: folder.cnfg.Path,
+				TempFolder: !folder.cnfg.MoveBack,
+				DeleteOrig: false,
+				CBFunction: u.folders.xtractCallback,
+			})
+			if err != nil {
+				log.Println("[ERROR]", err)
+				return
+			}
+
+			log.Printf("[Folder] Queued: %s, queue size: %d", folder.cnfg.Path, queueSize)
 		}
 	}
 }
 
-func (f *Folders) processUpdate(u *update) {
-	if _, ok := f.Folders[u.Name]; !ok {
-		return
+// xtractCallback is run twice by the xtractr library when the extraction begins, and finishes.
+func (f *Folders) xtractCallback(resp *xtractr.Response) {
+	switch {
+	case !resp.Done:
+		log.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		f.Updates <- &update{Step: EXTRACTING, Name: resp.X.Name}
+	case resp.Error != nil:
+		log.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		f.Updates <- &update{Step: EXTRACTFAILED, Name: resp.X.Name}
+	default: // this runs in a go routine
+		log.Printf("Extraction Finished: %s => elapsed: %d, archives: %d, extra archives: %d, files extracted: %d",
+			resp.X.Name, resp.Elapsed, len(resp.Archives), len(resp.Extras), len(resp.AllFiles))
+		// Send the update back into our channel (single go routine) to processUpdate().
+		f.Updates <- &update{Step: EXTRACTED, Resp: resp, Name: resp.X.Name}
 	}
-
-	f.Folders[u.Name].last = time.Now()
-	f.Folders[u.Name].step = u.Step
-
-	if u.Extracts != nil {
-		f.extractCallback(u.Extracts, u.Name)
-	}
-}
-
-// extractCallback is the callback from the extraction code.
-func (f *Folders) extractCallback(data *Extracts, name string) {
-	folder, ok := f.Folders[name]
-	if !ok {
-		log.Printf("[FOLDER] Extract Finished, folder missing, nothing else to do: %s (files extracted: %d)",
-			name, len(data.Files))
-		return // this likely can't happen.
-	}
-
-	f.Folders[name].list = data.Files
-
-	if folder.cnfg.DeleteAfter.Duration == 0 {
-		delete(f.Folders, name)
-
-		if folder.cnfg.DeleteOrig {
-			deleteFiles([]string{name})
-		}
-	}
-}
-
-// handleFolder is the initial callback from a completed extraction.
-// This updates the global state, and then passes the update into the callback.
-func (u *Unpackerr) handleFolder(data *Extracts, name string) {
-	u.History.Lock()
-	defer u.History.Unlock()
-	delete(u.History.Map, name)
-	u.Finished++
-	// Send the update back into our channel (single go routine).
-	u.folders.Updates <- &update{Step: data.Status, Extracts: data, Name: name}
 }

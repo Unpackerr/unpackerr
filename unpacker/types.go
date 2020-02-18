@@ -7,6 +7,7 @@ import (
 
 	"golift.io/cnfg"
 	"golift.io/starr"
+	"golift.io/xtractr"
 )
 
 const (
@@ -31,22 +32,22 @@ type Config struct {
 
 type radarrConfig struct {
 	*starr.Config
-	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type sonarrConfig struct {
 	*starr.Config
-	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Queue        []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type lidarrConfig struct {
 	*starr.Config
+	Queue        []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type folderConfig struct {
@@ -61,7 +62,7 @@ type ExtractStatus uint8
 
 // Extract Statuses.
 const (
-	MISSING = ExtractStatus(iota)
+	DOWNLOADING = ExtractStatus(iota)
 	QUEUED
 	EXTRACTING
 	EXTRACTFAILED
@@ -108,13 +109,14 @@ type Unpackerr struct {
 	*Flags
 	*Config
 	*History
+	*xtractr.Xtractr
 	folders *Folders
 	SigChan chan os.Signal
+	updates chan *Extracts // external updates coming in
 }
 
 // History holds the history of extracted items.
 type History struct {
-	sync.RWMutex
 	Finished  uint
 	Restarted uint
 	Map       map[string]*Extracts

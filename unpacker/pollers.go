@@ -82,13 +82,13 @@ func (u *Unpackerr) saveAllAppQueues() {
 // Or if an extraction failed and needs to be restarted.
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
-		switch {
-		case data.Status == EXTRACTFAILED && time.Since(data.Updated) < u.RetryDelay.Duration:
+		switch elasped := time.Since(data.Updated); {
+		case data.Status == EXTRACTFAILED && elasped < u.RetryDelay.Duration:
 			u.Restarted++
 			delete(u.Map, name)
 			log.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
-				data.App, time.Since(data.Updated).Round(time.Second), name)
-		case data.Status == DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
+				data.App, elasped.Round(time.Second), name)
+		case data.Status == DELETED && elasped >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
@@ -100,10 +100,9 @@ func (u *Unpackerr) checkExtractDone() {
 // checkImportsDone checks if extracted items have been imported.
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
-		u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
-
 		switch {
+		case data.Status > IMPORTED:
+			continue
 		case strings.HasPrefix(data.App, "Sonarr"):
 			if u.getSonarQitem(name) == nil {
 				u.handleFinishedImport(data, name) // We only want finished items.
@@ -117,6 +116,9 @@ func (u *Unpackerr) checkImportsDone() {
 				u.handleFinishedImport(data, name) // We only want finished items.
 			}
 		}
+
+		u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
+			time.Since(data.Updated).Round(time.Second))
 	}
 }
 

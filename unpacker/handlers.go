@@ -14,6 +14,8 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	elapsed := time.Since(data.Updated)
 
 	switch {
+	case data.Status > IMPORTED:
+		return
 	case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED
 		u.Map[name].Updated = time.Now()

@@ -41,8 +41,9 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 	u.Map[data.Path].Updated = time.Now()
 }
 
-// eCount returns the number of things happening.
-func (u *Unpackerr) eCount() (e *eCounters) {
+// printCurrentQueue returns the number of things happening.
+func (u *Unpackerr) printCurrentQueue() {
+	e := eCounters{}
 	for name := range u.Map {
 		switch u.Map[name].Status {
 		case QUEUED:
@@ -60,7 +61,10 @@ func (u *Unpackerr) eCount() (e *eCounters) {
 		}
 	}
 
-	return
+	log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
+		" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
+		e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
+		u.Restarted, u.Finished)
 }
 
 // DeleteFiles obliterates things and logs. Use with caution.

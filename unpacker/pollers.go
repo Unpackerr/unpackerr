@@ -11,7 +11,7 @@ import (
 func (u *Unpackerr) Run() {
 	poller := time.NewTicker(u.Interval.Duration)
 	cleaner := time.NewTicker(15 * time.Second)
-	logger := time.NewTicker(u.Interval.Duration / 2)
+	logger := time.NewTicker(time.Minute)
 
 	// Fill in all app queues once on startup.
 	u.saveAllAppQueues()
@@ -19,13 +19,6 @@ func (u *Unpackerr) Run() {
 	// one go routine to rule them all.
 	for {
 		select {
-		case <-logger.C:
-			// Log counts once in a while.
-			e := u.eCount()
-			log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-				" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
-				e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
-				u.Restarted, u.Finished)
 		case <-cleaner.C:
 			// Check for state changes and act on them.
 			u.checkExtractDone()
@@ -48,6 +41,9 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.folders.processEvent(event)
+		case <-logger.C:
+			// Log/print current queue counts once in a while.
+			u.printCurrentQueue()
 		}
 	}
 }
@@ -56,7 +52,7 @@ func (u *Unpackerr) Run() {
 func (u *Unpackerr) saveAllAppQueues() {
 	const threeItems = 3
 
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 
 	wg.Add(threeItems)
 

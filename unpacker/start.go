@@ -77,7 +77,7 @@ func Start() (err error) {
 		Logger:   log.New(os.Stdout, "[Extract]", log.Flags()),
 	})
 
-	u.PollFolders()
+	u.PollFolders() // this initializes channel(s) used in u.Run()
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("=====> Exiting! Caught Signal:", <-u.sigChan)

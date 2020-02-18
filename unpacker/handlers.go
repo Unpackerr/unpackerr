@@ -7,6 +7,8 @@ import (
 	"golift.io/xtractr"
 )
 
+const mebiByte = 1024 * 1024
+
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
 func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	switch elapsed := time.Since(data.Updated); {
@@ -57,14 +59,12 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		return
 	}
 
-	log.Printf("[%s] Extraction Queued: %s, queue size: %d", app, path, queueSize)
+	log.Printf("[%s] Extraction Queued: %s, items in queue: %d", app, path, queueSize)
 }
 
 // handleXtractrCallback handles callbacks from the xtractr library for onarr/radarr/lidar.
 // This takes the provided info and logs it then sends it into the update channel.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
-	const mebiByte = 1024 * 1024
-
 	switch {
 	case !resp.Done:
 		log.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
@@ -73,9 +73,9 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		log.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED}
 	default: // this runs in a go routine
-		log.Printf("Extraction Finished: %s => elapsed: %d, archives: %d, "+
-			"extra archives: %d, files extracted: %d, MiB written: %d",
-			resp.X.Name, resp.Elapsed, len(resp.Archives), len(resp.Extras),
+		log.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, wrote: %dMiB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),
 			len(resp.AllFiles), resp.Size/mebiByte)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTED, Files: resp.NewFiles}
 	}

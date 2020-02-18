@@ -33,7 +33,6 @@ func (u *Unpackerr) PollFolders() {
 	// do not close the watcher.
 
 	if len(u.Folders) == 0 {
-		u.DeLogf("Folder: Nothing to watch, or no folders configured.")
 		return
 	}
 
@@ -212,8 +211,10 @@ func (f *Folders) xtractCallback(resp *xtractr.Response) {
 		log.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		f.Updates <- &update{Step: EXTRACTFAILED, Name: resp.X.Name}
 	default: // this runs in a go routine
-		log.Printf("Extraction Finished: %s => elapsed: %d, archives: %d, extra archives: %d, files extracted: %d",
-			resp.X.Name, resp.Elapsed, len(resp.Archives), len(resp.Extras), len(resp.AllFiles))
+		log.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, written: %dMiB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
+			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
 		// Send the update back into our channel (single go routine) to processFolderUpdate().
 		f.Updates <- &update{Step: EXTRACTED, Resp: resp, Name: resp.X.Name}
 	}

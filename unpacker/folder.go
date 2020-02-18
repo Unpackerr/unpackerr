@@ -134,6 +134,9 @@ func (u *Unpackerr) TrackFolders() {
 
 	for {
 		select {
+		case <-ticker.C:
+			// Look for things to do every minute.
+			u.checkFolderStatus()
 		case event, ok := <-u.folders.Events:
 			// process events from the FSNotify go routine.
 			if !ok {
@@ -159,12 +162,8 @@ func (u *Unpackerr) TrackFolders() {
 
 			// Resp is only set when the extraction is finished.
 			if update.Resp != nil {
-				// This is an extraction callback.
 				u.folders.Folders[update.Name].list = update.Resp.NewFiles
 			}
-		case <-ticker.C:
-			// Look for things to do every minute.
-			u.checkForWork()
 		}
 	}
 }
@@ -241,8 +240,8 @@ func (f *Folders) processEvent(event *eventData) {
 	}
 }
 
-// checkForWork runs at an interval to see if any folders need work done on them.
-func (u *Unpackerr) checkForWork() {
+// checkFolderStatus runs at an interval to see if any folders need work done on them.
+func (u *Unpackerr) checkFolderStatus() {
 	for name, folder := range u.folders.Folders {
 		switch {
 		case time.Since(folder.last) > time.Minute && folder.step == EXTRACTFAILED:

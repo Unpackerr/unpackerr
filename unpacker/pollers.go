@@ -33,11 +33,27 @@ func (u *Unpackerr) Run() {
 
 // PollAllApps Polls  Sonarr and Radarr. At the same time.
 func (u *Unpackerr) PollAllApps() {
+	const threeItems = 3
+
 	var wg *sync.WaitGroup
 
-	u.PollSonarr(wg)
-	u.PollRadarr(wg)
-	u.PollLidarr(wg)
+	wg.Add(threeItems)
+
+	go func() {
+		u.PollSonarr()
+		wg.Done()
+	}()
+
+	go func() {
+		u.PollRadarr()
+		wg.Done()
+	}()
+
+	go func() {
+		u.PollLidarr()
+		wg.Done()
+	}()
+
 	wg.Wait()
 }
 
@@ -46,8 +62,8 @@ func (u *Unpackerr) PollAllApps() {
 const LidarrQueuePageSize = 2000
 
 // PollLidarr saves the Lidarr Queue
-func (u *Unpackerr) PollLidarr(wg *sync.WaitGroup) {
-	const oneItem = 1
+func (u *Unpackerr) PollLidarr() {
+	var err error
 
 	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
@@ -55,26 +71,18 @@ func (u *Unpackerr) PollLidarr(wg *sync.WaitGroup) {
 			continue
 		}
 
-		wg.Add(oneItem)
+		if server.Queue, err = server.LidarrQueue(LidarrQueuePageSize); err != nil {
+			log.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
+			return
+		}
 
-		go func(server *lidarrConfig) {
-			defer wg.Done()
-
-			var err error
-
-			if server.Queue, err = server.LidarrQueue(LidarrQueuePageSize); err != nil {
-				log.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
-				return
-			}
-
-			log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-		}(server)
+		log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
 	}
 }
 
-// PollSonarr saves the Lidarr Queue
-func (u *Unpackerr) PollSonarr(wg *sync.WaitGroup) {
-	const oneItem = 1
+// PollSonarr saves the Sonarr Queue
+func (u *Unpackerr) PollSonarr() {
+	var err error
 
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
@@ -82,26 +90,18 @@ func (u *Unpackerr) PollSonarr(wg *sync.WaitGroup) {
 			continue
 		}
 
-		wg.Add(oneItem)
+		if server.Queue, err = server.SonarrQueue(); err != nil {
+			log.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
+			return
+		}
 
-		go func(server *sonarrConfig) {
-			defer wg.Done()
-
-			var err error
-
-			if server.Queue, err = server.SonarrQueue(); err != nil {
-				log.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
-				return
-			}
-
-			log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-		}(server)
+		log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
 	}
 }
 
-// PollRadarr saves the Lidarr Queue
-func (u *Unpackerr) PollRadarr(wg *sync.WaitGroup) {
-	const oneItem = 1
+// PollRadarr saves the Radarr Queue
+func (u *Unpackerr) PollRadarr() {
+	var err error
 
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {
@@ -109,19 +109,11 @@ func (u *Unpackerr) PollRadarr(wg *sync.WaitGroup) {
 			continue
 		}
 
-		wg.Add(oneItem)
+		if server.Queue, err = server.RadarrQueue(); err != nil {
+			log.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
+		}
 
-		go func(server *radarrConfig) {
-			defer wg.Done()
-
-			var err error
-
-			if server.Queue, err = server.RadarrQueue(); err != nil {
-				log.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
-			}
-
-			log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
-		}(server)
+		log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
 	}
 }
 

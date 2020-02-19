@@ -76,8 +76,6 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		return
 	}
 
-	log.Printf("[%s] Found %d extractable item(s): %s (%s)", app, len(files), name, path)
-
 	item.Status = QUEUED
 	item.Updated = time.Now()
 
@@ -90,11 +88,11 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
 	if err != nil {
-		log.Println("[ERROR]", err)
-		return
+		log.Println("[ERROR] Starting Extraction:", err)
+		return // this wont happen.
 	}
 
-	log.Printf("[%s] Extraction Queued: %s, items in queue: %d", app, path, queueSize)
+	log.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
 // handleXtractrCallback handles callbacks from the xtractr library for onarr/radarr/lidar.

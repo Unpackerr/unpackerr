@@ -131,13 +131,11 @@ func (u *Unpackerr) checkFolderStats() {
 			delete(u.folders.Folders, name)
 
 			if !folder.cnfg.MoveBack {
-				// TODO: this might be wrong.
-				DeleteFiles(folder.cnfg.Path + suffix)
+				DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
 			}
 
 			if folder.cnfg.DeleteOrig {
-				// TODO: this can't be right?
-				DeleteFiles(folder.cnfg.Path)
+				DeleteFiles(name)
 			}
 		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:
 			u.extractFolder(name, folder)

@@ -112,8 +112,10 @@ func (u *Unpackerr) checkImportsDone() {
 			}
 		}
 
-		u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
+		if data.App != "" { // don't print folder statuses here.
+			u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
+				time.Since(data.Updated).Round(time.Second))
+		}
 	}
 }
 
@@ -121,12 +123,14 @@ func (u *Unpackerr) checkImportsDone() {
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch {
-		case time.Since(folder.last) > time.Minute && folder.step == EXTRACTFAILED:
+		case time.Since(folder.last) > u.RetryDelay.Duration && folder.step == EXTRACTFAILED:
+			// Folder extraction failed some time ago, reset it, so it can restart.
 			folder.last = time.Now()
 			folder.step = DOWNLOADING
 
 			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
 		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
+			// Folder reached delete delay (after extraction), nuke it.
 			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
 			delete(u.folders.Folders, name)
 
@@ -137,7 +141,8 @@ func (u *Unpackerr) checkFolderStats() {
 			if folder.cnfg.DeleteOrig {
 				DeleteFiles(name)
 			}
-		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:
+		case time.Since(folder.last) > u.StartDelay.Duration && folder.step == DOWNLOADING:
+			// The folder hasn't been written to in a while, extract it.
 			u.extractFolder(name, folder)
 		}
 	}

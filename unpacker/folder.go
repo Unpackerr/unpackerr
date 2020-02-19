@@ -36,7 +36,7 @@ func (u *Unpackerr) PollFolders() {
 		return
 	}
 
-	log.Println("[FOLDER] Watching:", strings.Join(flist, ", "))
+	log.Println("[Folder] Watching:", strings.Join(flist, ", "))
 
 	go u.folders.watchFSNotify()
 }
@@ -98,8 +98,8 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
-		Name:       folder.cnfg.Path,
-		SearchPath: folder.cnfg.Path,
+		Name:       name,
+		SearchPath: name,
 		TempFolder: !folder.cnfg.MoveBack,
 		DeleteOrig: false,
 		CBFunction: u.folders.xtractCallback,
@@ -109,7 +109,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		return
 	}
 
-	log.Printf("[Folder] Queued: %s, queue size: %d", folder.cnfg.Path, queueSize)
+	log.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
 }
 
 func (u *Unpackerr) processFolderUpdate(update *update) {
@@ -144,6 +144,10 @@ func (f *Folders) watchFSNotify() {
 				return
 			}
 
+			if strings.HasSuffix(event.Name, suffix) {
+				break
+			}
+
 			for _, cnfg := range f.Config {
 				// Find the configured folder for the event we just got.
 				if !strings.HasPrefix(event.Name, cnfg.Path) {
@@ -170,14 +174,14 @@ func (f *Folders) processEvent(event *eventData) {
 	if stat, err := os.Stat(fullPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[fullPath]; ok {
-			f.DeLogf("Removing Tracked Item: %v", fullPath)
+			f.DeLogf("Folder: Removing Tracked Item: %v", fullPath)
 			delete(f.Folders, fullPath)
 			_ = f.Watcher.Remove(fullPath)
 		}
 
 		return
 	} else if !stat.IsDir() {
-		f.DeLogf("Ignoring Item: %v (not a folder)", fullPath)
+		f.DeLogf("Folder: Ignoring Item: %v (not a folder)", fullPath)
 		return
 	}
 
@@ -188,11 +192,11 @@ func (f *Folders) processEvent(event *eventData) {
 	}
 
 	if err := f.Watcher.Add(fullPath); err != nil {
-		log.Printf("[ERROR] Tracking New Item: %v: %v", fullPath, err)
+		log.Printf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
 		return
 	}
 
-	log.Printf("[FOLDER] Tracking New Item: %v", fullPath)
+	log.Printf("[Folder] Tracking New Item: %v", fullPath)
 
 	f.Folders[fullPath] = &Folder{
 		last: time.Now(),
@@ -205,13 +209,13 @@ func (f *Folders) processEvent(event *eventData) {
 func (f *Folders) xtractCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
-		log.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		log.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		f.Updates <- &update{Step: EXTRACTING, Name: resp.X.Name}
 	case resp.Error != nil:
-		log.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		log.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		f.Updates <- &update{Step: EXTRACTFAILED, Name: resp.X.Name}
 	default: // this runs in a go routine
-		log.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
+		log.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
 			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)

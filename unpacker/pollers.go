@@ -9,16 +9,12 @@ import (
 
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
-	poller := time.NewTicker(u.Interval.Duration)
-	cleaner := time.NewTicker(15 * time.Second)
-	logger := time.NewTicker(time.Minute)
+	poller := time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
+	cleaner := time.NewTicker(minimumInterval)    // clean at the minimum interval.
+	logger := time.NewTicker(time.Minute)         // log queue states every minute.
 
-	// Fill in all app queues once on startup.
-	u.saveAllAppQueues()
-	// check if things finished downloading and need extraction.
-	u.checkSonarrQueue()
-	u.checkRadarrQueue()
-	u.checkLidarrQueue()
+	// Get in app queues on startup; check if items finished download & need extraction.
+	u.processAppQueues()
 
 	// one go routine to rule them all.
 	for {
@@ -29,11 +25,7 @@ func (u *Unpackerr) Run() {
 			u.checkFolderStats()
 		case <-poller.C:
 			// polling interval. pull API data from all apps.
-			u.saveAllAppQueues()
-			// check if things finished downloading and need extraction.
-			u.checkSonarrQueue()
-			u.checkRadarrQueue()
-			u.checkLidarrQueue()
+			u.processAppQueues()
 			// check if things got imported and now need to be deleted.
 			u.checkImportsDone()
 		case update := <-u.updates:
@@ -52,8 +44,9 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// getAllAppQueues polls Sonarr and Radarr. At the same time.
-func (u *Unpackerr) saveAllAppQueues() {
+// processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
+// The calls the check methods to scan their queues for changes.
+func (u *Unpackerr) processAppQueues() {
 	const threeItems = 3
 
 	var wg sync.WaitGroup
@@ -64,31 +57,33 @@ func (u *Unpackerr) saveAllAppQueues() {
 		u.getSonarrQueue()
 		wg.Done()
 	}()
-
 	go func() {
 		u.getRadarrQueue()
 		wg.Done()
 	}()
-
 	go func() {
 		u.getLidarrQueue()
 		wg.Done()
 	}()
 
 	wg.Wait()
+	// These are not thread safe because they call handleCompletedDownload.
+	u.checkSonarrQueue()
+	u.checkRadarrQueue()
+	u.checkLidarrQueue()
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
-		switch elasped := time.Since(data.Updated); {
-		case data.Status == EXTRACTFAILED && elasped < u.RetryDelay.Duration:
+		switch elapsed := time.Since(data.Updated); {
+		case data.Status == EXTRACTFAILED && elapsed < u.RetryDelay.Duration:
 			u.Restarted++
 			delete(u.Map, name)
 			log.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
-				data.App, elasped.Round(time.Second), name)
-		case data.Status == DELETED && elasped >= u.DeleteDelay.Duration*2:
+				data.App, elapsed.Round(time.Second), name)
+		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
@@ -136,10 +131,12 @@ func (u *Unpackerr) checkFolderStats() {
 			delete(u.folders.Folders, name)
 
 			if !folder.cnfg.MoveBack {
+				// TODO: this might be wrong.
 				DeleteFiles(folder.cnfg.Path + suffix)
 			}
 
 			if folder.cnfg.DeleteOrig {
+				// TODO: this can't be right?
 				DeleteFiles(folder.cnfg.Path)
 			}
 		case time.Since(folder.last) > time.Minute && folder.step == DOWNLOADING:

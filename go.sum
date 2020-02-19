@@ -84,6 +84,10 @@ golift.io/xtractr v0.0.0-20200218211732-aed8ad26f5ff h1:OuYKtAWfWcp9cjY3SBSInSRt
 golift.io/xtractr v0.0.0-20200218211732-aed8ad26f5ff/go.mod h1:Vy4hAYloWkgt+zOUGYlhAljb73gMAjLyyPuftRSFnoA=
 golift.io/xtractr v0.0.0-20200218221202-7cfeb2078398 h1:PsjM2nCWia3kZWsRrXriBux2lEXCeDqtF9Mik6Rga6A=
 golift.io/xtractr v0.0.0-20200218221202-7cfeb2078398/go.mod h1:Vy4hAYloWkgt+zOUGYlhAljb73gMAjLyyPuftRSFnoA=
+golift.io/xtractr v0.0.0-20200219001337-99771746aae9 h1:qfNFrX0gymoKvuztwohEShhl/W/jbzZPzs08mWXka1Q=
+golift.io/xtractr v0.0.0-20200219001337-99771746aae9/go.mod h1:Vy4hAYloWkgt+zOUGYlhAljb73gMAjLyyPuftRSFnoA=
+golift.io/xtractr v0.0.0-20200219001542-e284a8c9ca7e h1:a3xzuMORv9u5lTjujlxvc2Uba0lcRJSJkRJ2e8UZdRY=
+golift.io/xtractr v0.0.0-20200219001542-e284a8c9ca7e/go.mod h1:Vy4hAYloWkgt+zOUGYlhAljb73gMAjLyyPuftRSFnoA=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.1/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

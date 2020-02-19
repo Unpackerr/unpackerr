@@ -8,5 +8,5 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golift.io/cnfg v0.0.6-0.20200213113358-a46c55eb709c
 	golift.io/starr v0.9.4-0.20200214033656-3dc26a0c0789
-	golift.io/xtractr v0.0.0-20200218221202-7cfeb2078398
+	golift.io/xtractr v0.0.0-20200219001542-e284a8c9ca7e
 )

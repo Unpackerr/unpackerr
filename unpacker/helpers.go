@@ -11,7 +11,7 @@ import (
 func (u *Unpackerr) DeLogf(msg string, v ...interface{}) {
 	const callDepth = 2
 
-	if u.Debug {
+	if u.Config.Debug {
 		_ = log.Output(callDepth, fmt.Sprintf("[DEBUG] "+msg, v...))
 	}
 }
@@ -42,13 +42,16 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 // printCurrentQueue returns the number of things happening.
 func (u *Unpackerr) printCurrentQueue() {
 	e := eCounters{}
+
 	for name := range u.Map {
 		switch u.Map[name].Status {
+		case DOWNLOADING:
+			e.waiting++
 		case QUEUED:
 			e.queued++
 		case EXTRACTING:
 			e.extracting++
-		case DELETEFAILED, EXTRACTFAILED, EXTRACTFAILED2:
+		case DELETEFAILED, EXTRACTFAILED:
 			e.failed++
 		case EXTRACTED:
 			e.extracted++
@@ -59,9 +62,9 @@ func (u *Unpackerr) printCurrentQueue() {
 		}
 	}
 
-	log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
-		e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
+	log.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
+		" [%d failed] [%d deleted], Totals: [%d restarts] [%d finished]",
+		e.waiting, e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
 		u.Restarted, u.Finished)
 }
 

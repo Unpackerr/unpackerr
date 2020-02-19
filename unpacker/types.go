@@ -67,7 +67,6 @@ const (
 	QUEUED
 	EXTRACTING
 	EXTRACTFAILED
-	EXTRACTFAILED2
 	EXTRACTED
 	IMPORTED
 	DELETING
@@ -94,14 +93,15 @@ func (status ExtractStatus) String() string {
 
 	return []string{
 		// The order must not be be faulty.
-		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",
-		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
+		"Waiting, pre-Queue", "Queued", "Extraction Progressing", "Extraction Failed",
+		"Extracted, Awaiting Import", "Imported",
 		"Deleting", "Delete Failed", "Deleted",
 	}[status]
 }
 
 // Use in r.eCount to return activity counters.
 type eCounters struct {
+	waiting    uint
 	queued     uint
 	extracting uint
 	failed     uint
@@ -135,6 +135,9 @@ type Unpackerr struct {
 	folders *Folders
 	sigChan chan os.Signal
 	updates chan *Extracts // external updates coming in
+	// considering a new logging scheme.
+	//	Log     *log.Logger
+	//	Debug   *log.Logger
 }
 
 // History holds the history of extracted items.

@@ -66,18 +66,19 @@ func Start() (err error) {
 	u.validateConfig()
 	u.printStartupInfo()
 
-	if u.Debug {
+	if u.Config.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
-		Debug:    u.Debug,
+		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
-		Logger:   log.New(os.Stdout, "[Extract]", log.Flags()),
+		Logger:   log.New(os.Stdout, "", log.Flags()),
 	})
 
 	u.PollFolders() // this initializes channel(s) used in u.Run()
+
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	log.Println("=====> Exiting! Caught Signal:", <-u.sigChan)

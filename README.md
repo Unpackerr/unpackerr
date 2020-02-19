@@ -143,18 +143,16 @@ Still having problems?
 
 ## Logic
 
-The application kicks up a go routine for each of Radarr
-and Sonarr (if you include configs for them). These go routines just poll their
-respective applications for transfers/queued items. The items are stored. The
-interval of these pollers is set in the config file. 2-10 minutes is good.
+The application polls radarr, sonarr and lidarr at the interval configured. The
+queued items are inspected for completeness. The interval of these pollers is set
+in the config file. 1-10 minutes is generally sufficient.
 
-Another go routine checks (the internal data) for completed downloads. When it
-finds an item in Sonarr or Radarr the download
-location is checked for a `.rar` file. If an extractable archive exists, and
-**Sonarr/Radarr have `status=Completed` from your download client** this application will
-extract the file. Files are extracted to a temporary folder, and then moved back
-into the download location for Completed Download Handling to import them. When
-the item falls out of the (Radarr/Sonarr) queue, the extracted files are deleted.
+When Unpackerr finds an item in Sonarr or Radarr or Lidarr the download location
+is checked for a `.rar` file. If an extractable archive exists, and **Sonarr/Radarr/Lidarr
+has `status=Completed` from your download client** Unpackerr will extract the file.
+Files are extracted to a temporary folder, and then moved back into the download
+location for Completed Download Handling to import them. When the item falls out of the
+(Radarr/Sonarr/Lidarr) queue, the extracted files are deleted.
 
 ## TODO
 

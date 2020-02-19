@@ -16,11 +16,12 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	switch {
 	case data.Status > IMPORTED:
 		return
-	case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
+	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED
 		u.Map[name].Updated = time.Now()
 
-		DeleteFiles(data.Files...)
+		// In a routine so it can run slowly and not block.
+		go DeleteFiles(data.Files...)
 	case data.Status == IMPORTED:
 		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
@@ -34,6 +35,22 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
 func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
+	item, ok := u.Map[name]
+	if !ok {
+		u.Map[name] = &Extracts{
+			Path:    path,
+			App:     app,
+			Status:  DOWNLOADING,
+			Updated: time.Now(),
+		}
+		item = u.Map[name]
+	}
+
+	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
+		u.DeLogf("%s: Item Waiting for Start Delay: %v", app, path)
+		return
+	}
+
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
 		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
@@ -42,12 +59,8 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 
 	log.Printf("[%s] Found %d extractable item(s): %s (%s)", app, len(files), name, path)
 
-	u.Map[name] = &Extracts{
-		Path:    path,
-		App:     app,
-		Status:  QUEUED,
-		Updated: time.Now(),
-	}
+	item.Status = QUEUED
+	item.Updated = time.Now()
 
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Name:       name,

@@ -13,71 +13,78 @@ const LidarrQueuePageSize = 2000
 
 // getLidarrQueue saves the Lidarr Queue(s)
 func (u *Unpackerr) getLidarrQueue() {
-	var err error
-
 	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.DeLogf("Lidarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
-		if server.Queue, err = server.LidarrQueue(LidarrQueuePageSize); err != nil {
+		queue, err := server.LidarrQueue(LidarrQueuePageSize)
+		if err != nil {
 			log.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
 			return
 		}
 
-		log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
+		// Only update if there was not an error fetching.
+		server.Queue = queue
+		log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
 // getSonarrQueue saves the Sonarr Queue(s)
 func (u *Unpackerr) getSonarrQueue() {
-	var err error
-
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
 			u.DeLogf("Sonarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
-		if server.Queue, err = server.SonarrQueue(); err != nil {
+		queue, err := server.SonarrQueue()
+		if err != nil {
 			log.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
 			return
 		}
 
-		log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
+		// Only update if there was not an error fetching.
+		server.Queue = queue
+		log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
 // getSonarrQueue saves the Radarr Queue(s)
 func (u *Unpackerr) getRadarrQueue() {
-	var err error
-
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {
 			u.DeLogf("Radarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
-		if server.Queue, err = server.RadarrQueue(); err != nil {
+		queue, err := server.RadarrQueue()
+		if err != nil {
 			log.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
+			return
 		}
 
-		log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(server.Queue))
+		// Only update if there was not an error fetching.
+		server.Queue = queue
+		log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
 // checkSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkSonarrQueue() {
+	app := "Sonarr"
+
 	for _, server := range u.Sonarr {
 		for _, q := range server.Queue {
-			if _, ok := u.Map[q.Title]; !ok && q.Status == completed && q.Protocol == torrent {
-				u.handleCompletedDownload(q.Title, "Sonarr", filepath.Join(server.Path, q.Title))
-			} else if ok && q.Status == completed && q.Protocol == torrent {
-				u.DeLogf("Sonarr (%s): Item Waiting For Import (%s): %v", server.URL, q.Protocol, q.Title)
-			} else { // not done or not for us.
-				u.DeLogf("Sonarr (%s): %s (%s:%d%%): %v (Ep: %v)",
-					server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
+			switch x, ok := u.Map[q.Title]; {
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
+			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+				u.DeLogf("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
+			case !ok:
+				u.DeLogf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
+					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
 		}
 	}
@@ -85,15 +92,18 @@ func (u *Unpackerr) checkSonarrQueue() {
 
 // checkRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkRadarrQueue() {
+	app := "Radarr"
+
 	for _, server := range u.Radarr {
 		for _, q := range server.Queue {
-			if _, ok := u.Map[q.Title]; !ok && q.Status == completed && q.Protocol == torrent {
-				u.handleCompletedDownload(q.Title, "Radarr", filepath.Join(server.Path, q.Title))
-			} else if ok && q.Status == completed && q.Protocol == torrent {
-				u.DeLogf("Radarr (%s): Item Waiting For Import (%s): %v", server.URL, q.Protocol, q.Title)
-			} else { // not done or not for us.
-				u.DeLogf("Radarr (%s): %s (%s:%d%%): %v",
-					server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+			switch x, ok := u.Map[q.Title]; {
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
+			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+				u.DeLogf("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
+			case !ok:
+				u.DeLogf("%s: (%s): %s (%s:%d%%): %v",
+					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}
@@ -101,15 +111,18 @@ func (u *Unpackerr) checkRadarrQueue() {
 
 // checkLidarrQueue passes completed Lidarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkLidarrQueue() {
+	app := "Lidarr"
+
 	for _, server := range u.Lidarr {
 		for _, q := range server.Queue {
-			if _, ok := u.Map[q.Title]; !ok && q.Status == completed && q.Protocol == torrent {
-				u.handleCompletedDownload(q.Title, "Lidarr", q.OutputPath)
-			} else if ok && q.Status == completed && q.Protocol == torrent {
-				u.DeLogf("Lidarr (%s): Item Waiting For Import (%s): %v", server.URL, q.Protocol, q.Title)
-			} else { // not done or not for us.
-				u.DeLogf("Lidarr: (%s): %s (%s:%d%%): %v",
-					server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+			switch x, ok := u.Map[q.Title]; {
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, q.OutputPath)
+			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+				u.DeLogf("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
+			case !ok:
+				u.DeLogf("%s: (%s): %s (%s:%d%%): %v",
+					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}
@@ -118,9 +131,9 @@ func (u *Unpackerr) checkLidarrQueue() {
 // gets a sonarr queue item based on name. returns first match
 func (u *Unpackerr) getSonarQitem(name string) *starr.SonarQueue {
 	for _, server := range u.Sonarr {
-		for _, record := range server.Queue {
-			if record.Title == name {
-				return record
+		for _, q := range server.Queue {
+			if q.Title == name {
+				return q
 			}
 		}
 	}
@@ -131,9 +144,9 @@ func (u *Unpackerr) getSonarQitem(name string) *starr.SonarQueue {
 // gets a radarr queue item based on name. returns first match
 func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
 	for _, server := range u.Radarr {
-		for _, record := range server.Queue {
-			if record.Title == name {
-				return record
+		for _, q := range server.Queue {
+			if q.Title == name {
+				return q
 			}
 		}
 	}
@@ -144,9 +157,9 @@ func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
 // gets a lidarr queue item based on name. returns first match
 func (u *Unpackerr) getLidarQitem(name string) *starr.LidarrRecord {
 	for _, server := range u.Lidarr {
-		for _, record := range server.Queue {
-			if record.Title == name {
-				return record
+		for _, q := range server.Queue {
+			if q.Title == name {
+				return q
 			}
 		}
 	}

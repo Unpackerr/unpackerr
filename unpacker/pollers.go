@@ -122,8 +122,8 @@ func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch {
 		case time.Since(folder.last) > time.Minute && folder.step == EXTRACTFAILED:
-			u.folders.Folders[name].last = time.Now()
-			u.folders.Folders[name].step = DOWNLOADING
+			folder.last = time.Now()
+			folder.step = DOWNLOADING
 
 			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
 		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:

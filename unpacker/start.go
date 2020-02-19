@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
@@ -14,14 +13,6 @@ import (
 
 	"github.com/prometheus/common/version"
 	flg "github.com/spf13/pflag"
-)
-
-const (
-	defaultTimeout     = 10 * time.Second
-	minimumInterval    = 15 * time.Second
-	defaultRetryDelay  = 5 * time.Minute
-	defaultStartDelay  = time.Minute
-	minimumDeleteDelay = time.Second
 )
 
 // New returns an UnpackerPoller struct full of defaults.

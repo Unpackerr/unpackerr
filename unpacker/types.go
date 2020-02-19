@@ -12,8 +12,19 @@ import (
 )
 
 const (
-	torrent   = "torrent"
-	completed = "Completed"
+	defaultTimeout     = 10 * time.Second
+	minimumInterval    = 15 * time.Second
+	defaultRetryDelay  = 5 * time.Minute
+	defaultStartDelay  = time.Minute
+	minimumDeleteDelay = time.Second
+	torrent            = "torrent"
+	completed          = "Completed"
+	mebiByte           = 1024 * 1024
+	splay              = 3 * time.Second // provide a little splay between timers.
+	suffix             = "_unpackerred"  // suffix for unpacked folders.
+	updateChanSize     = 100             // Size of update channel. This is sufficiently large
+	queueChanSize      = 20000           // Channel queue size for file system events.
+
 )
 
 // Config defines the configuration data used to start the application.
@@ -72,17 +83,6 @@ const (
 	DELETING
 	DELETEFAILED // unused
 	DELETED
-)
-
-const (
-	// provide a little splay between timers.
-	splay = 3 * time.Second
-	// suffix for unpacked folders.
-	suffix = "_unpackerred"
-	// Size of update channel. This is sufficiently large
-	updateChanSize = 100
-	// Channel queue size for file system events.
-	queueChanSize = 20000
 )
 
 // String makes ExtractStatus human readable.

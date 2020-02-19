@@ -7,13 +7,15 @@ import (
 	"golift.io/xtractr"
 )
 
-const mebiByte = 1024 * 1024
-
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
 func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	elapsed := time.Since(data.Updated)
 
 	switch {
+	case data.Status == DOWNLOADING:
+		// A waiting item just imported. We never extracted it. Remove it and move on.
+		delete(u.Map, name)
+		log.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
 		return
 	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
@@ -47,13 +49,13 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.DeLogf("%s: Item Waiting for Start Delay: %v", app, path)
+		u.DeLogf("%s: Item Waiting for Start Delay: %v", app, name)
 		return
 	}
 
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
-		u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
+		log.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s", app, name, path)
 		return
 	}
 

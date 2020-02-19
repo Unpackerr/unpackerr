@@ -78,7 +78,7 @@ func (u *Unpackerr) processAppQueues() {
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
-		case data.Status == EXTRACTFAILED && elapsed < u.RetryDelay.Duration:
+		case data.App != "" && data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
 			u.Restarted++
 			delete(u.Map, name)
 			log.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
@@ -122,14 +122,15 @@ func (u *Unpackerr) checkImportsDone() {
 // checkFolderStats runs at an interval to see if any folders need work done on them.
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
-		switch {
-		case time.Since(folder.last) > u.RetryDelay.Duration && folder.step == EXTRACTFAILED:
-			// Folder extraction failed some time ago, reset it, so it can restart.
+		switch elapsed := time.Since(folder.last); {
+		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration:
+			log.Printf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
+				folder.cnfg.Path, elapsed.Round(time.Second))
+
 			folder.last = time.Now()
 			folder.step = DOWNLOADING
-
-			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
-		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
+			u.Restarted++
+		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			// Folder reached delete delay (after extraction), nuke it.
 			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
 			delete(u.folders.Folders, name)
@@ -141,7 +142,7 @@ func (u *Unpackerr) checkFolderStats() {
 			if folder.cnfg.DeleteOrig {
 				DeleteFiles(name)
 			}
-		case time.Since(folder.last) > u.StartDelay.Duration && folder.step == DOWNLOADING:
+		case DOWNLOADING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
 			u.extractFolder(name, folder)
 		}

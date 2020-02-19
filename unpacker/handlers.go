@@ -7,6 +7,23 @@ import (
 	"golift.io/xtractr"
 )
 
+// updateQueueStatus for an on-going tracked extraction.
+// This is called from a channel callback to update status in a single go routine.
+func (u *Unpackerr) updateQueueStatus(data *Extracts) {
+	if _, ok := u.Map[data.Path]; ok {
+		u.Map[data.Path].Status = data.Status
+		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
+		u.Map[data.Path].Updated = time.Now()
+
+		return
+	}
+
+	// This is a new folder being extracted.
+	data.Updated = time.Now()
+	data.Status = QUEUED
+	u.Map[data.Path] = data
+}
+
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
 func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	elapsed := time.Since(data.Updated)

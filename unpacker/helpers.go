@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 )
 
 // DeLogf writes Debug log lines.
@@ -14,29 +13,6 @@ func (u *Unpackerr) DeLogf(msg string, v ...interface{}) {
 	if u.Config.Debug {
 		_ = log.Output(callDepth, fmt.Sprintf("[DEBUG] "+msg, v...))
 	}
-}
-
-// updateQueueStatus for an on-going tracked extraction.
-// This is called from a channel callback to update status in a single go routine.
-func (u *Unpackerr) updateQueueStatus(data *Extracts) {
-	if _, ok := u.Map[data.Path]; ok {
-		if data.Status == DELETED {
-			// This is a completed folder.
-			u.Finished++
-			delete(u.Map, data.Path)
-
-			return
-		}
-
-		u.Map[data.Path].Status = data.Status
-		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
-	} else {
-		// This is a new folder being extracted.
-		u.Map[data.Path] = data
-		u.Map[data.Path].Status = QUEUED
-	}
-
-	u.Map[data.Path].Updated = time.Now()
 }
 
 // printCurrentQueue returns the number of things happening.

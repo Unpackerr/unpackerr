@@ -20,10 +20,9 @@ const (
 	torrent            = "torrent"
 	completed          = "Completed"
 	mebiByte           = 1024 * 1024
-	splay              = 3 * time.Second // provide a little splay between timers.
-	suffix             = "_unpackerred"  // suffix for unpacked folders.
-	updateChanSize     = 100             // Size of update channel. This is sufficiently large
-	queueChanSize      = 20000           // Channel queue size for file system events.
+	suffix             = "_unpackerred" // suffix for unpacked folders.
+	updateChanSize     = 100            // Size of update channel. This is sufficiently large
+	queueChanSize      = 20000          // Channel queue size for file system events.
 
 )
 

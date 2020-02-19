@@ -23,10 +23,7 @@ func (u *Unpackerr) PollFolders() {
 
 	u.Folders, flist = u.checkFolders()
 
-	time.Sleep(splay)
-
-	u.folders, err = u.newFolderWatcher()
-	if err != nil {
+	if u.folders, err = u.newFolderWatcher(); err != nil {
 		log.Println("[ERROR] Watching Folders:", err)
 		return
 	}
@@ -36,9 +33,8 @@ func (u *Unpackerr) PollFolders() {
 		return
 	}
 
-	log.Println("[Folder] Watching:", strings.Join(flist, ", "))
-
 	go u.folders.watchFSNotify()
+	log.Println("[Folder] Watching:", strings.Join(flist, ", "))
 }
 
 // newFolderWatcher returns a new folder watcher.

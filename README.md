@@ -57,9 +57,9 @@ docker logs <container id from docker run>
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs
-interval|`UN_INTERVAL`|`4m` / How often apps are polled, recommend `2m`-`10m`
+interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`
 timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)
-delete_delay|`UN_DELETE_DELAY`|`10m` / Extracts are deleted this long long after import|
+delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after import|
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`

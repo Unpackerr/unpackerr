@@ -5,13 +5,26 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"golift.io/cnfg"
 	"golift.io/starr"
+	"golift.io/xtractr"
 )
 
 const (
-	torrent   = "torrent"
-	completed = "Completed"
+	defaultTimeout     = 10 * time.Second
+	minimumInterval    = 15 * time.Second
+	defaultRetryDelay  = 5 * time.Minute
+	defaultStartDelay  = time.Minute
+	minimumDeleteDelay = time.Second
+	torrent            = "torrent"
+	completed          = "Completed"
+	mebiByte           = 1024 * 1024
+	splay              = 3 * time.Second // provide a little splay between timers.
+	suffix             = "_unpackerred"  // suffix for unpacked folders.
+	updateChanSize     = 100             // Size of update channel. This is sufficiently large
+	queueChanSize      = 20000           // Channel queue size for file system events.
+
 )
 
 // Config defines the configuration data used to start the application.
@@ -31,22 +44,22 @@ type Config struct {
 
 type radarrConfig struct {
 	*starr.Config
-	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type sonarrConfig struct {
 	*starr.Config
-	Path         string `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Queue        []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type lidarrConfig struct {
 	*starr.Config
+	Queue        []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-	List         []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type folderConfig struct {
@@ -61,11 +74,10 @@ type ExtractStatus uint8
 
 // Extract Statuses.
 const (
-	MISSING = ExtractStatus(iota)
+	DOWNLOADING = ExtractStatus(iota)
 	QUEUED
 	EXTRACTING
 	EXTRACTFAILED
-	EXTRACTFAILED2
 	EXTRACTED
 	IMPORTED
 	DELETING
@@ -81,14 +93,15 @@ func (status ExtractStatus) String() string {
 
 	return []string{
 		// The order must not be be faulty.
-		"Missing", "Queued", "Extraction Progressing", "Extraction Failed",
-		"Extraction Failed Twice", "Extracted, Awaiting Import", "Imported",
+		"Waiting, pre-Queue", "Queued", "Extraction Progressing", "Extraction Failed",
+		"Extracted, Awaiting Import", "Imported",
 		"Deleting", "Delete Failed", "Deleted",
 	}[status]
 }
 
 // Use in r.eCount to return activity counters.
 type eCounters struct {
+	waiting    uint
 	queued     uint
 	extracting uint
 	failed     uint
@@ -103,18 +116,32 @@ type Flags struct {
 	ConfigFile string
 }
 
+// Folders holds all known (created) folders in all watch paths.
+type Folders struct {
+	Config  []*folderConfig
+	Folders map[string]*Folder
+	Events  chan *eventData
+	Updates chan *update
+	DeLogf  func(msg string, v ...interface{})
+	Watcher *fsnotify.Watcher
+}
+
 // Unpackerr stores all the running data.
 type Unpackerr struct {
 	*Flags
 	*Config
 	*History
+	*xtractr.Xtractr
 	folders *Folders
-	SigChan chan os.Signal
+	sigChan chan os.Signal
+	updates chan *Extracts // external updates coming in
+	// considering a new logging scheme.
+	//	Log     *log.Logger
+	//	Debug   *log.Logger
 }
 
 // History holds the history of extracted items.
 type History struct {
-	sync.RWMutex
 	Finished  uint
 	Restarted uint
 	Map       map[string]*Extracts
@@ -127,4 +154,24 @@ type Extracts struct {
 	Files   []string
 	Status  ExtractStatus
 	Updated time.Time
+}
+
+// Folder is a "new" watched folder.
+type Folder struct {
+	last time.Time
+	step ExtractStatus
+	cnfg *folderConfig
+	list []string
+}
+
+type eventData struct {
+	cnfg *folderConfig
+	name string
+	file string
+}
+
+type update struct {
+	Step ExtractStatus
+	Name string
+	Resp *xtractr.Response
 }

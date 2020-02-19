@@ -7,154 +7,143 @@ import (
 	"time"
 )
 
-// PollAllApps Polls  Sonarr and Radarr. At the same time.
-func (u *Unpackerr) PollAllApps() {
+// Run starts the loop that does the work.
+func (u *Unpackerr) Run() {
+	poller := time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
+	cleaner := time.NewTicker(minimumInterval)    // clean at the minimum interval.
+	logger := time.NewTicker(time.Minute)         // log queue states every minute.
+
+	// Get in app queues on startup; check if items finished download & need extraction.
+	u.processAppQueues()
+
+	// one go routine to rule them all.
+	for {
+		select {
+		case <-cleaner.C:
+			// Check for state changes and act on them.
+			u.checkExtractDone()
+			u.checkFolderStats()
+		case <-poller.C:
+			// polling interval. pull API data from all apps.
+			u.processAppQueues()
+			// check if things got imported and now need to be deleted.
+			u.checkImportsDone()
+		case update := <-u.updates:
+			// xtractr callback for app download extraction.
+			u.updateQueueStatus(update)
+		case update := <-u.folders.Updates:
+			// xtractr callback for a watched folder extraction.
+			u.processFolderUpdate(update)
+		case event := <-u.folders.Events:
+			// file system event for watched folder.
+			u.folders.processEvent(event)
+		case <-logger.C:
+			// Log/print current queue counts once in a while.
+			u.printCurrentQueue()
+		}
+	}
+}
+
+// processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
+// The calls the check methods to scan their queues for changes.
+func (u *Unpackerr) processAppQueues() {
+	const threeItems = 3
+
 	var wg sync.WaitGroup
 
-	for _, sonarr := range u.Sonarr {
-		if sonarr.APIKey == "" {
-			u.DeLogf("Sonarr (%s): skipped, no API key", sonarr.URL)
-			continue
-		}
+	wg.Add(threeItems)
 
-		wg.Add(1)
-
-		go func(sonarr *sonarrConfig) {
-			if err := u.PollSonarr(sonarr); err != nil {
-				log.Printf("[ERROR] Sonarr (%s): %v", sonarr.URL, err)
-			}
-
-			wg.Done()
-		}(sonarr)
-	}
-
-	for _, radarr := range u.Radarr {
-		if radarr.APIKey == "" {
-			u.DeLogf("Radarr (%s): skipped, no API key", radarr.URL)
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(radarr *radarrConfig) {
-			if err := u.PollRadarr(radarr); err != nil {
-				log.Printf("[ERROR] Radarr (%s): %v", radarr.URL, err)
-			}
-
-			wg.Done()
-		}(radarr)
-	}
-
-	for _, lidarr := range u.Lidarr {
-		if lidarr.APIKey == "" {
-			u.DeLogf("Lidarr (%s): skipped, no API key", lidarr.URL)
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(lidarr *lidarrConfig) {
-			if err := u.PollLidarr(lidarr); err != nil {
-				log.Printf("[ERROR] Lidarr (%s): %v", lidarr.URL, err)
-			}
-
-			wg.Done()
-		}(lidarr)
-	}
-
-	wg.Wait()
-}
-
-// CheckExtractDone checks if an extracted item has been imported.
-func (u *Unpackerr) CheckExtractDone() {
-	u.History.RLock()
-
-	defer func() {
-		u.History.RUnlock()
-		e := u.eCount()
-		log.Printf("Queue: [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-			" [%d failed] [%d deleted], Totals: [%d restarted] [%d finished]",
-			e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
-			u.Restarted, u.Finished)
+	go func() {
+		u.getSonarrQueue()
+		wg.Done()
+	}()
+	go func() {
+		u.getRadarrQueue()
+		wg.Done()
+	}()
+	go func() {
+		u.getLidarrQueue()
+		wg.Done()
 	}()
 
-	for name, data := range u.History.Map {
-		u.DeLogf("%s: Extract Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
+	wg.Wait()
+	// These are not thread safe because they call handleCompletedDownload.
+	u.checkSonarrQueue()
+	u.checkRadarrQueue()
+	u.checkLidarrQueue()
+}
 
-		switch {
-		case data.Status == EXTRACTFAILED:
-			go u.retryFailedExtract(data, name)
-		case data.Status >= DELETED && time.Since(data.Updated) >= u.DeleteDelay.Duration*2:
+// checkExtractDone checks if an extracted item imported items needs to be deleted.
+// Or if an extraction failed and needs to be restarted.
+func (u *Unpackerr) checkExtractDone() {
+	for name, data := range u.Map {
+		switch elapsed := time.Since(data.Updated); {
+		case data.Status == EXTRACTFAILED && elapsed < u.RetryDelay.Duration:
+			u.Restarted++
+			delete(u.Map, name)
+			log.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
+				data.App, elapsed.Round(time.Second), name)
+		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
-			go u.finishFinished(data.App, name)
-		case data.Status < EXTRACTED || data.Status > IMPORTED:
-			continue // Only process items that have finished extraction and are not deleted.
-		case strings.HasPrefix(data.App, "Sonarr"):
-			go u.handleSonarr(data, name)
-		case strings.HasPrefix(data.App, "Radarr"):
-			go u.handleRadarr(data, name)
-		case strings.HasPrefix(data.App, "Lidarr"):
-			go u.handleLidarr(data, name)
-		case strings.HasPrefix(data.App, "Folder"):
-			go u.handleFolder(data, name)
+			u.Finished++
+			delete(u.Map, name)
+			log.Printf("[%s] Finished, Removed History: %v", data.App, name)
 		}
 	}
 }
 
-func (u *Unpackerr) retryFailedExtract(data *Extracts, name string) {
-	// Only retry after retry time expires.
-	if time.Since(data.Updated) < u.RetryDelay.Duration {
-		return
-	}
+// checkImportsDone checks if extracted items have been imported.
+func (u *Unpackerr) checkImportsDone() {
+	for name, data := range u.Map {
+		switch {
+		case data.Status > IMPORTED:
+			continue
+		case strings.HasPrefix(data.App, "Sonarr"):
+			if u.getSonarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		case strings.HasPrefix(data.App, "Radarr"):
+			if u.getRadarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		case strings.HasPrefix(data.App, "Lidarr"):
+			if u.getLidarQitem(name) == nil {
+				u.handleFinishedImport(data, name) // We only want finished items.
+			}
+		}
 
-	log.Printf("%v: Extract failed %v ago, removing history so it can be restarted: %v",
-		data.App, time.Since(data.Updated), name)
-
-	if data.App == "Folder" {
-		u.folders.Updates <- &update{Step: QUEUED, Name: name}
-	}
-
-	u.History.Lock()
-	defer u.History.Unlock()
-	u.History.Restarted++
-	delete(u.History.Map, name)
-}
-
-func (u *Unpackerr) finishFinished(app, name string) {
-	u.History.Lock()
-	defer u.History.Unlock()
-	u.History.Finished++
-	delete(u.History.Map, name)
-	log.Printf("[%v] Finished, Removed History: %v", app, name)
-}
-
-// HandleExtractDone checks if files should be deleted.
-func (u *Unpackerr) HandleExtractDone(data *Extracts, name string) ExtractStatus {
-	switch elapsed := time.Since(data.Updated); {
-	case data.Status != IMPORTED:
-		log.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
-		return IMPORTED
-	case elapsed >= u.DeleteDelay.Duration:
-		deleteFiles(data.Files)
-		return DELETED
-	default:
-		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v",
-			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
-		return data.Status
+		if data.App != "" { // don't print folder statuses here.
+			u.DeLogf("%s: Status: %v (status: %v, elapsed: %v)", data.App, name, data.Status.String(),
+				time.Since(data.Updated).Round(time.Second))
+		}
 	}
 }
 
-// HandleCompleted checks if a completed item needs to be extracted.
-func (u *Unpackerr) HandleCompleted(name, app, path string) {
-	if files := FindRarFiles(path); len(files) > 0 {
-		log.Printf("%s: Found %d extractable item(s): %s (%s)", app, len(files), name, path)
-		u.CreateStatus(name, path, app, files)
+// checkFolderStats runs at an interval to see if any folders need work done on them.
+func (u *Unpackerr) checkFolderStats() {
+	for name, folder := range u.folders.Folders {
+		switch {
+		case time.Since(folder.last) > u.RetryDelay.Duration && folder.step == EXTRACTFAILED:
+			// Folder extraction failed some time ago, reset it, so it can restart.
+			folder.last = time.Now()
+			folder.step = DOWNLOADING
 
-		go u.extractFiles(name, path, files, true)
+			log.Printf("[Folder] Re-starting Failed Extraction: %s", folder.cnfg.Path)
+		case time.Since(folder.last) > folder.cnfg.DeleteAfter.Duration && folder.step == EXTRACTED:
+			// Folder reached delete delay (after extraction), nuke it.
+			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
+			delete(u.folders.Folders, name)
 
-		return
+			if !folder.cnfg.MoveBack {
+				DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+			}
+
+			if folder.cnfg.DeleteOrig {
+				DeleteFiles(name)
+			}
+		case time.Since(folder.last) > u.StartDelay.Duration && folder.step == DOWNLOADING:
+			// The folder hasn't been written to in a while, extract it.
+			u.extractFolder(name, folder)
+		}
 	}
-
-	u.DeLogf("%s: Completed item still in queue: %s, no extractable files found at: %s", app, name, path)
 }

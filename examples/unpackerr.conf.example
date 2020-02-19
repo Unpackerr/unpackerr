@@ -5,7 +5,7 @@
 debug = false
 
 # How often to poll sonarr and radarr.
-# Recommend 2m-10m. Uses Go Duration.
+# Recommend 1m-5m. Uses Go Duration.
 interval = "2m"
 
 # How long to wait for a reply from the backends: Sonarr, Radarr, Lidarr.
@@ -19,19 +19,20 @@ delete_delay = "5m"
 
 # How long an item must be queued (download complete) before extraction will start.
 # One minute is the historic default and works well. Set higher if your downloads
-# take longer to finalize (or transfer locally).
+# take longer to finalize (or transfer locally). Uses Go Duration.
 start_delay = "1m"
 
 # How long to wait before removing the history for a failed extraction.
 # Once the history is deleted the item will be recognized as new and
-# extraction will start again.
+# extraction will start again. Uses Go Duration.
 retry_delay = "5m"
 
-# How many files may be extracted in parallel. 1 works fine in most cases.
-# Do not wrap the number in quotes.
+# How many files may be extracted in parallel. 1 works fine.
+# Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
 # The following sections can be repeated if you have more than one Sonarr, Radarr or Lidarr.
+# You must uncomment the [[header]] and api_key at a minimum.
 
 #[[sonarr]]
 #   url = "http://127.0.0.1:8989"
@@ -49,11 +50,15 @@ parallel = 1
 #  url = "http://127.0.0.1:8686"
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
 
+
+# This application can also watch folders for things to extract. If you copy a
+# subfolder into a watched folder (defined below) any extractable items in the
+# folder will be decompressed. This has *nothing* to do with Sonarr/Lidarr/Radarr.
 #[[folder]]
 #  path = "/some/folder/to/watch"
-  # Delete extracted items this long after extraction. Set to 0 to disable.
+  # Delete extracted items this long after extraction. Set to 0 to disable. Uses Go Duration.
 #  delete_after = "10m"
-  # Delete original items after successful extraction? true/false, no quotes.
+  # Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
 #  delete_original = false
   # Move extracted files into original folder? If false, files go into an _unpacked folder.
 #  move_back = false

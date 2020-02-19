@@ -6,21 +6,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
+	"golift.io/xtractr"
 
 	"github.com/prometheus/common/version"
 	flg "github.com/spf13/pflag"
-)
-
-const (
-	defaultTimeout     = 10 * time.Second
-	minimumInterval    = 10 * time.Second
-	defaultRetryDelay  = 5 * time.Minute
-	defaultStartDelay  = time.Minute
-	minimumDeleteDelay = time.Second
 )
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -28,8 +20,9 @@ const (
 func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile},
-		SigChan: make(chan os.Signal),
+		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extracts)},
+		updates: make(chan *Extracts),
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
@@ -64,40 +57,24 @@ func Start() (err error) {
 	u.validateConfig()
 	u.printStartupInfo()
 
-	if u.Debug {
+	if u.Config.Debug {
 		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
+	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
+		Debug:    u.Config.Debug,
+		Parallel: int(u.Parallel),
+		Suffix:   suffix,
+		Logger:   log.New(os.Stdout, "", log.Flags()),
+	})
+
+	u.PollFolders() // this initializes channel(s) used in u.Run()
+
 	go u.Run()
-	signal.Notify(u.SigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("=====> Exiting! Caught Signal:", <-u.SigChan)
+	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	log.Println("=====> Exiting! Caught Signal:", <-u.sigChan)
 
 	return nil
-}
-
-// Run starts the go routines and waits for an exit signal.
-// One poller wont run twice unless you get creative.
-// Just make a second one if you want to poller moar.
-func (u *Unpackerr) Run() {
-	u.DeLogf("Starting Cleanup Routine (interval: 1 minute)")
-
-	poller := time.NewTicker(u.Interval.Duration)
-	cleaner := time.NewTicker(time.Minute)
-
-	go func() {
-		for range cleaner.C {
-			u.CheckExtractDone()
-			u.CheckSonarrQueue()
-			u.CheckRadarrQueue()
-			u.CheckLidarrQueue()
-		}
-	}()
-	go u.PollFolders()
-	u.PollAllApps() // Run all pollers once at startup.
-
-	for range poller.C {
-		u.PollAllApps()
-	}
 }
 
 // ParseFlags turns CLI args into usable data.
@@ -121,8 +98,8 @@ func (u *Unpackerr) validateConfig() {
 		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
 
-	if u.Parallel < 1 {
-		u.Parallel = 1
+	if u.Parallel == 0 {
+		u.Parallel++
 	}
 
 	if u.Interval.Duration < minimumInterval {
@@ -158,9 +135,11 @@ func (u *Unpackerr) validateConfig() {
 }
 
 func (u *Unpackerr) printStartupInfo() {
+	const oneItem = 1
+
 	log.Println("==> Startup Settings <==")
 
-	if c := len(u.Sonarr); c == 1 {
+	if c := len(u.Sonarr); c == oneItem {
 		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
 			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout)
 	} else {
@@ -172,7 +151,7 @@ func (u *Unpackerr) printStartupInfo() {
 		}
 	}
 
-	if c := len(u.Radarr); c == 1 {
+	if c := len(u.Radarr); c == oneItem {
 		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
 			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout)
 	} else {
@@ -184,7 +163,7 @@ func (u *Unpackerr) printStartupInfo() {
 		}
 	}
 
-	if c := len(u.Lidarr); c == 1 {
+	if c := len(u.Lidarr); c == oneItem {
 		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
 	} else {
@@ -195,7 +174,7 @@ func (u *Unpackerr) printStartupInfo() {
 		}
 	}
 
-	if c := len(u.Folders); c == 1 {
+	if c := len(u.Folders); c == oneItem {
 		log.Printf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
 			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack)
 	} else {
@@ -213,11 +192,4 @@ func (u *Unpackerr) printStartupInfo() {
 	log.Println(" => Start Delay:", u.Config.StartDelay.Duration)
 	log.Println(" => Retry Delay:", u.Config.RetryDelay.Duration)
 	log.Println(" => Debug Logs:", u.Config.Debug)
-}
-
-// DeLogf writes Debug log lines.
-func (u *Unpackerr) DeLogf(msg string, v ...interface{}) {
-	if u.Debug {
-		_ = log.Output(2, fmt.Sprintf("[DEBUG] "+msg, v...))
-	}
 }

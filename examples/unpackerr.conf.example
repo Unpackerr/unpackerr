@@ -4,6 +4,16 @@
 # Recommend trying this so you know what it looks like. I personally leave it on.
 debug = false
 
+# Disable writing messages to stdout. This silences the app. You should set a log
+# file below if you set this to true.
+quiet = false
+
+# Write message to a log file. This is the same data that is normally output to stdout.
+# This setting is great for Docker users that want to export their logs to a file.
+# The alternative is to use syslog to log the output of the application to a file.
+# Default is no log file, so this is unset.
+#log_file = "/downloads/unpackerr.log"
+
 # How often to poll sonarr and radarr.
 # Recommend 1m-5m. Uses Go Duration.
 interval = "2m"

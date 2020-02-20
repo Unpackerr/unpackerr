@@ -3,7 +3,6 @@ package unpacker
 /* Folder Watching Codez */
 
 import (
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -24,7 +23,7 @@ func (u *Unpackerr) PollFolders() {
 	u.Folders, flist = u.checkFolders()
 
 	if u.folders, err = u.newFolderWatcher(); err != nil {
-		log.Println("[ERROR] Watching Folders:", err)
+		u.Log("[ERROR] Watching Folders:", err)
 		return
 	}
 	// do not close the watcher.
@@ -34,7 +33,7 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
-	log.Println("[Folder] Watching:", strings.Join(flist, ", "))
+	u.Log("[Folder] Watching:", strings.Join(flist, ", "))
 }
 
 // newFolderWatcher returns a new folder watcher.
@@ -47,7 +46,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 
 	for _, folder := range u.Folders {
 		if err := watcher.Add(folder.Path); err != nil {
-			log.Println("[ERROR] Folder (cannot watch):", err)
+			u.Log("[ERROR] Folder (cannot watch):", err)
 		}
 	}
 
@@ -56,7 +55,8 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 		Folders: make(map[string]*Folder),
 		Events:  make(chan *eventData, queueChanSize),
 		Updates: make(chan *update, updateChanSize),
-		DeLogf:  u.DeLogf,
+		Debug:   u.Debug,
+		Logf:    u.Logf,
 		Watcher: watcher,
 	}, nil
 }
@@ -68,10 +68,10 @@ func (u *Unpackerr) checkFolders() ([]*folderConfig, []string) {
 
 	for _, f := range u.Folders {
 		if stat, err := os.Stat(f.Path); err != nil {
-			log.Println("[ERROR] Folder (cannot watch):", err)
+			u.Log("[ERROR] Folder (cannot watch):", err)
 			continue
 		} else if !stat.IsDir() {
-			log.Printf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
+			u.Logf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
 			continue
 		}
 
@@ -101,11 +101,11 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		CBFunction: u.folders.xtractCallback,
 	})
 	if err != nil {
-		log.Println("[ERROR]", err)
+		u.Log("[ERROR]", err)
 		return
 	}
 
-	log.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+	u.Logf("[Folder] Queued: %s, queue size: %d", name, queueSize)
 }
 
 func (u *Unpackerr) processFolderUpdate(update *update) {
@@ -134,7 +134,7 @@ func (f *Folders) watchFSNotify() {
 				return
 			}
 
-			log.Println("[ERROR] fsnotify:", err)
+			f.Logf("[ERROR] fsnotify: %v", err)
 		case event, ok := <-f.Watcher.Events:
 			if !ok {
 				return
@@ -170,14 +170,14 @@ func (f *Folders) processEvent(event *eventData) {
 	if stat, err := os.Stat(fullPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[fullPath]; ok {
-			f.DeLogf("Folder: Removing Tracked Item: %v", fullPath)
+			f.Debug("Folder: Removing Tracked Item: %v", fullPath)
 			delete(f.Folders, fullPath)
 			_ = f.Watcher.Remove(fullPath)
 		}
 
 		return
 	} else if !stat.IsDir() {
-		f.DeLogf("Folder: Ignoring Item: %v (not a folder)", fullPath)
+		f.Debug("Folder: Ignoring Item: %v (not a folder)", fullPath)
 		return
 	}
 
@@ -188,15 +188,15 @@ func (f *Folders) processEvent(event *eventData) {
 	}
 
 	if err := f.Watcher.Add(fullPath); err != nil {
-		log.Printf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
+		f.Logf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
 		return
 	}
 
-	log.Printf("[Folder] Tracking New Item: %v", fullPath)
+	f.Logf("[Folder] Tracking New Item: %v", fullPath)
 
 	f.Folders[fullPath] = &Folder{
 		last: time.Now(),
-		step: DOWNLOADING,
+		step: WAITING,
 		cnfg: event.cnfg,
 	}
 }
@@ -205,13 +205,13 @@ func (f *Folders) processEvent(event *eventData) {
 func (f *Folders) xtractCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
-		log.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		f.Logf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		f.Updates <- &update{Step: EXTRACTING, Name: resp.X.Name}
 	case resp.Error != nil:
-		log.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		f.Logf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		f.Updates <- &update{Step: EXTRACTFAILED, Name: resp.X.Name}
 	default: // this runs in a go routine
-		log.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+		f.Logf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
 			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)

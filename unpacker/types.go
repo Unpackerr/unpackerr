@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -29,7 +30,9 @@ const (
 // Config defines the configuration data used to start the application.
 type Config struct {
 	Debug       bool            `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
+	Quiet       bool            `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
 	Parallel    uint            `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	LogFile     string          `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
 	Interval    cnfg.Duration   `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
@@ -73,7 +76,7 @@ type ExtractStatus uint8
 
 // Extract Statuses.
 const (
-	DOWNLOADING = ExtractStatus(iota)
+	WAITING = ExtractStatus(iota)
 	QUEUED
 	EXTRACTING
 	EXTRACTFAILED
@@ -121,7 +124,8 @@ type Folders struct {
 	Folders map[string]*Folder
 	Events  chan *eventData
 	Updates chan *update
-	DeLogf  func(msg string, v ...interface{})
+	Logf    func(msg string, v ...interface{})
+	Debug   func(msg string, v ...interface{})
 	Watcher *fsnotify.Watcher
 }
 
@@ -134,9 +138,7 @@ type Unpackerr struct {
 	folders *Folders
 	sigChan chan os.Signal
 	updates chan *Extracts // external updates coming in
-	// considering a new logging scheme.
-	//	Log     *log.Logger
-	//	Debug   *log.Logger
+	log     *log.Logger
 }
 
 // History holds the history of extracted items.

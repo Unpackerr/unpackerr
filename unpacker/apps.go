@@ -15,7 +15,7 @@ const LidarrQueuePageSize = 2000
 func (u *Unpackerr) getLidarrQueue() {
 	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
-			u.DeLogf("Lidarr (%s): skipped, no API key", server.URL)
+			u.Debug("Lidarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
@@ -35,7 +35,7 @@ func (u *Unpackerr) getLidarrQueue() {
 func (u *Unpackerr) getSonarrQueue() {
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
-			u.DeLogf("Sonarr (%s): skipped, no API key", server.URL)
+			u.Debug("Sonarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
@@ -55,7 +55,7 @@ func (u *Unpackerr) getSonarrQueue() {
 func (u *Unpackerr) getRadarrQueue() {
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {
-			u.DeLogf("Radarr (%s): skipped, no API key", server.URL)
+			u.Debug("Radarr (%s): skipped, no API key", server.URL)
 			continue
 		}
 
@@ -81,9 +81,9 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
 				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
-				u.DeLogf("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
+				u.Debug("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
 			case !ok:
-				u.DeLogf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
+				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
 		}
@@ -100,9 +100,9 @@ func (u *Unpackerr) checkRadarrQueue() {
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
 				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
-				u.DeLogf("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
+				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
 			case !ok:
-				u.DeLogf("%s: (%s): %s (%s:%d%%): %v",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
@@ -119,9 +119,9 @@ func (u *Unpackerr) checkLidarrQueue() {
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
 				u.handleCompletedDownload(q.Title, app, q.OutputPath)
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
-				u.DeLogf("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
+				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
 			case !ok:
-				u.DeLogf("%s: (%s): %s (%s:%d%%): %v",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}

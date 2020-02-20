@@ -1,7 +1,6 @@
 package unpacker
 
 import (
-	"log"
 	"time"
 
 	"golift.io/xtractr"
@@ -29,10 +28,10 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	elapsed := time.Since(data.Updated)
 
 	switch {
-	case data.Status == DOWNLOADING:
+	case data.Status == WAITING:
 		// A waiting item just imported. We never extracted it. Remove it and move on.
 		delete(u.Map, name)
-		log.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
+		u.Logf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
 		return
 	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
@@ -42,13 +41,13 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 		// In a routine so it can run slowly and not block.
 		go DeleteFiles(data.Files...)
 	case data.Status == IMPORTED:
-		u.DeLogf("%v: Awaiting Delete Delay (%v remains): %v",
+		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
 	case data.Status != IMPORTED:
 		u.Map[name].Status = IMPORTED
 		u.Map[name].Updated = time.Now()
 
-		log.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
+		u.Logf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 	}
 }
 
@@ -59,20 +58,20 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		u.Map[name] = &Extracts{
 			Path:    path,
 			App:     app,
-			Status:  DOWNLOADING,
+			Status:  WAITING,
 			Updated: time.Now(),
 		}
 		item = u.Map[name]
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.DeLogf("%s: Item Waiting for Start Delay: %v", app, name)
+		u.Debug("%s: Item Waiting for Start Delay: %v", app, name)
 		return
 	}
 
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
-		log.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s", app, name, path)
+		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s", app, name, path)
 		return
 	}
 
@@ -88,11 +87,11 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
 	if err != nil {
-		log.Println("[ERROR] Starting Extraction:", err)
+		u.Log("[ERROR] Starting Extraction:", err)
 		return // this wont happen.
 	}
 
-	log.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
+	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
 // handleXtractrCallback handles callbacks from the xtractr library for onarr/radarr/lidar.
@@ -100,13 +99,13 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
-		log.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		u.Logf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTING}
 	case resp.Error != nil:
-		log.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED}
 	default: // this runs in a go routine
-		log.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
+		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, wrote: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),
 			len(resp.AllFiles), resp.Size/mebiByte)

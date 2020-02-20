@@ -2,10 +2,12 @@ package unpacker
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
@@ -30,6 +32,7 @@ func New() *Unpackerr {
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
 		},
+		log: log.New(ioutil.Discard, "", 0),
 	}
 }
 
@@ -44,35 +47,35 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	log.Printf("[INFO] Unpackerr v%s Starting! (PID: %v)", version.Version, os.Getpid())
-
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
-		return err
+		return fmt.Errorf("Config File: %v", err)
 	}
 
 	if _, err := cnfg.UnmarshalENV(u.Config, "UN"); err != nil {
-		return err
+		return fmt.Errorf("Environment Variables: %v", err)
 	}
+
+	if err := u.setupLogging(); err != nil {
+		return fmt.Errorf("Log File Config: %v", err)
+	}
+
+	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
 
 	u.validateConfig()
 	u.printStartupInfo()
-
-	if u.Config.Debug {
-		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-	}
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
-		Logger:   log.New(os.Stdout, "", log.Flags()),
+		Logger:   u.log,
 	})
 
 	u.PollFolders() // this initializes channel(s) used in u.Run()
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("=====> Exiting! Caught Signal:", <-u.sigChan)
+	u.Log("=====> Exiting! Caught Signal:", <-u.sigChan)
 
 	return nil
 }
@@ -95,7 +98,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 func (u *Unpackerr) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
-		u.DeLogf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
+		u.Debug("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
 
 	if u.Parallel == 0 {
@@ -104,7 +107,7 @@ func (u *Unpackerr) validateConfig() {
 
 	if u.Interval.Duration < minimumInterval {
 		u.Interval.Duration = minimumInterval
-		u.DeLogf("Minimum Interval: %v", minimumInterval.String())
+		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
 	for i := range u.Radarr {
@@ -137,59 +140,59 @@ func (u *Unpackerr) validateConfig() {
 func (u *Unpackerr) printStartupInfo() {
 	const oneItem = 1
 
-	log.Println("==> Startup Settings <==")
+	u.Log("==> Startup Settings <==")
 
 	if c := len(u.Sonarr); c == oneItem {
-		log.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
+		u.Logf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
 			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout)
 	} else {
-		log.Println(" => Sonarr Config:", c, "servers")
+		u.Log(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
-			log.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
+			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout)
 		}
 	}
 
 	if c := len(u.Radarr); c == oneItem {
-		log.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
+		u.Logf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
 			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout)
 	} else {
-		log.Println(" => Radarr Config:", c, "servers")
+		u.Log(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
-			log.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
+			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout)
 		}
 	}
 
 	if c := len(u.Lidarr); c == oneItem {
-		log.Printf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
+		u.Logf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
 	} else {
-		log.Println(" => Lidarr Config:", c, "servers")
+		u.Log(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			log.Printf(" =>    Server: %s (apikey: %v, timeout: %v)", f.URL, f.APIKey != "", f.Timeout)
+			u.Logf(" =>    Server: %s (apikey: %v, timeout: %v)", f.URL, f.APIKey != "", f.Timeout)
 		}
 	}
 
 	if c := len(u.Folders); c == oneItem {
-		log.Printf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
+		u.Logf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
 			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack)
 	} else {
-		log.Println(" => Folder Config:", c, "paths")
+		u.Log(" => Folder Config:", c, "paths")
 
 		for _, f := range u.Folders {
-			log.Printf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
+			u.Logf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
 				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
 		}
 	}
 
-	log.Println(" => Parallel:", u.Config.Parallel)
-	log.Println(" => Interval:", u.Config.Interval.Duration)
-	log.Println(" => Delete Delay:", u.Config.DeleteDelay.Duration)
-	log.Println(" => Start Delay:", u.Config.StartDelay.Duration)
-	log.Println(" => Retry Delay:", u.Config.RetryDelay.Duration)
-	log.Println(" => Debug Logs:", u.Config.Debug)
+	u.Log(" => Parallel:", u.Config.Parallel)
+	u.Log(" => Interval:", u.Config.Interval.Duration)
+	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
+	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
+	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
+	u.Log(" => Debug Logs:", u.Config.Debug)
 }

@@ -194,5 +194,6 @@ func (u *Unpackerr) printStartupInfo() {
 	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
 	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
 	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
-	u.Log(" => Debug Logs:", u.Config.Debug)
+	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
+	u.Log(" => Log File:", u.Config.LogFile)
 }

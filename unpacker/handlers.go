@@ -39,7 +39,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 		u.Map[name].Updated = time.Now()
 
 		// In a routine so it can run slowly and not block.
-		go DeleteFiles(data.Files...)
+		go u.DeleteFiles(data.Files...)
 	case data.Status == IMPORTED:
 		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)

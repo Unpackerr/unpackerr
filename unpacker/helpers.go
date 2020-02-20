@@ -29,29 +29,18 @@ func (u *Unpackerr) Logf(msg string, v ...interface{}) {
 
 // setupLogging splits log write into a file and/or stdout.
 func (u *Unpackerr) setupLogging() error {
-	var (
-		write []io.Writer
-		in    io.Reader
-		err   error
-		f     *os.File
-	)
+	var write []io.Writer
 
-	out := ioutil.Discard // default is nothing.
+	if u.log.SetFlags(log.LstdFlags); u.Config.Debug {
+		u.log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+	}
 
 	if !u.Config.Quiet {
 		write = append(write, os.Stdout)
 	}
 
-	u.log.SetFlags(log.LstdFlags)
-	log.SetFlags(log.LstdFlags)
-
-	if u.Config.Debug {
-		u.log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-		log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-	}
-
 	if u.Config.LogFile != "" {
-		f, err = os.OpenFile(u.Config.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
+		f, err := os.OpenFile(u.Config.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 		if err != nil {
 			return err
 		}
@@ -60,19 +49,16 @@ func (u *Unpackerr) setupLogging() error {
 	}
 
 	if len(write) == 0 {
-		u.log.SetOutput(out)
+		u.log.SetOutput(ioutil.Discard) // default is "nothing"
 		return nil
 	}
 
-	in, out = io.Pipe()
+	in, out := io.Pipe()
 	u.log.SetOutput(out)
-	log.SetOutput(out)
 
 	go func() {
-		defer f.Close()
-
 		_, err := io.Copy(io.MultiWriter(write...), in)
-		log.Fatal("[ERROR] Logging Error:", err)
+		log.Fatalln("[ERROR] Logging Error:", err)
 	}()
 
 	return nil
@@ -108,14 +94,14 @@ func (u *Unpackerr) printCurrentQueue() {
 }
 
 // DeleteFiles obliterates things and logs. Use with caution.
-func DeleteFiles(files ...string) {
+func (u *Unpackerr) DeleteFiles(files ...string) {
 	for _, file := range files {
 		if err := os.RemoveAll(file); err != nil {
-			log.Printf("Error: Deleting %v: %v", file, err)
+			u.Logf("Error: Deleting %v: %v", file, err)
 			continue
 		}
 
-		log.Printf("Deleted (recursively): %s", file)
+		u.Logf("Deleted (recursively): %s", file)
 	}
 }
 

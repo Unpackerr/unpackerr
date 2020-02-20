@@ -144,11 +144,11 @@ func (u *Unpackerr) checkFolderStats() {
 			delete(u.folders.Folders, name)
 
 			if !folder.cnfg.MoveBack {
-				DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+				u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
 			}
 
 			if folder.cnfg.DeleteOrig {
-				DeleteFiles(name)
+				u.DeleteFiles(name)
 			}
 		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.

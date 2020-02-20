@@ -38,7 +38,7 @@ func (u *Unpackerr) Run() {
 			u.folders.processEvent(event)
 		case <-logger.C:
 			// Log/print current queue counts once in a while.
-			u.printCurrentQueue()
+			u.logCurrentQueue()
 		}
 	}
 }

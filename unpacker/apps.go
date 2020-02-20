@@ -70,6 +70,12 @@ func (u *Unpackerr) getRadarrQueue() {
 	}
 }
 
+// custom percentage procedure for *arr apps.
+func percent(size, total float64) int {
+	const oneHundred = 100
+	return int(oneHundred - (size / total * oneHundred))
+}
+
 // checkSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkSonarrQueue() {
 	app := "Sonarr"

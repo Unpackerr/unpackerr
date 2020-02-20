@@ -48,21 +48,21 @@ func Start() (err error) {
 	}
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
-		return fmt.Errorf("Config File: %v", err)
+		return fmt.Errorf("config file: %v", err)
 	}
 
 	if _, err := cnfg.UnmarshalENV(u.Config, "UN"); err != nil {
-		return fmt.Errorf("Environment Variables: %v", err)
+		return fmt.Errorf("environment variables: %v", err)
 	}
 
 	if err := u.setupLogging(); err != nil {
-		return fmt.Errorf("Log File Config: %v", err)
+		return fmt.Errorf("log_file: %v", err)
 	}
 
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
 
 	u.validateConfig()
-	u.printStartupInfo()
+	u.logStartupInfo()
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Debug:    u.Config.Debug,
@@ -135,65 +135,4 @@ func (u *Unpackerr) validateConfig() {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
 	}
-}
-
-func (u *Unpackerr) printStartupInfo() {
-	const oneItem = 1
-
-	u.Log("==> Startup Settings <==")
-
-	if c := len(u.Sonarr); c == oneItem {
-		u.Logf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
-			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout)
-	} else {
-		u.Log(" => Sonarr Config:", c, "servers")
-
-		for _, f := range u.Sonarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout)
-		}
-	}
-
-	if c := len(u.Radarr); c == oneItem {
-		u.Logf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
-			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout)
-	} else {
-		u.Log(" => Radarr Config:", c, "servers")
-
-		for _, f := range u.Radarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout)
-		}
-	}
-
-	if c := len(u.Lidarr); c == oneItem {
-		u.Logf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
-			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
-	} else {
-		u.Log(" => Lidarr Config:", c, "servers")
-
-		for _, f := range u.Lidarr {
-			u.Logf(" =>    Server: %s (apikey: %v, timeout: %v)", f.URL, f.APIKey != "", f.Timeout)
-		}
-	}
-
-	if c := len(u.Folders); c == oneItem {
-		u.Logf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v)",
-			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack)
-	} else {
-		u.Log(" => Folder Config:", c, "paths")
-
-		for _, f := range u.Folders {
-			u.Logf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
-				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
-		}
-	}
-
-	u.Log(" => Parallel:", u.Config.Parallel)
-	u.Log(" => Interval:", u.Config.Interval.Duration)
-	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
-	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
-	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
-	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
-	u.Log(" => Log File:", u.Config.LogFile)
 }

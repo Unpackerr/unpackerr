@@ -1,7 +1,6 @@
 package unpacker
 
 import (
-	"log"
 	"path/filepath"
 
 	"golift.io/starr"
@@ -21,13 +20,13 @@ func (u *Unpackerr) getLidarrQueue() {
 
 		queue, err := server.LidarrQueue(LidarrQueuePageSize)
 		if err != nil {
-			log.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
+			u.Logf("[ERROR] Lidarr (%s): %v", server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		log.Printf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Logf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
@@ -41,13 +40,13 @@ func (u *Unpackerr) getSonarrQueue() {
 
 		queue, err := server.SonarrQueue()
 		if err != nil {
-			log.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
+			u.Logf("[ERROR] Sonarr (%s): %v", server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		log.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Logf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
@@ -61,13 +60,13 @@ func (u *Unpackerr) getRadarrQueue() {
 
 		queue, err := server.RadarrQueue()
 		if err != nil {
-			log.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
+			u.Logf("[ERROR] Radarr (%s): %v", server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		log.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Logf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 

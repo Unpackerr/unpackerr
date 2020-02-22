@@ -1,5 +1,7 @@
 # Unpackerr
 
+<img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png">
+
 -   formerly `unpacker-poller`
 -   formerly `deluge-unpacker`
 

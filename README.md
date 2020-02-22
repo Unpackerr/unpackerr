@@ -1,6 +1,4 @@
-# Unpackerr
-
-<img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png">
+<img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/unpackerr-logo-text.png">
 
 -   formerly `unpacker-poller`
 -   formerly `deluge-unpacker`

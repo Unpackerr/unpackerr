@@ -33,6 +33,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 		delete(u.Map, name)
 		u.Logf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
+		u.Debug("Already imported? %s", name)
 		return
 	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED

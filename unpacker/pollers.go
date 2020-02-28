@@ -94,7 +94,7 @@ func (u *Unpackerr) checkExtractDone() {
 // checkImportsDone checks if extracted items have been imported.
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
-		var q interface{}
+		var imported bool
 
 		switch {
 		case data.App == "" || strings.HasPrefix(data.App, "Folder"):
@@ -102,28 +102,34 @@ func (u *Unpackerr) checkImportsDone() {
 		case data.Status > IMPORTED:
 			continue
 		case strings.HasPrefix(data.App, "Sonarr"):
-			if q = u.getSonarQitem(name); q == nil {
+			if q := u.getSonarQitem(name); q == nil {
+				imported = true
+
 				u.handleFinishedImport(data, name) // We only want finished items.
 			}
 		case strings.HasPrefix(data.App, "Radarr"):
-			if q = u.getRadarQitem(name); q == nil {
+			if q := u.getRadarQitem(name); q == nil {
+				imported = true
+
 				u.handleFinishedImport(data, name) // We only want finished items.
 			}
 		case strings.HasPrefix(data.App, "Lidarr"):
-			if q = u.getLidarQitem(name); q == nil {
+			if q := u.getLidarQitem(name); q == nil {
+				imported = true
+
 				u.handleFinishedImport(data, name) // We only want finished items.
 			}
 		}
 
-		if data.Status == IMPORTED && q != nil {
+		if data.Status == IMPORTED && !imported {
 			// The item fell out of the app queue and came back. Reset it.
 			u.Logf("%s: Resetting: %s - De-queued and returned", data.App, name)
 			data.Status = WAITING
 			data.Updated = time.Now()
 		}
 
-		u.Debug("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.String(),
-			time.Since(data.Updated).Round(time.Second))
+		u.Debug("%s: Status: %s (%v, elapsed: %v, found: %v)", data.App, name, data.Status.String(),
+			time.Since(data.Updated).Round(time.Second), !imported)
 	}
 }
 

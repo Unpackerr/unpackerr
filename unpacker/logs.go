@@ -17,7 +17,7 @@ const (
 // Debug writes Debug log lines... to stdout and/or a file.
 func (u *Unpackerr) Debug(msg string, v ...interface{}) {
 	if u.Config.Debug {
-		_ = u.log.Output(callDepth, "[DEBUG] "+fmt.Sprintln(v...))
+		_ = u.log.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
 	}
 }
 

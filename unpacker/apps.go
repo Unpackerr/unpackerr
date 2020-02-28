@@ -12,7 +12,7 @@ const LidarrQueuePageSize = 2000
 
 // getLidarrQueue saves the Lidarr Queue(s)
 func (u *Unpackerr) getLidarrQueue() {
-	for _, server := range u.Lidarr {
+	for i, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debug("Lidarr (%s): skipped, no API key", server.URL)
 			continue
@@ -25,14 +25,14 @@ func (u *Unpackerr) getLidarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
+		u.Lidarr[i].Queue = queue
 		u.Logf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
 // getSonarrQueue saves the Sonarr Queue(s)
 func (u *Unpackerr) getSonarrQueue() {
-	for _, server := range u.Sonarr {
+	for i, server := range u.Sonarr {
 		if server.APIKey == "" {
 			u.Debug("Sonarr (%s): skipped, no API key", server.URL)
 			continue
@@ -45,14 +45,14 @@ func (u *Unpackerr) getSonarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
+		u.Sonarr[i].Queue = queue
 		u.Logf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
 // getSonarrQueue saves the Radarr Queue(s)
 func (u *Unpackerr) getRadarrQueue() {
-	for _, server := range u.Radarr {
+	for i, server := range u.Radarr {
 		if server.APIKey == "" {
 			u.Debug("Radarr (%s): skipped, no API key", server.URL)
 			continue
@@ -65,7 +65,7 @@ func (u *Unpackerr) getRadarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
+		u.Radarr[i].Queue = queue
 		u.Logf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }

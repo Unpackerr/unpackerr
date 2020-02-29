@@ -35,7 +35,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	case data.Status > IMPORTED:
 		u.Debug("Already imported? %s", name)
 		return
-	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
+	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED
 		u.Map[name].Updated = time.Now()
 
@@ -66,7 +66,8 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.Debug("%s: Item Waiting for Start Delay: %v", app, name)
+		u.Logf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
+			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 		return
 	}
 
@@ -95,7 +96,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for onarr/radarr/lidar.
+// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidar.
 // This takes the provided info and logs it then sends it into the update channel.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {

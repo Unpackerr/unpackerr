@@ -1,7 +1,9 @@
 package unpacker
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 
 	"golift.io/starr"
 )
@@ -83,11 +85,12 @@ func (u *Unpackerr) checkSonarrQueue() {
 	for _, server := range u.Sonarr {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
-			case !ok:
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, q.Title, server.Path))
+				fallthrough
+			default:
 				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
@@ -102,11 +105,12 @@ func (u *Unpackerr) checkRadarrQueue() {
 	for _, server := range u.Radarr {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, filepath.Join(server.Path, q.Title))
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
-			case !ok:
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, q.Title, server.Path))
+				fallthrough
+			default:
 				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
@@ -121,11 +125,12 @@ func (u *Unpackerr) checkLidarrQueue() {
 	for _, server := range u.Lidarr {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, q.OutputPath)
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
-			case !ok:
+			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+				u.handleCompletedDownload(q.Title, app, q.OutputPath)
+				fallthrough
+			default:
 				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
@@ -133,41 +138,66 @@ func (u *Unpackerr) checkLidarrQueue() {
 	}
 }
 
-// gets a sonarr queue item based on name. returns first match
-func (u *Unpackerr) getSonarQitem(name string) *starr.SonarQueue {
+// checks is the application currently has an item in its queue
+func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
 		for _, q := range server.Queue {
 			if q.Title == name {
-				return q
+				return true
 			}
 		}
 	}
 
-	return nil
+	return false
 }
 
-// gets a radarr queue item based on name. returns first match
-func (u *Unpackerr) getRadarQitem(name string) *starr.RadarQueue {
+// checks is the application currently has an item in its queue
+func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
 		for _, q := range server.Queue {
 			if q.Title == name {
-				return q
+				return true
 			}
 		}
 	}
 
-	return nil
+	return false
 }
 
-// gets a lidarr queue item based on name. returns first match
-func (u *Unpackerr) getLidarQitem(name string) *starr.LidarrRecord {
+// checks is the application currently has an item in its queue
+func (u *Unpackerr) haveLidarrQitem(name string) bool {
 	for _, server := range u.Lidarr {
 		for _, q := range server.Queue {
 			if q.Title == name {
-				return q
+				return true
 			}
 		}
 	}
 
-	return nil
+	return false
+}
+
+// Looking for a message that looks like:
+// "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264"
+func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, name, path string) string {
+	prefix := "No files found are eligible for import in" // confirmed on Sonarr.
+
+	serverPath := filepath.Join(path, name)
+	if _, err := os.Stat(serverPath); err == nil {
+		return serverPath // the server path exists, so use that.
+	}
+
+	for _, m := range s {
+		if m.Title != name {
+			continue
+		}
+
+		for _, msg := range m.Messages {
+			if strings.HasPrefix(msg, prefix) && strings.HasSuffix(msg, name) {
+				return strings.TrimSpace(strings.TrimPrefix(msg, prefix))
+			}
+		}
+	}
+
+	return serverPath
 }

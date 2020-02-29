@@ -80,7 +80,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	item.Status = QUEUED
 	item.Updated = time.Now()
 
-	queueSize, err := u.Extract(&xtractr.Xtract{
+	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Name:       name,
 		SearchPath: path,
 		TempFolder: false,
@@ -88,11 +88,6 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		CBFunction: u.handleXtractrCallback,
 		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
-	if err != nil {
-		u.Log("[ERROR] Starting Extraction:", err)
-		return // this wont happen.
-	}
-
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
@@ -106,7 +101,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED}
-	default: // this runs in a go routine
+	default:
 		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, wrote: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),

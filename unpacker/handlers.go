@@ -96,7 +96,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidar.
+// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
 // This takes the provided info and logs it then sends it into the update channel.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {

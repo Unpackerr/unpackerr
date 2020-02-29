@@ -35,7 +35,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 	case data.Status > IMPORTED:
 		u.Debug("Already imported? %s", name)
 		return
-	case data.Status == IMPORTED && elapsed+time.Millisecond > u.DeleteDelay.Duration:
+	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED
 		u.Map[name].Updated = time.Now()
 
@@ -66,7 +66,8 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.Debug("%s: Item Waiting for Start Delay: %v", app, name)
+		u.Logf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
+			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 		return
 	}
 
@@ -79,7 +80,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	item.Status = QUEUED
 	item.Updated = time.Now()
 
-	queueSize, err := u.Extract(&xtractr.Xtract{
+	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Name:       name,
 		SearchPath: path,
 		TempFolder: false,
@@ -87,15 +88,10 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		CBFunction: u.handleXtractrCallback,
 		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
-	if err != nil {
-		u.Log("[ERROR] Starting Extraction:", err)
-		return // this wont happen.
-	}
-
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for onarr/radarr/lidar.
+// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
 // This takes the provided info and logs it then sends it into the update channel.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
@@ -105,7 +101,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED}
-	default: // this runs in a go routine
+	default:
 		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, wrote: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),

@@ -138,7 +138,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 	}
 }
 
-// checks is the application currently has an item in its queue
+// checks if the application currently has an item in its queue
 func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
 		for _, q := range server.Queue {
@@ -151,7 +151,7 @@ func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	return false
 }
 
-// checks is the application currently has an item in its queue
+// checks if the application currently has an item in its queue
 func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
 		for _, q := range server.Queue {
@@ -164,7 +164,7 @@ func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	return false
 }
 
-// checks is the application currently has an item in its queue
+// checks if the application currently has an item in its queue
 func (u *Unpackerr) haveLidarrQitem(name string) bool {
 	for _, server := range u.Lidarr {
 		for _, q := range server.Queue {

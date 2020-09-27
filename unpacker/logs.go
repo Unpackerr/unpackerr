@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-// satisfy gomnd
+// satisfy gomnd.
 const (
 	callDepth = 2 // log the line that called us.
 	oneItem   = 1 // to get pluralization right.

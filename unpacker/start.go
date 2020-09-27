@@ -44,6 +44,7 @@ func Start() (err error) {
 	if u.Flags.verReq {
 		fmt.Printf("unpackerr v%s %s (branch: %s %s) \n",
 			version.Version, version.BuildDate, version.Branch, version.Revision)
+
 		return nil // don't run anything else.
 	}
 

@@ -60,6 +60,7 @@ type sonarrConfig struct {
 
 type lidarrConfig struct {
 	*starr.Config
+	Path         string                `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Queue        []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }

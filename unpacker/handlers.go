@@ -86,7 +86,6 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		TempFolder: false,
 		DeleteOrig: false,
 		CBFunction: u.handleXtractrCallback,
-		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }

@@ -120,13 +120,14 @@ func (u *Unpackerr) logStartupInfo() {
 	}
 
 	if c := len(u.Lidarr); c == oneItem {
-		u.Logf(" => Lidarr Config: 1 server: %s (apikey: %v, timeout: %v)",
-			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
+		u.Logf(" => Lidarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v)",
+			u.Lidarr[0].URL, u.Lidarr[0].Path, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout)
 	} else {
 		u.Log(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			u.Logf(" =>    Server: %s (apikey: %v, timeout: %v)", f.URL, f.APIKey != "", f.Timeout)
+			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v)",
+				f.URL, f.Path, f.APIKey != "", f.Timeout)
 		}
 	}
 

@@ -10,7 +10,11 @@ import (
 
 // LidarrQueuePageSize is how many items we request from Lidarr.
 // If you have more than this many items queued.. oof.
+// As the queue goes away, more things should get picked up.
 const LidarrQueuePageSize = 2000
+
+// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
+const prefixPathMsg = "No files found are eligible for import in " // confirmed on Sonarr.
 
 // getLidarrQueue saves the Lidarr Queue(s)
 func (u *Unpackerr) getLidarrQueue() {
@@ -88,10 +92,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, q.Title, server.Path))
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
 				fallthrough
 			default:
-				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
+				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v, not complete, or not a torrent)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
 		}
@@ -108,10 +112,10 @@ func (u *Unpackerr) checkRadarrQueue() {
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, q.Title, server.Path))
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v (not complete, or not a torrent)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
@@ -128,10 +132,12 @@ func (u *Unpackerr) checkLidarrQueue() {
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
-				u.handleCompletedDownload(q.Title, app, q.OutputPath)
+				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
+				q.StatusMessages = append(q.StatusMessages, starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v (not complete, or not a torrent)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
@@ -179,25 +185,29 @@ func (u *Unpackerr) haveLidarrQitem(name string) bool {
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264"
-func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, name, path string) string {
-	prefix := "No files found are eligible for import in" // confirmed on Sonarr.
-
-	serverPath := filepath.Join(path, name)
-	if _, err := os.Stat(serverPath); err == nil {
-		return serverPath // the server path exists, so use that.
+func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path string) string {
+	path = filepath.Join(path, title)
+	if _, err := os.Stat(path); err == nil {
+		u.Debug("%s: Configured path exists: %s", app, path)
+		return path // the server path exists, so use that.
 	}
 
 	for _, m := range s {
-		if m.Title != name {
+		if m.Title != title {
 			continue
 		}
 
 		for _, msg := range m.Messages {
-			if strings.HasPrefix(msg, prefix) && strings.HasSuffix(msg, name) {
-				return strings.TrimSpace(strings.TrimPrefix(msg, prefix))
+			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
+				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
+				u.Debug("%s: Configured path (%s) does not exist; trying path found in error message: %s", app, path, newPath)
+
+				return newPath
 			}
 		}
 	}
 
-	return serverPath
+	u.Debug("%s: Configured path does not exist, and could not find alternative path in error message: %s ", app, path)
+
+	return path
 }

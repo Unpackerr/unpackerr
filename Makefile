@@ -6,7 +6,7 @@
 IGNORED:=$(shell bash -c "source .metadata.sh ; env | sed 's/=/:=/;s/^/export /' > .metadata.make")
 
 # md2roff turns markdown into man files and html files.
-MD2ROFF_BIN=github.com/github/hub/md2roff-bin
+MD2ROFF_BIN=github.com/davidnewhall/md2roff
 
 # Travis CI passes the version in. Local builds get it from the current git tag.
 ifeq ($(VERSION),)
@@ -87,7 +87,7 @@ $(BINARY).1.gz: md2roff
 	mv examples/MANUAL.html $(BINARY)_manual.html
 
 md2roff:
-	go get $(MD2ROFF_BIN)
+	go get -u $(MD2ROFF_BIN)
 
 # TODO: provide a template that adds the date to the built html file.
 readme: README.html

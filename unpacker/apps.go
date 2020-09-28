@@ -197,8 +197,10 @@ func (u *Unpackerr) haveLidarrQitem(name string) bool {
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
 func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path string) string {
+	var err error
+
 	path = filepath.Join(path, title)
-	if _, err := os.Stat(path); err == nil {
+	if _, err = os.Stat(path); err == nil {
 		u.Debug("%s: Configured path exists: %s", app, path)
 
 		return path // the server path exists, so use that.
@@ -212,14 +214,16 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 		for _, msg := range m.Messages {
 			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
 				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
-				u.Debug("%s: Configured path (%s) does not exist; trying path found in error message: %s", app, path, newPath)
+				u.Debug("%s: Configured path (%s, err: %v) does not exist; trying path found in status message: %s",
+					app, path, err, newPath)
 
 				return newPath
 			}
 		}
 	}
 
-	u.Debug("%s: Configured path does not exist, and could not find alternative path in error message: %s ", app, path)
+	u.Debug("%s: Configured path does not exist (err: %v), and could not find alternative path in error message: %s ",
+		app, err, path)
 
 	return path
 }

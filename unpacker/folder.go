@@ -54,7 +54,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	return &Folders{
 		Config:  u.Folders,
 		Folders: make(map[string]*Folder),
-		Events:  make(chan *eventData, queueChanSize),
+		Events:  make(chan *eventData, u.Config.Buffer),
 		Updates: make(chan *update, updateChanSize),
 		Debug:   u.Debug,
 		Logf:    u.Logf,

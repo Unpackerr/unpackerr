@@ -9,12 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/common/version"
+	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
 	"golift.io/xtractr"
-
-	"github.com/prometheus/common/version"
-	flg "github.com/spf13/pflag"
 )
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -52,7 +51,7 @@ func Start() (err error) {
 		return fmt.Errorf("config file: %v", err)
 	}
 
-	if _, err := cnfg.UnmarshalENV(u.Config, "UN"); err != nil {
+	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
 		return fmt.Errorf("environment variables: %v", err)
 	}
 
@@ -83,14 +82,15 @@ func Start() (err error) {
 
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
-	flg.Usage = func() {
+	flag.Usage = func() {
 		fmt.Println("Usage: unpackerr [--config=filepath] [--version]")
-		flg.PrintDefaults()
+		flag.PrintDefaults()
 	}
 
-	flg.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
-	flg.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
-	flg.Parse()
+	flag.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
+	flag.StringVarP(&u.Flags.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
+	flag.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
+	flag.Parse()
 
 	return u // so you can chain into ParseConfig.
 }
@@ -104,6 +104,12 @@ func (u *Unpackerr) validateConfig() {
 
 	if u.Parallel == 0 {
 		u.Parallel++
+	}
+
+	if u.Buffer == 0 {
+		u.Buffer = defaultQueueSize
+	} else if u.Buffer < minimumQueueSize {
+		u.Buffer = minimumQueueSize
 	}
 
 	if u.Interval.Duration < minimumInterval {

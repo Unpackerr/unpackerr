@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"os"
 	"time"
 
 	"golift.io/xtractr"
@@ -75,7 +76,9 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
-		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s", app, name, path)
+		_, err := os.Stat(path)
+		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
+			app, name, path, err)
 
 		return
 	}

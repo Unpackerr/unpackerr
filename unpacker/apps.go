@@ -103,7 +103,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v, not complete, or not a torrent)",
+				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
 		}
@@ -124,7 +124,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v (not complete, or not a torrent)",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
@@ -148,7 +148,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v (not complete, or not a torrent)",
+				u.Debug("%s: (%s): %s (%s:%d%%): %v",
 					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}

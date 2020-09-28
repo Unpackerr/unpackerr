@@ -59,6 +59,8 @@ parallel = 1
 #[[lidarr]]
 #  url = "http://127.0.0.1:8686"
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
+  # File system path where downloaded Lidarr items are located.
+#  path = "/downloads"
 
 
 # This application can also watch folders for things to extract. If you copy a

@@ -135,5 +135,9 @@ func (u *Unpackerr) validateConfig() {
 		if u.Lidarr[i].Timeout.Duration == 0 {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
+
+		if u.Lidarr[i].Path == "" {
+			u.Lidarr[i].Path = defaultSavePath
+		}
 	}
 }

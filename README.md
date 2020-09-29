@@ -64,24 +64,56 @@ delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after 
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
+
+##### Sonarr
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
 sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`|
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
 sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for Sonarr|
+sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+
+##### Radarr
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
 radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`|
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
 radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
+radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+
+##### Lidarr
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`|
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
 lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
+lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+
+##### Readarr
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
 readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:8787`|
 readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
 readarr.path|`UN_READARR_0_PATH`|`/downloads` Path where content is downloaded for Readarr|
+readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+
+##### Folder
+
+Folders are a way to watch a folder for things to extract. You can use this to
+monitor your download client's "move to" path if you're not using it with an *arr app.
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
 folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
 folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
 
--   Example:
+##### Example
 
 ```shell
 docker pull golift/unpackerr

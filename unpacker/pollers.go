@@ -8,9 +8,11 @@ import (
 
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
-	poller := time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
-	cleaner := time.NewTicker(minimumInterval)    // clean at the minimum interval.
-	logger := time.NewTicker(time.Minute)         // log queue states every minute.
+	var (
+		poller  = time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
+		cleaner = time.NewTicker(minimumInterval)     // clean at the minimum interval.
+		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
+	)
 
 	// Get in app queues on startup; check if items finished download & need extraction.
 	u.processAppQueues()
@@ -46,30 +48,29 @@ func (u *Unpackerr) Run() {
 // processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // The calls the check methods to scan their queues for changes.
 func (u *Unpackerr) processAppQueues() {
-	const threeItems = 3
-
 	var wg sync.WaitGroup
 
-	wg.Add(threeItems)
+	// Run each method in a go routine as a waitgroup.
+	for _, f := range []func(){
+		u.getSonarrQueue,
+		u.getRadarrQueue,
+		u.getLidarrQueue,
+		u.getReadarrQueue,
+	} {
+		wg.Add(1)
 
-	go func() {
-		u.getSonarrQueue()
-		wg.Done()
-	}()
-	go func() {
-		u.getRadarrQueue()
-		wg.Done()
-	}()
-	go func() {
-		u.getLidarrQueue()
-		wg.Done()
-	}()
+		go func(f func()) {
+			f()
+			wg.Done()
+		}(f)
+	}
 
 	wg.Wait()
 	// These are not thread safe because they call handleCompletedDownload.
 	u.checkSonarrQueue()
 	u.checkRadarrQueue()
 	u.checkLidarrQueue()
+	u.checkReadarrQueue()
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
@@ -107,6 +108,8 @@ func (u *Unpackerr) checkImportsDone() {
 			inQueue = u.haveRadarrQitem(name)
 		case strings.HasPrefix(data.App, "Lidarr"):
 			inQueue = u.haveLidarrQitem(name)
+		case strings.HasPrefix(data.App, "Readarr"):
+			inQueue = u.haveReadarrQitem(name)
 		}
 
 		if !inQueue { // We only want finished items.

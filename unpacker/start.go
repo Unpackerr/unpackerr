@@ -48,15 +48,15 @@ func Start() (err error) {
 	}
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
-		return fmt.Errorf("config file: %v", err)
+		return fmt.Errorf("config file: %w", err)
 	}
 
 	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
-		return fmt.Errorf("environment variables: %v", err)
+		return fmt.Errorf("environment variables: %w", err)
 	}
 
 	if err := u.setupLogging(); err != nil {
-		return fmt.Errorf("log_file: %v", err)
+		return fmt.Errorf("log_file: %w", err)
 	}
 
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())

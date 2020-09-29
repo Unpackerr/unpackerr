@@ -44,24 +44,33 @@ parallel = 1
 # The following sections can be repeated if you have more than one Sonarr, Radarr or Lidarr.
 # You must uncomment the [[header]] and api_key at a minimum.
 
+# TV Series / Episodes
 #[[sonarr]]
 #   url = "http://127.0.0.1:8989"
 #   api_key = "cb3afda6559445f1ae1d0299dd696e38"
    # File system path where downloaded Sonarr items are located.
 #   path = "/downloads"
 
+# Movies
 #[[radarr]]
 #  url = "http://127.0.0.1:7878"
 #  api_key = "4bc34281deda4846a2fdab2c15bc8de8"
   # File system path where downloaded Radarr items are located.
 #  path = "/downloads"
 
+# Music
 #[[lidarr]]
 #  url = "http://127.0.0.1:8686"
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
   # File system path where downloaded Lidarr items are located.
 #  path = "/downloads"
 
+# Books
+#[[readarr]]
+#  url = "http://127.0.0.1:8787"
+#  api_key = "123445defd484ab2fdab2c15babcd"
+  # File system path where downloaded Lidarr items are located.
+#  path = "/downloads"
 
 # This application can also watch folders for things to extract. If you copy a
 # subfolder into a watched folder (defined below) any extractable items in the

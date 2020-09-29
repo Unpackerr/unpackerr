@@ -19,7 +19,7 @@ const prefixPathMsg = "No files found are eligible for import in " // confirmed 
 
 // getReadarrQueue saves the Readarr Queue(s).
 func (u *Unpackerr) getReadarrQueue() {
-	for _, server := range u.Readarr {
+	for i, server := range u.Readarr {
 		if server.APIKey == "" {
 			u.Debug("Readarr (%s): skipped, no API key", server.URL)
 
@@ -34,14 +34,15 @@ func (u *Unpackerr) getReadarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.Logf("[Readarr] Updated (%s): %d Items Queued, %d Retreived", server.URL, queue.TotalRecords, len(queue.Records))
+		u.Readarr[i].Queue = queue
+		u.Logf("[Readarr] Updated (%s): %d Items Queued, %d Retreived",
+			server.URL, queue.TotalRecords, len(u.Readarr[i].Queue.Records))
 	}
 }
 
 // getLidarrQueue saves the Lidarr Queue(s).
 func (u *Unpackerr) getLidarrQueue() {
-	for _, server := range u.Lidarr {
+	for i, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debug("Lidarr (%s): skipped, no API key", server.URL)
 
@@ -56,8 +57,10 @@ func (u *Unpackerr) getLidarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.Logf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived", server.URL, queue.TotalRecords, len(queue.Records))
+		u.Lidarr[i].Queue = queue
+
+		u.Logf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived",
+			server.URL, queue.TotalRecords, len(u.Lidarr[i].Queue.Records))
 	}
 }
 
@@ -184,7 +187,7 @@ func (u *Unpackerr) checkLidarrQueue() { // nolint: dupl
 
 // checkReadarQueue passes completed Readar-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkReadarrQueue() { // nolint: dupl
-	app := "Readar"
+	app := "Readarr"
 
 	for _, server := range u.Readarr {
 		if server.Queue == nil {

@@ -9,9 +9,9 @@ require (
 	github.com/prometheus/procfs v0.2.0 // indirect
 	github.com/russross/blackfriday v1.5.2
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/sys v0.0.0-20200928205150-006507a75852 // indirect
+	golang.org/x/sys v0.0.0-20200929083018-4d22bbb62b3c // indirect
 	golift.io/cnfg v0.0.6
-	golift.io/starr v0.9.4-0.20200929071231-cbe202f33f6c
+	golift.io/starr v0.9.4
 	golift.io/xtractr v0.0.1
 	google.golang.org/protobuf v1.25.0 // indirect
 )

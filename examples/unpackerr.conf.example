@@ -50,6 +50,8 @@ parallel = 1
 #   api_key = "cb3afda6559445f1ae1d0299dd696e38"
    # File system path where downloaded Sonarr items are located.
 #   path = "/downloads"
+# Default protocols is torrents. Alternative: "torrents,usenet"
+#   protocols = "torrents"
 
 # Movies
 #[[radarr]]
@@ -57,6 +59,8 @@ parallel = 1
 #  api_key = "4bc34281deda4846a2fdab2c15bc8de8"
   # File system path where downloaded Radarr items are located.
 #  path = "/downloads"
+# Default protocols is torrents. Alternative: "torrents,usenet"
+#   protocols = "torrents"
 
 # Music
 #[[lidarr]]
@@ -64,6 +68,8 @@ parallel = 1
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
   # File system path where downloaded Lidarr items are located.
 #  path = "/downloads"
+# Default protocols is torrents. Alternative: "torrents,usenet"
+#   protocols = "torrents"
 
 # Books
 #[[readarr]]
@@ -71,6 +77,8 @@ parallel = 1
 #  api_key = "123445defd484ab2fdab2c15babcd"
   # File system path where downloaded Lidarr items are located.
 #  path = "/downloads"
+# Default protocols is torrents. Alternative: "torrents,usenet"
+#   protocols = "torrents"
 
 # This application can also watch folders for things to extract. If you copy a
 # subfolder into a watched folder (defined below) any extractable items in the

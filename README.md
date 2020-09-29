@@ -56,23 +56,26 @@ docker logs <container id from docker run>
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-debug|`UN_DEBUG`|`false` / Turns on more logs
+debug|`UN_DEBUG`|`false` / Turns on more logs|
 log_file|`UN_LOG_FILE`|None by default. Optionally provide a file path to write logs|
-interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`
-timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)
+interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`|
+timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)|
 delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after import|
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
-parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`
-sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`
-sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr
+parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
+sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`|
+sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
 sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for Sonarr|
-radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`
-radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr
+radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`|
+radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
 radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
-lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`
-lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr
+lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`|
+lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
 lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
+readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:8787`|
+readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
+readarr.path|`UN_READARR_0_PATH`|`/downloads` Path where content is downloaded for Readarr|
 folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
 folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|

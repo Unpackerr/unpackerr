@@ -146,4 +146,14 @@ func (u *Unpackerr) validateConfig() {
 			u.Lidarr[i].Path = defaultSavePath
 		}
 	}
+
+	for i := range u.Readarr {
+		if u.Readarr[i].Timeout.Duration == 0 {
+			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Readarr[i].Path == "" {
+			u.Readarr[i].Path = defaultSavePath
+		}
+	}
 }

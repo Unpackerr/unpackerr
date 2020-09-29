@@ -159,6 +159,10 @@ func (u *Unpackerr) checkLidarrQueue() { // nolint: dupl
 	app := "Lidarr"
 
 	for _, server := range u.Lidarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
@@ -183,6 +187,10 @@ func (u *Unpackerr) checkReadarrQueue() { // nolint: dupl
 	app := "Readar"
 
 	for _, server := range u.Readarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:

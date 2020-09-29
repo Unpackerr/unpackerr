@@ -8,24 +8,48 @@ import (
 	"golift.io/starr"
 )
 
-// LidarrQueuePageSize is how many items we request from Lidarr.
+// DefaultQueuePageSize is how many items we request from Lidarr and Readarr.
+// Once we have better support for Sonarr/Radarr v3 this will apply to those as well.
 // If you have more than this many items queued.. oof.
 // As the queue goes away, more things should get picked up.
-const LidarrQueuePageSize = 2000
+const DefaultQueuePageSize = 2000
 
 // prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
 const prefixPathMsg = "No files found are eligible for import in " // confirmed on Sonarr.
 
+// getReadarrQueue saves the Readarr Queue(s).
+func (u *Unpackerr) getReadarrQueue() {
+	for i, server := range u.Readarr {
+		if server.APIKey == "" {
+			u.Debug("Readarr (%s): skipped, no API key", server.URL)
+
+			continue
+		}
+
+		queue, err := server.ReadarrQueue(DefaultQueuePageSize)
+		if err != nil {
+			u.Logf("[ERROR] Readarr (%s): %v", server.URL, err)
+
+			return
+		}
+
+		// Only update if there was not an error fetching.
+		u.Readarr[i].Queue = queue
+		u.Logf("[Readarr] Updated (%s): %d Items Queued, %d Retreived",
+			server.URL, queue.TotalRecords, len(u.Readarr[i].Queue.Records))
+	}
+}
+
 // getLidarrQueue saves the Lidarr Queue(s).
 func (u *Unpackerr) getLidarrQueue() {
-	for _, server := range u.Lidarr {
+	for i, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debug("Lidarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
-		queue, err := server.LidarrQueue(LidarrQueuePageSize)
+		queue, err := server.LidarrQueue(DefaultQueuePageSize)
 		if err != nil {
 			u.Logf("[ERROR] Lidarr (%s): %v", server.URL, err)
 
@@ -33,8 +57,10 @@ func (u *Unpackerr) getLidarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.Logf("[Lidarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Lidarr[i].Queue = queue
+
+		u.Logf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived",
+			server.URL, queue.TotalRecords, len(u.Lidarr[i].Queue.Records))
 	}
 }
 
@@ -96,9 +122,9 @@ func (u *Unpackerr) checkSonarrQueue() {
 	for _, server := range u.Sonarr {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debug("%s (%s): Item Waiting for Import: %v", app, server.URL, q.Title)
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
 
 				fallthrough
@@ -117,9 +143,9 @@ func (u *Unpackerr) checkRadarrQueue() {
 	for _, server := range u.Radarr {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
 
 				fallthrough
@@ -132,16 +158,48 @@ func (u *Unpackerr) checkRadarrQueue() {
 }
 
 // checkLidarrQueue passes completed Lidarr-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkLidarrQueue() {
+func (u *Unpackerr) checkLidarrQueue() { // nolint: dupl
 	app := "Lidarr"
 
 	for _, server := range u.Lidarr {
-		for _, q := range server.Queue {
+		if server.Queue == nil {
+			continue
+		}
+
+		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && q.Status == completed && q.Protocol == torrent:
+			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && q.Status == completed && q.Protocol == torrent:
+			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
+				q.StatusMessages = append(q.StatusMessages,
+					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
+
+				fallthrough
+			default:
+				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+					app, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+			}
+		}
+	}
+}
+
+// checkReadarQueue passes completed Readar-queued downloads to the HandleCompleted method.
+func (u *Unpackerr) checkReadarrQueue() { // nolint: dupl
+	app := "Readarr"
+
+	for _, server := range u.Readarr {
+		if server.Queue == nil {
+			continue
+		}
+
+		for _, q := range server.Queue.Records {
+			switch x, ok := u.Map[q.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				u.Debug("%s (%s): Item Waiting for Import (%s): %v", app, server.URL, q.Protocol, q.Title)
+			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 				u.handleCompletedDownload(q.Title, app, u.getDownloadPath(q.StatusMessages, app, q.Title, server.Path))
@@ -184,7 +242,28 @@ func (u *Unpackerr) haveRadarrQitem(name string) bool {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveLidarrQitem(name string) bool {
 	for _, server := range u.Lidarr {
-		for _, q := range server.Queue {
+		if server.Queue == nil {
+			continue
+		}
+
+		for _, q := range server.Queue.Records {
+			if q.Title == name {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// checks if the application currently has an item in its queue.
+func (u *Unpackerr) haveReadarrQitem(name string) bool {
+	for _, server := range u.Readarr {
+		if server.Queue == nil {
+			continue
+		}
+
+		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true
 			}
@@ -226,4 +305,15 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 		app, err, path)
 
 	return path
+}
+
+// isComplete is run so many times in different places that is became a method.
+func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
+	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
+		if strings.EqualFold(protocol, s) {
+			return strings.EqualFold(status, "completed")
+		}
+	}
+
+	return false
 }

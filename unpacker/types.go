@@ -18,8 +18,7 @@ const (
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
-	torrent            = "torrent"
-	completed          = "Completed"
+	defaultProtocol    = "torrent"
 	mebiByte           = 1024 * 1024
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	updateChanSize     = 1000           // Size of update channel. This is sufficiently large.
@@ -29,25 +28,35 @@ const (
 
 // Config defines the configuration data used to start the application.
 type Config struct {
-	Debug       bool            `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
-	Quiet       bool            `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
-	Parallel    uint            `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
-	LogFile     string          `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
-	Interval    cnfg.Duration   `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
-	Timeout     cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	DeleteDelay cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	StartDelay  cnfg.Duration   `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
-	RetryDelay  cnfg.Duration   `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
-	Buffer      int             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`
-	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
-	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
-	Lidarr      []*lidarrConfig `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
-	Folders     []*folderConfig `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
+	Debug       bool             `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
+	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
+	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	LogFile     string           `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
+	Interval    cnfg.Duration    `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Timeout     cnfg.Duration    `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StartDelay  cnfg.Duration    `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
+	RetryDelay  cnfg.Duration    `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
+	Buffer      int              `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`
+	Sonarr      []*sonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
+	Radarr      []*radarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Lidarr      []*lidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
+	Readarr     []*readarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
+	Folders     []*folderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
+}
+
+type readarrConfig struct {
+	*starr.Config
+	Path         string             `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    string             `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue        *starr.ReadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
+	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type radarrConfig struct {
 	*starr.Config
 	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    string              `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -55,14 +64,16 @@ type radarrConfig struct {
 type sonarrConfig struct {
 	*starr.Config
 	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    string              `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 type lidarrConfig struct {
 	*starr.Config
-	Path         string                `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Queue        []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path         string            `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue        *starr.LidarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 

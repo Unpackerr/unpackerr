@@ -48,15 +48,15 @@ func Start() (err error) {
 	}
 
 	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
-		return fmt.Errorf("config file: %v", err)
+		return fmt.Errorf("config file: %w", err)
 	}
 
 	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
-		return fmt.Errorf("environment variables: %v", err)
+		return fmt.Errorf("environment variables: %w", err)
 	}
 
 	if err := u.setupLogging(); err != nil {
-		return fmt.Errorf("log_file: %v", err)
+		return fmt.Errorf("log_file: %w", err)
 	}
 
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
@@ -117,6 +117,13 @@ func (u *Unpackerr) validateConfig() {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
+	u.validateRadarr()
+	u.validateSonarr()
+	u.validateLidarr()
+	u.validateReadarr()
+}
+
+func (u *Unpackerr) validateRadarr() {
 	for i := range u.Radarr {
 		if u.Radarr[i].Timeout.Duration == 0 {
 			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
@@ -125,8 +132,14 @@ func (u *Unpackerr) validateConfig() {
 		if u.Radarr[i].Path == "" {
 			u.Radarr[i].Path = defaultSavePath
 		}
-	}
 
+		if u.Radarr[i].Protocols == "" {
+			u.Radarr[i].Protocols = defaultProtocol
+		}
+	}
+}
+
+func (u *Unpackerr) validateSonarr() {
 	for i := range u.Sonarr {
 		if u.Sonarr[i].Timeout.Duration == 0 {
 			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
@@ -135,8 +148,14 @@ func (u *Unpackerr) validateConfig() {
 		if u.Sonarr[i].Path == "" {
 			u.Sonarr[i].Path = defaultSavePath
 		}
-	}
 
+		if u.Sonarr[i].Protocols == "" {
+			u.Sonarr[i].Protocols = defaultProtocol
+		}
+	}
+}
+
+func (u *Unpackerr) validateLidarr() {
 	for i := range u.Lidarr {
 		if u.Lidarr[i].Timeout.Duration == 0 {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
@@ -144,6 +163,26 @@ func (u *Unpackerr) validateConfig() {
 
 		if u.Lidarr[i].Path == "" {
 			u.Lidarr[i].Path = defaultSavePath
+		}
+
+		if u.Lidarr[i].Protocols == "" {
+			u.Lidarr[i].Protocols = defaultProtocol
+		}
+	}
+}
+
+func (u *Unpackerr) validateReadarr() {
+	for i := range u.Readarr {
+		if u.Readarr[i].Timeout.Duration == 0 {
+			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Readarr[i].Path == "" {
+			u.Readarr[i].Path = defaultSavePath
+		}
+
+		if u.Readarr[i].Protocols == "" {
+			u.Readarr[i].Protocols = defaultProtocol
 		}
 	}
 }

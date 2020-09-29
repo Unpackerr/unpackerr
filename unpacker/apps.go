@@ -309,14 +309,11 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 
 // isComplete is run so many times in different places that is became a method.
 func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
-	var validProto bool
-
 	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
 		if strings.EqualFold(protocol, s) {
-			validProto = true
-			break
+			return strings.EqualFold(status, "completed")
 		}
 	}
 
-	return validProto && strings.EqualFold(status, "completed")
+	return false
 }

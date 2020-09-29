@@ -117,6 +117,13 @@ func (u *Unpackerr) validateConfig() {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
+	u.validateRadarr()
+	u.validateSonarr()
+	u.validateLidarr()
+	u.validateReadarr()
+}
+
+func (u *Unpackerr) validateRadarr() {
 	for i := range u.Radarr {
 		if u.Radarr[i].Timeout.Duration == 0 {
 			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
@@ -130,7 +137,9 @@ func (u *Unpackerr) validateConfig() {
 			u.Radarr[i].Protocols = defaultProtocol
 		}
 	}
+}
 
+func (u *Unpackerr) validateSonarr() {
 	for i := range u.Sonarr {
 		if u.Sonarr[i].Timeout.Duration == 0 {
 			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
@@ -144,7 +153,9 @@ func (u *Unpackerr) validateConfig() {
 			u.Sonarr[i].Protocols = defaultProtocol
 		}
 	}
+}
 
+func (u *Unpackerr) validateLidarr() {
 	for i := range u.Lidarr {
 		if u.Lidarr[i].Timeout.Duration == 0 {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
@@ -158,7 +169,9 @@ func (u *Unpackerr) validateConfig() {
 			u.Lidarr[i].Protocols = defaultProtocol
 		}
 	}
+}
 
+func (u *Unpackerr) validateReadarr() {
 	for i := range u.Readarr {
 		if u.Readarr[i].Timeout.Duration == 0 {
 			u.Readarr[i].Timeout.Duration = u.Timeout.Duration

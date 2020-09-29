@@ -113,7 +113,7 @@ folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items afte
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
 
-##### Example
+##### Example Usage
 
 ```shell
 docker pull golift/unpackerr

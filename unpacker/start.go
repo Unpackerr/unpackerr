@@ -16,6 +16,42 @@ import (
 	"golift.io/xtractr"
 )
 
+const (
+	defaultTimeout     = 10 * time.Second
+	minimumInterval    = 15 * time.Second
+	defaultRetryDelay  = 5 * time.Minute
+	defaultStartDelay  = time.Minute
+	minimumDeleteDelay = time.Second
+	suffix             = "_unpackerred" // suffix for unpacked folders.
+	mebiByte           = 1024 * 1024
+)
+
+// Unpackerr stores all the running data.
+type Unpackerr struct {
+	*Flags
+	*Config
+	*History
+	*xtractr.Xtractr
+	folders *Folders
+	sigChan chan os.Signal
+	updates chan *Extracts // external updates coming in
+	log     *log.Logger
+}
+
+// Flags are our CLI input flags.
+type Flags struct {
+	verReq     bool
+	ConfigFile string
+	EnvPrefix  string
+}
+
+// History holds the history of extracted items.
+type History struct {
+	Finished  uint
+	Restarted uint
+	Map       map[string]*Extracts
+}
+
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
@@ -95,6 +131,45 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 	return u // so you can chain into ParseConfig.
 }
 
+// Run starts the loop that does the work.
+func (u *Unpackerr) Run() {
+	var (
+		poller  = time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
+		cleaner = time.NewTicker(minimumInterval)     // clean at the minimum interval.
+		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
+	)
+
+	// Get in app queues on startup; check if items finished download & need extraction.
+	u.processAppQueues()
+
+	// one go routine to rule them all.
+	for {
+		select {
+		case <-cleaner.C:
+			// Check for state changes and act on them.
+			u.checkExtractDone()
+			u.checkFolderStats()
+		case <-poller.C:
+			// polling interval. pull API data from all apps.
+			u.processAppQueues()
+			// check if things got imported and now need to be deleted.
+			u.checkImportsDone()
+		case update := <-u.updates:
+			// xtractr callback for app download extraction.
+			u.updateQueueStatus(update)
+		case update := <-u.folders.Updates:
+			// xtractr callback for a watched folder extraction.
+			u.processFolderUpdate(update)
+		case event := <-u.folders.Events:
+			// file system event for watched folder.
+			u.folders.processEvent(event)
+		case <-logger.C:
+			// Log/print current queue counts once in a while.
+			u.logCurrentQueue()
+		}
+	}
+}
+
 // validateConfig makes sure config file values are ok.
 func (u *Unpackerr) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
@@ -117,72 +192,12 @@ func (u *Unpackerr) validateConfig() {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	u.validateRadarr()
-	u.validateSonarr()
-	u.validateLidarr()
-	u.validateReadarr()
+	u.validateAppConfigs()
 }
 
-func (u *Unpackerr) validateRadarr() {
-	for i := range u.Radarr {
-		if u.Radarr[i].Timeout.Duration == 0 {
-			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
-		}
+// custom percentage procedure for *arr apps.
+func percent(size, total float64) int {
+	const oneHundred = 100
 
-		if u.Radarr[i].Path == "" {
-			u.Radarr[i].Path = defaultSavePath
-		}
-
-		if u.Radarr[i].Protocols == "" {
-			u.Radarr[i].Protocols = defaultProtocol
-		}
-	}
-}
-
-func (u *Unpackerr) validateSonarr() {
-	for i := range u.Sonarr {
-		if u.Sonarr[i].Timeout.Duration == 0 {
-			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Sonarr[i].Path == "" {
-			u.Sonarr[i].Path = defaultSavePath
-		}
-
-		if u.Sonarr[i].Protocols == "" {
-			u.Sonarr[i].Protocols = defaultProtocol
-		}
-	}
-}
-
-func (u *Unpackerr) validateLidarr() {
-	for i := range u.Lidarr {
-		if u.Lidarr[i].Timeout.Duration == 0 {
-			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Lidarr[i].Path == "" {
-			u.Lidarr[i].Path = defaultSavePath
-		}
-
-		if u.Lidarr[i].Protocols == "" {
-			u.Lidarr[i].Protocols = defaultProtocol
-		}
-	}
-}
-
-func (u *Unpackerr) validateReadarr() {
-	for i := range u.Readarr {
-		if u.Readarr[i].Timeout.Duration == 0 {
-			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Readarr[i].Path == "" {
-			u.Readarr[i].Path = defaultSavePath
-		}
-
-		if u.Readarr[i].Protocols == "" {
-			u.Readarr[i].Protocols = defaultProtocol
-		}
-	}
+	return int(oneHundred - (size / total * oneHundred))
 }

@@ -2,10 +2,52 @@ package unpacker
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	"golift.io/starr"
 	"golift.io/xtractr"
 )
+
+// Extracts holds data for files being extracted.
+type Extracts struct {
+	Path    string
+	App     string
+	Files   []string
+	Status  ExtractStatus
+	Updated time.Time
+}
+
+// ExtractStatus is our enum for an extract's status.
+type ExtractStatus uint8
+
+// Extract Statuses.
+const (
+	WAITING = ExtractStatus(iota)
+	QUEUED
+	EXTRACTING
+	EXTRACTFAILED
+	EXTRACTED
+	IMPORTED
+	DELETING
+	DELETEFAILED // unused
+	DELETED
+)
+
+// String makes ExtractStatus human readable.
+func (status ExtractStatus) String() string {
+	if status > DELETED {
+		return "Unknown"
+	}
+
+	return []string{
+		// The order must not be be faulty.
+		"Waiting, pre-Queue", "Queued", "Extraction Progressing", "Extraction Failed",
+		"Extracted, Awaiting Import", "Imported",
+		"Deleting", "Delete Failed", "Deleted",
+	}[status]
+}
 
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
@@ -22,6 +64,34 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 	data.Updated = time.Now()
 	data.Status = QUEUED
 	u.Map[data.Path] = data
+}
+
+// checkImportsDone checks if extracted items have been imported.
+func (u *Unpackerr) checkImportsDone() {
+	for name, data := range u.Map {
+		var inQueue bool
+
+		switch {
+		case data.App == "" || strings.HasPrefix(data.App, "Folder"):
+			continue // don't handle folders here.
+		case data.Status > IMPORTED:
+			continue
+		default:
+			inQueue = u.haveQitem(name, data.App)
+		}
+
+		if !inQueue { // We only want finished items.
+			u.handleFinishedImport(data, name)
+		} else if data.Status == IMPORTED && inQueue {
+			// The item fell out of the app queue and came back. Reset it.
+			u.Logf("%s: Resetting: %s - De-queued and returned", data.App, name)
+			data.Status = WAITING
+			data.Updated = time.Now()
+		}
+
+		u.Debug("%s: Status: %s (%v, elapsed: %v, found: %v)", data.App, name, data.Status,
+			time.Since(data.Updated).Round(time.Second), inQueue)
+	}
 }
 
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
@@ -96,6 +166,25 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
+// checkExtractDone checks if an extracted item imported items needs to be deleted.
+// Or if an extraction failed and needs to be restarted.
+func (u *Unpackerr) checkExtractDone() {
+	for name, data := range u.Map {
+		switch elapsed := time.Since(data.Updated); {
+		case data.App != "" && data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
+			u.Restarted++
+			delete(u.Map, name)
+			u.Logf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
+				data.App, elapsed.Round(time.Second), name)
+		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
+			// Remove the item from history some time after it's deleted.
+			u.Finished++
+			delete(u.Map, name)
+			u.Logf("[%s] Finished, Removed History: %v", data.App, name)
+		}
+	}
+}
+
 // handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
 // This takes the provided info and logs it then sends it into the update channel.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
@@ -113,4 +202,49 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 			len(resp.AllFiles), resp.Size/mebiByte)
 		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTED, Files: resp.NewFiles}
 	}
+}
+
+// Looking for a message that looks like:
+// "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
+func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path string) string {
+	var err error
+
+	path = filepath.Join(path, title)
+	if _, err = os.Stat(path); err == nil {
+		u.Debug("%s: Configured path exists: %s", app, path)
+
+		return path // the server path exists, so use that.
+	}
+
+	for _, m := range s {
+		if m.Title != title {
+			continue
+		}
+
+		for _, msg := range m.Messages {
+			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
+				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
+				u.Debug("%s: Configured path (%s, err: %v) does not exist; trying path found in status message: %s",
+					app, path, err, newPath)
+
+				return newPath
+			}
+		}
+	}
+
+	u.Debug("%s: Configured path does not exist (err: %v), and could not find alternative path in error message: %s ",
+		app, err, path)
+
+	return path
+}
+
+// isComplete is run so many times in different places that is became a method.
+func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
+	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
+		if strings.EqualFold(protocol, s) {
+			return strings.EqualFold(status, "completed")
+		}
+	}
+
+	return false
 }

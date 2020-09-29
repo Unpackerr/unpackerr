@@ -18,8 +18,7 @@ const (
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
-	torrent            = "torrent"
-	completed          = "Completed"
+	defaultProtocol    = "torrent"
 	mebiByte           = 1024 * 1024
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	updateChanSize     = 1000           // Size of update channel. This is sufficiently large.
@@ -49,6 +48,7 @@ type Config struct {
 type readarrConfig struct {
 	*starr.Config
 	Path         string             `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    []string           `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        *starr.ReadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -56,6 +56,7 @@ type readarrConfig struct {
 type radarrConfig struct {
 	*starr.Config
 	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    []string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -63,6 +64,7 @@ type radarrConfig struct {
 type sonarrConfig struct {
 	*starr.Config
 	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    []string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -70,6 +72,7 @@ type sonarrConfig struct {
 type lidarrConfig struct {
 	*starr.Config
 	Path         string            `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Protocols    []string          `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        *starr.LidarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }

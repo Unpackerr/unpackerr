@@ -125,6 +125,10 @@ func (u *Unpackerr) validateConfig() {
 		if u.Radarr[i].Path == "" {
 			u.Radarr[i].Path = defaultSavePath
 		}
+
+		if len(u.Radarr[i].Protocols) == 0 {
+			u.Radarr[i].Protocols = []string{defaultProtocol}
+		}
 	}
 
 	for i := range u.Sonarr {
@@ -134,6 +138,10 @@ func (u *Unpackerr) validateConfig() {
 
 		if u.Sonarr[i].Path == "" {
 			u.Sonarr[i].Path = defaultSavePath
+		}
+
+		if len(u.Sonarr[i].Protocols) == 0 {
+			u.Sonarr[i].Protocols = []string{defaultProtocol}
 		}
 	}
 
@@ -145,6 +153,10 @@ func (u *Unpackerr) validateConfig() {
 		if u.Lidarr[i].Path == "" {
 			u.Lidarr[i].Path = defaultSavePath
 		}
+
+		if len(u.Lidarr[i].Protocols) == 0 {
+			u.Lidarr[i].Protocols = []string{defaultProtocol}
+		}
 	}
 
 	for i := range u.Readarr {
@@ -154,6 +166,10 @@ func (u *Unpackerr) validateConfig() {
 
 		if u.Readarr[i].Path == "" {
 			u.Readarr[i].Path = defaultSavePath
+		}
+
+		if len(u.Readarr[i].Protocols) == 0 {
+			u.Readarr[i].Protocols = []string{defaultProtocol}
 		}
 	}
 }

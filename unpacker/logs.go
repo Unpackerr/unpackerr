@@ -11,6 +11,17 @@ import (
 // satisfy gomnd.
 const callDepth = 2 // log the line that called us.
 
+// Use in r.eCount to return activity counters.
+type eCounters struct {
+	waiting    uint
+	queued     uint
+	extracting uint
+	failed     uint
+	extracted  uint
+	imported   uint
+	deleted    uint
+}
+
 // Debug writes Debug log lines... to stdout and/or a file.
 func (u *Unpackerr) Debug(msg string, v ...interface{}) {
 	if u.Config.Debug {
@@ -91,11 +102,7 @@ func (u *Unpackerr) setupLogging() error {
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo() {
 	u.Log("==> Startup Settings <==")
-	u.logSonarr()
-	u.logRadarr()
-	u.logLidarr()
-	u.logReadarr()
-	u.logFolders()
+	u.logAppStartupInfo()
 	u.Log(" => Parallel:", u.Config.Parallel)
 	u.Log(" => Interval:", u.Config.Interval.Duration)
 	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
@@ -103,78 +110,4 @@ func (u *Unpackerr) logStartupInfo() {
 	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
 	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
 	u.Log(" => Log File:", u.Config.LogFile)
-}
-
-func (u *Unpackerr) logSonarr() {
-	if c := len(u.Sonarr); c == 1 {
-		u.Logf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "",
-			u.Sonarr[0].Timeout, u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols)
-	} else {
-		u.Log(" => Sonarr Config:", c, "servers")
-
-		for _, f := range u.Sonarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
-		}
-	}
-}
-
-func (u *Unpackerr) logRadarr() {
-	if c := len(u.Radarr); c == 1 {
-		u.Logf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "",
-			u.Radarr[0].Timeout, u.Sonarr[0].ValidSSL, u.Radarr[0].Protocols)
-	} else {
-		u.Log(" => Radarr Config:", c, "servers")
-
-		for _, f := range u.Radarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
-		}
-	}
-}
-
-func (u *Unpackerr) logLidarr() {
-	if c := len(u.Lidarr); c == 1 {
-		u.Logf(" => Lidarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Lidarr[0].URL, u.Lidarr[0].Path, u.Lidarr[0].APIKey != "",
-			u.Lidarr[0].Timeout, u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols)
-	} else {
-		u.Log(" => Lidarr Config:", c, "servers")
-
-		for _, f := range u.Lidarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
-		}
-	}
-}
-
-func (u *Unpackerr) logReadarr() {
-	if c := len(u.Readarr); c == 1 {
-		u.Logf(" => Readarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Readarr[0].URL, u.Readarr[0].Path, u.Readarr[0].APIKey != "",
-			u.Readarr[0].Timeout, u.Readarr[0].ValidSSL, u.Readarr[0].Protocols)
-	} else {
-		u.Log(" => Readarr Config:", c, "servers")
-
-		for _, f := range u.Readarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
-		}
-	}
-}
-
-func (u *Unpackerr) logFolders() {
-	if c := len(u.Folders); c == 1 {
-		u.Logf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
-			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
-	} else {
-		u.Log(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
-
-		for _, f := range u.Folders {
-			u.Logf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
-				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
-		}
-	}
 }

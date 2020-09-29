@@ -9,8 +9,68 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"golift.io/cnfg"
 	"golift.io/xtractr"
 )
+
+const (
+	updateChanSize   = 1000  // Size of update channel. This is sufficiently large.
+	defaultQueueSize = 20000 // Channel queue size for file system events.
+	minimumQueueSize = 1000
+)
+
+// FolderConfig defines the input data for a folder.
+type FolderConfig struct {
+	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
+	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
+	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
+	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+}
+
+// Folders holds all known (created) folders in all watch paths.
+type Folders struct {
+	Config  []*FolderConfig
+	Folders map[string]*Folder
+	Events  chan *eventData
+	Updates chan *update
+	Logf    func(msg string, v ...interface{})
+	Debug   func(msg string, v ...interface{})
+	Watcher *fsnotify.Watcher
+}
+
+// Folder is a "new" watched folder.
+type Folder struct {
+	last time.Time
+	step ExtractStatus
+	cnfg *FolderConfig
+	list []string
+}
+
+type eventData struct {
+	cnfg *FolderConfig
+	name string
+	file string
+}
+
+type update struct {
+	Step ExtractStatus
+	Name string
+	Resp *xtractr.Response
+}
+
+func (u *Unpackerr) logFolders() {
+	if c := len(u.Folders); c == 1 {
+		u.Logf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
+			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
+	} else {
+		u.Log(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
+
+		for _, f := range u.Folders {
+			u.Logf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
+				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
+		}
+	}
+}
 
 // PollFolders begins the routines to watch folders for changes.
 // if those changes include the addition of compressed files, they
@@ -63,8 +123,8 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 }
 
 // checkFolders stats all configured folders and returns only "good" ones.
-func (u *Unpackerr) checkFolders() ([]*folderConfig, []string) {
-	goodFolders := []*folderConfig{}
+func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
+	goodFolders := []*FolderConfig{}
 	goodFlist := []string{}
 
 	for _, f := range u.Folders {
@@ -206,6 +266,37 @@ func (f *Folders) processEvent(event *eventData) {
 		last: time.Now(),
 		step: WAITING,
 		cnfg: event.cnfg,
+	}
+}
+
+// checkFolderStats runs at an interval to see if any folders need work done on them.
+func (u *Unpackerr) checkFolderStats() {
+	for name, folder := range u.folders.Folders {
+		switch elapsed := time.Since(folder.last); {
+		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration:
+			u.Logf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
+				folder.cnfg.Path, elapsed.Round(time.Second))
+
+			folder.last = time.Now()
+			folder.step = WAITING
+			u.Restarted++
+		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
+			// Folder reached delete delay (after extraction), nuke it.
+			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
+			delete(u.folders.Folders, name)
+
+			// Only delete the extracted files if DeleteAfter is greater than 0.
+			if !folder.cnfg.MoveBack && folder.cnfg.DeleteAfter.Duration > 0 {
+				u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+			}
+
+			if folder.cnfg.DeleteOrig {
+				u.DeleteFiles(name)
+			}
+		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
+			// The folder hasn't been written to in a while, extract it.
+			u.extractFolder(name, folder)
+		}
 	}
 }
 

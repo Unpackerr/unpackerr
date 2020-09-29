@@ -44,15 +44,15 @@ type Config struct {
 
 // These are the names used to identify each app.
 const (
-	Readarr = "Readarr"
-	Lidarr  = "Lidarr"
 	Sonarr  = "Sonarr"
 	Radarr  = "Radarr"
+	Lidarr  = "Lidarr"
+	Readarr = "Readarr"
 )
 
 func (u *Unpackerr) validateAppConfigs() {
-	u.validateRadarr()
 	u.validateSonarr()
+	u.validateRadarr()
 	u.validateLidarr()
 	u.validateReadarr()
 }

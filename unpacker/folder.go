@@ -16,10 +16,10 @@ import (
 const (
 	updateChanSize   = 1000  // Size of update channel. This is sufficiently large.
 	defaultQueueSize = 20000 // Channel queue size for file system events.
-	minimumQueueSize = 1000
+	minimumQueueSize = 1000  // The snallest size the channel buffer can be.
 )
 
-// FolderConfig defines the input data for a folder.
+// FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`

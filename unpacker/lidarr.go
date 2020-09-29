@@ -6,7 +6,7 @@ import (
 	"golift.io/starr"
 )
 
-// LidarConfig represents the input data for a Lidarr server.
+// LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
 	*starr.Config
 	Path         string            `json:"path" toml:"path" xml:"path" yaml:"path"`

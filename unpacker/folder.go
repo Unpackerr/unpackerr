@@ -76,9 +76,10 @@ func (u *Unpackerr) logFolders() {
 // if those changes include the addition of compressed files, they
 // are processed for exctraction.
 func (u *Unpackerr) PollFolders() {
-	var flist []string
-
-	var err error
+	var (
+		flist []string
+		err   error
+	)
 
 	u.Folders, flist = u.checkFolders()
 
@@ -298,6 +299,23 @@ func (u *Unpackerr) checkFolderStats() {
 			u.extractFolder(name, folder)
 		}
 	}
+}
+
+// updateQueueStatus for an on-going tracked extraction.
+// This is called from a channel callback to update status in a single go routine.
+func (u *Unpackerr) updateQueueStatus(data *Extracts) {
+	if _, ok := u.Map[data.Path]; ok {
+		u.Map[data.Path].Status = data.Status
+		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
+		u.Map[data.Path].Updated = time.Now()
+
+		return
+	}
+
+	// This is a new folder being extracted.
+	data.Updated = time.Now()
+	data.Status = QUEUED
+	u.Map[data.Path] = data
 }
 
 // xtractCallback is run twice by the xtractr library when the extraction begins, and finishes.

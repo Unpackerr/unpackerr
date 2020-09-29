@@ -49,48 +49,24 @@ func (status ExtractStatus) String() string {
 	}[status]
 }
 
-// updateQueueStatus for an on-going tracked extraction.
-// This is called from a channel callback to update status in a single go routine.
-func (u *Unpackerr) updateQueueStatus(data *Extracts) {
-	if _, ok := u.Map[data.Path]; ok {
-		u.Map[data.Path].Status = data.Status
-		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
-		u.Map[data.Path].Updated = time.Now()
-
-		return
-	}
-
-	// This is a new folder being extracted.
-	data.Updated = time.Now()
-	data.Status = QUEUED
-	u.Map[data.Path] = data
-}
-
 // checkImportsDone checks if extracted items have been imported.
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
-		var inQueue bool
-
 		switch {
-		case data.App == "" || strings.HasPrefix(data.App, "Folder"):
-			continue // don't handle folders here.
 		case data.Status > IMPORTED:
 			continue
-		default:
-			inQueue = u.haveQitem(name, data.App)
-		}
-
-		if !inQueue { // We only want finished items.
+		case !u.haveQitem(name, data.App):
+			// We only want finished items.
 			u.handleFinishedImport(data, name)
-		} else if data.Status == IMPORTED && inQueue {
+		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
 			u.Logf("%s: Resetting: %s - De-queued and returned", data.App, name)
 			data.Status = WAITING
 			data.Updated = time.Now()
 		}
 
-		u.Debug("%s: Status: %s (%v, elapsed: %v, found: %v)", data.App, name, data.Status,
-			time.Since(data.Updated).Round(time.Second), inQueue)
+		u.Debug("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status,
+			time.Since(data.Updated).Round(time.Second))
 	}
 }
 
@@ -171,7 +147,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
-		case data.App != "" && data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
+		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
 			u.Restarted++
 			delete(u.Map, name)
 			u.Logf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",

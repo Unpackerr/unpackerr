@@ -77,7 +77,7 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpackerr v%s %s (branch: %s %s) \n",
+		fmt.Printf("unpackerr v%s %s (branch: %s %s)\n",
 			version.Version, version.BuildDate, version.Branch, version.Revision)
 
 		return nil // don't run anything else.
@@ -97,17 +97,12 @@ func Start() (err error) {
 
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
 
-	u.validateConfig()
-	u.logStartupInfo()
-
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
 		Logger:   u.log,
 	})
-
-	u.PollFolders() // this initializes channel(s) used in u.Run()
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -139,8 +134,10 @@ func (u *Unpackerr) Run() {
 		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
 	)
 
-	// Get in app queues on startup; check if items finished download & need extraction.
-	u.processAppQueues()
+	u.validateConfig()
+	u.logStartupInfo()
+	u.PollFolders()      // This initializes channel(s) used below.
+	u.processAppQueues() // Get in-app queues on startup.
 
 	// one go routine to rule them all.
 	for {

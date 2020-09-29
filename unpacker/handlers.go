@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"os"
 	"time"
 
 	"golift.io/xtractr"
@@ -34,6 +35,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 		u.Logf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
 		u.Debug("Already imported? %s", name)
+
 		return
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		u.Map[name].Status = DELETED
@@ -68,12 +70,16 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
 		u.Logf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
+
 		return
 	}
 
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
-		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s", app, name, path)
+		_, err := os.Stat(path)
+		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
+			app, name, path, err)
+
 		return
 	}
 
@@ -86,7 +92,6 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 		TempFolder: false,
 		DeleteOrig: false,
 		CBFunction: u.handleXtractrCallback,
-		FindFileEx: []xtractr.ExtType{xtractr.RAR},
 	})
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }

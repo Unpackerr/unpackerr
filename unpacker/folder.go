@@ -24,6 +24,7 @@ func (u *Unpackerr) PollFolders() {
 
 	if u.folders, err = u.newFolderWatcher(); err != nil {
 		u.Log("[ERROR] Watching Folders:", err)
+
 		return
 	}
 	// do not close the watcher.
@@ -53,7 +54,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	return &Folders{
 		Config:  u.Folders,
 		Folders: make(map[string]*Folder),
-		Events:  make(chan *eventData, queueChanSize),
+		Events:  make(chan *eventData, u.Config.Buffer),
 		Updates: make(chan *update, updateChanSize),
 		Debug:   u.Debug,
 		Logf:    u.Logf,
@@ -69,9 +70,11 @@ func (u *Unpackerr) checkFolders() ([]*folderConfig, []string) {
 	for _, f := range u.Folders {
 		if stat, err := os.Stat(f.Path); err != nil {
 			u.Log("[ERROR] Folder (cannot watch):", err)
+
 			continue
 		} else if !stat.IsDir() {
 			u.Logf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
+
 			continue
 		}
 
@@ -102,6 +105,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	})
 	if err != nil {
 		u.Log("[ERROR]", err)
+
 		return
 	}
 
@@ -112,6 +116,7 @@ func (u *Unpackerr) processFolderUpdate(update *update) {
 	if _, ok := u.folders.Folders[update.Name]; !ok {
 		// It doesn't exist? weird. delete it and bail out.
 		delete(u.Map, update.Name)
+
 		return
 	}
 
@@ -178,17 +183,20 @@ func (f *Folders) processEvent(event *eventData) {
 		return
 	} else if !stat.IsDir() {
 		f.Debug("Folder: Ignoring Item: %v (not a folder)", fullPath)
+
 		return
 	}
 
 	if _, ok := f.Folders[fullPath]; ok {
 		//		f.DeLogf("Item Updated: %v (file: %v)", fullPath, event.file)
 		f.Folders[fullPath].last = time.Now()
+
 		return
 	}
 
 	if err := f.Watcher.Add(fullPath); err != nil {
 		f.Logf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
+
 		return
 	}
 

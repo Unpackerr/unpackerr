@@ -22,9 +22,9 @@ const (
 	completed          = "Completed"
 	mebiByte           = 1024 * 1024
 	suffix             = "_unpackerred" // suffix for unpacked folders.
-	updateChanSize     = 100            // Size of update channel. This is sufficiently large
-	queueChanSize      = 20000          // Channel queue size for file system events.
-
+	updateChanSize     = 1000           // Size of update channel. This is sufficiently large.
+	defaultQueueSize   = 20000          // Channel queue size for file system events.
+	minimumQueueSize   = 1000
 )
 
 // Config defines the configuration data used to start the application.
@@ -38,6 +38,7 @@ type Config struct {
 	DeleteDelay cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	StartDelay  cnfg.Duration   `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
 	RetryDelay  cnfg.Duration   `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
+	Buffer      int             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`
 	Sonarr      []*sonarrConfig `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*radarrConfig `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      []*lidarrConfig `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
@@ -60,6 +61,7 @@ type sonarrConfig struct {
 
 type lidarrConfig struct {
 	*starr.Config
+	Path         string                `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Queue        []*starr.LidarrRecord `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -116,6 +118,7 @@ type eCounters struct {
 type Flags struct {
 	verReq     bool
 	ConfigFile string
+	EnvPrefix  string
 }
 
 // Folders holds all known (created) folders in all watch paths.

@@ -139,7 +139,8 @@ func (u *Unpackerr) checkFolderStats() {
 			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
 			delete(u.folders.Folders, name)
 
-			if !folder.cnfg.MoveBack {
+			// Only delete the extracted files if DeleteAfter is greater than 0.
+			if !folder.cnfg.MoveBack && folder.cnfg.DeleteAfter.Duration > 0 {
 				u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
 			}
 

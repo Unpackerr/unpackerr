@@ -72,7 +72,11 @@ radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you 
 radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr
-
+lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
+folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
+folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
+folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
+folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
 
 -   Example:
 
@@ -163,7 +167,6 @@ and Sonarr v3 has been _easy_. If these tweaks stay easy, I'll keep making them,
 keep making this app useful. I didn't expect so many people to want to use this, but I'm
 happy it's working so well!
 
--   Add code for tagged downloads. Allow extracting things besides radarr/sonarr.
 -   Integrate `prometheus`.
 -   Tests. Maybe. Would likely have to refactor things into better interfaces.
 -   Save and reload state. If you shut if off before it deletes something, it never gets deleted.

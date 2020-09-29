@@ -15,11 +15,16 @@ DESCRIPTION
 
 OPTIONS
 ---
-`unpackerr [-c <config file>] [-h] [-v]`
+`unpackerr [-c <config file>] [-p <prefix>] [-h] [-v]`
 
     -c, --config <file_path>
         Provide a configuration file.
         Default: /etc/unpackerr/unpackerr.conf
+
+    -p, --prefix <prefix>
+        This argument allows changing the environment variable prefix.
+        This application parses environment variables into config data.
+        The default prefix is UN, making env variables like UN_SONARR_URL.
 
     -v, --version
         Display version and exit.

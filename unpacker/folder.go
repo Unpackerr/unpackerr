@@ -94,8 +94,9 @@ func (u *Unpackerr) PollFolders() {
 		return
 	}
 
-	go u.folders.watchFSNotify()
 	u.Log("[Folder] Watching:", strings.Join(flist, ", "))
+
+	go u.folders.watchFSNotify()
 }
 
 // newFolderWatcher returns a new folder watcher.

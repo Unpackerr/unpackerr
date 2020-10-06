@@ -338,15 +338,14 @@ test:
 
 # Used for Homebrew only. Other distros can create packages.
 install: man readme $(BINARY) plugins_darwin
-	@echo -  Done Building!  -
-	@echo -  Local installation with the Makefile is only supported on macOS (for Homebrew).
+	@echo -  Done Building  -
+	@echo -  Local installation with the Makefile is only supported on macOS for Homebrew.
 	@[ "$(shell uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
 	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
 	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
 	# Copying the binary, config file, unit file, and man page into the env.
 	/usr/bin/install -m 0755 -d $(PREFIX)/bin $(PREFIX)/share/man/man1 $(ETC)/$(BINARY) $(PREFIX)/share/doc/$(BINARY) $(PREFIX)/lib/$(BINARY)
 	/usr/bin/install -m 0755 -cp $(BINARY) $(PREFIX)/bin/$(BINARY)
-	/usr/bin/install -m 0755 -cp *darwin.so $(PREFIX)/lib/$(BINARY)/
 	/usr/bin/install -m 0644 -cp $(BINARY).1.gz $(PREFIX)/share/man/man1
 	/usr/bin/install -m 0644 -cp examples/$(CONFIG_FILE).example $(ETC)/$(BINARY)/
 	[ -f $(ETC)/$(BINARY)/$(CONFIG_FILE) ] || /usr/bin/install -m 0644 -cp  examples/$(CONFIG_FILE).example $(ETC)/$(BINARY)/$(CONFIG_FILE)

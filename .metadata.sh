@@ -10,7 +10,7 @@ GHUSER="davidnewhall"
 HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
-DESC="Extracts downloads so Radarr or Sonarr may import them."
+DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
 GOLANGCI_LINT_ARGS="--enable-all -D dupl"
 # Example must exist at examples/$CONFIG_FILE.example
 CONFIG_FILE="unpackerr.conf"
@@ -26,7 +26,7 @@ export BINARY GHUSER HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE LIC
 # Provide a better URL if one exists.
 
 # Used for source links and wiki links.
-SOURCE_URL="https://${GHUSER}/${BINARY}/"
+SOURCE_URL="https://github.com/${GHUSER}/${BINARY}/"
 # Used for documentation links.
 URL="${SOURCE_URL}"
 

@@ -31,7 +31,7 @@ Use the methods below to install using Docker.
 
 -   Unpackerr is available in the
     [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/master/templates/unpackerr.xml)
-    on unRAID.
+    on unRAID. 
 
 #### Docker Config File
 

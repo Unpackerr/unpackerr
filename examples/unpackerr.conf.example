@@ -50,7 +50,7 @@ parallel = 1
 #   api_key = "cb3afda6559445f1ae1d0299dd696e38"
    # File system path where downloaded Sonarr items are located.
 #   path = "/downloads"
-# Default protocols is torrents. Alternative: "torrent,usenet"
+# Default protocols is torrent. Alternative: "torrent,usenet"
 #   protocols = "torrent"
 
 # Movies

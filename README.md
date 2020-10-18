@@ -72,7 +72,7 @@ parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
 sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`|
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
 sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for Sonarr|
-sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Radarr
 
@@ -81,7 +81,7 @@ sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `
 radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`|
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
 radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
-radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Lidarr
 
@@ -90,7 +90,7 @@ radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`|
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
 lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
-lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Readarr
 
@@ -99,7 +99,7 @@ lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `
 readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:8787`|
 readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
 readarr.path|`UN_READARR_0_PATH`|`/downloads` Path where content is downloaded for Readarr|
-readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrents` Protocols to process. Alt: `torrents,usenet`|
+readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Folder
 

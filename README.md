@@ -143,7 +143,7 @@ docker logs <container id from docker run>
 Example of the above in shell form:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo sh
+wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo bash
 
 nano /etc/unpackerr/unpackerr.conf         # linux
 vi /usr/local/etc/unpackerr/unpackerr.conf # freebsd

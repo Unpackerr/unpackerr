@@ -35,7 +35,7 @@ func (u *Unpackerr) logRadarr() {
 	if c := len(u.Radarr); c == 1 {
 		u.Logf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "",
-			u.Radarr[0].Timeout, u.Sonarr[0].ValidSSL, u.Radarr[0].Protocols)
+			u.Radarr[0].Timeout, u.Radarr[0].ValidSSL, u.Radarr[0].Protocols)
 	} else {
 		u.Log(" => Radarr Config:", c, "servers")
 
@@ -46,7 +46,7 @@ func (u *Unpackerr) logRadarr() {
 	}
 }
 
-// getSonarrQueue saves the Radarr Queue(s).
+// getRadarrQueue saves the Radarr Queue(s).
 func (u *Unpackerr) getRadarrQueue() {
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {

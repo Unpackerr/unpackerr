@@ -22,6 +22,7 @@ endif
 
 # rpm is wierd and changes - to _ in versions.
 RPMVERSION:=$(shell echo $(VERSION) | tr -- - _)
+# used for freebsd packages.
 BINARYU:=$(shell echo $(BINARY) | tr -- - _)
 
 PACKAGE_SCRIPTS=
@@ -46,11 +47,10 @@ endef
 
 PLUGINS:=$(patsubst plugins/%/main.go,%,$(wildcard plugins/*/main.go))
 
-VERSION_LDFLAGS:= \
-  -X github.com/prometheus/common/version.Branch=$(BRANCH) \
-  -X github.com/prometheus/common/version.BuildDate=$(DATE) \
-  -X github.com/prometheus/common/version.Revision=$(COMMIT) \
-  -X github.com/prometheus/common/version.Version=$(VERSION)-$(ITERATION)
+VERSION_LDFLAGS:= -X $(VERSION_PATH).Branch=$(BRANCH) \
+  -X $(VERSION_PATH).BuildDate=$(DATE) \
+  -X $(VERSION_PATH).Revision=$(COMMIT) \
+  -X $(VERSION_PATH).Version=$(VERSION)-$(ITERATION)
 
 # Makefile targets follow.
 
@@ -67,7 +67,6 @@ release: clean macos windows linux_packages freebsd_packages
 	# Generating File Hashes
 	openssl dgst -r -sha256 $@/* | sed 's#release/##' | tee $@/checksums.sha256.txt
 
-
 # Delete all build assets.
 clean:
 	# Cleaning up.
@@ -82,18 +81,18 @@ clean:
 man: $(BINARY).1.gz
 $(BINARY).1.gz: md2roff
 	# Building man page. Build dependency first: md2roff
-	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(DATE)" examples/MANUAL.md
+	$(shell go env GOPATH)/bin/md2roff --manual $(BINARY) --version $(VERSION) --date "$(DATE)" examples/MANUAL.md
 	gzip -9nc examples/MANUAL > $@
 	mv examples/MANUAL.html $(BINARY)_manual.html
 
 md2roff:
-	go get -u $(MD2ROFF_BIN)
+	cd /tmp ; go get $(MD2ROFF_BIN) ; go install $(MD2ROFF_BIN)
 
 # TODO: provide a template that adds the date to the built html file.
 readme: README.html
 README.html: md2roff
 	# This turns README.md into README.html
-	go run $(MD2ROFF_BIN) --manual $(BINARY) --version $(VERSION) --date "$(DATE)" README.md
+	$(shell go env GOPATH)/bin/md2roff --manual $(BINARY) --version $(VERSION) --date "$(DATE)" README.md
 
 # Binaries
 
@@ -125,6 +124,7 @@ $(BINARY).armhf.linux: main.go
 
 macos: $(BINARY).amd64.macos
 $(BINARY).amd64.macos: main.go
+	# Building darwin 64-bit x86 binary.
 	GOOS=darwin GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS)"
 
 freebsd: $(BINARY).amd64.freebsd
@@ -305,8 +305,8 @@ $(BINARY).rb: v$(VERSION).tar.gz.sha256 init/homebrew/$(FORMULA).rb.tmpl
 		-e "s/{{SHA256}}/$(shell head -c64 $<)/g" \
 		-e "s/{{Desc}}/$(DESC)/g" \
 		-e "s%{{URL}}%$(URL)%g" \
-		-e "s%{{SOURCE_PATH}}%$(SOURCE_PATH)%g" \
 		-e "s%{{SOURCE_URL}}%$(SOURCE_URL)%g" \
+		-e "s%{{SOURCE_PATH}}%$(SOURCE_PATH)%g" \
 		-e "s%{{CONFIG_FILE}}%$(CONFIG_FILE)%g" \
 		-e "s%{{Class}}%$(shell echo $(BINARY) | perl -pe 's/(?:\b|-)(\p{Ll})/\u$$1/g')%g" \
 		init/homebrew/$(FORMULA).rb.tmpl | tee $(BINARY).rb
@@ -328,11 +328,20 @@ $(patsubst %,%.darwin.so,$(PLUGINS)):
 # Extras
 
 # Run code tests and lint.
-test:
+test: lint
 	# Testing.
 	go test -race -covermode=atomic ./...
+lint:
 	# Checking lint.
 	golangci-lint run $(GOLANGCI_LINT_ARGS)
+
+# Don't run this unless you're ready to debug untested vendored dependencies.
+dep: deps
+deps:
+	go get -u ...
+
+vendor:
+	go mod vendor
 
 # Homebrew stuff. macOS only.
 

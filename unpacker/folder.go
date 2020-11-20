@@ -3,6 +3,7 @@ package unpacker
 /* Folder Watching Codez */
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -104,7 +105,7 @@ func (u *Unpackerr) PollFolders() {
 func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fsnotify.NewWatcher: %w", err)
 	}
 
 	for _, folder := range u.Folders {

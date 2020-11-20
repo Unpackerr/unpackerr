@@ -4,8 +4,8 @@
 #
 # Use it like this, pick curl or wget:  (sudo is optional)
 # ----
-#   curl -s https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo sh
-#   wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo sh
+#   curl -s https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo bash
+#   wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo bash
 # ----
 #
 # - If you're on RedHat/CentOS/Fedora, installs the latest rpm package.

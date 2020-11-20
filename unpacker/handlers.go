@@ -105,6 +105,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	item, ok := u.Map[name]
 	if !ok {
 		u.Map[name] = &Extracts{
+			Files:   nil,
 			Path:    path,
 			App:     app,
 			Status:  WAITING,

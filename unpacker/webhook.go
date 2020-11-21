@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"golift.io/cnfg"
-	"golift.io/xtractr"
 )
 
 type WebhookConfig struct {
@@ -28,14 +27,6 @@ type WebhookConfig struct {
 	posts     uint            `json:"-"`
 }
 
-type WebhookPayload struct {
-	Time  time.Time         `json:"time"`
-	Name  string            `json:"name"`
-	App   string            `json:"app"`
-	Event string            `json:"unpackerr_eventtype"`
-	Data  *xtractr.Response `json:"data"`
-}
-
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extracts) {
@@ -48,13 +39,7 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration+time.Second)
 			defer cancel()
 
-			if body, err := u.sendWebhook(ctx, hook, &WebhookPayload{
-				Time:  i.Updated,
-				Name:  i.Path,
-				App:   i.App,
-				Event: i.Status.String(),
-				Data:  i.Resp,
-			}); err != nil {
+			if body, err := u.sendWebhook(ctx, hook, i); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
 				hook.fails++
 			} else if !hook.Silent {

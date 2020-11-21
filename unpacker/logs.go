@@ -20,7 +20,8 @@ type eCounters struct {
 	extracted  uint
 	imported   uint
 	deleted    uint
-	webhooks   uint
+	hookOK     uint
+	hookFail   uint
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -120,13 +121,15 @@ func (u *Unpackerr) logCurrentQueue() {
 	}
 
 	for _, hook := range u.Webhook {
-		e.webhooks += hook.fails + hook.posts
+		e.hookOK += hook.posts
+		e.hookFail += hook.fails
 	}
 
 	u.Logf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
 		" [%d failed] [%d deleted]", e.waiting, e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
 	)
-	u.Logf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d webhooks]", u.Restarted, u.Finished, e.webhooks)
+	u.Logf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks]",
+		u.Restarted, u.Finished, e.hookOK, e.hookFail)
 }
 
 // setupLogging splits log write into a file and/or stdout.

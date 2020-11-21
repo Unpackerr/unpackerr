@@ -12,12 +12,12 @@ import (
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	Path    string
-	App     string
-	Files   []string
-	Status  ExtractStatus
-	Updated time.Time
-	Resp    *xtractr.Response
+	Path    string            `json:"path"`
+	App     string            `json:"app"`
+	Files   []string          `json:"files"`
+	Status  ExtractStatus     `json:"unpackerr_eventtype"`
+	Updated time.Time         `json:"updated"`
+	Resp    *xtractr.Response `json:"response"`
 }
 
 // ExtractStatus is our enum for an extract's status.

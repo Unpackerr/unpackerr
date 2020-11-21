@@ -328,7 +328,8 @@ func (u *Unpackerr) checkFolderStats() {
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders.
 func (u *Unpackerr) updateQueueStatus(data *Extracts) {
-	// defer u.sendWebhooks(data)
+	defer u.sendWebhooks(data)
+
 	if _, ok := u.Map[data.Path]; ok {
 		u.Map[data.Path].Status = data.Status
 		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)

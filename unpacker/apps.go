@@ -40,7 +40,7 @@ type Config struct {
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
-	//Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
+	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 }
 
 // These are the names used to identify each app.
@@ -56,6 +56,7 @@ func (u *Unpackerr) validateAppConfigs() {
 	u.validateRadarr()
 	u.validateLidarr()
 	u.validateReadarr()
+	u.validateWebhook()
 }
 
 func (u *Unpackerr) logAppStartupInfo() {
@@ -64,6 +65,7 @@ func (u *Unpackerr) logAppStartupInfo() {
 	u.logLidarr()
 	u.logReadarr()
 	u.logFolders()
+	u.logWebhook()
 }
 
 // processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.

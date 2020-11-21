@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/xtractr"
 )
 
 type WebhookConfig struct {
@@ -38,6 +39,26 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 		go func(hook *WebhookConfig) {
 			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration+time.Second)
 			defer cancel()
+
+			// We cannot read some of the data in the response until it is done.
+			// Otherwise we may have a race condition and crash.
+			if j := i; !i.Resp.Done {
+				i = &Extracts{
+					Path:    j.Path,
+					App:     j.App,
+					Status:  j.Status,
+					Updated: j.Updated,
+				}
+				if j.Resp != nil {
+					i.Resp = &xtractr.Response{
+						Done:     false,
+						Started:  j.Resp.Started,
+						Archives: j.Resp.Archives,
+						Output:   j.Resp.Output,
+						X:        j.Resp.X,
+					}
+				}
+			}
 
 			if body, err := u.sendWebhook(ctx, hook, i); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)

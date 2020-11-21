@@ -332,6 +332,7 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 		u.Map[data.Path].Status = data.Status
 		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
 		u.Map[data.Path].Updated = time.Now()
+		u.Map[data.Path].Resp = data.Resp
 
 		u.sendWebhooks(u.Map[data.Path])
 

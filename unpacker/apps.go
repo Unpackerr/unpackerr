@@ -29,6 +29,8 @@ type Config struct {
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
 	LogFile     string           `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
+	FileMode    string           `json:"file_mode" toml:"file_mode" xml:"file_mode" yaml:"file_mode"`
+	DirMode     string           `json:"dir_mode" toml:"dir_mode" xml:"dir_mode" yaml:"dir_mode"`
 	Interval    cnfg.Duration    `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration    `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`

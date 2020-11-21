@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultFileMode    = 0755
-	defaultDirMode     = 0644
+	defaultFileMode    = 0644
+	defaultDirMode     = 0755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
 	defaultRetryDelay  = 5 * time.Minute

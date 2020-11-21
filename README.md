@@ -31,7 +31,7 @@ Use the methods below to install using Docker.
 
 -   Unpackerr is available in the
     [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/master/templates/unpackerr.xml)
-    on unRAID. 
+    on unRAID.
 
 #### Docker Config File
 
@@ -64,6 +64,8 @@ delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after 
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
+file_mode|`UN_FILE_MODE`|`0644` / Extracted files are written with this mode.|
+dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode.|
 
 ##### Sonarr
 
@@ -112,6 +114,18 @@ folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for
 folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
+
+##### Webhooks
+
+This application can send a POST webhook to a URL when an extraction begins, and again
+when it finishes. Configure 1 or more webhook URLs with the parameters below.
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
+webhook.url|`UN_WEBHOOK_0_URL`|No Default. URL to send POST webhook to.|
+webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`.|
+webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs.|
+webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates.|
 
 ##### Example Usage
 
@@ -193,18 +207,6 @@ has `status=Completed` from your download client** Unpackerr will extract the fi
 Files are extracted to a temporary folder, and then moved back into the download
 location for Completed Download Handling to import them. When the item falls out of the
 (Radarr/Sonarr/Lidarr) queue, the extracted files are deleted.
-
-## TODO
-
-Honestly I don't have a lot of time for this app and these things are just a wish list.
-I'm surprised making this with work with Radarr
-and Sonarr v3 has been _easy_. If these tweaks stay easy, I'll keep making them, and
-keep making this app useful. I didn't expect so many people to want to use this, but I'm
-happy it's working so well!
-
--   Integrate `prometheus`.
--   Tests. Maybe. Would likely have to refactor things into better interfaces.
--   Save and reload state. If you shut if off before it deletes something, it never gets deleted.
 
 ## Contributing
 

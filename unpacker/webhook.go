@@ -96,7 +96,7 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 func (u *Unpackerr) validateWebhook() {
 	for i := range u.Webhook {
 		if u.Webhook[i].Timeout.Duration == 0 {
-			u.Webhook[i].Timeout.Duration = time.Minute
+			u.Webhook[i].Timeout.Duration = u.Timeout.Duration
 		}
 
 		if len(u.Webhook[i].Events) == 0 {

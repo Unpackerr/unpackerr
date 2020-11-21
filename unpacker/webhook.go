@@ -33,6 +33,8 @@ type WebhookPayload struct {
 	Data  *xtractr.Response `json:"data"`
 }
 
+var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+
 func (u *Unpackerr) sendWebhooks(i *Extracts) {
 	for _, hook := range u.Webhook {
 		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
@@ -40,10 +42,10 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 		}
 
 		go func(hook *WebhookConfig) {
-			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration)
+			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration+time.Second)
 			defer cancel()
 
-			if err := u.sendWebhook(ctx, hook, &WebhookPayload{
+			if body, err := u.sendWebhook(ctx, hook, &WebhookPayload{
 				Time:  i.Updated,
 				Name:  i.Path,
 				App:   i.App,
@@ -51,43 +53,40 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 				Data:  i.Resp,
 			}); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
+			} else if !hook.Silent {
+				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.URL)
+				u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 			}
 		}(hook)
 	}
 }
 
-func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i interface{}) error {
+func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i interface{}) ([]byte, error) {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return fmt.Errorf("marshaling payload '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("marshaling payload '%s': %w", hook.URL, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", hook.URL, bytes.NewBuffer(b))
 	if err != nil {
-		return fmt.Errorf("creating request '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("creating request '%s': %w", hook.URL, err)
 	}
 
 	res, err := hook.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("POSTing payload '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("POSTing payload '%s': %w", hook.URL, err)
 	}
 	defer res.Body.Close()
 
 	// The error is mostly ignored because we don't care about the body.
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	body, err := ioutil.ReadAll(res.Body)
+	body, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("invalid HTTP status reply (%s) '%s' (body err: %w) %s", res.Status, hook.URL, err, body)
+		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, hook.URL, body)
 	}
 
-	if !hook.Silent {
-		u.Logf("[Webhook] Posted Payload: %s: %s", hook.URL, res.Status)
-		u.Debug("[DEBUG] Webhook Response (len:%s): %s", res.Header.Get("content-length"),
-			string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
-	}
-
-	return nil
+	return body, nil
 }
 
 func (u *Unpackerr) validateWebhook() {

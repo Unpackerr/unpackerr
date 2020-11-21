@@ -103,13 +103,14 @@ func (u *Unpackerr) validateWebhook() {
 
 func (u *Unpackerr) logWebhook() {
 	if c := len(u.Webhook); c == 1 {
-		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v)",
-			u.Webhook[0].URL, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL)
+		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+			u.Webhook[0].URL, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, u.Webhook[0].Events)
 	} else {
 		u.Log(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
-			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v)", f.URL, f.Timeout, f.IgnoreSSL)
+			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+				f.URL, f.Timeout, f.IgnoreSSL, f.Silent, f.Events)
 		}
 	}
 }

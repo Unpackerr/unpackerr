@@ -17,6 +17,7 @@ type Extracts struct {
 	Files   []string
 	Status  ExtractStatus
 	Updated time.Time
+	Resp    *xtractr.Response
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -105,8 +106,10 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
 	item, ok := u.Map[name]
 	if !ok {
 		u.Map[name] = &Extracts{
-			Path:    path,
 			App:     app,
+			Path:    path,
+			Files:   nil,
+			Resp:    nil,
 			Status:  WAITING,
 			Updated: time.Now(),
 		}
@@ -167,16 +170,16 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
 		u.Logf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTING}
+		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTING, Resp: resp}
 	case resp.Error != nil:
 		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED}
+		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}
 	default:
 		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, wrote: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),
 			len(resp.AllFiles), resp.Size/mebiByte)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTED, Files: resp.NewFiles}
+		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTED, Files: resp.NewFiles, Resp: resp}
 	}
 }
 

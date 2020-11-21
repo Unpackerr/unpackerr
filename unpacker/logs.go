@@ -79,7 +79,7 @@ func (u *Unpackerr) setupLogging() error {
 	if u.Config.LogFile != "" {
 		f, err := os.OpenFile(u.Config.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 		if err != nil {
-			return err
+			return fmt.Errorf("os.OpenFile: %w", err)
 		}
 
 		writeFile = f

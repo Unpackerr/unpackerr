@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/common/version"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/cnfg/cnfgfile"
+	"golift.io/version"
 	"golift.io/xtractr"
 )
 
@@ -56,7 +56,7 @@ type History struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:   &Flags{ConfigFile: defaultConfFile},
+		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extracts)},
 		updates: make(chan *Extracts),

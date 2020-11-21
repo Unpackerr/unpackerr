@@ -3,6 +3,7 @@ package unpacker
 /* Folder Watching Codez */
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -32,7 +33,7 @@ type Folders struct {
 	Config  []*FolderConfig
 	Folders map[string]*Folder
 	Events  chan *eventData
-	Updates chan *update
+	Updates chan *xtractr.Response
 	Logf    func(msg string, v ...interface{})
 	Debug   func(msg string, v ...interface{})
 	Watcher *fsnotify.Watcher
@@ -50,12 +51,6 @@ type eventData struct {
 	cnfg *FolderConfig
 	name string
 	file string
-}
-
-type update struct {
-	Step ExtractStatus
-	Name string
-	Resp *xtractr.Response
 }
 
 func (u *Unpackerr) logFolders() {
@@ -104,7 +99,7 @@ func (u *Unpackerr) PollFolders() {
 func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fsnotify.NewWatcher: %w", err)
 	}
 
 	for _, folder := range u.Folders {
@@ -117,7 +112,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 		Config:  u.Folders,
 		Folders: make(map[string]*Folder),
 		Events:  make(chan *eventData, u.Config.Buffer),
-		Updates: make(chan *update, updateChanSize),
+		Updates: make(chan *xtractr.Response, updateChanSize),
 		Debug:   u.Debug,
 		Logf:    u.Logf,
 		Watcher: watcher,
@@ -155,7 +150,11 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history.
-	u.updateQueueStatus(&Extracts{Path: name, Status: QUEUED})
+	u.updateQueueStatus(&Extracts{
+		App:    "Folder",
+		Path:   name,
+		Status: QUEUED,
+	})
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -174,22 +173,45 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.Logf("[Folder] Queued: %s, queue size: %d", name, queueSize)
 }
 
-func (u *Unpackerr) processFolderUpdate(update *update) {
-	if _, ok := u.folders.Folders[update.Name]; !ok {
+// xtractCallback is run twice by the xtractr library when the extraction begins, and finishes.
+func (f *Folders) xtractCallback(resp *xtractr.Response) {
+	// This ends up at processFolderUpdate().
+	f.Updates <- resp
+}
+
+func (u *Unpackerr) processFolderUpdate(resp *xtractr.Response) {
+	if _, ok := u.folders.Folders[resp.X.Name]; !ok {
 		// It doesn't exist? weird. delete it and bail out.
-		delete(u.Map, update.Name)
+		delete(u.Map, resp.X.Name)
 
 		return
 	}
 
-	u.updateQueueStatus(&Extracts{Path: update.Name, Status: update.Step})
-	u.folders.Folders[update.Name].last = time.Now()
-	u.folders.Folders[update.Name].step = update.Step
+	u.folders.Folders[resp.X.Name].last = time.Now()
 
-	// Resp is only set when the extraction is finished.
-	if update.Resp != nil {
-		u.folders.Folders[update.Name].list = update.Resp.NewFiles
+	switch {
+	case !resp.Done:
+		u.Logf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		u.folders.Folders[resp.X.Name].step = EXTRACTING
+	case resp.Error != nil:
+		u.Logf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.folders.Folders[resp.X.Name].step = EXTRACTFAILED
+	default: // this runs in a go routine
+		u.Logf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, written: %dMiB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
+			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
+		// Send the update back into our channel (single go routine) to processFolderUpdate().
+		u.folders.Folders[resp.X.Name].step = EXTRACTED
+		u.folders.Folders[resp.X.Name].list = resp.NewFiles
 	}
+
+	u.updateQueueStatus(&Extracts{
+		Path:   resp.X.Name,
+		Resp:   resp,
+		Files:  resp.NewFiles,
+		Status: u.folders.Folders[resp.X.Name].step,
+	})
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -304,7 +326,9 @@ func (u *Unpackerr) checkFolderStats() {
 
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
+// This is used by apps and Folders.
 func (u *Unpackerr) updateQueueStatus(data *Extracts) {
+	// defer u.sendWebhooks(data)
 	if _, ok := u.Map[data.Path]; ok {
 		u.Map[data.Path].Status = data.Status
 		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
@@ -317,23 +341,4 @@ func (u *Unpackerr) updateQueueStatus(data *Extracts) {
 	data.Updated = time.Now()
 	data.Status = QUEUED
 	u.Map[data.Path] = data
-}
-
-// xtractCallback is run twice by the xtractr library when the extraction begins, and finishes.
-func (f *Folders) xtractCallback(resp *xtractr.Response) {
-	switch {
-	case !resp.Done:
-		f.Logf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		f.Updates <- &update{Step: EXTRACTING, Name: resp.X.Name}
-	case resp.Error != nil:
-		f.Logf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
-		f.Updates <- &update{Step: EXTRACTFAILED, Name: resp.X.Name}
-	default: // this runs in a go routine
-		f.Logf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, written: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
-			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
-		// Send the update back into our channel (single go routine) to processFolderUpdate().
-		f.Updates <- &update{Step: EXTRACTED, Resp: resp, Name: resp.X.Name}
-	}
 }

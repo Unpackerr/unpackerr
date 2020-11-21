@@ -68,15 +68,15 @@ func (status ExtractStatus) MarshalText() ([]byte, error) {
 
 	return []byte([]string{
 		// The order must not be be faulty.
-		`"waiting"`,
-		`"queued"`,
-		`"extracting"`,
-		`"extractfailed"`,
-		`"extracted"`,
-		`"imported"`,
-		`"deleting"`,
-		`"deletefailed"`,
-		`"deleted"`,
+		"waiting",
+		"queued",
+		"extracting",
+		"extractfailed",
+		"extracted",
+		"imported",
+		"deleting",
+		"deletefailed",
+		"deleted",
 	}[status]), nil
 }
 

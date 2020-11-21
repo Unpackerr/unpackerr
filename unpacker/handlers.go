@@ -12,9 +12,9 @@ import (
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	Path    string            `json:"name"`
+	Path    string            `json:"path"`
 	App     string            `json:"app"`
-	Files   []string          `json:"files"`
+	Files   []string          `json:"-"`
 	Status  ExtractStatus     `json:"unpackerr_eventtype"`
 	Updated time.Time         `json:"time"`
 	Resp    *xtractr.Response `json:"data"`

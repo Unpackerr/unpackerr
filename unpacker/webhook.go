@@ -16,12 +16,13 @@ import (
 )
 
 type WebhookConfig struct {
-	URL       string        `json:"url" toml:"url" xml:"url" yaml:"url"`
-	Timeout   cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	IgnoreSSL bool          `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
-	Silent    bool          `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Events    []string      `json:"events" toml:"events" xml:"events" yaml:"events"`
-	client    *http.Client  `json:"-"`
+	URL       string          `json:"url" toml:"url" xml:"url" yaml:"url"`
+	Timeout   cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	IgnoreSSL bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
+	Silent    bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
+	Events    []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
+	Exclude   []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	client    *http.Client    `json:"-"`
 }
 
 type WebhookPayload struct {
@@ -34,7 +35,7 @@ type WebhookPayload struct {
 
 func (u *Unpackerr) sendWebhooks(i *Extracts) {
 	for _, hook := range u.Webhook {
-		if !hook.HasEvent(i.Status) {
+		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
 			continue
 		}
 
@@ -96,7 +97,7 @@ func (u *Unpackerr) validateWebhook() {
 		}
 
 		if len(u.Webhook[i].Events) == 0 {
-			u.Webhook[i].Events = []string{"all"}
+			u.Webhook[i].Events = []ExtractStatus{WAITING}
 		}
 
 		if u.Webhook[i].client == nil {
@@ -124,9 +125,22 @@ func (u *Unpackerr) logWebhook() {
 	}
 }
 
-func (w *WebhookConfig) HasEvent(e fmt.Stringer) bool {
+// Excluded returns true if an app is in the Exclude slice.
+func (w *WebhookConfig) Excluded(app string) bool {
+	for _, a := range w.Exclude {
+		if strings.EqualFold(a, app) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// HasEvent returns true if a status event is in the Events slice.
+// Also returns true if the Events slice has only one value of WAITING.
+func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
 	for _, h := range w.Events {
-		if strings.EqualFold(h, "all") || strings.EqualFold(h, e.String()) {
+		if (h == WAITING && len(w.Events) == 1) || h == e {
 			return true
 		}
 	}

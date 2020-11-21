@@ -54,11 +54,13 @@ dir_mode = "0755"
 
 # Sends a webhook when an extraction starts and again when it finishes.
 # Created to integrate with discordnotifier.com.
-# Can possibly be used with other services.
+# Can possibly be used with other services. Don't forget to uncomment [[webhook]].
 #[[webhook]]
 #   url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
 #   ignore_ssl = false # ignore certificate errors?
 #   silent     = false # do not log success
+#   events     = [0]   # list of event ids to include, 0 == all.
+#   exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 
 ###
 ## You must uncomment the [[header]] and api_key at a minimum for *add apps.

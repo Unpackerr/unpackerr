@@ -328,21 +328,20 @@ func (u *Unpackerr) checkFolderStats() {
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders.
 func (u *Unpackerr) updateQueueStatus(data *Extracts) {
-	if _, ok := u.Map[data.Path]; ok {
+	switch _, ok := u.Map[data.Path]; ok {
+	case true:
 		u.Map[data.Path].Status = data.Status
 		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
-		u.Map[data.Path].Updated = time.Now()
-		u.Map[data.Path].Resp = data.Resp
 
-		u.sendWebhooks(u.Map[data.Path])
-
-		return
+		if data.Resp != nil {
+			u.Map[data.Path].Resp = data.Resp
+		}
+	default:
+		// This is a new Folder being queued for extraction.
+		data.Status = QUEUED
+		u.Map[data.Path] = data
 	}
 
-	// This is a new folder being extracted.
-	data.Updated = time.Now()
-	data.Status = QUEUED
-	u.Map[data.Path] = data
-
+	u.Map[data.Path].Updated = time.Now()
 	u.sendWebhooks(u.Map[data.Path])
 }

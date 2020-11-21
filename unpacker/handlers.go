@@ -12,12 +12,12 @@ import (
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	Path    string            `json:"path"`
+	Path    string            `json:"name"`
 	App     string            `json:"app"`
 	Files   []string          `json:"files"`
 	Status  ExtractStatus     `json:"unpackerr_eventtype"`
-	Updated time.Time         `json:"updated"`
-	Resp    *xtractr.Response `json:"response"`
+	Updated time.Time         `json:"time"`
+	Resp    *xtractr.Response `json:"data"`
 }
 
 // ExtractStatus is our enum for an extract's status.
@@ -79,30 +79,22 @@ func (u *Unpackerr) checkImportsDone() {
 
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
 func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
-	elapsed := time.Since(data.Updated)
-
-	switch {
+	switch elapsed := time.Since(data.Updated); {
 	case data.Status == WAITING:
 		// A waiting item just imported. We never extracted it. Remove it and move on.
 		delete(u.Map, name)
 		u.Logf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
 		u.Debug("Already imported? %s", name)
-
-		return
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
-		u.Map[name].Status = DELETED
-		u.Map[name].Updated = time.Now()
-
 		// In a routine so it can run slowly and not block.
 		go u.DeleteFiles(data.Files...)
+		u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
 	case data.Status == IMPORTED:
 		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
 	case data.Status != IMPORTED:
-		u.Map[name].Status = IMPORTED
-		u.Map[name].Updated = time.Now()
-
+		u.updateQueueStatus(&Extracts{Path: name, Status: IMPORTED})
 		u.Logf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 	}
 }

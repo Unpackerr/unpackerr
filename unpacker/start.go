@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 )
 
 const (
+	defaultFileMode    = 0755
+	defaultDirMode     = 0644
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
 	defaultRetryDelay  = 5 * time.Minute
@@ -95,15 +98,17 @@ func Start() (err error) {
 		return fmt.Errorf("log_file: %w", err)
 	}
 
+	fm, dm := u.validateConfig()
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
+	u.logStartupInfo()
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
 		Logger:   u.log,
-		FileMode: 0644,
-		DirMode:  0755,
+		FileMode: os.FileMode(fm),
+		DirMode:  os.FileMode(dm),
 	})
 
 	go u.Run()
@@ -136,7 +141,6 @@ func (u *Unpackerr) Run() {
 		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
 	)
 
-	u.validateConfig()
 	u.PollFolders()      // This initializes channel(s) used below.
 	u.processAppQueues() // Get in-app queues on startup.
 
@@ -168,11 +172,23 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// validateConfig makes sure config file values are ok, then prints them.
-func (u *Unpackerr) validateConfig() {
+// validateConfig makes sure config file values are ok. Returns file and dir modes.
+func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 		u.Debug("Minimum Delete Delay: %v", minimumDeleteDelay.String())
+	}
+
+	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
+	if err != nil {
+		fm = defaultFileMode
+		u.FileMode = strconv.FormatUint(fm, 32)
+	}
+
+	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
+	if err != nil {
+		dm = defaultDirMode
+		u.DirMode = strconv.FormatUint(dm, 32)
 	}
 
 	if u.Parallel == 0 {
@@ -195,7 +211,8 @@ func (u *Unpackerr) validateConfig() {
 	u.validateLidarr()
 	u.validateReadarr()
 	u.validateWebhook()
-	u.logStartupInfo()
+
+	return fm, dm
 }
 
 // custom percentage procedure for *arr apps.

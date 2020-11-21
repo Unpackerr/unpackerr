@@ -113,6 +113,11 @@ func (u *Unpackerr) logStartupInfo() {
 	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
 	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
 	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
-	u.Log(" => Log File:", u.Config.LogFile)
+	u.Log(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
+
+	if u.Config.LogFile != "" {
+		u.Log(" => Log File:", u.Config.LogFile)
+	}
+
 	u.logWebhook()
 }

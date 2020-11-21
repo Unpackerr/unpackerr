@@ -119,6 +119,8 @@ folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into 
 
 This application can send a POST webhook to a URL when an extraction begins, and again
 when it finishes. Configure 1 or more webhook URLs with the parameters below.
+Works great with [discordnotifier.com](https://discordnotifier.com). You can use
+[requestbin.com](https://requestbin.com/r/) to test and _see_ the payload.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|

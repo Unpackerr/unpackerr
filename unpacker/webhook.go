@@ -42,17 +42,14 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration)
 			defer cancel()
 
-			err := u.sendWebhook(ctx, hook, &WebhookPayload{
+			if err := u.sendWebhook(ctx, hook, &WebhookPayload{
 				Time:  i.Updated,
 				Name:  i.Path,
 				App:   i.App,
 				Event: i.Status.String(),
 				Data:  i.Resp,
-			})
-			if err != nil {
+			}); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
-
-				return
 			}
 		}(hook)
 	}
@@ -80,8 +77,7 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 	body, err := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("POSTing payload, bad status (%s) '%s' (body err: %w) %s",
-			res.Status, hook.URL, err, body)
+		return fmt.Errorf("invalid HTTP status reply (%s) '%s' (body err: %w) %s", res.Status, hook.URL, err, body)
 	}
 
 	if !hook.Silent {

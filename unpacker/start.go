@@ -180,13 +180,13 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	}
 
 	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
-	if err != nil {
+	if err != nil || u.FileMode == "" {
 		fm = defaultFileMode
 		u.FileMode = strconv.FormatUint(fm, 32)
 	}
 
 	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
-	if err != nil {
+	if err != nil || u.DirMode == "" {
 		dm = defaultDirMode
 		u.DirMode = strconv.FormatUint(dm, 32)
 	}

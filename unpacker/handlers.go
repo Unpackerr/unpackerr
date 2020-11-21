@@ -44,9 +44,15 @@ func (status ExtractStatus) String() string {
 
 	return []string{
 		// The order must not be be faulty.
-		"Waiting, pre-Queue", "Queued", "Extraction Progressing", "Extraction Failed",
-		"Extracted, Awaiting Import", "Imported",
-		"Deleting", "Delete Failed", "Deleted",
+		"Waiting, pre-Queue",
+		"Queued",
+		"Extracting",
+		"Extraction Failed",
+		"Extracted, Awaiting Import",
+		"Imported",
+		"Deleting",
+		"Delete Failed",
+		"Deleted",
 	}[status]
 }
 

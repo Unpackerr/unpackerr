@@ -102,6 +102,8 @@ func Start() (err error) {
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
 		Logger:   u.log,
+		FileMode: 0644,
+		DirMode:  0755,
 	})
 
 	go u.Run()
@@ -135,7 +137,6 @@ func (u *Unpackerr) Run() {
 	)
 
 	u.validateConfig()
-	u.logStartupInfo()
 	u.PollFolders()      // This initializes channel(s) used below.
 	u.processAppQueues() // Get in-app queues on startup.
 
@@ -167,7 +168,7 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// validateConfig makes sure config file values are ok.
+// validateConfig makes sure config file values are ok, then prints them.
 func (u *Unpackerr) validateConfig() {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
@@ -189,7 +190,12 @@ func (u *Unpackerr) validateConfig() {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	u.validateAppConfigs()
+	u.validateSonarr()
+	u.validateRadarr()
+	u.validateLidarr()
+	u.validateReadarr()
+	u.validateWebhook()
+	u.logStartupInfo()
 }
 
 // custom percentage procedure for *arr apps.

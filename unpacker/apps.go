@@ -51,23 +51,6 @@ const (
 	Readarr = "Readarr"
 )
 
-func (u *Unpackerr) validateAppConfigs() {
-	u.validateSonarr()
-	u.validateRadarr()
-	u.validateLidarr()
-	u.validateReadarr()
-	u.validateWebhook()
-}
-
-func (u *Unpackerr) logAppStartupInfo() {
-	u.logSonarr()
-	u.logRadarr()
-	u.logLidarr()
-	u.logReadarr()
-	u.logFolders()
-	u.logWebhook()
-}
-
 // processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // The calls the check methods to scan their queues for changes.
 func (u *Unpackerr) processAppQueues() {

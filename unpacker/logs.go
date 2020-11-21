@@ -102,7 +102,11 @@ func (u *Unpackerr) setupLogging() error {
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo() {
 	u.Log("==> Startup Settings <==")
-	u.logAppStartupInfo()
+	u.logSonarr()
+	u.logRadarr()
+	u.logLidarr()
+	u.logReadarr()
+	u.logFolders()
 	u.Log(" => Parallel:", u.Config.Parallel)
 	u.Log(" => Interval:", u.Config.Interval.Duration)
 	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
@@ -110,4 +114,5 @@ func (u *Unpackerr) logStartupInfo() {
 	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
 	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
 	u.Log(" => Log File:", u.Config.LogFile)
+	u.logWebhook()
 }

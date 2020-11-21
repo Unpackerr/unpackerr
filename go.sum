@@ -20,6 +20,8 @@ golift.io/version v0.0.0-20201102043309-49b267d4cd37 h1:UU2WaZBBCpDyMv3mdo3ZxT7U
 golift.io/version v0.0.0-20201102043309-49b267d4cd37/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
 golift.io/xtractr v0.0.1 h1:eDuR1rjYpS4IC6C6z2QsrZNbHqRQScRB2diG9N+3tpQ=
 golift.io/xtractr v0.0.1/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
+golift.io/xtractr v0.0.2-0.20201121072508-bd8016168100 h1:MHIbyIJPmRWmXa0CiIMqYwjadlpWN1GvGA7dBiCgn6o=
+golift.io/xtractr v0.0.2-0.20201121072508-bd8016168100/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 h1:tQIYjPdBoyREyB9XMu+nnTclpTYkz2zFM+lzLJFO4gQ=

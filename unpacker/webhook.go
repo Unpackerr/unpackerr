@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"golift.io/cnfg"
@@ -19,11 +20,15 @@ type WebhookConfig struct {
 	IgnoreSSL bool          `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
 	Silent    bool          `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events    []string      `json:"events" toml:"events" xml:"events" yaml:"events"`
-	client    *http.Client
+	client    *http.Client  `json:"-"`
 }
 
-func (u *Unpackerr) sendWebhooks(i interface{}) {
+func (u *Unpackerr) sendWebhooks(i *Extracts) {
 	for _, hook := range u.Webhook {
+		if !hook.HasEvent(i.Status) {
+			continue
+		}
+
 		go func(hook *WebhookConfig) {
 			res, err := u.sendWebhook(hook, i)
 			if err != nil {
@@ -81,6 +86,10 @@ func (u *Unpackerr) validateWebhook() {
 			u.Webhook[i].Timeout.Duration = time.Minute
 		}
 
+		if len(u.Webhook[i].Events) == 0 {
+			u.Webhook[i].Events = []string{"all"}
+		}
+
 		if u.Webhook[i].client == nil {
 			u.Webhook[i].client = &http.Client{
 				Timeout: u.Webhook[i].Timeout.Duration,
@@ -103,4 +112,14 @@ func (u *Unpackerr) logWebhook() {
 			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v)", f.URL, f.Timeout, f.IgnoreSSL)
 		}
 	}
+}
+
+func (w *WebhookConfig) HasEvent(e fmt.Stringer) bool {
+	for _, h := range w.Events {
+		if strings.EqualFold(h, "all") || strings.EqualFold(h, e.String()) {
+			return true
+		}
+	}
+
+	return false
 }

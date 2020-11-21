@@ -16,6 +16,7 @@ import (
 )
 
 type WebhookConfig struct {
+	Name      string          `json:"name" toml:"name" xml:"name" yaml:"name"`
 	URL       string          `json:"url" toml:"url" xml:"url" yaml:"url"`
 	Timeout   cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	IgnoreSSL bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
@@ -23,6 +24,8 @@ type WebhookConfig struct {
 	Events    []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude   []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
 	client    *http.Client    `json:"-"`
+	fails     uint            `json:"-"`
+	posts     uint            `json:"-"`
 }
 
 type WebhookPayload struct {
@@ -53,9 +56,11 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 				Data:  i.Resp,
 			}); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
+				hook.fails++
 			} else if !hook.Silent {
-				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.URL)
+				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.Name)
 				u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
+				hook.posts++
 			}
 		}(hook)
 	}
@@ -64,17 +69,17 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i interface{}) ([]byte, error) {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling payload '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("marshaling payload '%s': %w", hook.Name, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", hook.URL, bytes.NewBuffer(b))
 	if err != nil {
-		return nil, fmt.Errorf("creating request '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("creating request '%s': %w", hook.Name, err)
 	}
 
 	res, err := hook.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("POSTing payload '%s': %w", hook.URL, err)
+		return nil, fmt.Errorf("POSTing payload '%s': %w", hook.Name, err)
 	}
 	defer res.Body.Close()
 
@@ -83,7 +88,7 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 	body, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, hook.URL, body)
+		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, hook.Name, body)
 	}
 
 	return body, nil
@@ -91,6 +96,10 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 
 func (u *Unpackerr) validateWebhook() {
 	for i := range u.Webhook {
+		if u.Webhook[i].Name == "" {
+			u.Webhook[i].Name = u.Webhook[i].URL
+		}
+
 		if u.Webhook[i].Timeout.Duration == 0 {
 			u.Webhook[i].Timeout.Duration = u.Timeout.Duration
 		}
@@ -113,13 +122,13 @@ func (u *Unpackerr) validateWebhook() {
 func (u *Unpackerr) logWebhook() {
 	if c := len(u.Webhook); c == 1 {
 		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-			u.Webhook[0].URL, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, u.Webhook[0].Events)
+			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, u.Webhook[0].Events)
 	} else {
 		u.Log(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
 			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-				f.URL, f.Timeout, f.IgnoreSSL, f.Silent, f.Events)
+				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, f.Events)
 		}
 	}
 }

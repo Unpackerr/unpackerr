@@ -57,6 +57,7 @@ dir_mode = "0755"
 # Can possibly be used with other services. Don't forget to uncomment [[webhook]].
 #[[webhook]]
 #   url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
+#   name       = ""    # Set this to hide the URL in logs.
 #   ignore_ssl = false # ignore certificate errors?
 #   silent     = false # do not log success
 #   events     = [0]   # list of event ids to include, 0 == all.

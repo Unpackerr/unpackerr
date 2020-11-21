@@ -20,42 +20,6 @@ type Extracts struct {
 	Resp    *xtractr.Response `json:"data"`
 }
 
-// ExtractStatus is our enum for an extract's status.
-type ExtractStatus uint8
-
-// Extract Statuses.
-const (
-	WAITING = ExtractStatus(iota)
-	QUEUED
-	EXTRACTING
-	EXTRACTFAILED
-	EXTRACTED
-	IMPORTED
-	DELETING
-	DELETEFAILED // unused
-	DELETED
-)
-
-// String makes ExtractStatus human readable.
-func (status ExtractStatus) String() string {
-	if status > DELETED {
-		return "Unknown"
-	}
-
-	return []string{
-		// The order must not be be faulty.
-		"Waiting, pre-Queue",
-		"Queued",
-		"Extracting",
-		"Extraction Failed",
-		"Extracted, Awaiting Import",
-		"Imported",
-		"Deleting",
-		"Delete Failed",
-		"Deleted",
-	}[status]
-}
-
 // checkImportsDone checks if extracted items have been imported.
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {

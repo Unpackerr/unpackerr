@@ -125,14 +125,16 @@ Works great with [discordnotifier.com](https://discordnotifier.com). You can use
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
 webhook.url|`UN_WEBHOOK_0_URL`|No Default. URL to send POST webhook to.|
+webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL. Provide an optional name to hide the URL in logs.|
 webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`.|
 webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs.|
 webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates.|
-webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below).|
 webhook.exclude|`UN_WEBHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc.|
+webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below).|
 
-Event IDs: `0` = all, `1` = queued, `2` = extracting, `3` = extract failed,
-`4` = extracted, `5` = imported, `6` = deleting, `7` = delete failed, `8` = deleted
+Event IDs (not all of these are used in webhooks): `0` = all,
+`1` = queued, `2` = extracting, `3` = extract failed, `4` = extracted,
+`5` = imported, `6` = deleting, `7` = delete failed, `8` = deleted
 
 ##### Example Usage
 

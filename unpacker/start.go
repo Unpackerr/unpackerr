@@ -37,7 +37,7 @@ type Unpackerr struct {
 	*xtractr.Xtractr
 	folders *Folders
 	sigChan chan os.Signal
-	updates chan *Extracts // external updates coming in
+	updates chan *xtractr.Response
 	log     *log.Logger
 }
 
@@ -62,7 +62,7 @@ func New() *Unpackerr {
 		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extracts)},
-		updates: make(chan *Extracts),
+		updates: make(chan *xtractr.Response),
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
@@ -156,12 +156,12 @@ func (u *Unpackerr) Run() {
 			u.processAppQueues()
 			// check if things got imported and now need to be deleted.
 			u.checkImportsDone()
-		case update := <-u.updates:
+		case resp := <-u.updates:
 			// xtractr callback for app download extraction.
-			u.updateQueueStatus(update)
-		case update := <-u.folders.Updates:
+			u.handleXtractrCallback(resp)
+		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.
-			u.processFolderUpdate(update)
+			u.folderXtractrCallback(resp)
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.folders.processEvent(event)

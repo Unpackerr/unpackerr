@@ -8,5 +8,5 @@ require (
 	golift.io/cnfg v0.0.7
 	golift.io/starr v0.9.4
 	golift.io/version v0.0.1
-	golift.io/xtractr v0.0.3-0.20201122045137-4e2e9f6486a5
+	golift.io/xtractr v0.0.3-0.20201122120331-790a47f39f51
 )

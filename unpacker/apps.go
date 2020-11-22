@@ -21,6 +21,11 @@ const (
 	defaultProtocol = "torrent"
 	// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
 	prefixPathMsg = "No files found are eligible for import in "
+	// These are the names used to identify each app.
+	Sonarr  = "Sonarr"
+	Radarr  = "Radarr"
+	Lidarr  = "Lidarr"
+	Readarr = "Readarr"
 )
 
 // Config defines the configuration data used to start the application.
@@ -44,14 +49,6 @@ type Config struct {
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 }
-
-// These are the names used to identify each app.
-const (
-	Sonarr  = "Sonarr"
-	Radarr  = "Radarr"
-	Lidarr  = "Lidarr"
-	Readarr = "Readarr"
-)
 
 // processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // The calls the check methods to scan their queues for changes.

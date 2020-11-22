@@ -15,7 +15,6 @@ type Extracts struct {
 	Path    string                 `json:"path"`
 	App     string                 `json:"app"`
 	IDs     map[string]interface{} `json:"ids"`
-	Files   []string               `json:"-"`
 	Status  ExtractStatus          `json:"unpackerr_eventtype"`
 	Updated time.Time              `json:"time"`
 	Resp    *xtractr.Response      `json:"data"`
@@ -53,13 +52,13 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 		u.Debug("Already imported? %s", name)
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		// In a routine so it can run slowly and not block.
-		go u.DeleteFiles(data.Files...)
-		u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
+		go u.DeleteFiles(data.Resp.NewFiles...)
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
 	case data.Status == IMPORTED:
 		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
 	case data.Status != IMPORTED:
-		u.updateQueueStatus(&Extracts{Path: name, Status: IMPORTED})
+		u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
 		u.Logf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 	}
 }
@@ -102,7 +101,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 		SearchPath: path,
 		TempFolder: false,
 		DeleteOrig: false,
-		CBFunction: u.handleXtractrCallback,
+		CBChannel:  u.updates,
 	})
 	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
@@ -127,21 +126,21 @@ func (u *Unpackerr) checkExtractDone() {
 }
 
 // handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
-// This takes the provided info and logs it then sends it into the update channel.
+// This takes the provided info and logs it then sends it the queue update method.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
 		u.Logf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTING, Resp: resp}
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp})
 	case resp.Error != nil:
 		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp})
 	default:
 		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, wrote: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),
 			len(resp.AllFiles), resp.Size/mebiByte)
-		u.updates <- &Extracts{Path: resp.X.Name, Status: EXTRACTED, Files: resp.NewFiles, Resp: resp}
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
 	}
 }
 

@@ -30,6 +30,8 @@ golift.io/xtractr v0.0.3-0.20201121225407-631dceeed10f h1:N9MXa/JQXUd/2FRCPCh3Zm
 golift.io/xtractr v0.0.3-0.20201121225407-631dceeed10f/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 golift.io/xtractr v0.0.3-0.20201122045137-4e2e9f6486a5 h1:o0e2ChzI+4xvanSNU5enr7+jK7Bc6Quu9toaba/dzSI=
 golift.io/xtractr v0.0.3-0.20201122045137-4e2e9f6486a5/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
+golift.io/xtractr v0.0.3-0.20201122120331-790a47f39f51 h1:O4qwt7t+21gCXBfP3x+hTvG7HzlvRRO3frc7FZNyQZY=
+golift.io/xtractr v0.0.3-0.20201122120331-790a47f39f51/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 h1:tQIYjPdBoyREyB9XMu+nnTclpTYkz2zFM+lzLJFO4gQ=

@@ -149,12 +149,8 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	_ = u.folders.Watcher.Remove(name)
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
-	// create a queue counter in the main history.
-	u.updateQueueStatus(&Extracts{
-		App:    "Folder",
-		Path:   name,
-		Status: QUEUED,
-	})
+	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
+	u.updateQueueStatus(&newStatus{Name: name}).App = "Folder"
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -162,7 +158,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		SearchPath: name,
 		TempFolder: !folder.cnfg.MoveBack,
 		DeleteOrig: false,
-		CBFunction: u.folders.xtractCallback,
+		CBChannel:  u.folders.Updates,
 	})
 	if err != nil {
 		u.Log("[ERROR]", err)
@@ -173,13 +169,8 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.Logf("[Folder] Queued: %s, queue size: %d", name, queueSize)
 }
 
-// xtractCallback is run twice by the xtractr library when the extraction begins, and finishes.
-func (f *Folders) xtractCallback(resp *xtractr.Response) {
-	// This ends up at processFolderUpdate().
-	f.Updates <- resp
-}
-
-func (u *Unpackerr) processFolderUpdate(resp *xtractr.Response) {
+// folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
+func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	if _, ok := u.folders.Folders[resp.X.Name]; !ok {
 		// It doesn't exist? weird. delete it and bail out.
 		delete(u.Map, resp.X.Name)
@@ -201,15 +192,14 @@ func (u *Unpackerr) processFolderUpdate(resp *xtractr.Response) {
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
 			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
-		// Send the update back into our channel (single go routine) to processFolderUpdate().
+
 		u.folders.Folders[resp.X.Name].step = EXTRACTED
 		u.folders.Folders[resp.X.Name].list = resp.NewFiles
 	}
 
-	u.updateQueueStatus(&Extracts{
-		Path:   resp.X.Name,
+	u.updateQueueStatus(&newStatus{
+		Name:   resp.X.Name,
 		Resp:   resp,
-		Files:  resp.NewFiles,
 		Status: u.folders.Folders[resp.X.Name].step,
 	})
 }
@@ -306,16 +296,16 @@ func (u *Unpackerr) checkFolderStats() {
 			u.Restarted++
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			// Folder reached delete delay (after extraction), nuke it.
-			u.updateQueueStatus(&Extracts{Path: name, Status: DELETED})
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED})
 			delete(u.folders.Folders, name)
 
 			// Only delete the extracted files if DeleteAfter is greater than 0.
 			if !folder.cnfg.MoveBack && folder.cnfg.DeleteAfter.Duration > 0 {
-				u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+				go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
 			}
 
 			if folder.cnfg.DeleteOrig {
-				u.DeleteFiles(name)
+				go u.DeleteFiles(name)
 			}
 		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
@@ -324,24 +314,34 @@ func (u *Unpackerr) checkFolderStats() {
 	}
 }
 
+type newStatus struct {
+	Name   string
+	Status ExtractStatus
+	Resp   *xtractr.Response
+}
+
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
-// This is used by apps and Folders.
-func (u *Unpackerr) updateQueueStatus(data *Extracts) {
-	switch _, ok := u.Map[data.Path]; ok {
-	case true:
-		u.Map[data.Path].Status = data.Status
-		u.Map[data.Path].Files = append(u.Map[data.Path].Files, data.Files...)
-
-		if data.Resp != nil {
-			u.Map[data.Path].Resp = data.Resp
-		}
-	default:
+// This is used by apps and Folders in a few other places as well.
+func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extracts {
+	if _, ok := u.Map[data.Name]; !ok {
 		// This is a new Folder being queued for extraction.
-		data.Status = QUEUED
-		u.Map[data.Path] = data
+		// Arr apps do not land here. They create their own queued items in u.Map.
+		u.Map[data.Name] = &Extracts{
+			Path:    data.Name,
+			App:     "Unknown",
+			Status:  QUEUED,
+			Updated: time.Now(),
+		}
+		u.sendWebhooks(u.Map[data.Name])
+
+		return u.Map[data.Name]
 	}
 
-	u.Map[data.Path].Updated = time.Now()
-	u.sendWebhooks(u.Map[data.Path])
+	u.Map[data.Name].Status = data.Status
+	u.Map[data.Name].Resp = data.Resp
+	u.Map[data.Name].Updated = time.Now()
+	u.sendWebhooks(u.Map[data.Name])
+
+	return u.Map[data.Name]
 }

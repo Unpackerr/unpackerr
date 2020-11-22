@@ -78,7 +78,8 @@ func (u *Unpackerr) checkRadarrQueue() {
 				u.Debug("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, Radarr, u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Path),
-					fmt.Sprintf("tmdbId:%d", q.Movie.TmdbID), fmt.Sprintf("imdbId:%s", q.Movie.ImdbID))
+					fmt.Sprintf("tmdbId:%d", q.Movie.TmdbID), fmt.Sprintf("imdbId:%s", q.Movie.ImdbID),
+					fmt.Sprintf("downloadId:%s", q.DownloadID))
 
 				fallthrough
 			default:

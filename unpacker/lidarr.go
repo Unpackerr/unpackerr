@@ -87,7 +87,8 @@ func (u *Unpackerr) checkLidarrQueue() {
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Path),
-					fmt.Sprintf("artistId:%d", q.ArtistID), fmt.Sprintf("albumId:%d", q.AlbumID))
+					fmt.Sprintf("artistId:%d", q.ArtistID), fmt.Sprintf("albumId:%d", q.AlbumID),
+					fmt.Sprintf("downloadId:%s", q.DownloadID))
 
 				fallthrough
 			default:

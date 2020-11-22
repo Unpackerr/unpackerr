@@ -138,7 +138,7 @@ func logEvents(events []ExtractStatus) (s string) {
 
 	for _, e := range events {
 		if len(s) > 0 {
-			s += ", "
+			s += "&"
 		}
 
 		s += e.Short()

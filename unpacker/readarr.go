@@ -86,7 +86,8 @@ func (u *Unpackerr) checkReadarrQueue() {
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 				u.handleCompletedDownload(q.Title, Readarr, u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Path),
-					fmt.Sprintf("authorId:%d", q.AuthorID), fmt.Sprintf("bookId:%d", q.BookID))
+					fmt.Sprintf("authorId:%d", q.AuthorID), fmt.Sprintf("bookId:%d", q.BookID),
+					fmt.Sprintf("downloadId:%s", q.DownloadID))
 
 				fallthrough
 			default:

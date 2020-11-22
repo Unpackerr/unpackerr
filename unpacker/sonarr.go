@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"fmt"
 	"sync"
 
 	"golift.io/starr"
@@ -76,7 +77,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debug("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, Sonarr, u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Path))
+				u.handleCompletedDownload(q.Title, Sonarr, u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Path),
+					fmt.Sprintf("tvdbId:%d", q.Series.TvdbID), fmt.Sprintf("imdbId:%s", q.Series.ImdbID),
+					fmt.Sprintf("seriesId:%d", q.Episode.SeriesID),
+					fmt.Sprintf("tvRageId:%d", q.Series.TvRageID), fmt.Sprintf("tvMazeId:%d", q.Series.TvMazeID))
 
 				fallthrough
 			default:

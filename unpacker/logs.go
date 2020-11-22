@@ -63,7 +63,7 @@ func (status ExtractStatus) String() string {
 // MarshalText turns a status into a word, for a json identifier.
 func (status ExtractStatus) MarshalText() ([]byte, error) {
 	if status > DELETED {
-		return []byte(`"unknown"`), nil
+		return []byte("unknown"), nil
 	}
 
 	return []byte([]string{

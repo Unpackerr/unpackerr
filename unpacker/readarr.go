@@ -1,6 +1,7 @@
 package unpacker
 
 import (
+	"fmt"
 	"sync"
 
 	"golift.io/starr"
@@ -84,7 +85,8 @@ func (u *Unpackerr) checkReadarrQueue() {
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-				u.handleCompletedDownload(q.Title, Readarr, u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Path))
+				u.handleCompletedDownload(q.Title, Readarr, u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Path),
+					fmt.Sprintf("authorId:%d", q.AuthorID), fmt.Sprintf("bookId:%d", q.BookID))
 
 				fallthrough
 			default:

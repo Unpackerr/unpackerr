@@ -14,6 +14,7 @@ import (
 type Extracts struct {
 	Path    string            `json:"path"`
 	App     string            `json:"app"`
+	IDs     []string          `json:"ids"`
 	Files   []string          `json:"-"`
 	Status  ExtractStatus     `json:"unpackerr_eventtype"`
 	Updated time.Time         `json:"time"`
@@ -64,14 +65,13 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 }
 
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
-func (u *Unpackerr) handleCompletedDownload(name, app, path string) {
+func (u *Unpackerr) handleCompletedDownload(name, app, path string, id ...string) {
 	item, ok := u.Map[name]
 	if !ok {
 		u.Map[name] = &Extracts{
 			App:     app,
 			Path:    path,
-			Files:   nil,
-			Resp:    nil,
+			IDs:     id,
 			Status:  WAITING,
 			Updated: time.Now(),
 		}

@@ -75,6 +75,8 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 		return nil, fmt.Errorf("creating request '%s': %w", hook.Name, err)
 	}
 
+	req.Header.Set("content-type", "application/json")
+
 	res, err := hook.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("POSTing payload '%s': %w", hook.Name, err)

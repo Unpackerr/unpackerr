@@ -27,8 +27,8 @@ const (
 	DELETED
 )
 
-// String makes ExtractStatus human readable.
-func (status ExtractStatus) String() string {
+// Desc makes ExtractStatus human readable.
+func (status ExtractStatus) Desc() string {
 	if status > DELETED {
 		return "Unknown"
 	}
@@ -47,12 +47,13 @@ func (status ExtractStatus) String() string {
 	}[status]
 }
 
+// MarshalText turns a status into a word, for a json identifier.
 func (status ExtractStatus) MarshalText() ([]byte, error) {
-	return []byte(status.Short()), nil
+	return []byte(status.String()), nil
 }
 
-// MarshalText turns a status into a word, for a json identifier.
-func (status ExtractStatus) Short() string {
+// String turns a status into a short string.
+func (status ExtractStatus) String() string {
 	if status > DELETED {
 		return "unknown"
 	}

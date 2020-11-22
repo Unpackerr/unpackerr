@@ -31,7 +31,7 @@ type WebhookConfig struct {
 
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
-func (u *Unpackerr) sendWebhooks(i *Extracts) {
+func (u *Unpackerr) sendWebhooks(i *Extract) {
 	for _, hook := range u.Webhook {
 		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
 			continue
@@ -142,10 +142,10 @@ func logEvents(events []ExtractStatus) (s string) {
 
 	for _, e := range events {
 		if len(s) > 0 {
-			s += "&"
+			s += "; "
 		}
 
-		s += e.Short()
+		s += e.String()
 	}
 
 	return s

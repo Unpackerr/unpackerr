@@ -323,11 +323,11 @@ type newStatus struct {
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders in a few other places as well.
-func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extracts {
+func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 	if _, ok := u.Map[data.Name]; !ok {
 		// This is a new Folder being queued for extraction.
 		// Arr apps do not land here. They create their own queued items in u.Map.
-		u.Map[data.Name] = &Extracts{
+		u.Map[data.Name] = &Extract{
 			Path:    data.Name,
 			App:     "Unknown",
 			Status:  QUEUED,

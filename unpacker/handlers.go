@@ -10,8 +10,8 @@ import (
 	"golift.io/xtractr"
 )
 
-// Extracts holds data for files being extracted.
-type Extracts struct {
+// Extract holds data for files being extracted.
+type Extract struct {
 	Path    string                 `json:"path"`
 	App     string                 `json:"app"`
 	IDs     map[string]interface{} `json:"ids"`
@@ -36,13 +36,13 @@ func (u *Unpackerr) checkImportsDone() {
 			data.Updated = time.Now()
 		}
 
-		u.Debug("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status,
+		u.Debug("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
 			time.Since(data.Updated).Round(time.Second))
 	}
 }
 
 // handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
-func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
+func (u *Unpackerr) handleFinishedImport(data *Extract, name string) {
 	switch elapsed := time.Since(data.Updated); {
 	case data.Status == WAITING:
 		// A waiting item just imported. We never extracted it. Remove it and move on.
@@ -67,7 +67,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[string]interface{}) {
 	item, ok := u.Map[name]
 	if !ok {
-		u.Map[name] = &Extracts{
+		u.Map[name] = &Extract{
 			App:     app,
 			Path:    path,
 			IDs:     ids,

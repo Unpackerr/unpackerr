@@ -52,7 +52,7 @@ type Flags struct {
 type History struct {
 	Finished  uint
 	Restarted uint
-	Map       map[string]*Extracts
+	Map       map[string]*Extract
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -61,7 +61,7 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
-		History: &History{Map: make(map[string]*Extracts)},
+		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response),
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
@@ -157,7 +157,7 @@ func (u *Unpackerr) Run() {
 			// check if things got imported and now need to be deleted.
 			u.checkImportsDone()
 		case resp := <-u.updates:
-			// xtractr callback for app download extraction.
+			// xtractr callback for arr app download extraction.
 			u.handleXtractrCallback(resp)
 		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.

@@ -12,13 +12,13 @@ import (
 
 // Extracts holds data for files being extracted.
 type Extracts struct {
-	Path    string            `json:"path"`
-	App     string            `json:"app"`
-	IDs     []string          `json:"ids"`
-	Files   []string          `json:"-"`
-	Status  ExtractStatus     `json:"unpackerr_eventtype"`
-	Updated time.Time         `json:"time"`
-	Resp    *xtractr.Response `json:"data"`
+	Path    string                 `json:"path"`
+	App     string                 `json:"app"`
+	IDs     map[string]interface{} `json:"ids"`
+	Files   []string               `json:"-"`
+	Status  ExtractStatus          `json:"unpackerr_eventtype"`
+	Updated time.Time              `json:"time"`
+	Resp    *xtractr.Response      `json:"data"`
 }
 
 // checkImportsDone checks if extracted items have been imported.
@@ -65,13 +65,13 @@ func (u *Unpackerr) handleFinishedImport(data *Extracts, name string) {
 }
 
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
-func (u *Unpackerr) handleCompletedDownload(name, app, path string, id ...string) {
+func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[string]interface{}) {
 	item, ok := u.Map[name]
 	if !ok {
 		u.Map[name] = &Extracts{
 			App:     app,
 			Path:    path,
-			IDs:     id,
+			IDs:     ids,
 			Status:  WAITING,
 			Updated: time.Now(),
 		}

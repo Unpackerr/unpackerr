@@ -9,23 +9,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"golift.io/cnfg"
-	"golift.io/xtractr"
 )
 
 type WebhookConfig struct {
-	Name      string          `json:"name" toml:"name" xml:"name" yaml:"name"`
-	URL       string          `json:"url" toml:"url" xml:"url" yaml:"url"`
-	Timeout   cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	IgnoreSSL bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
-	Silent    bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Events    []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
-	Exclude   []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	client    *http.Client    `json:"-"`
-	fails     uint            `json:"-"`
-	posts     uint            `json:"-"`
+	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
+	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
+	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	IgnoreSSL  bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
+	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
+	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
+	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	client     *http.Client    `json:"-"`
+	fails      uint            `json:"-"`
+	posts      uint            `json:"-"`
+	sync.Mutex `json:"-"`
 }
 
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
@@ -37,49 +38,50 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 		}
 
 		go func(hook *WebhookConfig) {
-			ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration+time.Second)
-			defer cancel()
-
-			// We cannot read some of the data in the response until it is done.
-			// Otherwise we may have a race condition and crash.
-			if i.Resp != nil && !i.Resp.Done {
-				i.Resp = &xtractr.Response{
-					Done:     false,
-					Started:  i.Resp.Started,
-					Archives: i.Resp.Archives,
-					Output:   i.Resp.Output,
-					X:        i.Resp.X,
-				}
-			}
-
-			if body, err := u.sendWebhook(ctx, hook, i); err != nil {
+			if body, err := hook.Send(i); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
-				hook.fails++
 			} else if !hook.Silent {
 				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.Name)
 				u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
-				hook.posts++
 			}
 		}(hook)
 	}
 }
 
-func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i interface{}) ([]byte, error) {
-	b, err := json.Marshal(i)
+// Sends marshals an interface{} into json and POSTs it to a URL.
+func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
+	w.Lock()
+	defer w.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
+	defer cancel()
+
+	b, err := w.send(ctx, i)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling payload '%s': %w", hook.Name, err)
+		w.fails++
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", hook.URL, bytes.NewBuffer(b))
+	w.posts++
+
+	return b, err
+}
+
+func (w *WebhookConfig) send(ctx context.Context, i interface{}) ([]byte, error) {
+	b, err := json.Marshal(i)
 	if err != nil {
-		return nil, fmt.Errorf("creating request '%s': %w", hook.Name, err)
+		return nil, fmt.Errorf("marshaling payload '%s': %w", w.Name, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, bytes.NewBuffer(b))
+	if err != nil {
+		return nil, fmt.Errorf("creating request '%s': %w", w.Name, err)
 	}
 
 	req.Header.Set("content-type", "application/json")
 
-	res, err := hook.client.Do(req)
+	res, err := w.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("POSTing payload '%s': %w", hook.Name, err)
+		return nil, fmt.Errorf("POSTing payload '%s': %w", w.Name, err)
 	}
 	defer res.Body.Close()
 
@@ -88,7 +90,7 @@ func (u *Unpackerr) sendWebhook(ctx context.Context, hook *WebhookConfig, i inte
 	body, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, hook.Name, body)
+		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, body)
 	}
 
 	return body, nil
@@ -170,4 +172,23 @@ func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
 	}
 
 	return false
+}
+
+// WebhookCounts returns the total count of requests and errors for all webhooks.
+func (u *Unpackerr) WebhookCounts() (total uint, fails uint) {
+	for _, hook := range u.Webhook {
+		t, f := hook.Counts()
+		total += t
+		fails += f
+	}
+
+	return total, fails
+}
+
+// Counts returns the total count of requests and failures for a webhook.
+func (w *WebhookConfig) Counts() (uint, uint) {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.posts, w.fails
 }

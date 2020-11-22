@@ -11,19 +11,6 @@ import (
 // satisfy gomnd.
 const callDepth = 2 // log the line that called us.
 
-// Use in r.eCount to return activity counters.
-type eCounters struct {
-	waiting    uint
-	queued     uint
-	extracting uint
-	failed     uint
-	extracted  uint
-	imported   uint
-	deleted    uint
-	hookOK     uint
-	hookFail   uint
-}
-
 // ExtractStatus is our enum for an extract's status.
 type ExtractStatus uint8
 
@@ -103,37 +90,40 @@ func (u *Unpackerr) Logf(msg string, v ...interface{}) {
 
 // logCurrentQueue prints the number of things happening.
 func (u *Unpackerr) logCurrentQueue() {
-	e := eCounters{}
+	var (
+		waiting          uint
+		queued           uint
+		extracting       uint
+		failed           uint
+		extracted        uint
+		imported         uint
+		deleted          uint
+		hookOK, hookFail = u.WebhookCounts()
+	)
 
 	for name := range u.Map {
 		switch u.Map[name].Status {
 		case WAITING:
-			e.waiting++
+			waiting++
 		case QUEUED:
-			e.queued++
+			queued++
 		case EXTRACTING:
-			e.extracting++
+			extracting++
 		case DELETEFAILED, EXTRACTFAILED:
-			e.failed++
+			failed++
 		case EXTRACTED:
-			e.extracted++
+			extracted++
 		case DELETED, DELETING:
-			e.deleted++
+			deleted++
 		case IMPORTED:
-			e.imported++
+			imported++
 		}
 	}
 
-	for _, hook := range u.Webhook {
-		e.hookOK += hook.posts
-		e.hookFail += hook.fails
-	}
-
 	u.Logf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted]", e.waiting, e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
-	)
+		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
 	u.Logf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks]",
-		u.Restarted, u.Finished, e.hookOK, e.hookFail)
+		u.Restarted, u.Finished, hookOK, hookFail)
 }
 
 // setupLogging splits log write into a file and/or stdout.

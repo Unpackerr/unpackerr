@@ -77,8 +77,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 				u.Debug("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, Sonarr, u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Path),
-					map[string]interface{}{"tvdbId": q.Series.TvdbID, "imdbId": q.Series.ImdbID, "downloadId": q.DownloadID,
-						"seriesId": q.Episode.SeriesID, "tvRageId": q.Series.TvRageID, "tvMazeId": q.Series.TvMazeID})
+					map[string]interface{}{
+						"tvdbId": q.Series.TvdbID, "imdbId": q.Series.ImdbID, "downloadId": q.DownloadID,
+						"seriesId": q.Episode.SeriesID, "tvRageId": q.Series.TvRageID, "tvMazeId": q.Series.TvMazeID,
+					})
 
 				fallthrough
 			default:

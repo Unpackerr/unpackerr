@@ -42,21 +42,13 @@ func (u *Unpackerr) sendWebhooks(i *Extracts) {
 
 			// We cannot read some of the data in the response until it is done.
 			// Otherwise we may have a race condition and crash.
-			if j := i; !i.Resp.Done {
-				i = &Extracts{
-					Path:    j.Path,
-					App:     j.App,
-					Status:  j.Status,
-					Updated: j.Updated,
-				}
-				if j.Resp != nil {
-					i.Resp = &xtractr.Response{
-						Done:     false,
-						Started:  j.Resp.Started,
-						Archives: j.Resp.Archives,
-						Output:   j.Resp.Output,
-						X:        j.Resp.X,
-					}
+			if i.Resp != nil && !i.Resp.Done {
+				i.Resp = &xtractr.Response{
+					Done:     false,
+					Started:  i.Resp.Started,
+					Archives: i.Resp.Archives,
+					Output:   i.Resp.Output,
+					X:        i.Resp.X,
 				}
 			}
 
@@ -128,15 +120,31 @@ func (u *Unpackerr) validateWebhook() {
 func (u *Unpackerr) logWebhook() {
 	if c := len(u.Webhook); c == 1 {
 		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, u.Webhook[0].Events)
+			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
 	} else {
 		u.Log(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
 			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, f.Events)
+				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, logEvents(f.Events))
 		}
 	}
+}
+
+func logEvents(events []ExtractStatus) (s string) {
+	if len(events) == 1 && events[0] == WAITING {
+		return "all"
+	}
+
+	for _, e := range events {
+		if len(s) > 0 {
+			s += ", "
+		}
+
+		s += e.Short()
+	}
+
+	return s
 }
 
 // Excluded returns true if an app is in the Exclude slice.

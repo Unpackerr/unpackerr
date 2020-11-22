@@ -60,13 +60,17 @@ func (status ExtractStatus) String() string {
 	}[status]
 }
 
-// MarshalText turns a status into a word, for a json identifier.
 func (status ExtractStatus) MarshalText() ([]byte, error) {
+	return []byte(status.Short()), nil
+}
+
+// MarshalText turns a status into a word, for a json identifier.
+func (status ExtractStatus) Short() string {
 	if status > DELETED {
-		return []byte("unknown"), nil
+		return "unknown"
 	}
 
-	return []byte([]string{
+	return []string{
 		// The order must not be be faulty.
 		"waiting",
 		"queued",
@@ -77,7 +81,7 @@ func (status ExtractStatus) MarshalText() ([]byte, error) {
 		"deleting",
 		"deletefailed",
 		"deleted",
-	}[status]), nil
+	}[status]
 }
 
 // Debug writes Debug log lines... to stdout and/or a file.

@@ -11,15 +11,65 @@ import (
 // satisfy gomnd.
 const callDepth = 2 // log the line that called us.
 
-// Use in r.eCount to return activity counters.
-type eCounters struct {
-	waiting    uint
-	queued     uint
-	extracting uint
-	failed     uint
-	extracted  uint
-	imported   uint
-	deleted    uint
+// ExtractStatus is our enum for an extract's status.
+type ExtractStatus uint8
+
+// Extract Statuses.
+const (
+	WAITING = ExtractStatus(iota)
+	QUEUED
+	EXTRACTING
+	EXTRACTFAILED
+	EXTRACTED
+	IMPORTED
+	DELETING
+	DELETEFAILED // unused
+	DELETED
+)
+
+// Desc makes ExtractStatus human readable.
+func (status ExtractStatus) Desc() string {
+	if status > DELETED {
+		return "Unknown"
+	}
+
+	return []string{
+		// The order must not be be faulty.
+		"Waiting, pre-Queue",
+		"Queued",
+		"Extracting",
+		"Extraction Failed",
+		"Extracted, Awaiting Import",
+		"Imported",
+		"Deleting",
+		"Delete Failed",
+		"Deleted",
+	}[status]
+}
+
+// MarshalText turns a status into a word, for a json identifier.
+func (status ExtractStatus) MarshalText() ([]byte, error) {
+	return []byte(status.String()), nil
+}
+
+// String turns a status into a short string.
+func (status ExtractStatus) String() string {
+	if status > DELETED {
+		return "unknown"
+	}
+
+	return []string{
+		// The order must not be be faulty.
+		"waiting",
+		"queued",
+		"extracting",
+		"extractfailed",
+		"extracted",
+		"imported",
+		"deleting",
+		"deletefailed",
+		"deleted",
+	}[status]
 }
 
 // Debug writes Debug log lines... to stdout and/or a file.
@@ -41,31 +91,40 @@ func (u *Unpackerr) Logf(msg string, v ...interface{}) {
 
 // logCurrentQueue prints the number of things happening.
 func (u *Unpackerr) logCurrentQueue() {
-	e := eCounters{}
+	var (
+		waiting          uint
+		queued           uint
+		extracting       uint
+		failed           uint
+		extracted        uint
+		imported         uint
+		deleted          uint
+		hookOK, hookFail = u.WebhookCounts()
+	)
 
 	for name := range u.Map {
 		switch u.Map[name].Status {
 		case WAITING:
-			e.waiting++
+			waiting++
 		case QUEUED:
-			e.queued++
+			queued++
 		case EXTRACTING:
-			e.extracting++
+			extracting++
 		case DELETEFAILED, EXTRACTFAILED:
-			e.failed++
+			failed++
 		case EXTRACTED:
-			e.extracted++
+			extracted++
 		case DELETED, DELETING:
-			e.deleted++
+			deleted++
 		case IMPORTED:
-			e.imported++
+			imported++
 		}
 	}
 
 	u.Logf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted], Totals: [%d restarts] [%d finished]",
-		e.waiting, e.queued, e.extracting, e.extracted, e.imported, e.failed, e.deleted,
-		u.Restarted, u.Finished)
+		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
+	u.Logf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks] [%d stacks]",
+		u.Restarted, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
 }
 
 // setupLogging splits log write into a file and/or stdout.
@@ -102,12 +161,22 @@ func (u *Unpackerr) setupLogging() error {
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo() {
 	u.Log("==> Startup Settings <==")
-	u.logAppStartupInfo()
+	u.logSonarr()
+	u.logRadarr()
+	u.logLidarr()
+	u.logReadarr()
+	u.logFolders()
 	u.Log(" => Parallel:", u.Config.Parallel)
 	u.Log(" => Interval:", u.Config.Interval.Duration)
 	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
 	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
 	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
 	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
-	u.Log(" => Log File:", u.Config.LogFile)
+	u.Log(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
+
+	if u.Config.LogFile != "" {
+		u.Log(" => Log File:", u.Config.LogFile)
+	}
+
+	u.logWebhook()
 }

@@ -26,6 +26,6 @@ func setTimeZone(tz string) {
 	var err error
 
 	if time.Local, err = time.LoadLocation(tz); err != nil {
-		log.Printf("[ERROR] Loading TZ Location '%s': %v\n", tz, err)
+		log.Printf("[ERROR] Loading TZ Location '%s': %v", tz, err)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -17,13 +18,18 @@ import (
 )
 
 const (
+	defaultFileMode    = 0644
+	defaultDirMode     = 0755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 	suffix             = "_unpackerred" // suffix for unpacked folders.
-	mebiByte           = 1024 * 1024
+	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
+	updateChanBuf      = 100            // Size of xtractr callback update channels.
+	defaultFolderBuf   = 20000          // Channel queue size for file system events.
+	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
 )
 
 // Unpackerr stores all the running data.
@@ -34,7 +40,7 @@ type Unpackerr struct {
 	*xtractr.Xtractr
 	folders *Folders
 	sigChan chan os.Signal
-	updates chan *Extracts // external updates coming in
+	updates chan *xtractr.Response
 	log     *log.Logger
 }
 
@@ -49,7 +55,7 @@ type Flags struct {
 type History struct {
 	Finished  uint
 	Restarted uint
-	Map       map[string]*Extracts
+	Map       map[string]*Extract
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -58,8 +64,8 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
-		History: &History{Map: make(map[string]*Extracts)},
-		updates: make(chan *Extracts),
+		History: &History{Map: make(map[string]*Extract)},
+		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
@@ -77,8 +83,7 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpackerr v%s %s (branch: %s %s)\n",
-			version.Version, version.BuildDate, version.Branch, version.Revision)
+		fmt.Println(version.Print("unpackerr"))
 
 		return nil // don't run anything else.
 	}
@@ -95,13 +100,17 @@ func Start() (err error) {
 		return fmt.Errorf("log_file: %w", err)
 	}
 
+	fm, dm := u.validateConfig()
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
+	u.logStartupInfo()
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
 		Logger:   u.log,
+		FileMode: os.FileMode(fm),
+		DirMode:  os.FileMode(dm),
 	})
 
 	go u.Run()
@@ -134,8 +143,6 @@ func (u *Unpackerr) Run() {
 		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
 	)
 
-	u.validateConfig()
-	u.logStartupInfo()
 	u.PollFolders()      // This initializes channel(s) used below.
 	u.processAppQueues() // Get in-app queues on startup.
 
@@ -151,12 +158,12 @@ func (u *Unpackerr) Run() {
 			u.processAppQueues()
 			// check if things got imported and now need to be deleted.
 			u.checkImportsDone()
-		case update := <-u.updates:
-			// xtractr callback for app download extraction.
-			u.updateQueueStatus(update)
-		case update := <-u.folders.Updates:
+		case resp := <-u.updates:
+			// xtractr callback for arr app download extraction.
+			u.handleXtractrCallback(resp)
+		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.
-			u.processFolderUpdate(update)
+			u.folderXtractrCallback(resp)
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.folders.processEvent(event)
@@ -167,11 +174,23 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// validateConfig makes sure config file values are ok.
-func (u *Unpackerr) validateConfig() {
+// validateConfig makes sure config file values are ok. Returns file and dir modes.
+func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 		u.Debug("Minimum Delete Delay: %v", minimumDeleteDelay.String())
+	}
+
+	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
+	if err != nil || u.FileMode == "" {
+		fm = defaultFileMode
+		u.FileMode = strconv.FormatUint(fm, 32)
+	}
+
+	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
+	if err != nil || u.DirMode == "" {
+		dm = defaultDirMode
+		u.DirMode = strconv.FormatUint(dm, 32)
 	}
 
 	if u.Parallel == 0 {
@@ -179,9 +198,9 @@ func (u *Unpackerr) validateConfig() {
 	}
 
 	if u.Buffer == 0 {
-		u.Buffer = defaultQueueSize
-	} else if u.Buffer < minimumQueueSize {
-		u.Buffer = minimumQueueSize
+		u.Buffer = defaultFolderBuf
+	} else if u.Buffer < minimumFolderBuf {
+		u.Buffer = minimumFolderBuf
 	}
 
 	if u.Interval.Duration < minimumInterval {
@@ -189,7 +208,9 @@ func (u *Unpackerr) validateConfig() {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	u.validateAppConfigs()
+	u.validateApps()
+
+	return fm, dm
 }
 
 // custom percentage procedure for *arr apps.

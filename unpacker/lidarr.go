@@ -85,7 +85,8 @@ func (u *Unpackerr) checkLidarrQueue() {
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Path))
+				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Path),
+					map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID})
 
 				fallthrough
 			default:

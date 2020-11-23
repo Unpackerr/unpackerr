@@ -21,6 +21,11 @@ const (
 	defaultProtocol = "torrent"
 	// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
 	prefixPathMsg = "No files found are eligible for import in "
+	// These are the names used to identify each app.
+	Sonarr  = "Sonarr"
+	Radarr  = "Radarr"
+	Lidarr  = "Lidarr"
+	Readarr = "Readarr"
 )
 
 // Config defines the configuration data used to start the application.
@@ -29,6 +34,8 @@ type Config struct {
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
 	LogFile     string           `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
+	FileMode    string           `json:"file_mode" toml:"file_mode" xml:"file_mode" yaml:"file_mode"`
+	DirMode     string           `json:"dir_mode" toml:"dir_mode" xml:"dir_mode" yaml:"dir_mode"`
 	Interval    cnfg.Duration    `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration    `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
@@ -40,30 +47,7 @@ type Config struct {
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
-	//Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
-}
-
-// These are the names used to identify each app.
-const (
-	Sonarr  = "Sonarr"
-	Radarr  = "Radarr"
-	Lidarr  = "Lidarr"
-	Readarr = "Readarr"
-)
-
-func (u *Unpackerr) validateAppConfigs() {
-	u.validateSonarr()
-	u.validateRadarr()
-	u.validateLidarr()
-	u.validateReadarr()
-}
-
-func (u *Unpackerr) logAppStartupInfo() {
-	u.logSonarr()
-	u.logRadarr()
-	u.logLidarr()
-	u.logReadarr()
-	u.logFolders()
+	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 }
 
 // processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
@@ -92,6 +76,15 @@ func (u *Unpackerr) processAppQueues() {
 	u.checkRadarrQueue()
 	u.checkLidarrQueue()
 	u.checkReadarrQueue()
+}
+
+// validateApps is broken-out into this file to make adding new apps easier.
+func (u *Unpackerr) validateApps() {
+	u.validateSonarr()
+	u.validateRadarr()
+	u.validateLidarr()
+	u.validateReadarr()
+	u.validateWebhook()
 }
 
 func (u *Unpackerr) haveQitem(name, app string) bool {

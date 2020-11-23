@@ -1,4 +1,5 @@
 # Unpackerr Example Configuration File
+# The following values are application defaults.
 
 # [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
 # Recommend trying this so you know what it looks like. I personally leave it on.
@@ -41,8 +42,30 @@ retry_delay = "5m"
 # Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
-# The following sections can be repeated if you have more than one Sonarr, Radarr or Lidarr.
-# You must uncomment the [[header]] and api_key at a minimum.
+# Use these configurations to control the file modes used for newly extracted
+# files and folders. Recommend 0644/0755 or 0666/0777.
+file_mode = "0644"
+dir_mode = "0755"
+
+###
+## The following sections can be repeated if you have more than one Sonarr,
+## Radarr or Lidarr, Readarr, Folder or Webhook.
+###
+
+# Sends a webhook when an extraction starts and again when it finishes.
+# Created to integrate with discordnotifier.com.
+# Can possibly be used with other services. Don't forget to uncomment [[webhook]].
+#[[webhook]]
+#   url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
+#   name       = ""    # Set this to hide the URL in logs.
+#   ignore_ssl = false # ignore certificate errors?
+#   silent     = false # do not log success
+#   events     = [0]   # list of event ids to include, 0 == all.
+#   exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+
+###
+## You must uncomment the [[header]] and api_key at a minimum for *add apps.
+###
 
 # TV Series / Episodes
 #[[sonarr]]
@@ -80,9 +103,12 @@ parallel = 1
 # Default protocols is torrent. Alternative: "torrent,usenet"
 #   protocols = "torrent"
 
-# This application can also watch folders for things to extract. If you copy a
-# subfolder into a watched folder (defined below) any extractable items in the
-# folder will be decompressed. This has *nothing* to do with Sonarr/Lidarr/Radarr.
+###
+## This application can also watch folders for things to extract. If you copy a
+## subfolder into a watched folder (defined below) any extractable items in the
+## folder will be decompressed. This has *nothing* to do with Sonarr/Lidarr/Radarr.
+###
+
 #[[folder]]
 #  path = "/some/folder/to/watch"
   # Delete extracted items this long after extraction. Set to 0 to disable. Uses Go Duration.

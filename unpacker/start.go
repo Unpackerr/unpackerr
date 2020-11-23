@@ -83,8 +83,7 @@ func Start() (err error) {
 
 	u := New().ParseFlags()
 	if u.Flags.verReq {
-		fmt.Printf("unpackerr v%s %s (branch: %s %s)\n",
-			version.Version, version.BuildDate, version.Branch, version.Revision)
+		fmt.Println(version.Print("unpackerr"))
 
 		return nil // don't run anything else.
 	}

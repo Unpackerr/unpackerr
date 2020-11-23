@@ -30,7 +30,7 @@ script:
   - make test
   - make docker
   # Test built docker image.
-  - docker run $BINARY -v 2>&1 | grep -Eq "^$BINARY v$VERSION"
+  - docker run $BINARY -v 2>&1 | grep -Eq "^$BINARY, version $VERSION"
   # Build everything
   - rvm 2.3.0 do make release
 after_success:

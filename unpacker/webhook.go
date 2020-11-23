@@ -32,6 +32,7 @@ type WebhookConfig struct {
 	sync.Mutex `json:"-"`
 }
 
+// WebhookPayload defines the data sent to outbound webhooks.
 type WebhookPayload struct {
 	Path  string                 `json:"path"`
 	App   string                 `json:"app"`
@@ -39,17 +40,14 @@ type WebhookPayload struct {
 	Event ExtractStatus          `json:"unpackerr_eventtype"`
 	Time  time.Time              `json:"time"`
 	Resp  *xtractr.Response      `json:"data,omitempty"`
-	Meta  MetaUnpackerr          `json:"unpackerr"`
-}
-
-type MetaUnpackerr struct {
-	GoVersion string    `json:"go_version"`
-	OS        string    `json:"os"`
-	Arch      string    `json:"arch"`
-	Version   string    `json:"version"`
-	Revision  string    `json:"revision"`
-	Branch    string    `json:"branch"`
-	Started   time.Time `json:"started"`
+	// Application Metadata.
+	Go       string    `json:"go_version"`
+	OS       string    `json:"os"`
+	Arch     string    `json:"arch"`
+	Version  string    `json:"version"`
+	Revision string    `json:"revision"`
+	Branch   string    `json:"branch"`
+	Started  time.Time `json:"started"`
 }
 
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
@@ -62,15 +60,14 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 		Time:  i.Updated,
 		Resp:  i.Resp,
 		Event: i.Status,
-		Meta: MetaUnpackerr{
-			GoVersion: runtime.Version(),
-			OS:        runtime.GOOS,
-			Arch:      runtime.GOARCH,
-			Version:   version.Version,
-			Revision:  version.Revision,
-			Branch:    version.Branch,
-			Started:   version.Started,
-		},
+		// Application Metadata.
+		Go:       runtime.Version(),
+		OS:       runtime.GOOS,
+		Arch:     runtime.GOARCH,
+		Version:  version.Version,
+		Revision: version.Revision,
+		Branch:   version.Branch,
+		Started:  version.Started,
 	}
 	if i.Status > EXTRACTED {
 		payload.Resp = nil

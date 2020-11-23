@@ -14,12 +14,6 @@ import (
 	"golift.io/xtractr"
 )
 
-const (
-	updateChanSize   = 1000  // Size of update channel. This is sufficiently large.
-	defaultQueueSize = 20000 // Channel queue size for file system events.
-	minimumQueueSize = 1000  // The snallest size the channel buffer can be.
-)
-
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
@@ -112,7 +106,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 		Config:  u.Folders,
 		Folders: make(map[string]*Folder),
 		Events:  make(chan *eventData, u.Config.Buffer),
-		Updates: make(chan *xtractr.Response, updateChanSize),
+		Updates: make(chan *xtractr.Response, updateChanBuf),
 		Debug:   u.Debug,
 		Logf:    u.Logf,
 		Watcher: watcher,
@@ -171,37 +165,35 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
 func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
-	if _, ok := u.folders.Folders[resp.X.Name]; !ok {
+	folder, ok := u.folders.Folders[resp.X.Name]
+
+	switch {
+	case !ok:
 		// It doesn't exist? weird. delete it and bail out.
 		delete(u.Map, resp.X.Name)
 
 		return
-	}
-
-	u.folders.Folders[resp.X.Name].last = time.Now()
-
-	switch {
 	case !resp.Done:
 		u.Logf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.folders.Folders[resp.X.Name].step = EXTRACTING
+
+		folder.step = EXTRACTING
 	case resp.Error != nil:
 		u.Logf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
-		u.folders.Folders[resp.X.Name].step = EXTRACTFAILED
+
+		folder.step = EXTRACTFAILED
 	default: // this runs in a go routine
 		u.Logf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
 			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
 
-		u.folders.Folders[resp.X.Name].step = EXTRACTED
-		u.folders.Folders[resp.X.Name].list = resp.NewFiles
+		folder.step = EXTRACTED
+		folder.list = resp.NewFiles
 	}
 
-	u.updateQueueStatus(&newStatus{
-		Name:   resp.X.Name,
-		Resp:   resp,
-		Status: u.folders.Folders[resp.X.Name].step,
-	})
+	folder.last = time.Now()
+
+	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.step})
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -236,6 +228,7 @@ func (f *Folders) watchFSNotify() {
 				if np := path.Dir(p); np != "." {
 					p = np
 				}
+
 				// Send this event to processEvent().
 				f.Events <- &eventData{name: p, cnfg: cnfg, file: path.Base(event.Name)}
 			}
@@ -251,6 +244,7 @@ func (f *Folders) processEvent(event *eventData) {
 		if _, ok := f.Folders[fullPath]; ok {
 			f.Debug("Folder: Removing Tracked Item: %v", fullPath)
 			delete(f.Folders, fullPath)
+
 			_ = f.Watcher.Remove(fullPath)
 		}
 
@@ -296,7 +290,7 @@ func (u *Unpackerr) checkFolderStats() {
 			u.Restarted++
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			// Folder reached delete delay (after extraction), nuke it.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED})
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
 			delete(u.folders.Folders, name)
 
 			// Only delete the extracted files if DeleteAfter is greater than 0.
@@ -338,8 +332,11 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 		return u.Map[data.Name]
 	}
 
+	if data.Resp != nil {
+		u.Map[data.Name].Resp = data.Resp
+	}
+
 	u.Map[data.Name].Status = data.Status
-	u.Map[data.Name].Resp = data.Resp
 	u.Map[data.Name].Updated = time.Now()
 	u.sendWebhooks(u.Map[data.Name])
 

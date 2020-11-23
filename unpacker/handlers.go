@@ -12,12 +12,12 @@ import (
 
 // Extract holds data for files being extracted.
 type Extract struct {
-	Path    string                 `json:"path"`
-	App     string                 `json:"app"`
-	IDs     map[string]interface{} `json:"ids"`
-	Status  ExtractStatus          `json:"unpackerr_eventtype"`
-	Updated time.Time              `json:"time"`
-	Resp    *xtractr.Response      `json:"data"`
+	Path    string
+	App     string
+	IDs     map[string]interface{}
+	Status  ExtractStatus
+	Updated time.Time
+	Resp    *xtractr.Response
 }
 
 // checkImportsDone checks if extracted items have been imported.
@@ -53,7 +53,7 @@ func (u *Unpackerr) handleFinishedImport(data *Extract, name string) {
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		// In a routine so it can run slowly and not block.
 		go u.DeleteFiles(data.Resp.NewFiles...)
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
 	case data.Status == IMPORTED:
 		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
@@ -136,10 +136,9 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp})
 	default:
-		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, wrote: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives), len(resp.Extras),
-			len(resp.AllFiles), resp.Size/mebiByte)
+		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
+			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
+			len(resp.Archives), len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
 	}
 }

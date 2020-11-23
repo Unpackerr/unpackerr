@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/version"
+	"golift.io/xtractr"
 )
 
 type WebhookConfig struct {
@@ -29,16 +32,57 @@ type WebhookConfig struct {
 	sync.Mutex `json:"-"`
 }
 
+type WebhookPayload struct {
+	Path  string                 `json:"path"`
+	App   string                 `json:"app"`
+	IDs   map[string]interface{} `json:"ids,omitempty"`
+	Event ExtractStatus          `json:"unpackerr_eventtype"`
+	Time  time.Time              `json:"time"`
+	Resp  *xtractr.Response      `json:"data,omitempty"`
+	Meta  MetaUnpackerr          `json:"unpackerr"`
+}
+
+type MetaUnpackerr struct {
+	GoVersion string    `json:"go_version"`
+	OS        string    `json:"os"`
+	Arch      string    `json:"arch"`
+	Version   string    `json:"version"`
+	Revision  string    `json:"revision"`
+	Branch    string    `json:"branch"`
+	Started   time.Time `json:"started"`
+}
+
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
+	payload := &WebhookPayload{
+		Path:  i.Path,
+		App:   i.App,
+		IDs:   i.IDs,
+		Time:  i.Updated,
+		Resp:  i.Resp,
+		Event: i.Status,
+		Meta: MetaUnpackerr{
+			GoVersion: runtime.Version(),
+			OS:        runtime.GOOS,
+			Arch:      runtime.GOARCH,
+			Version:   version.Version,
+			Revision:  version.Revision,
+			Branch:    version.Branch,
+			Started:   version.Started,
+		},
+	}
+	if i.Status > EXTRACTED {
+		payload.Resp = nil
+	}
+
 	for _, hook := range u.Webhook {
 		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
 			continue
 		}
 
 		go func(hook *WebhookConfig) {
-			if body, err := hook.Send(i); err != nil {
+			if body, err := hook.Send(payload); err != nil {
 				u.Logf("[ERROR] Webhook: %v", err)
 			} else if !hook.Silent {
 				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.Name)
@@ -135,6 +179,7 @@ func (u *Unpackerr) logWebhook() {
 	}
 }
 
+// logEvents is only used in logWebhook to format events for printing.
 func logEvents(events []ExtractStatus) (s string) {
 	if len(events) == 1 && events[0] == WAITING {
 		return "all"

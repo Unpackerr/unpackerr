@@ -78,6 +78,15 @@ func (u *Unpackerr) processAppQueues() {
 	u.checkReadarrQueue()
 }
 
+// validateApps is broken-out into this file to make adding new apps easier.
+func (u *Unpackerr) validateApps() {
+	u.validateSonarr()
+	u.validateRadarr()
+	u.validateLidarr()
+	u.validateReadarr()
+	u.validateWebhook()
+}
+
 func (u *Unpackerr) haveQitem(name, app string) bool {
 	switch app {
 	case Sonarr:

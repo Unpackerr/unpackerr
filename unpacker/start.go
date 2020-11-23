@@ -26,7 +26,10 @@ const (
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 	suffix             = "_unpackerred" // suffix for unpacked folders.
-	mebiByte           = 1024 * 1024
+	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
+	updateChanBuf      = 100            // Size of xtractr callback update channels.
+	defaultFolderBuf   = 20000          // Channel queue size for file system events.
+	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
 )
 
 // Unpackerr stores all the running data.
@@ -62,7 +65,7 @@ func New() *Unpackerr {
 		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extract)},
-		updates: make(chan *xtractr.Response),
+		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
@@ -196,9 +199,9 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	}
 
 	if u.Buffer == 0 {
-		u.Buffer = defaultQueueSize
-	} else if u.Buffer < minimumQueueSize {
-		u.Buffer = minimumQueueSize
+		u.Buffer = defaultFolderBuf
+	} else if u.Buffer < minimumFolderBuf {
+		u.Buffer = minimumFolderBuf
 	}
 
 	if u.Interval.Duration < minimumInterval {
@@ -206,11 +209,7 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 		u.Debug("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	u.validateSonarr()
-	u.validateRadarr()
-	u.validateLidarr()
-	u.validateReadarr()
-	u.validateWebhook()
+	u.validateApps()
 
 	return fm, dm
 }

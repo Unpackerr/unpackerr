@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/davidnewhall/unpackerr/unpacker"
+	"github.com/davidnewhall/unpackerr/pkg/unpackerr"
 )
 
 // Keep it simple.
@@ -13,7 +13,7 @@ func main() {
 	// Set time zone based on TZ env variable.
 	setTimeZone(os.Getenv("TZ"))
 
-	if err := unpacker.Start(); err != nil {
+	if err := unpackerr.Start(); err != nil {
 		log.Fatalln("[ERROR]", err)
 	}
 }

@@ -1,6 +1,6 @@
 // +build !windows,!darwin,!freebsd
 
-package unpacker
+package unpackerr
 
 const (
 	defaultConfFile = "/etc/unpackerr/unpackerr.conf"

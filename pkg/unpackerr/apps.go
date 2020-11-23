@@ -1,4 +1,4 @@
-package unpacker
+package unpackerr
 
 import (
 	"sync"
@@ -41,7 +41,7 @@ type Config struct {
 	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	StartDelay  cnfg.Duration    `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
 	RetryDelay  cnfg.Duration    `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
-	Buffer      int              `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`
+	Buffer      int              `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"` // undocumented.
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`

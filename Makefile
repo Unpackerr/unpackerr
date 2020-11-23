@@ -336,14 +336,6 @@ lint:
 	# Checking lint.
 	golangci-lint run $(GOLANGCI_LINT_ARGS)
 
-# Don't run this unless you're ready to debug untested vendored dependencies.
-dep: deps
-deps:
-	go get -u ...
-
-vendor:
-	go mod vendor
-
 # Homebrew stuff. macOS only.
 
 # Used for Homebrew only. Other distros can create packages.

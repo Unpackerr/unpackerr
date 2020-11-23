@@ -1,6 +1,6 @@
 // +build darwin freebsd netbsd openbsd
 
-package unpacker
+package unpackerr
 
 const (
 	defaultConfFile = "/usr/local/etc/unpackerr/unpackerr.conf"

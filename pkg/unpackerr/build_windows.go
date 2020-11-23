@@ -1,6 +1,6 @@
 // +build windows
 
-package unpacker
+package unpackerr
 
 const (
 	defaultConfFile = `C:\ProgramData\unpackerr\unpackerr.conf`

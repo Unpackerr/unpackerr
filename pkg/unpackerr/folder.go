@@ -119,6 +119,7 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	goodFlist := []string{}
 
 	for _, f := range u.Folders {
+		f.Path = strings.TrimSuffix(f.Path, `/\`)
 		if stat, err := os.Stat(f.Path); err != nil {
 			u.Log("[ERROR] Folder (cannot watch):", err)
 
@@ -129,7 +130,6 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 			continue
 		}
 
-		f.Path = strings.TrimSuffix(f.Path, "/") + "/"
 		goodFolders = append(goodFolders, f)
 		goodFlist = append(goodFlist, f.Path)
 	}
@@ -153,6 +153,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		TempFolder: !folder.cnfg.MoveBack,
 		DeleteOrig: false,
 		CBChannel:  u.folders.Updates,
+		CBFunction: nil,
 	})
 	if err != nil {
 		u.Log("[ERROR]", err)

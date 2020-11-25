@@ -54,6 +54,10 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		payload.App = "Folder"
 	}
 
+	if e == EXTRACTFAILED {
+		payload.Resp.Error = xtractr.ErrInvalidHead
+	}
+
 	for _, hook := range u.Webhook {
 		u.sendWebhookWithLog(hook, payload)
 	}

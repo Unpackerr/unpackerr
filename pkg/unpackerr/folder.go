@@ -188,7 +188,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
-			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
+			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 
 		folder.step = EXTRACTED
 		folder.list = resp.NewFiles

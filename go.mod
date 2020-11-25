@@ -8,6 +8,6 @@ require (
 	golift.io/cnfg v0.0.7
 	golift.io/starr v0.9.4
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.0.3-0.20201125081808-c637d43c7191
+	golift.io/xtractr v0.0.3-0.20201125102852-c741e98c490f
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

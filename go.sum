@@ -26,6 +26,8 @@ golift.io/xtractr v0.0.3-0.20201125053153-c5fb8fbae3a5 h1:ybyJ+kTEtfE3orXeBc3ZRB
 golift.io/xtractr v0.0.3-0.20201125053153-c5fb8fbae3a5/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 golift.io/xtractr v0.0.3-0.20201125081808-c637d43c7191 h1:Q7OUX8hG0/oIhw6e3Z2eRGA+a5vZhCG/4xKLBjrfITk=
 golift.io/xtractr v0.0.3-0.20201125081808-c637d43c7191/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
+golift.io/xtractr v0.0.3-0.20201125102852-c741e98c490f h1:jJNz1TMrKXp6V7nMqdDF7J/MMJcADwV38IBjext9f8o=
+golift.io/xtractr v0.0.3-0.20201125102852-c741e98c490f/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/natefinch/lumberjack.v2 v2.0.0 h1:1Lc07Kr7qY4U2YPouBjpCLxpiyxIVoxqXgkXLknAOE8=
 gopkg.in/natefinch/lumberjack.v2 v2.0.0/go.mod h1:l0ndWWf7gzL7RNwBG7wST/UCcT4T24xpD6X8LsfU/+k=

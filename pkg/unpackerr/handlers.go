@@ -138,7 +138,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
-			len(resp.Archives), len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
+			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
 	}
 }

@@ -24,7 +24,7 @@ type Extract struct {
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
 		switch {
-		case data.Status > IMPORTED:
+		case data.Status > IMPORTED || data.Status == EXTRACTING || data.Status == EXTRACTFAILED:
 			continue
 		case !u.haveQitem(name, data.App):
 			// We only want finished items.

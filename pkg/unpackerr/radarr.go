@@ -33,14 +33,14 @@ func (u *Unpackerr) validateRadarr() {
 
 func (u *Unpackerr) logRadarr() {
 	if c := len(u.Radarr); c == 1 {
-		u.Logf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+		u.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "",
 			u.Radarr[0].Timeout, u.Radarr[0].ValidSSL, u.Radarr[0].Protocols)
 	} else {
 		u.Log(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
 		}
 	}
@@ -50,21 +50,21 @@ func (u *Unpackerr) logRadarr() {
 func (u *Unpackerr) getRadarrQueue() {
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {
-			u.Debug("Radarr (%s): skipped, no API key", server.URL)
+			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
 		queue, err := server.RadarrQueue()
 		if err != nil {
-			u.Logf("[ERROR] Radarr (%s): %v", server.URL, err)
+			u.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
 
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.Logf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
@@ -74,14 +74,14 @@ func (u *Unpackerr) checkRadarrQueue() {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debug("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, Radarr, u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Path),
 					map[string]interface{}{"tmdbId": q.Movie.TmdbID, "imdbId": q.Movie.ImdbID, "downloadId": q.DownloadID})
 
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
 					Radarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}

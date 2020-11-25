@@ -62,7 +62,7 @@ type XtractPayload struct {
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
-	if i.Status == IMPORTED && i.App == "Folder" {
+	if i.Status == IMPORTED && i.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
 
@@ -106,10 +106,10 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 
 func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
 	if body, err := hook.Send(payload); err != nil {
-		u.Logf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
-		u.Logf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
-		u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
+		u.Printf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
+		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 	}
 }
 
@@ -188,13 +188,13 @@ func (u *Unpackerr) validateWebhook() {
 
 func (u *Unpackerr) logWebhook() {
 	if c := len(u.Webhook); c == 1 {
-		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+		u.Printf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
 			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
 	} else {
 		u.Log(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
-			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+			u.Printf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
 				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, logEvents(f.Events))
 		}
 	}

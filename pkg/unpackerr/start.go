@@ -30,6 +30,8 @@ const (
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
 	defaultFolderBuf   = 20000          // Channel queue size for file system events.
 	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
+	defaultLogFileMb   = 10
+	defaultLogFiles    = 10
 )
 
 // Unpackerr stores all the running data.
@@ -41,7 +43,12 @@ type Unpackerr struct {
 	folders *Folders
 	sigChan chan os.Signal
 	updates chan *xtractr.Response
-	log     *log.Logger
+	*Logger
+}
+
+type Logger struct {
+	debug  bool
+	Logger *log.Logger
 }
 
 // Flags are our CLI input flags.
@@ -74,7 +81,7 @@ func New() *Unpackerr {
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
 		},
-		log: log.New(ioutil.Discard, "", 0),
+		Logger: &Logger{Logger: log.New(ioutil.Discard, "", 0)},
 	}
 }
 
@@ -97,12 +104,10 @@ func Start() (err error) {
 		return fmt.Errorf("environment variables: %w", err)
 	}
 
-	if err := u.setupLogging(); err != nil {
-		return fmt.Errorf("log_file: %w", err)
-	}
+	u.setupLogging()
 
 	fm, dm := u.validateConfig()
-	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
+	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
@@ -111,10 +116,9 @@ func Start() (err error) {
 	u.logStartupInfo()
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
-		Debug:    u.Config.Debug,
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
-		Logger:   u.log,
+		Logger:   u.Logger.Logger,
 		FileMode: os.FileMode(fm),
 		DirMode:  os.FileMode(dm),
 	})
@@ -185,7 +189,7 @@ func (u *Unpackerr) Run() {
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
-		u.Debug("Minimum Delete Delay: %v", minimumDeleteDelay.String())
+		u.Debugf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
 
 	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
@@ -212,7 +216,15 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 
 	if u.Interval.Duration < minimumInterval {
 		u.Interval.Duration = minimumInterval
-		u.Debug("Minimum Interval: %v", minimumInterval.String())
+		u.Debugf("Minimum Interval: %v", minimumInterval.String())
+	}
+
+	if u.LogFiles == 0 {
+		u.LogFiles = defaultLogFiles
+	}
+
+	if u.LogFileMb == 0 {
+		u.LogFileMb = defaultLogFileMb
 	}
 
 	u.validateApps()

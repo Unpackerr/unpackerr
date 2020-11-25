@@ -14,6 +14,8 @@ import (
 	"golift.io/xtractr"
 )
 
+const FolderString = "Folder"
+
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
@@ -28,8 +30,8 @@ type Folders struct {
 	Folders map[string]*Folder
 	Events  chan *eventData
 	Updates chan *xtractr.Response
-	Logf    func(msg string, v ...interface{})
-	Debug   func(msg string, v ...interface{})
+	Printf  func(msg string, v ...interface{})
+	Debugf  func(msg string, v ...interface{})
 	Watcher *fsnotify.Watcher
 }
 
@@ -49,13 +51,13 @@ type eventData struct {
 
 func (u *Unpackerr) logFolders() {
 	if c := len(u.Folders); c == 1 {
-		u.Logf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
+		u.Printf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
 			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
 	} else {
 		u.Log(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
 
 		for _, f := range u.Folders {
-			u.Logf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
+			u.Printf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
 				f.Path, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
 		}
 	}
@@ -107,8 +109,8 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 		Folders: make(map[string]*Folder),
 		Events:  make(chan *eventData, u.Config.Buffer),
 		Updates: make(chan *xtractr.Response, updateChanBuf),
-		Debug:   u.Debug,
-		Logf:    u.Logf,
+		Debugf:  u.Debugf,
+		Printf:  u.Printf,
 		Watcher: watcher,
 	}, nil
 }
@@ -125,7 +127,7 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 
 			continue
 		} else if !stat.IsDir() {
-			u.Logf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
+			u.Printf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
 
 			continue
 		}
@@ -144,7 +146,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.updateQueueStatus(&newStatus{Name: name}).App = "Folder"
+	u.updateQueueStatus(&newStatus{Name: name}).App = FolderString
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -161,7 +163,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		return
 	}
 
-	u.Logf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
 }
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
@@ -175,15 +177,15 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 		return
 	case !resp.Done:
-		u.Logf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		u.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 
 		folder.step = EXTRACTING
 	case resp.Error != nil:
-		u.Logf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
 
 		folder.step = EXTRACTFAILED
 	default: // this runs in a go routine
-		u.Logf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
 			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
@@ -206,7 +208,7 @@ func (f *Folders) watchFSNotify() {
 				return
 			}
 
-			f.Logf("[ERROR] fsnotify: %v", err)
+			f.Printf("[ERROR] fsnotify: %v", err)
 		case event, ok := <-f.Watcher.Events:
 			if !ok {
 				return
@@ -243,7 +245,7 @@ func (f *Folders) processEvent(event *eventData) {
 	if stat, err := os.Stat(fullPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[fullPath]; ok {
-			f.Debug("Folder: Removing Tracked Item: %v", fullPath)
+			f.Debugf("Folder: Removing Tracked Item: %v", fullPath)
 			delete(f.Folders, fullPath)
 
 			_ = f.Watcher.Remove(fullPath)
@@ -251,25 +253,25 @@ func (f *Folders) processEvent(event *eventData) {
 
 		return
 	} else if !stat.IsDir() {
-		f.Debug("Folder: Ignoring Item: %v (not a folder)", fullPath)
+		f.Debugf("Folder: Ignoring Item: %v (not a folder)", fullPath)
 
 		return
 	}
 
 	if _, ok := f.Folders[fullPath]; ok {
-		//		f.DeLogf("Item Updated: %v (file: %v)", fullPath, event.file)
+		//		f.Debugf("Item Updated: %v (file: %v)", fullPath, event.file)
 		f.Folders[fullPath].last = time.Now()
 
 		return
 	}
 
 	if err := f.Watcher.Add(fullPath); err != nil {
-		f.Logf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
+		f.Printf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
 
 		return
 	}
 
-	f.Logf("[Folder] Tracking New Item: %v", fullPath)
+	f.Printf("[Folder] Tracking New Item: %v", fullPath)
 
 	f.Folders[fullPath] = &Folder{
 		last: time.Now(),
@@ -283,7 +285,7 @@ func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := time.Since(folder.last); {
 		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration:
-			u.Logf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
+			u.Printf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
 				folder.cnfg.Path, elapsed.Round(time.Second))
 
 			folder.last = time.Now()

@@ -9,7 +9,7 @@ import (
 )
 
 func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
-	u.Logf("Sending webhooks.")
+	u.Printf("Sending webhooks.")
 
 	if e == WAITING || e > DELETED {
 		return ErrInvalidStatus
@@ -49,7 +49,7 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 	}
 
 	if e == QUEUED {
-		payload.App = "Folder"
+		payload.App = FolderString
 	}
 
 	if e == EXTRACTFAILED {

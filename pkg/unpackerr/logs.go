@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // satisfy gomnd.
@@ -73,20 +75,20 @@ func (status ExtractStatus) String() string {
 }
 
 // Debug writes Debug log lines... to stdout and/or a file.
-func (u *Unpackerr) Debug(msg string, v ...interface{}) {
-	if u.Config.Debug {
-		_ = u.log.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
+func (l *Logger) Debugf(msg string, v ...interface{}) {
+	if l.debug {
+		_ = l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
 	}
 }
 
 // Log writes log lines... to stdout and/or a file.
-func (u *Unpackerr) Log(v ...interface{}) {
-	_ = u.log.Output(callDepth, fmt.Sprintln(v...))
+func (l *Logger) Log(v ...interface{}) {
+	_ = l.Logger.Output(callDepth, fmt.Sprintln(v...))
 }
 
 // Logf writes log lines... to stdout and/or a file.
-func (u *Unpackerr) Logf(msg string, v ...interface{}) {
-	_ = u.log.Output(callDepth, fmt.Sprintf(msg, v...))
+func (u *Logger) Printf(msg string, v ...interface{}) {
+	_ = u.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
 }
 
 // logCurrentQueue prints the number of things happening.
@@ -121,41 +123,44 @@ func (u *Unpackerr) logCurrentQueue() {
 		}
 	}
 
-	u.Logf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
+	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
-	u.Logf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks] [%d stacks]",
+	u.Printf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks] [%d stacks]",
 		u.Restarted, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
 }
 
 // setupLogging splits log write into a file and/or stdout.
-func (u *Unpackerr) setupLogging() error {
-	var writeFile io.Writer
+func (u *Unpackerr) setupLogging() {
+	u.Logger.debug = u.Config.Debug
 
-	if u.log.SetFlags(log.LstdFlags); u.Config.Debug {
-		u.log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-	}
-
-	if u.Config.LogFile != "" {
-		f, err := os.OpenFile(u.Config.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
-		if err != nil {
-			return fmt.Errorf("os.OpenFile: %w", err)
-		}
-
-		writeFile = f
+	if u.Logger.Logger.SetFlags(log.LstdFlags); u.Config.Debug {
+		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
 	switch { // only use MultiWriter is we have > 1 writer.
-	case !u.Config.Quiet && writeFile != nil:
-		u.log.SetOutput(io.MultiWriter(writeFile, os.Stdout))
-	case !u.Config.Quiet && writeFile == nil:
-		u.log.SetOutput(os.Stdout)
-	case writeFile == nil:
-		u.log.SetOutput(ioutil.Discard) // default is "nothing"
+	case !u.Config.Quiet && u.Config.LogFile != "":
+		u.Logger.Logger.SetOutput(io.MultiWriter(&lumberjack.Logger{
+			Filename:   u.Config.LogFile,   // log file name.
+			MaxSize:    u.Config.LogFileMb, // megabytes
+			MaxBackups: u.Config.LogFiles,  // number of files to keep.
+			MaxAge:     0,                  // days, 0 for unlimited
+			Compress:   false,              // meh no thanks.
+			LocalTime:  true,               // use local time in logs, not UTC.
+		}, os.Stdout))
+	case !u.Config.Quiet && u.Config.LogFile == "":
+		u.Logger.Logger.SetOutput(os.Stdout)
+	case u.Config.LogFile == "":
+		u.Logger.Logger.SetOutput(ioutil.Discard) // default is "nothing"
 	default:
-		u.log.SetOutput(writeFile)
+		u.Logger.Logger.SetOutput(&lumberjack.Logger{
+			Filename:   u.Config.LogFile,
+			MaxSize:    u.Config.LogFileMb, // megabytes
+			MaxBackups: u.Config.LogFiles,
+			MaxAge:     0,     // days, 0 for unlimited
+			Compress:   false, // meh no thanks.
+			LocalTime:  true,  // use local time in logs, not UTC.
+		})
 	}
-
-	return nil
 }
 
 // logStartupInfo prints info about our startup config.

@@ -33,14 +33,14 @@ func (u *Unpackerr) validateReadarr() {
 
 func (u *Unpackerr) logReadarr() {
 	if c := len(u.Readarr); c == 1 {
-		u.Logf(" => Readarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+		u.Printf(" => Readarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 			u.Readarr[0].URL, u.Readarr[0].Path, u.Readarr[0].APIKey != "",
 			u.Readarr[0].Timeout, u.Readarr[0].ValidSSL, u.Readarr[0].Protocols)
 	} else {
 		u.Log(" => Readarr Config:", c, "servers")
 
 		for _, f := range u.Readarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
 		}
 	}
@@ -50,21 +50,21 @@ func (u *Unpackerr) logReadarr() {
 func (u *Unpackerr) getReadarrQueue() {
 	for i, server := range u.Readarr {
 		if server.APIKey == "" {
-			u.Debug("Readarr (%s): skipped, no API key", server.URL)
+			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
 		queue, err := server.ReadarrQueue(DefaultQueuePageSize)
 		if err != nil {
-			u.Logf("[ERROR] Readarr (%s): %v", server.URL, err)
+			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
 
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		u.Readarr[i].Queue = queue
-		u.Logf("[Readarr] Updated (%s): %d Items Queued, %d Retreived",
+		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retreived",
 			server.URL, queue.TotalRecords, len(u.Readarr[i].Queue.Records))
 	}
 }
@@ -79,7 +79,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debug("%s (%s): Item Waiting for Import (%s): %v", Readarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Readarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
@@ -89,7 +89,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
 					Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}

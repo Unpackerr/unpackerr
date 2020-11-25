@@ -17,7 +17,11 @@ StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier={{BINARY}}
 Type=simple
-User=nobody
+
+# These should be set correctly for your environment.
+UMask=0002
+User={{BINARY}}
+Group={{BINARY}}
 
 [Install]
 WantedBy=multi-user.target

@@ -53,6 +53,10 @@ type WebhookPayload struct {
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
+	if i.Status == IMPORTED && i.App == "Folder" {
+		return // This is an internal state change we don't need to fire on.
+	}
+
 	payload := &WebhookPayload{
 		Path:  i.Path,
 		App:   i.App,
@@ -78,14 +82,16 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 			continue
 		}
 
-		go func(hook *WebhookConfig) {
-			if body, err := hook.Send(payload); err != nil {
-				u.Logf("[ERROR] Webhook: %v", err)
-			} else if !hook.Silent {
-				u.Logf("[Webhook] Posted Payload: %s: 200 OK", hook.Name)
-				u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
-			}
-		}(hook)
+		go u.sendWebhookWithLog(hook, i)
+	}
+}
+
+func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *Extract) {
+	if body, err := hook.Send(payload); err != nil {
+		u.Logf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Status, err)
+	} else if !hook.Silent {
+		u.Logf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Status, hook.Name)
+		u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 	}
 }
 

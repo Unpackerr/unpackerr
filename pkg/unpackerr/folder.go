@@ -5,7 +5,7 @@ package unpackerr
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -226,12 +226,12 @@ func (f *Folders) watchFSNotify() {
 				// event.Name: "/Users/Documents/auto/my_folder/file.rar"
 				// p: "my_folder"
 				p := strings.TrimPrefix(event.Name, cnfg.Path)
-				if np := path.Dir(p); np != "." {
+				if np := filepath.Dir(p); np != "." {
 					p = np
 				}
 
 				// Send this event to processEvent().
-				f.Events <- &eventData{name: p, cnfg: cnfg, file: path.Base(event.Name)}
+				f.Events <- &eventData{name: p, cnfg: cnfg, file: filepath.Base(event.Name)}
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func (f *Folders) watchFSNotify() {
 
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData) {
-	fullPath := path.Join(event.cnfg.Path, event.name)
+	fullPath := filepath.Join(event.cnfg.Path, event.name)
 	if stat, err := os.Stat(fullPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[fullPath]; ok {

@@ -87,8 +87,8 @@ func (l *Logger) Log(v ...interface{}) {
 }
 
 // Logf writes log lines... to stdout and/or a file.
-func (u *Logger) Printf(msg string, v ...interface{}) {
-	_ = u.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
+func (l *Logger) Printf(msg string, v ...interface{}) {
+	_ = l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
 }
 
 // logCurrentQueue prints the number of things happening.

@@ -33,14 +33,14 @@ func (u *Unpackerr) validateLidarr() {
 
 func (u *Unpackerr) logLidarr() {
 	if c := len(u.Lidarr); c == 1 {
-		u.Logf(" => Lidarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+		u.Printf(" => Lidarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 			u.Lidarr[0].URL, u.Lidarr[0].Path, u.Lidarr[0].APIKey != "",
 			u.Lidarr[0].Timeout, u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols)
 	} else {
 		u.Log(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
 		}
 	}
@@ -50,14 +50,14 @@ func (u *Unpackerr) logLidarr() {
 func (u *Unpackerr) getLidarrQueue() {
 	for i, server := range u.Lidarr {
 		if server.APIKey == "" {
-			u.Debug("Lidarr (%s): skipped, no API key", server.URL)
+			u.Debugf("Lidarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
 		queue, err := server.LidarrQueue(DefaultQueuePageSize)
 		if err != nil {
-			u.Logf("[ERROR] Lidarr (%s): %v", server.URL, err)
+			u.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
 
 			return
 		}
@@ -65,7 +65,7 @@ func (u *Unpackerr) getLidarrQueue() {
 		// Only update if there was not an error fetching.
 		u.Lidarr[i].Queue = queue
 
-		u.Logf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived",
+		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived",
 			server.URL, queue.TotalRecords, len(u.Lidarr[i].Queue.Records))
 	}
 }
@@ -80,7 +80,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debug("%s (%s): Item Waiting for Import (%s): %v", Lidarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Lidarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
@@ -90,7 +90,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s: (%s): %s (%s:%d%%): %v",
+				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
 					Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}

@@ -9,4 +9,5 @@ require (
 	golift.io/starr v0.9.4
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.0.3-0.20201122120331-790a47f39f51
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

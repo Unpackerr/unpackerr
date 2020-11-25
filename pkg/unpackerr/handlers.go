@@ -31,12 +31,12 @@ func (u *Unpackerr) checkImportsDone() {
 			u.handleFinishedImport(data, name)
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
-			u.Logf("%s: Resetting: %s - De-queued and returned", data.App, name)
+			u.Printf("%s: Resetting: %s - De-queued and returned", data.App, name)
 			data.Status = WAITING
 			data.Updated = time.Now()
 		}
 
-		u.Debug("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
+		u.Debugf("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
 			time.Since(data.Updated).Round(time.Second))
 	}
 }
@@ -47,19 +47,19 @@ func (u *Unpackerr) handleFinishedImport(data *Extract, name string) {
 	case data.Status == WAITING:
 		// A waiting item just imported. We never extracted it. Remove it and move on.
 		delete(u.Map, name)
-		u.Logf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
+		u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
 	case data.Status > IMPORTED:
-		u.Debug("Already imported? %s", name)
+		u.Debugf("Already imported? %s", name)
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
 		// In a routine so it can run slowly and not block.
 		go u.DeleteFiles(data.Resp.NewFiles...)
 		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
 	case data.Status == IMPORTED:
-		u.Debug("%v: Awaiting Delete Delay (%v remains): %v",
+		u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
 	case data.Status != IMPORTED:
 		u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
-		u.Logf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
+		u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
 	}
 }
 
@@ -78,7 +78,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.Logf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
+		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 
 		return
@@ -87,7 +87,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 	files := xtractr.FindCompressedFiles(path)
 	if len(files) == 0 {
 		_, err := os.Stat(path)
-		u.Logf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
+		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
 			app, name, path, err)
 
 		return
@@ -103,7 +103,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 		DeleteOrig: false,
 		CBChannel:  u.updates,
 	})
-	u.Logf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
+	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
@@ -114,13 +114,13 @@ func (u *Unpackerr) checkExtractDone() {
 		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
 			u.Restarted++
 			delete(u.Map, name)
-			u.Logf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
+			u.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
 				data.App, elapsed.Round(time.Second), name)
 		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
-			u.Logf("[%s] Finished, Removed History: %v", data.App, name)
+			u.Printf("[%s] Finished, Removed History: %v", data.App, name)
 		}
 	}
 }
@@ -130,13 +130,13 @@ func (u *Unpackerr) checkExtractDone() {
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
-		u.Logf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp})
 	case resp.Error != nil:
-		u.Logf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp})
 	default:
-		u.Logf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
+		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
@@ -150,7 +150,7 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 
 	path = filepath.Join(path, title)
 	if _, err = os.Stat(path); err == nil {
-		u.Debug("%s: Configured path exists: %s", app, path)
+		u.Debugf("%s: Configured path exists: %s", app, path)
 
 		return path // the server path exists, so use that.
 	}
@@ -163,7 +163,7 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 		for _, msg := range m.Messages {
 			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
 				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
-				u.Debug("%s: Configured path (%s, err: %v) does not exist; trying path found in status message: %s",
+				u.Debugf("%s: Configured path (%s, err: %v) does not exist; trying path found in status message: %s",
 					app, path, err, newPath)
 
 				return newPath
@@ -171,7 +171,7 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 		}
 	}
 
-	u.Debug("%s: Configured path does not exist (err: %v), and could not find alternative path in error message: %s ",
+	u.Debugf("%s: Configured path does not exist (err: %v), and could not find alternative path in error message: %s ",
 		app, err, path)
 
 	return path

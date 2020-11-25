@@ -33,14 +33,14 @@ func (u *Unpackerr) validateSonarr() {
 
 func (u *Unpackerr) logSonarr() {
 	if c := len(u.Sonarr); c == 1 {
-		u.Logf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+		u.Printf(" => Sonarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "",
 			u.Sonarr[0].Timeout, u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols)
 	} else {
 		u.Log(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
-			u.Logf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
+			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
 				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
 		}
 	}
@@ -50,21 +50,21 @@ func (u *Unpackerr) logSonarr() {
 func (u *Unpackerr) getSonarrQueue() {
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
-			u.Debug("Sonarr (%s): skipped, no API key", server.URL)
+			u.Debugf("Sonarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
 		queue, err := server.SonarrQueue()
 		if err != nil {
-			u.Logf("[ERROR] Sonarr (%s): %v", server.URL, err)
+			u.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
 
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.Logf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
 	}
 }
 
@@ -74,7 +74,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 		for _, q := range server.Queue {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debug("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.handleCompletedDownload(q.Title, Sonarr, u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Path),
 					map[string]interface{}{
@@ -84,7 +84,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 
 				fallthrough
 			default:
-				u.Debug("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
+				u.Debugf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
 					Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
 			}
 		}

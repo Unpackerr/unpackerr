@@ -30,7 +30,7 @@ URL="${SOURCE_URL}"
 
 # This parameter is passed in as -X to go build. Used to override the Version variable in a package.
 # Name the Version-containing library the same as the github repo, without dashes.
-# The makefile appends .Version and a few other variables for build-time data. See golift.io/version.
+# The Makefile appends .Version and a few other variables for build-time data. See golift.io/version.
 VERSION_PATH="golift.io/version"
 
 # Used by homebrew downloads, references VERSION which comes from buildinfo.sh.

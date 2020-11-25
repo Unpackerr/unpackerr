@@ -33,36 +33,36 @@ type WebhookConfig struct {
 
 // WebhookPayload defines the data sent to outbound webhooks.
 type WebhookPayload struct {
-	Path  string                 `json:"path"`
-	App   string                 `json:"app"`
-	IDs   map[string]interface{} `json:"ids,omitempty"`
-	Event ExtractStatus          `json:"unpackerr_eventtype"`
-	Time  time.Time              `json:"time"`
-	Data  *XtractPayload         `json:"data,omitempty"`
+	Path  string                 `json:"path"`                // Path for the extracted item.
+	App   string                 `json:"app"`                 // Application Triggering Event
+	IDs   map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
+	Event ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
+	Time  time.Time              `json:"time"`                // Time of this event.
+	Data  *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
 	// Application Metadata.
-	Go       string    `json:"go_version"`
-	OS       string    `json:"os"`
-	Arch     string    `json:"arch"`
-	Version  string    `json:"version"`
-	Revision string    `json:"revision"`
-	Branch   string    `json:"branch"`
-	Started  time.Time `json:"started"`
+	Go       string    `json:"go_version"` // Version of go compiled with
+	OS       string    `json:"os"`         // Operating system: linux, windows, darwin
+	Arch     string    `json:"arch"`       // Architecture: amd64, armhf
+	Version  string    `json:"version"`    // Application Version
+	Revision string    `json:"revision"`   // Application Revision
+	Branch   string    `json:"branch"`     // Branch built from.
+	Started  time.Time `json:"started"`    // App start time.
 }
 
 type XtractPayload struct {
-	Error    string    `json:"error,omitempty"`
-	Archives []string  `json:"archives,omitempty"`
-	Files    []string  `json:"files,omitempty"`
-	Start    time.Time `json:"start,omitempty"`
-	Output   string    `json:"tmp_folder,omitempty"`
-	Bytes    int64     `json:"bytes,omitempty"`
-	Elapsed  float64   `json:"elapsed,omitempty"`
+	Error    string    `json:"error,omitempty"`      // error only during extractfailed
+	Archives []string  `json:"archives,omitempty"`   // list of all archive files extracted
+	Files    []string  `json:"files,omitempty"`      // list of all files extracted
+	Start    time.Time `json:"start,omitempty"`      // start time of extraction
+	Output   string    `json:"tmp_folder,omitempty"` // temporary items folder
+	Bytes    int64     `json:"bytes,omitempty"`      // Bytes written
+	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
 }
 
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
-	if i.Status == IMPORTED && i.App == "Folder" {
+	if i.Status == IMPORTED && i.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
 
@@ -106,10 +106,10 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 
 func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
 	if body, err := hook.Send(payload); err != nil {
-		u.Logf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
-		u.Logf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
-		u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
+		u.Printf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
+		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 	}
 }
 
@@ -188,13 +188,13 @@ func (u *Unpackerr) validateWebhook() {
 
 func (u *Unpackerr) logWebhook() {
 	if c := len(u.Webhook); c == 1 {
-		u.Logf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+		u.Printf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
 			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
 	} else {
 		u.Log(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
-			u.Logf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
+			u.Printf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
 				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, logEvents(f.Events))
 		}
 	}

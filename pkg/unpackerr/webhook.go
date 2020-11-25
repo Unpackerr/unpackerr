@@ -15,7 +15,6 @@ import (
 
 	"golift.io/cnfg"
 	"golift.io/version"
-	"golift.io/xtractr"
 )
 
 type WebhookConfig struct {
@@ -39,7 +38,7 @@ type WebhookPayload struct {
 	IDs   map[string]interface{} `json:"ids,omitempty"`
 	Event ExtractStatus          `json:"unpackerr_eventtype"`
 	Time  time.Time              `json:"time"`
-	Resp  *xtractr.Response      `json:"data,omitempty"`
+	Data  *XtractPayload         `json:"data,omitempty"`
 	// Application Metadata.
 	Go       string    `json:"go_version"`
 	OS       string    `json:"os"`
@@ -48,6 +47,16 @@ type WebhookPayload struct {
 	Revision string    `json:"revision"`
 	Branch   string    `json:"branch"`
 	Started  time.Time `json:"started"`
+}
+
+type XtractPayload struct {
+	Error    string    `json:"error,omitempty"`
+	Archives []string  `json:"archives,omitempty"`
+	Files    []string  `json:"files,omitempty"`
+	Start    time.Time `json:"start,omitempty"`
+	Output   string    `json:"tmp_folder,omitempty"`
+	Bytes    int64     `json:"bytes,omitempty"`
+	Elapsed  float64   `json:"elapsed,omitempty"`
 }
 
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
@@ -62,7 +71,7 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 		App:   i.App,
 		IDs:   i.IDs,
 		Time:  i.Updated,
-		Resp:  i.Resp,
+		Data:  nil,
 		Event: i.Status,
 		// Application Metadata.
 		Go:       runtime.Version(),
@@ -73,8 +82,17 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 		Branch:   version.Branch,
 		Started:  version.Started,
 	}
-	if i.Status > EXTRACTED {
-		payload.Resp = nil
+
+	if i.Status <= EXTRACTED && i.Resp != nil {
+		payload.Data = &XtractPayload{
+			Error:    i.Resp.Error.Error(),
+			Archives: append(i.Resp.Extras, i.Resp.Archives...),
+			Files:    i.Resp.NewFiles,
+			Start:    i.Resp.Started,
+			Output:   i.Resp.Output,
+			Bytes:    i.Resp.Size,
+			Elapsed:  i.Resp.Elapsed.Seconds(),
+		}
 	}
 
 	for _, hook := range u.Webhook {
@@ -82,15 +100,15 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 			continue
 		}
 
-		go u.sendWebhookWithLog(hook, i)
+		go u.sendWebhookWithLog(hook, payload)
 	}
 }
 
-func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *Extract) {
+func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
 	if body, err := hook.Send(payload); err != nil {
-		u.Logf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Status, err)
+		u.Logf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
-		u.Logf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Status, hook.Name)
+		u.Logf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
 		u.Debug("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 	}
 }

@@ -180,7 +180,12 @@ func (u *Unpackerr) logStartupInfo() {
 	u.Print(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
 
 	if u.Config.LogFile != "" {
-		u.Printf(" => Log File: %s (%d @ %dMb)", u.Config.LogFile, u.Config.LogFiles, u.Config.LogFileMb)
+		msg := "no rotation"
+		if u.Config.LogFiles > 0 {
+			msg = fmt.Sprintf("%d @ %dMb", u.Config.LogFiles, u.Config.LogFileMb)
+		}
+
+		u.Printf(" => Log File: %s (%s)", u.Config.LogFile, msg)
 	}
 
 	u.logWebhook()

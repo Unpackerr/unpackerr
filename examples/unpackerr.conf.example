@@ -12,8 +12,8 @@ quiet = false
 # Write messages to a log file. This is the same data that is normally output to stdout.
 # This setting is great for Docker users that want to export their logs to a file.
 # The alternative is to use syslog to log the output of the application to a file.
-# Default is no log file; this is unset.
-# Default files is 10, and size(mb) is 10 Mb. log_files=0 turns off auto-rotation.
+# Default is no log file; this is unset. log_files=0 turns off auto-rotation.
+# Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
 #log_file = "/downloads/unpackerr.log"
 #log_files = 10
 #log_file_mb = 10

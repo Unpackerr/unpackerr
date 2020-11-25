@@ -88,13 +88,16 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 
 	if i.Status <= EXTRACTED && i.Resp != nil {
 		payload.Data = &XtractPayload{
-			Error:    i.Resp.Error.Error(),
 			Archives: append(i.Resp.Extras, i.Resp.Archives...),
 			Files:    i.Resp.NewFiles,
 			Start:    i.Resp.Started,
 			Output:   i.Resp.Output,
 			Bytes:    i.Resp.Size,
 			Elapsed:  i.Resp.Elapsed.Seconds(),
+		}
+
+		if i.Resp.Error != nil {
+			payload.Data.Error = i.Resp.Error.Error()
 		}
 	}
 

@@ -76,6 +76,7 @@ func New() *Unpackerr {
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
+			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
@@ -220,12 +221,14 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 		u.Debugf("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	if u.LogFiles == 0 {
-		u.LogFiles = defaultLogFiles
+	if u.Config.Debug && u.LogFiles == defaultLogFiles {
+		u.LogFiles *= 2 // Double default if debug is turned on.
 	}
 
 	if u.LogFileMb == 0 {
-		u.LogFileMb = defaultLogFileMb
+		if u.LogFileMb = defaultLogFileMb; u.Config.Debug {
+			u.LogFileMb *= 2 // Double default if debug is turned on.
+		}
 	}
 
 	u.validateApps()

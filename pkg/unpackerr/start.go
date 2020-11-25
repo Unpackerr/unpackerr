@@ -49,6 +49,7 @@ type Flags struct {
 	verReq     bool
 	ConfigFile string
 	EnvPrefix  string
+	webhook    uint
 }
 
 // History holds the history of extracted items.
@@ -102,6 +103,11 @@ func Start() (err error) {
 
 	fm, dm := u.validateConfig()
 	u.Logf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
+
+	if u.Flags.webhook > 0 {
+		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
+	}
+
 	u.logStartupInfo()
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
@@ -129,6 +135,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 
 	flag.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
 	flag.StringVarP(&u.Flags.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
+	flag.UintVarP(&u.Flags.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
 	flag.Parse()
 

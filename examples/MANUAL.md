@@ -26,6 +26,11 @@ OPTIONS
         This application parses environment variables into config data.
         The default prefix is UN, making env variables like UN_SONARR_URL.
 
+    -w, --webhook <1,2,3,4,5,6,7,8>
+        This sends a webhook of the type specified then exits. This is only
+        for testing and development. This requires a valid webhook configured
+        in a config file or from environment variables.
+
     -v, --version
         Display version and exit.
 

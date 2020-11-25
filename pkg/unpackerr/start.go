@@ -118,7 +118,7 @@ func Start() (err error) {
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
-		Logger:   u.Logger.Logger,
+		Logger:   u.Logger,
 		FileMode: os.FileMode(fm),
 		DirMode:  os.FileMode(dm),
 	})

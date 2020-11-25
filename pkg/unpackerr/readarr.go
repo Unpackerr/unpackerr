@@ -37,7 +37,7 @@ func (u *Unpackerr) logReadarr() {
 			u.Readarr[0].URL, u.Readarr[0].Path, u.Readarr[0].APIKey != "",
 			u.Readarr[0].Timeout, u.Readarr[0].ValidSSL, u.Readarr[0].Protocols)
 	} else {
-		u.Log(" => Readarr Config:", c, "servers")
+		u.Print(" => Readarr Config:", c, "servers")
 
 		for _, f := range u.Readarr {
 			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",

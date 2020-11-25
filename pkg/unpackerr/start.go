@@ -126,7 +126,7 @@ func Start() (err error) {
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	u.Log("=====> Exiting! Caught Signal:", <-u.sigChan)
+	u.Print("=====> Exiting! Caught Signal:", <-u.sigChan)
 
 	return nil
 }

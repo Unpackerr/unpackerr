@@ -46,6 +46,7 @@ type Unpackerr struct {
 	*Logger
 }
 
+// Logger provides a struct we can pass into other packages.
 type Logger struct {
 	debug  bool
 	Logger *log.Logger

@@ -12,6 +12,8 @@ addons:
     - zip
 go:
   - 1.15.x
+git:
+  depth: 10000
 services:
   - docker
 install:

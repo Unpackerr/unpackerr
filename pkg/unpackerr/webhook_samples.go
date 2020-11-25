@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"runtime"
 	"time"
 
 	"golift.io/version"
@@ -14,40 +15,37 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		return ErrInvalidStatus
 	}
 
-	payload := &Extract{
+	payload := &WebhookPayload{
 		App:  Sonarr,
 		Path: "/this/is/the/extraction/path",
 		IDs: map[string]interface{}{
 			"downloadId": "some-id-goes-here",
 			"otherId":    "another-id-here-like-imdb",
 		},
-		Status:  e,
-		Updated: time.Now(),
-		Resp: &xtractr.Response{
-			Elapsed:  time.Since(version.Started),
-			Extras:   nil,
+		Time:     time.Now(),
+		Go:       runtime.Version(),
+		OS:       runtime.GOOS,
+		Arch:     runtime.GOARCH,
+		Version:  version.Version,
+		Revision: version.Revision,
+		Branch:   version.Branch,
+		Started:  version.Started,
+		Event:    e,
+		Data: &XtractPayload{
+			Start:    version.Started,
+			Elapsed:  time.Since(version.Started).Seconds(),
 			Archives: []string{"/this/is/the/extraction/path/archive.rar"},
-			AllFiles: nil,
-			Error:    nil,
-			X: &xtractr.Xtract{
-				Name:       "path",
-				SearchPath: "/this/is/the/extraction/path",
-				TempFolder: true,
-				DeleteOrig: false,
-				CBFunction: nil,
-				CBChannel:  nil,
-			},
-			Started:  version.Started,
-			Done:     e >= EXTRACTED,
+			Error:    "",
 			Output:   "/this/is/the/extraction/path_unpackerred",
-			Queued:   0,
-			NewFiles: nil,
-			Size:     0,
+			Bytes:    0,
+			Files:    []string{"/this/is/the/extraction/path/file.mkv"},
 		},
 	}
 
 	if e != EXTRACTING && e != EXTRACTED && e != EXTRACTFAILED {
-		payload.Resp = nil
+		payload.Data = nil
+	} else {
+		payload.Data.Bytes = 1234567
 	}
 
 	if e == QUEUED {
@@ -55,7 +53,7 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 	}
 
 	if e == EXTRACTFAILED {
-		payload.Resp.Error = xtractr.ErrInvalidHead
+		payload.Data.Error = xtractr.ErrInvalidHead.Error()
 	}
 
 	for _, hook := range u.Webhook {

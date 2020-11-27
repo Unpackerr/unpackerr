@@ -24,11 +24,6 @@ type Extract struct {
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
 		switch {
-<<<<<<< HEAD
-=======
-		case data.Status > IMPORTED || data.Status == EXTRACTING || data.Status == EXTRACTFAILED:
-			continue
->>>>>>> origin/master
 		case !u.haveQitem(name, data.App):
 			// We only want finished items.
 			u.handleFinishedImport(data, name)
@@ -156,7 +151,9 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title string, 
 	var errs []error
 
 	for _, path := range paths {
-		switch _, err := os.Stat(filepath.Join(path, title)); err {
+		path = filepath.Join(path, title)
+
+		switch _, err := os.Stat(path); err { // nolint: errorlint
 		default:
 			errs = append(errs, err)
 		case nil:

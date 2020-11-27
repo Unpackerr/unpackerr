@@ -112,7 +112,7 @@ monitor your download client's "move to" path if you're not using it with an *ar
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-folder.path|`UN_FOLDER_0_PATHS_0`|No Default. Folder to watch for archives. Not for *arr apps.|
+folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
 folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|

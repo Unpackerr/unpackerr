@@ -84,7 +84,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:7878"
 #  api_key = "4bc34281deda4846a2fdab2c15bc8de8"
   # File system path where downloaded Radarr items are located.
-#   paths = ["/downloads"]
+#  paths = ["/downloads"]
 # Default protocols is torrents. Alternative: "torrent,usenet"
 #   protocols = "torrent"
 
@@ -93,7 +93,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:8686"
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
   # File system path where downloaded Lidarr items are located.
-#   paths = ["/downloads"]
+#  paths = ["/downloads"]
 # Default protocols is torrent. Alternative: "torrent,usenet"
 #   protocols = "torrent"
 
@@ -102,7 +102,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:8787"
 #  api_key = "123445defd484ab2fdab2c15babcd"
   # File system path where downloaded Lidarr items are located.
-#   paths = ["/downloads"]
+#  paths = ["/downloads"]
 # Default protocols is torrent. Alternative: "torrent,usenet"
 #   protocols = "torrent"
 

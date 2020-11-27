@@ -45,7 +45,7 @@ func (u *Unpackerr) logLidarr() {
 		u.Print(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			u.Printf(" =>    Server:%s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols, f.Paths)
 		}
 	}

@@ -171,17 +171,17 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title string, 
 
 		for _, msg := range m.Messages {
 			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
-				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
-				u.Debugf("%s: Configured paths do not exist; trying path found in status message: %s", app, newPath)
+				path := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
+				u.Debugf("%s: Configured paths do not exist; trying path found in status message: %s", app, path)
 
-				return newPath
+				return path
 			}
 		}
 	}
 
 	u.Debugf("%s: Configured paths do not exist; could not find alternative path in error message for %s", app, title)
 
-	return filepath.Join(paths[0], title) // useless. :(
+	return filepath.Join(paths[0], title) // useless, but return something. :(
 }
 
 // isComplete is run so many times in different places that is became a method.

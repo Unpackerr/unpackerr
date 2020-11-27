@@ -54,7 +54,7 @@ func (u *Unpackerr) logFolders() {
 		u.Printf(" => Folder Config: 1 path: %s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
 			u.Folders[0].Path, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
 	} else {
-		u.Log(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
+		u.Print(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
 
 		for _, f := range u.Folders {
 			u.Printf(" =>    Path: %s (delete after:%v, delete orig:%v, move back:%v)",
@@ -75,7 +75,7 @@ func (u *Unpackerr) PollFolders() {
 	u.Folders, flist = u.checkFolders()
 
 	if u.folders, err = u.newFolderWatcher(); err != nil {
-		u.Log("[ERROR] Watching Folders:", err)
+		u.Print("[ERROR] Watching Folders:", err)
 
 		return
 	}
@@ -85,7 +85,7 @@ func (u *Unpackerr) PollFolders() {
 		return
 	}
 
-	u.Log("[Folder] Watching:", strings.Join(flist, ", "))
+	u.Print("[Folder] Watching:", strings.Join(flist, ", "))
 
 	go u.folders.watchFSNotify()
 }
@@ -100,7 +100,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 
 	for _, folder := range u.Folders {
 		if err := watcher.Add(folder.Path); err != nil {
-			u.Log("[ERROR] Folder (cannot watch):", err)
+			u.Print("[ERROR] Folder (cannot watch):", err)
 		}
 	}
 
@@ -123,7 +123,7 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	for _, f := range u.Folders {
 		f.Path = strings.TrimSuffix(f.Path, `/\`)
 		if stat, err := os.Stat(f.Path); err != nil {
-			u.Log("[ERROR] Folder (cannot watch):", err)
+			u.Print("[ERROR] Folder (cannot watch):", err)
 
 			continue
 		} else if !stat.IsDir() {
@@ -158,7 +158,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		CBFunction: nil,
 	})
 	if err != nil {
-		u.Log("[ERROR]", err)
+		u.Print("[ERROR]", err)
 
 		return
 	}
@@ -188,7 +188,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
-			len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
+			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 
 		folder.step = EXTRACTED
 		folder.list = resp.NewFiles

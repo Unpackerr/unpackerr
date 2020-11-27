@@ -17,6 +17,7 @@ import (
 	"golift.io/version"
 )
 
+// WebhookConfig defines the data to send webhooks to a server.
 type WebhookConfig struct {
 	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
 	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
@@ -25,9 +26,9 @@ type WebhookConfig struct {
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	client     *http.Client    `json:"-"`
-	fails      uint            `json:"-"`
-	posts      uint            `json:"-"`
+	client     *http.Client
+	fails      uint
+	posts      uint
 	sync.Mutex `json:"-"`
 }
 
@@ -49,6 +50,7 @@ type WebhookPayload struct {
 	Started  time.Time `json:"started"`    // App start time.
 }
 
+// XtractPayload is a rewrite of xtractr.Response.
 type XtractPayload struct {
 	Error    string    `json:"error,omitempty"`      // error only during extractfailed
 	Archives []string  `json:"archives,omitempty"`   // list of all archive files extracted
@@ -59,6 +61,7 @@ type XtractPayload struct {
 	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
 }
 
+// ErrInvalidStatus is an error message.
 var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
@@ -85,13 +88,16 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 
 	if i.Status <= EXTRACTED && i.Resp != nil {
 		payload.Data = &XtractPayload{
-			Error:    i.Resp.Error.Error(),
 			Archives: append(i.Resp.Extras, i.Resp.Archives...),
 			Files:    i.Resp.NewFiles,
 			Start:    i.Resp.Started,
 			Output:   i.Resp.Output,
 			Bytes:    i.Resp.Size,
 			Elapsed:  i.Resp.Elapsed.Seconds(),
+		}
+
+		if i.Resp.Error != nil {
+			payload.Data.Error = i.Resp.Error.Error()
 		}
 	}
 
@@ -113,7 +119,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 	}
 }
 
-// Sends marshals an interface{} into json and POSTs it to a URL.
+// Send marshals an interface{} into json and POSTs it to a URL.
 func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
@@ -191,7 +197,7 @@ func (u *Unpackerr) logWebhook() {
 		u.Printf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
 			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
 	} else {
-		u.Log(" => Webhook Configs:", c, "URLs")
+		u.Print(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
 			u.Printf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",

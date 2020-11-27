@@ -24,6 +24,11 @@ type Extract struct {
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
 		switch {
+<<<<<<< HEAD
+=======
+		case data.Status > IMPORTED || data.Status == EXTRACTING || data.Status == EXTRACTFAILED:
+			continue
+>>>>>>> origin/master
 		case !u.haveQitem(name, data.App):
 			// We only want finished items.
 			u.handleFinishedImport(data, name)
@@ -140,7 +145,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
-			len(resp.Archives), len(resp.Extras), len(resp.AllFiles), resp.Size/mebiByte)
+			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
 	}
 }

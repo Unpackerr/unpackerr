@@ -46,6 +46,7 @@ type Unpackerr struct {
 	*Logger
 }
 
+// Logger provides a struct we can pass into other packages.
 type Logger struct {
 	debug  bool
 	Logger *log.Logger
@@ -75,6 +76,7 @@ func New() *Unpackerr {
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
+			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
@@ -118,14 +120,14 @@ func Start() (err error) {
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Parallel: int(u.Parallel),
 		Suffix:   suffix,
-		Logger:   u.Logger.Logger,
+		Logger:   u.Logger,
 		FileMode: os.FileMode(fm),
 		DirMode:  os.FileMode(dm),
 	})
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	u.Log("=====> Exiting! Caught Signal:", <-u.sigChan)
+	u.Print("=====> Exiting! Caught Signal:", <-u.sigChan)
 
 	return nil
 }
@@ -219,12 +221,14 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 		u.Debugf("Minimum Interval: %v", minimumInterval.String())
 	}
 
-	if u.LogFiles == 0 {
-		u.LogFiles = defaultLogFiles
+	if u.Config.Debug && u.LogFiles == defaultLogFiles {
+		u.LogFiles *= 2 // Double default if debug is turned on.
 	}
 
 	if u.LogFileMb == 0 {
-		u.LogFileMb = defaultLogFileMb
+		if u.LogFileMb = defaultLogFileMb; u.Config.Debug {
+			u.LogFileMb *= 2 // Double default if debug is turned on.
+		}
 	}
 
 	u.validateApps()

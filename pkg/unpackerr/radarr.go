@@ -42,7 +42,7 @@ func (u *Unpackerr) logRadarr() {
 			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
 			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Paths)
 	} else {
-		u.Log(" => Radarr Config:", c, "servers")
+		u.Print(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",

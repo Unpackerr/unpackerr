@@ -74,19 +74,19 @@ func (status ExtractStatus) String() string {
 	}[status]
 }
 
-// Debug writes Debug log lines... to stdout and/or a file.
+// Debugf writes Debug log lines... to stdout and/or a file.
 func (l *Logger) Debugf(msg string, v ...interface{}) {
 	if l.debug {
 		_ = l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
 	}
 }
 
-// Log writes log lines... to stdout and/or a file.
-func (l *Logger) Log(v ...interface{}) {
+// Print writes log lines... to stdout and/or a file.
+func (l *Logger) Print(v ...interface{}) {
 	_ = l.Logger.Output(callDepth, fmt.Sprintln(v...))
 }
 
-// Logf writes log lines... to stdout and/or a file.
+// Printf writes log lines... to stdout and/or a file.
 func (l *Logger) Printf(msg string, v ...interface{}) {
 	_ = l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
 }
@@ -165,22 +165,27 @@ func (u *Unpackerr) setupLogging() {
 
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo() {
-	u.Log("==> Startup Settings <==")
+	u.Print("==> Startup Settings <==")
 	u.logSonarr()
 	u.logRadarr()
 	u.logLidarr()
 	u.logReadarr()
 	u.logFolders()
-	u.Log(" => Parallel:", u.Config.Parallel)
-	u.Log(" => Interval:", u.Config.Interval.Duration)
-	u.Log(" => Delete Delay:", u.Config.DeleteDelay.Duration)
-	u.Log(" => Start Delay:", u.Config.StartDelay.Duration)
-	u.Log(" => Retry Delay:", u.Config.RetryDelay.Duration)
-	u.Log(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
-	u.Log(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
+	u.Print(" => Parallel:", u.Config.Parallel)
+	u.Print(" => Interval:", u.Config.Interval.Duration)
+	u.Print(" => Delete Delay:", u.Config.DeleteDelay.Duration)
+	u.Print(" => Start Delay:", u.Config.StartDelay.Duration)
+	u.Print(" => Retry Delay:", u.Config.RetryDelay.Duration)
+	u.Print(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
+	u.Print(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
 
 	if u.Config.LogFile != "" {
-		u.Log(" => Log File:", u.Config.LogFile)
+		msg := "no rotation"
+		if u.Config.LogFiles > 0 {
+			msg = fmt.Sprintf("%d @ %dMb", u.Config.LogFiles, u.Config.LogFileMb)
+		}
+
+		u.Printf(" => Log File: %s (%s)", u.Config.LogFile, msg)
 	}
 
 	u.logWebhook()

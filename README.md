@@ -58,6 +58,8 @@ docker logs <container id from docker run>
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs|
 log_file|`UN_LOG_FILE`|None by default. Optionally provide a file path to write logs|
+log_files|`UN_LOG_FILES`|`10` / Log files to keep after rotating. `0` disables rotation.|
+log_file_mb|`UN_LOG_FILE_MB`|`10` / Max size of log files in megabytes.|
 interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`|
 timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)|
 delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after import|

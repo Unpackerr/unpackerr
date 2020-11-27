@@ -42,7 +42,7 @@ func (u *Unpackerr) logSonarr() {
 			u.Sonarr[0].URL, u.Sonarr[0].Path, u.Sonarr[0].APIKey != "",
 			u.Sonarr[0].Timeout, u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols)
 	} else {
-		u.Log(" => Sonarr Config:", c, "servers")
+		u.Print(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",

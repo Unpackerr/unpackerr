@@ -10,7 +10,7 @@ ARG COMMIT=0
 ARG VERSION=unknown
 ARG BINARY=application-builder
 
-FROM golang:stretch as builder
+FROM golang:1.15 as builder
 ARG ARCH
 ARG OS
 ARG BINARY

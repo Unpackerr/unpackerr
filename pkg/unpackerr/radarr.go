@@ -10,6 +10,7 @@ import (
 type RadarrConfig struct {
 	*starr.Config
 	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths        []string            `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols    string              `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -21,8 +22,12 @@ func (u *Unpackerr) validateRadarr() {
 			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if u.Radarr[i].Path == "" {
-			u.Radarr[i].Path = defaultSavePath
+		if u.Radarr[i].Path != "" {
+			u.Radarr[i].Paths = append(u.Radarr[i].Paths, u.Radarr[i].Path)
+		}
+
+		if len(u.Radarr[i].Paths) == 0 {
+			u.Radarr[i].Paths = []string{defaultSavePath}
 		}
 
 		if u.Radarr[i].Protocols == "" {
@@ -33,15 +38,15 @@ func (u *Unpackerr) validateRadarr() {
 
 func (u *Unpackerr) logRadarr() {
 	if c := len(u.Radarr); c == 1 {
-		u.Printf(" => Radarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Radarr[0].URL, u.Radarr[0].Path, u.Radarr[0].APIKey != "",
-			u.Radarr[0].Timeout, u.Radarr[0].ValidSSL, u.Radarr[0].Protocols)
+		u.Printf(" => Radarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
+			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Paths)
 	} else {
 		u.Log(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
-			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
+			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols, f.Paths)
 		}
 	}
 }
@@ -76,7 +81,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, Radarr, u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Path),
+				u.handleCompletedDownload(q.Title, Radarr, u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
 					map[string]interface{}{"tmdbId": q.Movie.TmdbID, "imdbId": q.Movie.ImdbID, "downloadId": q.DownloadID})
 
 				fallthrough

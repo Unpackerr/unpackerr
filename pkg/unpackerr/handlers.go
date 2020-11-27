@@ -24,14 +24,16 @@ type Extract struct {
 func (u *Unpackerr) checkImportsDone() {
 	for name, data := range u.Map {
 		switch {
-		case data.Status > IMPORTED:
-			continue
 		case !u.haveQitem(name, data.App):
 			// We only want finished items.
 			u.handleFinishedImport(data, name)
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
-			u.Printf("%s: Resetting: %s - De-queued and returned", data.App, name)
+			u.Printf("%s: Extraction Not Imported: %s - De-queued and returned.", data.App, name)
+			data.Status = EXTRACTED
+		case data.Status > IMPORTED:
+			// The item fell out of the app queue and came back. Reset it.
+			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.App, name)
 			data.Status = WAITING
 			data.Updated = time.Now()
 		}
@@ -145,16 +147,21 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path string) string {
-	var err error
+func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title string, paths []string) string {
+	var errs []error
 
-	path = filepath.Join(path, title)
-	if _, err = os.Stat(path); err == nil {
-		u.Debugf("%s: Configured path exists: %s", app, path)
-
-		return path // the server path exists, so use that.
+	for _, path := range paths {
+		switch _, err := os.Stat(filepath.Join(path, title)); err {
+		default:
+			errs = append(errs, err)
+		case nil:
+			return path
+		}
 	}
 
+	defer u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
+
+	// The following code tries to find the path in the queued item's error message.
 	for _, m := range s {
 		if m.Title != title {
 			continue
@@ -163,18 +170,16 @@ func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title, path st
 		for _, msg := range m.Messages {
 			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
 				newPath := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
-				u.Debugf("%s: Configured path (%s, err: %v) does not exist; trying path found in status message: %s",
-					app, path, err, newPath)
+				u.Debugf("%s: Configured paths do not exist; trying path found in status message: %s", app, newPath)
 
 				return newPath
 			}
 		}
 	}
 
-	u.Debugf("%s: Configured path does not exist (err: %v), and could not find alternative path in error message: %s ",
-		app, err, path)
+	u.Debugf("%s: Configured paths do not exist; could not find alternative path in error message for %s", app, title)
 
-	return path
+	return filepath.Join(paths[0], title) // useless. :(
 }
 
 // isComplete is run so many times in different places that is became a method.

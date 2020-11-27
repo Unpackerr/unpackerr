@@ -73,7 +73,7 @@ dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode.|
 |---|---|---|
 sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`|
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
-sonarr.path|`UN_SONARR_0_PATH`|`/downloads` Path where content is downloaded for Sonarr|
+sonarr.paths|`UN_SONARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Sonarr|
 sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Radarr
@@ -82,7 +82,7 @@ sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 |---|---|---|
 radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`|
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
-radarr.path|`UN_RADARR_0_PATH`|`/downloads` Path where content is downloaded for Radarr|
+radarr.paths|`UN_RADARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Radarr|
 radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Lidarr
@@ -91,7 +91,7 @@ radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 |---|---|---|
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`|
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
-lidarr.path|`UN_LIDARR_0_PATH`|`/downloads` Path where content is downloaded for Lidarr|
+lidarr.paths|`UN_LIDARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Lidarr|
 lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Readarr
@@ -100,7 +100,7 @@ lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 |---|---|---|
 readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:8787`|
 readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
-readarr.path|`UN_READARR_0_PATH`|`/downloads` Path where content is downloaded for Readarr|
+readarr.paths|`UN_READARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Readarr|
 readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 
 ##### Folder
@@ -110,7 +110,7 @@ monitor your download client's "move to" path if you're not using it with an *ar
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
+folder.path|`UN_FOLDER_0_PATHS_0`|No Default. Folder to watch for archives. Not for *arr apps.|
 folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
 folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
@@ -187,6 +187,14 @@ brew install golift/mugs/unpackerr
 vi /usr/local/etc/unpackerr/unpackerr.conf
 brew services start unpackerr
 ```
+
+### Windows Install
+
+-   Create this folder: `C:\ProgramData\unpackerr\`
+-   Download an exe file from [the Releases page](releases) into `C:\ProgramData\unpackerr\`
+-   Download the [example config file](examples/unpackerr.conf.example) from the repo into `C:\ProgramData\unpackerr\`
+-   Edit the config file to suit your system.
+-   Run the exe file. I do not have better directions at this time, sorry.
 
 ## Troubleshooting
 

@@ -10,6 +10,7 @@ import (
 type LidarrConfig struct {
 	*starr.Config
 	Path         string            `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths        []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols    string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	Queue        *starr.LidarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -21,8 +22,12 @@ func (u *Unpackerr) validateLidarr() {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if u.Lidarr[i].Path == "" {
-			u.Lidarr[i].Path = defaultSavePath
+		if u.Lidarr[i].Path != "" {
+			u.Lidarr[i].Paths = append(u.Lidarr[i].Paths, u.Lidarr[i].Path)
+		}
+
+		if len(u.Lidarr[i].Paths) == 0 {
+			u.Lidarr[i].Paths = []string{defaultSavePath}
 		}
 
 		if u.Lidarr[i].Protocols == "" {
@@ -33,15 +38,15 @@ func (u *Unpackerr) validateLidarr() {
 
 func (u *Unpackerr) logLidarr() {
 	if c := len(u.Lidarr); c == 1 {
-		u.Printf(" => Lidarr Config: 1 server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-			u.Lidarr[0].URL, u.Lidarr[0].Path, u.Lidarr[0].APIKey != "",
-			u.Lidarr[0].Timeout, u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols)
+		u.Printf(" => Lidarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
+			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Paths)
 	} else {
 		u.Print(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
-			u.Printf(" =>    Server: %s @ %s (apikey: %v, timeout: %v, verify ssl: %v, protos:%s)",
-				f.URL, f.Path, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols)
+			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols, f.Paths)
 		}
 	}
 }
@@ -85,7 +90,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Path),
+				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
 					map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID})
 
 				fallthrough

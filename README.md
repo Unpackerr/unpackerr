@@ -193,10 +193,10 @@ brew services start unpackerr
 ### Windows Install
 
 -   Create this folder: `C:\ProgramData\unpackerr\`
--   Download an exe file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases) into `C:\ProgramData\unpackerr\`
--   Download the [example config file](examples/unpackerr.conf.example) from the repo into `C:\ProgramData\unpackerr\`
--   Edit the config file to suit your system.
--   Run the exe file. I do not have better directions at this time, sorry.
+-   Extract a `.exe.zip` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases) into `C:\ProgramData\unpackerr\`
+-   Edit the example config file from the zip file to suit your system. Rename the example to `unpackerr.conf`.
+-   Run the `unpackerr.amd64.exe` binary. This starts the app prints out what it's doing.
+-   Better directions, nor an automated installer are currently available. Sorry. Tracking [here](https://github.com/davidnewhall/unpackerr/issues/71).
 
 ## Troubleshooting
 

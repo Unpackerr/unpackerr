@@ -177,6 +177,12 @@ sudo systemctl restart unpackerr    # linux
 service unpackerr start             # freebsd
 ```
 
+On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
+user or group read and write access to your archives. That may mean adding the `unpackerr`
+user, for example, to the `debian-transmission` group.
+
+On FreeBSD the app runs as `nobody`. That's not very good and will probably change in the future.
+
 ### macOS Install
 
 -   Use homebrew.

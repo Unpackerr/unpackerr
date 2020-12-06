@@ -109,6 +109,7 @@ func Start() (err error) {
 
 	fm, dm := u.validateConfig()
 	// Do not do any logging before this.
+	// ie. No running of u.Debugf or u.Print* before running validateConfig()
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
@@ -126,7 +127,7 @@ func Start() (err error) {
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	u.Printf("=====> Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
+	u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 
 	return nil
 }

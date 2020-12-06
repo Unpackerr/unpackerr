@@ -32,6 +32,7 @@ const (
 	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
 	defaultLogFileMb   = 10
 	defaultLogFiles    = 10
+	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
 )
 
 // Unpackerr stores all the running data.
@@ -89,9 +90,9 @@ func New() *Unpackerr {
 
 // Start runs the app.
 func Start() (err error) {
-	log.SetFlags(log.LstdFlags)
+	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
-	u := New().ParseFlags()
+	u := New().ParseFlags() // Grab CLI args (like config file location).
 	if u.Flags.verReq {
 		fmt.Println(version.Print("unpackerr"))
 
@@ -106,10 +107,8 @@ func Start() (err error) {
 		return fmt.Errorf("environment variables: %w", err)
 	}
 
-	u.setupLogging()
-
 	fm, dm := u.validateConfig()
-	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), time.Now())
+	// Do not do any logging before this.
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
@@ -127,7 +126,7 @@ func Start() (err error) {
 
 	go u.Run()
 	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	u.Print("=====> Exiting! Caught Signal:", <-u.sigChan)
+	u.Printf("=====> Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 
 	return nil
 }
@@ -191,7 +190,6 @@ func (u *Unpackerr) Run() {
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
 	if u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
-		u.Debugf("Minimum Delete Delay: %v", minimumDeleteDelay.String())
 	}
 
 	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
@@ -218,7 +216,6 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 
 	if u.Interval.Duration < minimumInterval {
 		u.Interval.Duration = minimumInterval
-		u.Debugf("Minimum Interval: %v", minimumInterval.String())
 	}
 
 	if u.Config.Debug && u.LogFiles == defaultLogFiles {
@@ -231,6 +228,10 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 		}
 	}
 
+	// We cannot log anything until setupLogging() runs.
+	// We cannot run setupLogging until we read the above config.
+	u.setupLogging()
+	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), version.Started)
 	u.validateApps()
 
 	return fm, dm

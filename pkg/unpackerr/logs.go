@@ -77,18 +77,27 @@ func (status ExtractStatus) String() string {
 // Debugf writes Debug log lines... to stdout and/or a file.
 func (l *Logger) Debugf(msg string, v ...interface{}) {
 	if l.debug {
-		_ = l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
+		err := l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
+		if err != nil {
+			fmt.Println("Logger Error:", err)
+		}
 	}
 }
 
 // Print writes log lines... to stdout and/or a file.
 func (l *Logger) Print(v ...interface{}) {
-	_ = l.Logger.Output(callDepth, fmt.Sprintln(v...))
+	err := l.Logger.Output(callDepth, fmt.Sprintln(v...))
+	if err != nil {
+		fmt.Println("Logger Error:", err)
+	}
 }
 
 // Printf writes log lines... to stdout and/or a file.
 func (l *Logger) Printf(msg string, v ...interface{}) {
-	_ = l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
+	err := l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
+	if err != nil {
+		fmt.Println("Logger Error:", err)
+	}
 }
 
 // logCurrentQueue prints the number of things happening.
@@ -137,7 +146,7 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
-	switch { // only use MultiWriter is we have > 1 writer.
+	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && u.Config.LogFile != "":
 		u.Logger.Logger.SetOutput(io.MultiWriter(&lumberjack.Logger{
 			Filename:   u.Config.LogFile,   // log file name.
@@ -165,6 +174,7 @@ func (u *Unpackerr) setupLogging() {
 
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo() {
+	u.Printf("==> %s <==", helpLink)
 	u.Print("==> Startup Settings <==")
 	u.logSonarr()
 	u.logRadarr()

@@ -1,17 +1,21 @@
-/unpackerr.conf
+# Change this line.
 /unpackerr
-/unpackerr*.gz
-/unpackerr*.zip
+
+# The rest is probably fine.
+/rsrc.syso
+/*.conf
+/*.gz
+/*.zip
 /unpackerr*.1
-/unpackerr*.deb
-/unpackerr*.rpm
-/unpackerr*.txz
-/unpackerr.*.arm
-/unpackerr.*.exe
-/unpackerr.*.macos
-/unpackerr.*.linux
-/unpackerr.*.freebsd
-/unpackerr.rb
+/*.deb
+/*.rpm
+/*.txz
+/*.*.arm
+/*.*.exe
+/.*.macos
+/*.*.linux
+/*.*.freebsd
+/*.rb
 *.sha256
 /vendor
 .DS_Store
@@ -22,9 +26,8 @@ MANUAL
 MANUAL.html
 README
 README.html
-/unpackerr_manual.html
+/*_manual.html
 /homebrew-mugs
-
 .secret-files.tar
 github_deploy_key*
 .metadata.make

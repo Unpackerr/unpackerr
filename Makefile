@@ -8,6 +8,9 @@ IGNORED:=$(shell bash -c "source .metadata.sh ; env | sed 's/=/:=/;s/^/export /'
 # md2roff turns markdown into man files and html files.
 MD2ROFF_BIN=github.com/davidnewhall/md2roff
 
+# rsrc adds an ico file to a Windows exe file.
+RSRC_BIN=github.com/akavel/rsrc
+
 # Travis CI passes the version in. Local builds get it from the current git tag.
 ifeq ($(VERSION),)
 	include .metadata.make
@@ -58,7 +61,7 @@ VERSION_LDFLAGS:= -X $(VERSION_PATH).Branch=$(BRANCH) \
 all: clean build
 
 # Prepare a release. Called in Travis CI.
-release: clean macos windows linux_packages freebsd_packages
+release: clean macos linux_packages freebsd_packages windows
 	# Prepareing a release!
 	mkdir -p $@
 	mv $(BINARY).*.macos $(BINARY).*.linux $(BINARY).*.freebsd $@/
@@ -73,7 +76,7 @@ clean:
 	# Cleaning up.
 	rm -f $(BINARY) $(BINARY).*.{macos,freebsd,linux,exe}{,.gz,.zip} $(BINARY).1{,.gz} $(BINARY).rb
 	rm -f $(BINARY){_,-}*.{deb,rpm,txz} v*.tar.gz.sha256 examples/MANUAL .metadata.make
-	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html
+	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html rsrc.syso
 	rm -rf package_build_* release
 
 # Build a man page from a markdown file using md2roff.
@@ -86,7 +89,14 @@ $(BINARY).1.gz: md2roff
 	gzip -9nc examples/MANUAL > $@
 	mv examples/MANUAL.html $(BINARY)_manual.html
 
-md2roff:
+rsrc: rsrc.syso
+rsrc.syso: init/windows/unpackerr.ico init/windows/manifest.xml $(shell go env GOPATH)/bin/rsrc
+	$(shell go env GOPATH)/bin/rsrc -ico init/windows/unpackerr.ico -manifest init/windows/manifest.xml
+$(shell go env GOPATH)/bin/rsrc:
+	cd /tmp ; go get $(RSRC_BIN) ; go install $(RSRC_BIN)
+
+md2roff: $(shell go env GOPATH)/bin/md2roff
+$(shell go env GOPATH)/bin/md2roff:
 	cd /tmp ; go get $(MD2ROFF_BIN) ; go install $(MD2ROFF_BIN)
 
 # TODO: provide a template that adds the date to the built html file.
@@ -142,7 +152,7 @@ $(BINARY).armhf.freebsd: main.go
 
 exe: $(BINARY).amd64.exe
 windows: $(BINARY).amd64.exe
-$(BINARY).amd64.exe: main.go
+$(BINARY).amd64.exe: rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS)"
 

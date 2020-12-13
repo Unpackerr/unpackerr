@@ -13,8 +13,9 @@ import (
 
 // satisfy gomnd.
 const (
-	callDepth = 2 // log the line that called us.
-	megabyte  = 1024 * 1024
+	callDepth   = 2 // log the line that called us.
+	megabyte    = 1024 * 1024
+	logsDirMode = 0755
 )
 
 // ExtractStatus is our enum for an extract's status.
@@ -154,7 +155,7 @@ func (u *Unpackerr) setupLogging() {
 		Filepath: u.Config.LogFile,                                  // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
 		Rotatorr: &timerotator.Layout{FileCount: u.Config.LogFiles}, // number of files to keep.
-		DirMode:  0755,
+		DirMode:  logsDirMode,
 	}
 
 	switch { // only use MultiWriter if we have > 1 writer.

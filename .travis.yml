@@ -1,5 +1,8 @@
-language: go
 os: linux
+dist: bionic
+language: go
+git:
+  depth: false
 addons:
   apt:
     packages:
@@ -12,8 +15,6 @@ addons:
     - zip
 go:
   - 1.15.x
-git:
-  depth: 10000
 services:
   - docker
 install:
@@ -56,6 +57,7 @@ deploy:
   - provider: releases
     overwrite: true
     skip_cleanup: true
+    cleanup: false
     file_glob: true
     token:
       # to get a secure api key, run: travis setup releases

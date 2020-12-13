@@ -7,6 +7,6 @@ if [ "$1" = "upgrade" ] || [ "$1" = "1" ] ; then
 fi
 
 if [ -x "/bin/systemctl" ]; then
-  /bin/systemctl stop unpackerr
-  /bin/systemctl disable unpackerr
+  /bin/systemctl stop {{BINARY}}
+  /bin/systemctl disable {{BINARY}}
 fi

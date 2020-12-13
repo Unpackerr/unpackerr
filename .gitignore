@@ -31,3 +31,5 @@ README.html
 .secret-files.tar
 github_deploy_key*
 .metadata.make
+/after-install-rendered.sh
+/before-remove-rendered.sh

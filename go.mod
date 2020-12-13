@@ -6,7 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/spf13/pflag v1.0.5
 	golift.io/cnfg v0.0.7
-	golift.io/rotatorr v0.0.0-20201213100317-c92ce19a9894
+	golift.io/rotatorr v0.0.0-20201213114428-7c5c721da41e
 	golift.io/starr v0.9.4
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.0.3

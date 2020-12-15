@@ -14,8 +14,6 @@ import (
 	"golift.io/xtractr"
 )
 
-const FolderString = "Folder"
-
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`

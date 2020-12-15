@@ -1,5 +1,8 @@
-language: go
 os: linux
+dist: bionic
+language: go
+git:
+  depth: false
 addons:
   apt:
     packages:
@@ -12,16 +15,14 @@ addons:
     - zip
 go:
   - 1.15.x
-git:
-  depth: 10000
 services:
   - docker
 install:
   - mkdir -p $GOPATH/bin
   # download super-linter: golangci-lint
   - curl -sL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
-  - rvm install 2.3.0
-  - rvm 2.3.0 do gem install --no-document fpm
+  - rvm install 2.6.0
+  - rvm 2.6.0 do gem install --no-document fpm
 before_script:
   # Create your own deploy key, tar it, and encrypt the file to make this work. Optionally add a bitly_token file to the archive.
   - openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in .secret_files.tar.enc -out .secret_files.tar -d
@@ -34,7 +35,7 @@ script:
   # Test built docker image.
   - docker run $BINARY -v 2>&1 | grep -Eq "^$BINARY, version $VERSION"
   # Build everything
-  - rvm 2.3.0 do make release
+  - rvm 2.6.0 do make release
 after_success:
   # Display Release Folder
   - ls -l release/
@@ -56,8 +57,13 @@ deploy:
   - provider: releases
     overwrite: true
     skip_cleanup: true
+    cleanup: false
     file_glob: true
     token:
+      # to get a secure api key, run: travis setup releases
+      # make a copy of this file first because that command will change it.
+      # or: make a new key manually at https://github.com/settings/tokens/new
+      # then: echo <NEW_KEY_FROM_GH> | travis encrypt
       secure: GAU7o2KZuhl9pfUcZD/Nz1/67ridwVBXH/L4vtHGtD+xso+28t6M123RMFLVVXtH6x5b8pS+x7wqJp2cL319hhklMRfa6JOx3H9tG0CrChzvokYAeM91qPznIs/QyWKCK3Jgf0ABzqHJmCeQCbMdV9ydDSY/HYCBin+Ny14cFcPawXFu/85wpnmqc68BG0Gji12nn8fA4iESDDUKsKC7qOFwYe2cN4p48eHF+g+LRDQv6+aKoGDHP1JFW4TR/VdwzJ0uK+lZ7JSZXS92fl6rjIBUjFLrrZrN2oqIM1DBGEcP0K4x1u4Ia1yRx1Af8MBpZpH3+bbcc93NLFtEphHZzsEYySao7PfhIECcSLv4LoXuZXGGNzEKWxYmV8wiule1UaTPt62hV2KBB4rj99h0lH5BQ/eq8SZ1py/1HJyi1ps0ouxvktVMc0iRrSK8Gf3qscYsq1KGku2VNDF6btIP20b86DGsKQjIdi58Wn8Zyo1s07SpnHCpE+F5xM6hl180vtqnNqaCKcFtvi12jCSWKc5uDYnx/sCRPQsxcS/dFp4SmUhGmfYbB5/h0uJWxJpOlubUlExoN218ovRgbXFlGp8mkAlKv3IlWNYqV2o0h3SxaCA7i0Bo+pemQRjsXU7zgjBgVoLozrxPYF31fwo81i8cBJ7jW72qmlFxSXAPICE=
     file: release/*
     on:

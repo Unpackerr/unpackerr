@@ -8,6 +8,9 @@ IGNORED:=$(shell bash -c "source .metadata.sh ; env | sed 's/=/:=/;s/^/export /'
 # md2roff turns markdown into man files and html files.
 MD2ROFF_BIN=github.com/davidnewhall/md2roff
 
+# rsrc adds an ico file to a Windows exe file.
+RSRC_BIN=github.com/akavel/rsrc
+
 # Travis CI passes the version in. Local builds get it from the current git tag.
 ifeq ($(VERSION),)
 	include .metadata.make
@@ -27,7 +30,7 @@ BINARYU:=$(shell echo $(BINARY) | tr -- - _)
 
 PACKAGE_SCRIPTS=
 ifeq ($(FORMULA),service)
-	PACKAGE_SCRIPTS=--after-install scripts/after-install.sh --before-remove scripts/before-remove.sh
+	PACKAGE_SCRIPTS=--after-install after-install-rendered.sh --before-remove before-remove-rendered.sh
 endif
 
 define PACKAGE_ARGS
@@ -42,7 +45,7 @@ $(PACKAGE_SCRIPTS) \
 --vendor "$(VENDOR)" \
 --description "$(DESC)" \
 --config-files "/etc/$(BINARY)/$(CONFIG_FILE)" \
---freebsd-origin "$(BINARY)/$(BINARY)"
+--freebsd-origin "$(GHUSER)/$(REPO)/$(BINARY)"
 endef
 
 PLUGINS:=$(patsubst plugins/%/main.go,%,$(wildcard plugins/*/main.go))
@@ -58,7 +61,7 @@ VERSION_LDFLAGS:= -X $(VERSION_PATH).Branch=$(BRANCH) \
 all: clean build
 
 # Prepare a release. Called in Travis CI.
-release: clean macos windows linux_packages freebsd_packages
+release: clean macos linux_packages freebsd_packages windows
 	# Prepareing a release!
 	mkdir -p $@
 	mv $(BINARY).*.macos $(BINARY).*.linux $(BINARY).*.freebsd $@/
@@ -73,8 +76,8 @@ clean:
 	# Cleaning up.
 	rm -f $(BINARY) $(BINARY).*.{macos,freebsd,linux,exe}{,.gz,.zip} $(BINARY).1{,.gz} $(BINARY).rb
 	rm -f $(BINARY){_,-}*.{deb,rpm,txz} v*.tar.gz.sha256 examples/MANUAL .metadata.make
-	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html
-	rm -rf package_build_* release
+	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html rsrc.syso
+	rm -rf package_build_* release after-install-rendered.sh before-remove-rendered.sh
 
 # Build a man page from a markdown file using md2roff.
 # This also turns the repo readme into an html file.
@@ -86,7 +89,8 @@ $(BINARY).1.gz: md2roff
 	gzip -9nc examples/MANUAL > $@
 	mv examples/MANUAL.html $(BINARY)_manual.html
 
-md2roff:
+md2roff: $(shell go env GOPATH)/bin/md2roff
+$(shell go env GOPATH)/bin/md2roff:
 	cd /tmp ; go get $(MD2ROFF_BIN) ; go install $(MD2ROFF_BIN)
 
 # TODO: provide a template that adds the date to the built html file.
@@ -94,6 +98,12 @@ readme: README.html
 README.html: md2roff
 	# This turns README.md into README.html
 	$(shell go env GOPATH)/bin/md2roff --manual $(BINARY) --version $(VERSION) --date "$(DATE)" README.md
+
+rsrc: rsrc.syso
+rsrc.syso: init/windows/application.ico init/windows/manifest.xml $(shell go env GOPATH)/bin/rsrc
+	$(shell go env GOPATH)/bin/rsrc -ico init/windows/application.ico -manifest init/windows/manifest.xml
+$(shell go env GOPATH)/bin/rsrc:
+	cd /tmp ; go get $(RSRC_BIN) ; go install $(RSRC_BIN)
 
 # Binaries
 
@@ -142,7 +152,7 @@ $(BINARY).armhf.freebsd: main.go
 
 exe: $(BINARY).amd64.exe
 windows: $(BINARY).amd64.exe
-$(BINARY).amd64.exe: main.go
+$(BINARY).amd64.exe: rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS)"
 
@@ -216,7 +226,7 @@ $(BINARY)-$(VERSION)_$(ITERATION).armhf.txz: package_build_freebsd_arm check_fpm
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p $(BINARY)-$(VERSION)_$(ITERATION).armhf.txz -C $<
 
 # Build an environment that can be packaged for linux.
-package_build_linux: readme man plugins_linux_amd64 linux
+package_build_linux: readme man plugins_linux_amd64 after-install-rendered.sh before-remove-rendered.sh linux
 	# Building package environment for linux.
 	mkdir -p $@/usr/bin $@/etc/$(BINARY) $@/usr/share/man/man1 $@/usr/share/doc/$(BINARY) $@/usr/lib/$(BINARY)
 	# Copying the binary, config file, unit file, and man page into the env.
@@ -231,6 +241,12 @@ package_build_linux: readme man plugins_linux_amd64 linux
 	[ "$(FORMULA)" != "service" ] || \
 		sed -e "s/{{BINARY}}/$(BINARY)/g" -e "s/{{DESC}}/$(DESC)/g" \
 		init/systemd/template.unit.service > $@/lib/systemd/system/$(BINARY).service
+
+after-install-rendered.sh:
+	sed -e "s/{{BINARY}}/$(BINARY)/g" scripts/after-install.sh > after-install-rendered.sh
+
+before-remove-rendered.sh:
+	sed -e "s/{{BINARY}}/$(BINARY)/g" scripts/before-remove.sh > before-remove-rendered.sh
 
 package_build_linux_386: package_build_linux linux386
 	mkdir -p $@
@@ -334,14 +350,15 @@ test: lint
 	go test -race -covermode=atomic ./...
 lint:
 	# Checking lint.
-	golangci-lint run $(GOLANGCI_LINT_ARGS)
+	$(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
 
 # Homebrew stuff. macOS only.
 
 # Used for Homebrew only. Other distros can create packages.
 install: man readme $(BINARY) plugins_darwin
 	@echo -  Done Building  -
-	@echo -  Local installation with the Makefile is only supported on macOS for Homebrew.
+	@echo -  Local installation with the Makefile is only supported on macOS.
+	@echo -  Otherwise, build and install a package: make rpm -or- make deb
 	@[ "$(shell uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
 	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
 	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)

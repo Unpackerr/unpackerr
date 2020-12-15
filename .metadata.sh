@@ -1,6 +1,7 @@
 # Application Builder Configuration File. Customized for: unpackerr
+# Each line must have an export clause.
 # This file is parsed and sourced by the Makefile, Docker and Homebrew builds.
-# Powered by Application Builder: https://github.com/golift/application-builder
+# Powered by Application Builder: https://golift.io/application-builder
 
 # Bring in dynamic repo/pull/source info.
 source $(dirname "${BASH_SOURCE[0]}")/init/buildinfo.sh

@@ -7,11 +7,16 @@ import (
 	"log"
 	"os"
 
-	"gopkg.in/natefinch/lumberjack.v2"
+	"golift.io/rotatorr"
+	"golift.io/rotatorr/timerotator"
 )
 
 // satisfy gomnd.
-const callDepth = 2 // log the line that called us.
+const (
+	callDepth   = 2 // log the line that called us.
+	megabyte    = 1024 * 1024
+	logsDirMode = 0755
+)
 
 // ExtractStatus is our enum for an extract's status.
 type ExtractStatus uint8
@@ -146,29 +151,22 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
+	rotate := &rotatorr.Config{
+		Filepath: u.Config.LogFile,                                  // log file name.
+		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
+		Rotatorr: &timerotator.Layout{FileCount: u.Config.LogFiles}, // number of files to keep.
+		DirMode:  logsDirMode,
+	}
+
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && u.Config.LogFile != "":
-		u.Logger.Logger.SetOutput(io.MultiWriter(&lumberjack.Logger{
-			Filename:   u.Config.LogFile,   // log file name.
-			MaxSize:    u.Config.LogFileMb, // megabytes
-			MaxBackups: u.Config.LogFiles,  // number of files to keep.
-			MaxAge:     0,                  // days, 0 for unlimited
-			Compress:   false,              // meh no thanks.
-			LocalTime:  true,               // use local time in logs, not UTC.
-		}, os.Stdout))
+		u.Logger.Logger.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
 	case !u.Config.Quiet && u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(os.Stdout)
 	case u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(ioutil.Discard) // default is "nothing"
 	default:
-		u.Logger.Logger.SetOutput(&lumberjack.Logger{
-			Filename:   u.Config.LogFile,
-			MaxSize:    u.Config.LogFileMb, // megabytes
-			MaxBackups: u.Config.LogFiles,
-			MaxAge:     0,     // days, 0 for unlimited
-			Compress:   false, // meh no thanks.
-			LocalTime:  true,  // use local time in logs, not UTC.
-		})
+		u.Logger.Logger.SetOutput(rotatorr.NewMust(rotate))
 	}
 }
 

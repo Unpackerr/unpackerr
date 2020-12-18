@@ -35,7 +35,7 @@ Use the methods below to install using Docker.
 
 #### Docker Config File
 
--   Copy the [example config file](examples/unpackerr.conf.example) from this repo.
+-   Copy the [example config file](https://github.com/davidnewhall/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
 -   Then grab the image from docker hub and run it using an overlay for the config file.
 
 ```shell
@@ -62,7 +62,7 @@ log_files|`UN_LOG_FILES`|`10` / Log files to keep after rotating. `0` disables r
 log_file_mb|`UN_LOG_FILE_MB`|`10` / Max size of log files in megabytes.|
 interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`|
 timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)|
-delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long long after import|
+delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long after import|
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|

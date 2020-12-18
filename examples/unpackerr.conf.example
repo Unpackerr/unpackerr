@@ -67,7 +67,7 @@ dir_mode = "0755"
 #   exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 
 ###
-## You must uncomment the [[header]] and api_key at a minimum for *add apps.
+## You must uncomment the [[header]] and api_key at a minimum for *arr apps.
 ###
 
 # TV Series / Episodes

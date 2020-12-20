@@ -168,7 +168,7 @@ docker logs <container id from docker run>
 Example of the above in shell form:
 
 ```shell
-wget -qO- https://golift.io/unpackerr/master/scripts/install.sh | sudo bash
+wget -qO- https://golift.io/unpackerr/raw/master/scripts/install.sh | sudo bash
 
 nano /etc/unpackerr/unpackerr.conf         # linux
 vi /usr/local/etc/unpackerr/unpackerr.conf # freebsd

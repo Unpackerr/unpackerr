@@ -10,7 +10,7 @@ ARG COMMIT=0
 ARG VERSION=unknown
 ARG BINARY=application-builder
 
-FROM golang:1.15 as builder
+FROM golang:latest as builder
 ARG ARCH
 ARG OS
 ARG BINARY
@@ -19,7 +19,9 @@ RUN mkdir -p $GOPATH/pkg/mod $GOPATH/bin $GOPATH/src /${BINARY}
 COPY . /${BINARY}
 WORKDIR /${BINARY}
 
-RUN CGO_ENABLED=0 make ${BINARY}.${ARCH}.${OS}
+RUN apt update && \
+    apt install -y upx && \
+    CGO_ENABLED=0 make ${BINARY}.${ARCH}.${OS}
 
 FROM scratch
 ARG ARCH

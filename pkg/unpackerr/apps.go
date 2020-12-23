@@ -40,14 +40,16 @@ type Config struct {
 	LogFile     string           `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
 	LogFiles    int              `json:"log_files" toml:"log_files" xml:"log_files" yaml:"log_files"`
 	LogFileMb   int              `json:"log_file_mb" toml:"log_file_mb" xml:"log_file_mb" yaml:"log_file_mb"`
+	MaxRetries  uint             `json:"max_retries" toml:"max_retries" xml:"max_retries" yaml:"max_retries"`
 	FileMode    string           `json:"file_mode" toml:"file_mode" xml:"file_mode" yaml:"file_mode"`
 	DirMode     string           `json:"dir_mode" toml:"dir_mode" xml:"dir_mode" yaml:"dir_mode"`
+	LogQueues   cnfg.Duration    `json:"log_queues" toml:"log_queues" xml:"log_queues" yaml:"log_queues"` // undocumented.
 	Interval    cnfg.Duration    `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration    `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	StartDelay  cnfg.Duration    `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
 	RetryDelay  cnfg.Duration    `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
-	Buffer      int              `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"` // undocumented.
+	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"` // undocumented.
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
@@ -56,9 +58,9 @@ type Config struct {
 	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 }
 
-// processAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
+// retreiveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // The calls the check methods to scan their queues for changes.
-func (u *Unpackerr) processAppQueues() {
+func (u *Unpackerr) retreiveAppQueues() {
 	var wg sync.WaitGroup
 
 	// Run each method in a go routine as a waitgroup.

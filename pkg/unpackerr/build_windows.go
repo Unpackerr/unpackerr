@@ -3,6 +3,6 @@
 package unpackerr
 
 const (
-	defaultConfFile = `C:\ProgramData\unpackerr\unpackerr.conf`
+	defaultConfFile = `unpackerr.conf`
 	defaultSavePath = `C:\downloads`
 )

@@ -18,10 +18,12 @@ import (
 )
 
 const (
+	defaultMaxRetries  = 3
 	defaultFileMode    = 0644
 	defaultDirMode     = 0755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
+	cleanerInterval    = 5 * time.Second
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
@@ -63,9 +65,9 @@ type Flags struct {
 
 // History holds the history of extracted items.
 type History struct {
-	Finished  uint
-	Restarted uint
-	Map       map[string]*Extract
+	Finished uint
+	Retries  uint
+	Map      map[string]*Extract
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -77,6 +79,8 @@ func New() *Unpackerr {
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
+			LogQueues:   cnfg.Duration{Duration: time.Minute},
+			MaxRetries:  defaultMaxRetries,
 			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},
@@ -151,26 +155,26 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		poller  = time.NewTicker(u.Interval.Duration) // poll apps at configured interval.
-		cleaner = time.NewTicker(minimumInterval)     // clean at the minimum interval.
-		logger  = time.NewTicker(time.Minute)         // log queue states every minute.
+		poller  = time.NewTicker(u.Config.Interval.Duration)  // poll apps at configured interval.
+		cleaner = time.NewTicker(cleanerInterval)             // clean at a fast interval.
+		logger  = time.NewTicker(u.Config.LogQueues.Duration) // log queue states every minute.
 	)
 
-	u.PollFolders()      // This initializes channel(s) used below.
-	u.processAppQueues() // Get in-app queues on startup.
+	u.PollFolders()       // This initializes channel(s) used below.
+	u.retreiveAppQueues() // Get in-app queues on startup.
 
 	// one go routine to rule them all.
 	for {
 		select {
 		case <-cleaner.C:
-			// Check for state changes and act on them.
+			// Check for extraction state changes and act on them.
 			u.checkExtractDone()
 			u.checkFolderStats()
 		case <-poller.C:
-			// polling interval. pull API data from all apps.
-			u.processAppQueues()
-			// check if things got imported and now need to be deleted.
-			u.checkImportsDone()
+			// polling interval. pull queue data from all apps.
+			u.retreiveAppQueues()
+			// check for state changes in the qpp queues.
+			u.checkQueueChanges()
 		case resp := <-u.updates:
 			// xtractr callback for arr app download extraction.
 			u.handleXtractrCallback(resp)

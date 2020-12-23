@@ -17,6 +17,7 @@ import (
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
+	DeleteFiles bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
@@ -39,6 +40,8 @@ type Folder struct {
 	step ExtractStatus
 	cnfg *FolderConfig
 	list []string
+	retr uint
+	rars []string
 }
 
 type eventData struct {
@@ -182,6 +185,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		u.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
 
 		folder.step = EXTRACTFAILED
+		folder.rars = resp.Archives
 	default: // this runs in a go routine
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
@@ -189,6 +193,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 
 		folder.step = EXTRACTED
+		folder.rars = resp.Archives
 		folder.list = resp.NewFiles
 	}
 
@@ -216,22 +221,18 @@ func (f *Folders) watchFSNotify() {
 				break
 			}
 
+			// Send this event to processEvent().
 			for _, cnfg := range f.Config {
-				// Find the configured folder for the event we just got.
+				// cnfg.Path: "/Users/Documents/watched_folder"
+				// event.Name: "/Users/Documents/watched_folder/new_folder/file.rar"
+				// eventData.name: "new_folder"
 				if !strings.HasPrefix(event.Name, cnfg.Path) {
-					continue
+					continue // Not the configured folder for the event we just got.
+				} else if p := filepath.Dir(event.Name); p == cnfg.Path {
+					f.Events <- &eventData{name: filepath.Base(event.Name), cnfg: cnfg, file: event.Name}
+				} else {
+					f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: event.Name}
 				}
-
-				// cnfg.Path: "/Users/Documents/auto"
-				// event.Name: "/Users/Documents/auto/my_folder/file.rar"
-				// p: "my_folder"
-				p := strings.TrimPrefix(event.Name, cnfg.Path)
-				if np := filepath.Dir(p); np != "." {
-					p = np
-				}
-
-				// Send this event to processEvent().
-				f.Events <- &eventData{name: p, cnfg: cnfg, file: filepath.Base(event.Name)}
 			}
 		}
 	}
@@ -239,39 +240,41 @@ func (f *Folders) watchFSNotify() {
 
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData) {
-	fullPath := filepath.Join(event.cnfg.Path, event.name)
-	if stat, err := os.Stat(fullPath); err != nil {
+	dirPath := filepath.Join(event.cnfg.Path, event.name)
+	if stat, err := os.Stat(dirPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
-		if _, ok := f.Folders[fullPath]; ok {
-			f.Debugf("Folder: Removing Tracked Item: %v", fullPath)
-			delete(f.Folders, fullPath)
+		if _, ok := f.Folders[dirPath]; ok {
+			f.Debugf("Folder: Removing Tracked Item: %v", dirPath)
+			delete(f.Folders, dirPath)
 
-			_ = f.Watcher.Remove(fullPath)
+			_ = f.Watcher.Remove(dirPath)
 		}
+
+		f.Debugf("Folder: Ignored File Event: %v (unreadable)", event.file)
 
 		return
 	} else if !stat.IsDir() {
-		f.Debugf("Folder: Ignoring Item: %v (not a folder)", fullPath)
+		f.Debugf("Folder: Ignoring Item: %v (not a folder)", dirPath)
 
 		return
 	}
 
-	if _, ok := f.Folders[fullPath]; ok {
-		//		f.Debugf("Item Updated: %v (file: %v)", fullPath, event.file)
-		f.Folders[fullPath].last = time.Now()
+	if _, ok := f.Folders[dirPath]; ok {
+		// f.Debugf("Item Updated: %v (file: %v)", fullPath, event.file)
+		f.Folders[dirPath].last = time.Now()
 
 		return
 	}
 
-	if err := f.Watcher.Add(fullPath); err != nil {
-		f.Printf("[ERROR] Folder: Tracking New Item: %v: %v", fullPath, err)
+	if err := f.Watcher.Add(dirPath); err != nil {
+		f.Printf("[ERROR] Folder: Tracking New Item: %v: %v", dirPath, err)
 
 		return
 	}
 
-	f.Printf("[Folder] Tracking New Item: %v", fullPath)
+	f.Printf("[Folder] Tracking New Item: %v", dirPath)
 
-	f.Folders[fullPath] = &Folder{
+	f.Folders[dirPath] = &Folder{
 		last: time.Now(),
 		step: WAITING,
 		cnfg: event.cnfg,
@@ -279,32 +282,42 @@ func (f *Folders) processEvent(event *eventData) {
 }
 
 // checkFolderStats runs at an interval to see if any folders need work done on them.
+// This runs on an interval ticker.
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := time.Since(folder.last); {
-		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration:
-			u.Printf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
-				folder.cnfg.Path, elapsed.Round(time.Second))
-
-			folder.last = time.Now()
-			folder.step = WAITING
-			u.Restarted++
-		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
-			// Folder reached delete delay (after extraction), nuke it.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
-			delete(u.folders.Folders, name)
-
-			// Only delete the extracted files if DeleteAfter is greater than 0.
-			if !folder.cnfg.MoveBack && folder.cnfg.DeleteAfter.Duration > 0 {
-				go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
-			}
-
-			if folder.cnfg.DeleteOrig {
-				go u.DeleteFiles(name)
-			}
 		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
 			u.extractFolder(name, folder)
+		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration &&
+			(u.MaxRetries == 0 || folder.retr < u.MaxRetries):
+			u.Retries++
+			folder.retr++
+			folder.last = time.Now()
+			folder.step = WAITING
+			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
+				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
+		case folder.cnfg.DeleteAfter.Duration < 1:
+			// if DeleteAfter is 0 we don't delete anything. we are done.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+			delete(u.folders.Folders, name)
+		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
+			// Folder reached delete delay (after extraction), nuke it.
+			if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
+				go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+			} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
+				go u.DeleteFiles(folder.list...)
+			}
+
+			if folder.cnfg.DeleteOrig && !folder.cnfg.MoveBack {
+				go u.DeleteFiles(name)
+			} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
+				go u.DeleteFiles(folder.rars...)
+			}
+
+			// Folder reached delete delay (after extraction), nuke it.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+			delete(u.folders.Folders, name)
 		}
 	}
 }

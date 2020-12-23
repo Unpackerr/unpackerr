@@ -37,5 +37,8 @@ VERSION_PATH="golift.io/version"
 # Used by homebrew downloads, references VERSION which comes from buildinfo.sh.
 SOURCE_PATH=https://golift.io/${REPO}/archive/v${VERSION}.tar.gz
 
+# Use upx to compress binaries. Must install upx. apt/yum/brew install upx
+COMPRESS=true
+
 export BINARY GHUSER HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
-export LICENSE FORMULA SOURCE_URL URL VERSION_PATH SOURCE_PATH
+export LICENSE FORMULA SOURCE_URL URL VERSION_PATH SOURCE_PATH COMPRESS

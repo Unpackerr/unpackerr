@@ -2,7 +2,7 @@
 /unpackerr
 
 # The rest is probably fine.
-/rsrc.syso
+/rsrc*.syso
 /*.conf
 /*.gz
 /*.zip

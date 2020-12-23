@@ -17,6 +17,7 @@ import (
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
+	DeleteFiles bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
@@ -286,6 +287,9 @@ func (f *Folders) processEvent(event *eventData) {
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := time.Since(folder.last); {
+		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
+			// The folder hasn't been written to in a while, extract it.
+			u.extractFolder(name, folder)
 		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || folder.retr < u.MaxRetries):
 			u.Retries++
@@ -294,22 +298,25 @@ func (u *Unpackerr) checkFolderStats() {
 			folder.step = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
 				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
-		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
-			// Folder reached delete delay (after extraction), nuke it.
+		case folder.cnfg.DeleteAfter.Duration < 1:
+			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
 			delete(u.folders.Folders, name)
-
-			// Only delete the extracted files if DeleteAfter is greater than 0.
-			if !folder.cnfg.MoveBack && folder.cnfg.DeleteAfter.Duration > 0 {
+		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
+			// Folder reached delete delay (after extraction), nuke it.
+			if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
 				go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+			} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
+				go u.DeleteFiles(folder.list...)
 			}
 
 			if folder.cnfg.DeleteOrig {
 				go u.DeleteFiles(name)
 			}
-		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
-			// The folder hasn't been written to in a while, extract it.
-			u.extractFolder(name, folder)
+
+			// Folder reached delete delay (after extraction), nuke it.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+			delete(u.folders.Folders, name)
 		}
 	}
 }

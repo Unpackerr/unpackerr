@@ -1,5 +1,6 @@
-# Unpackerr Example Configuration File
-# The following values are application defaults.
+##      Unpackerr Example Configuration File      ##
+## The following values are application defaults. ##
+####################################################
 
 # [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
 # Recommend trying this so you know what it looks like. I personally leave it on.
@@ -14,9 +15,10 @@ quiet = false
 # The alternative is to use syslog to log the output of the application to a file.
 # Default is no log file; this is unset. log_files=0 turns off auto-rotation.
 # Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
+# Windows paths must use two backslashes: "C:\\Some\\Path\\Unpacker.log" (true everywhere).
 #log_file = "/downloads/unpackerr.log"
-#log_files = 10
-#log_file_mb = 10
+log_files = 10
+log_file_mb = 10
 
 # How often to poll sonarr and radarr.
 # Recommend 1m-5m. Uses Go Duration.
@@ -50,73 +52,83 @@ parallel = 1
 file_mode = "0644"
 dir_mode = "0755"
 
-###
-## The following sections can be repeated if you have more than one Sonarr,
-## Radarr or Lidarr, Readarr, Folder or Webhook.
-###
+##-Notes-######################################################################
+## The following sections can be repeated if you have more than one Sonarr,   #
+## Radarr or Lidarr, Readarr, Folder or Webhook.                              #
+## You must uncomment the [[header]] and api_key at a minimum for Starr apps. #
+###############################################################################
 
+################
+### Webhooks ###
+################
 # Sends a webhook when an extraction starts and again when it finishes.
 # Created to integrate with discordnotifier.com.
 # Can possibly be used with other services. Don't forget to uncomment [[webhook]].
 #[[webhook]]
-#   url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
-#   name       = ""    # Set this to hide the URL in logs.
-#   ignore_ssl = false # ignore certificate errors?
-#   silent     = false # do not log success
-#   events     = [0]   # list of event ids to include, 0 == all.
-#   exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+#  url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
+#  name       = ""    # Set this to hide the URL in logs.
+#  silent     = false # do not log success (less log spam)
+#  events     = [0]   # list of event ids to include, 0 == all.
+#  exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 
-###
-## You must uncomment the [[header]] and api_key at a minimum for *arr apps.
-###
 
-# TV Series / Episodes
+################
+### Episodes ###
+################
 #[[sonarr]]
-#   url = "http://127.0.0.1:8989"
-#   api_key = "cb3afda6559445f1ae1d0299dd696e38"
-   # File system path where downloaded Sonarr items are located.
-#   paths = ["/downloads"]
-# Default protocols is torrent. Alternative: "torrent,usenet"
-#   protocols = "torrent"
+#  url = "http://127.0.0.1:8989"
+#  api_key = "cb3afda6559445f1ae1d0299dd696e38"
+## File system path where downloaded Sonarr items are located.
+#  paths = ["/downloads"]
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
 
-# Movies
+################
+#### Movies ####
+################
 #[[radarr]]
 #  url = "http://127.0.0.1:7878"
 #  api_key = "4bc34281deda4846a2fdab2c15bc8de8"
-  # File system path where downloaded Radarr items are located.
+## File system path where downloaded Radarr items are located.
 #  paths = ["/downloads"]
-# Default protocols is torrents. Alternative: "torrent,usenet"
-#   protocols = "torrent"
+## Default protocols is torrents. Alternative: "torrent,usenet"
+#  protocols = "torrent"
 
-# Music
-#[[lidarr]]
+################
+#### Albums ####
+################
+[[lidarr]]
 #  url = "http://127.0.0.1:8686"
 #  api_key = "32454256defd484ab2fdab2c15bc17af"
-  # File system path where downloaded Lidarr items are located.
+## File system path where downloaded Lidarr items are located.
 #  paths = ["/downloads"]
-# Default protocols is torrent. Alternative: "torrent,usenet"
-#   protocols = "torrent"
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
 
-# Books
-#[[readarr]]
+################
+# Publications #
+################
+[[readarr]]
 #  url = "http://127.0.0.1:8787"
 #  api_key = "123445defd484ab2fdab2c15babcd"
-  # File system path where downloaded Readarr items are located.
+## File system path where downloaded Readarr items are located.
 #  paths = ["/downloads"]
-# Default protocols is torrent. Alternative: "torrent,usenet"
-#   protocols = "torrent"
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
 
-###
+##-Folders-####################################################################
 ## This application can also watch folders for things to extract. If you copy a
 ## subfolder into a watched folder (defined below) any extractable items in the
-## folder will be decompressed. This has *nothing* to do with Sonarr/Lidarr/Radarr.
-###
-
+## folder will be decompressed. This has nothing to do with Starr applications.
+###############################################################################
 #[[folder]]
+## Windows paths must use two backslashes: "C:\\Some\\Folder\\To\\Watch"
 #  path = "/some/folder/to/watch"
-  # Delete extracted items this long after extraction. Set to 0 to disable. Uses Go Duration.
+## Delete extracted or original files this long after extraction. Set to 0 to disable all deletes. Uses Go Duration.
 #  delete_after = "10m"
-  # Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
+## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
+#  delete_files = false
+## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
 #  delete_original = false
-  # Move extracted files into original folder? If false, files go into an _unpacked folder.
+## Move extracted files into original folder? If false, files go into an _unpackerred folder.
 #  move_back = false

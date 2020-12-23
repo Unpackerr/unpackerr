@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	defaultMaxRetries  = 3
 	defaultFileMode    = 0644
 	defaultDirMode     = 0755
 	defaultTimeout     = 10 * time.Second
@@ -63,9 +64,9 @@ type Flags struct {
 
 // History holds the history of extracted items.
 type History struct {
-	Finished  uint
-	Restarted uint
-	Map       map[string]*Extract
+	Finished uint
+	Retries  uint
+	Map      map[string]*Extract
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -77,6 +78,7 @@ func New() *Unpackerr {
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
 		Config: &Config{
+			MaxRetries:  defaultMaxRetries,
 			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
 			Interval:    cnfg.Duration{Duration: minimumInterval},

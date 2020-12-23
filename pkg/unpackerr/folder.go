@@ -288,7 +288,7 @@ func (u *Unpackerr) checkFolderStats() {
 
 			folder.last = time.Now()
 			folder.step = WAITING
-			u.Restarted++
+			u.Retries++
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			// Folder reached delete delay (after extraction), nuke it.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})

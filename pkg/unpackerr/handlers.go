@@ -18,6 +18,7 @@ type Extract struct {
 	Status  ExtractStatus
 	Updated time.Time
 	Resp    *xtractr.Response
+	Retries uint
 }
 
 // checkImportsDone checks if extracted items have been imported.
@@ -53,9 +54,12 @@ func (u *Unpackerr) handleFinishedImport(data *Extract, name string) {
 	case data.Status > IMPORTED:
 		u.Debugf("Already imported? %s", name)
 	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
-		// In a routine so it can run slowly and not block.
-		go u.DeleteFiles(data.Resp.NewFiles...)
 		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
+
+		if len(data.Resp.NewFiles) > 0 {
+			// In a routine so it can run slowly and not block.
+			go u.DeleteFiles(data.Resp.NewFiles...)
+		}
 	case data.Status == IMPORTED:
 		u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
@@ -113,11 +117,14 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
-		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration:
-			u.Restarted++
-			delete(u.Map, name)
-			u.Printf("[%s] Extract failed %v ago, removed history so it can be restarted: %v",
-				data.App, elapsed.Round(time.Second), name)
+		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
+			(u.MaxRetries == 0 || data.Retries < u.MaxRetries):
+			u.Retries++
+			data.Retries++
+			data.Status = WAITING
+			data.Updated = time.Now()
+			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
+				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
 		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++

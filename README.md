@@ -6,8 +6,8 @@
 ## About
 
 This application runs as a daemon on your download host. It checks for completed
-downloads and extracts them so Radarr and/or Sonarr and/or Lidarr may import them.
-
+downloads and extracts them so [Radarr](http://radarr.video), [Lidarr](http://lidarr.audio),
+[Sonarr](http://sonarr.tv), and [Readarr](http://readarr.com) may import them.
 There are a handful of options out there for extracting and deleting files after
 your client downloads them. I just didn't care for any of them, so I wrote my own. I
 wanted a small single-binary with reasonable logging that can extract downloaded
@@ -17,6 +17,8 @@ archives and clean up the mess after they've been imported.
 
 -   **Note**: Requires access to your download location.
     Make sure you set the `path` variables correctly in the configuration.
+    Even if they're set incorrectly this app makes a best effort attempt to
+    locate your downloads.
 
 ### Docker
 
@@ -44,7 +46,6 @@ docker run -d -v /mnt/HostDownloads:/downloads -v /your/config/unpackerr.conf:/e
 docker logs <container id from docker run>
 ```
 
-
 #### Docker Env Variables
 
 -   Instead of a config file, you may configure the docker container
@@ -58,16 +59,17 @@ docker logs <container id from docker run>
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs|
 log_file|`UN_LOG_FILE`|None by default. Optionally provide a file path to write logs|
-log_files|`UN_LOG_FILES`|`10` / Log files to keep after rotating. `0` disables rotation.|
-log_file_mb|`UN_LOG_FILE_MB`|`10` / Max size of log files in megabytes.|
-interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m`-`5m`|
+log_files|`UN_LOG_FILES`|`10` / Log files to keep after rotating. `0` disables rotation|
+log_file_mb|`UN_LOG_FILE_MB`|`10` / Max size of log files in megabytes|
+interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m` to `5m`|
 timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)|
 delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long after import|
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
+max_retries|`UN_MAX_RETRIES`|`3` / Times to retry failed extractions. `0` = unlimited.|
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
-file_mode|`UN_FILE_MODE`|`0644` / Extracted files are written with this mode.|
-dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode.|
+file_mode|`UN_FILE_MODE`|`0644` / Extracted files are written with this mode|
+dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode|
 
 ##### Sonarr
 

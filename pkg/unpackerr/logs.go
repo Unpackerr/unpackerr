@@ -139,8 +139,8 @@ func (u *Unpackerr) logCurrentQueue() {
 
 	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
-	u.Printf("[Unpackerr] Totals: [%d restarted] [%d finished] [%d|%d webhooks] [%d stacks]",
-		u.Restarted, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
+	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d stacks]",
+		u.Retries, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
 }
 
 // setupLogging splits log write into a file and/or stdout.
@@ -179,13 +179,13 @@ func (u *Unpackerr) logStartupInfo() {
 	u.logLidarr()
 	u.logReadarr()
 	u.logFolders()
-	u.Print(" => Parallel:", u.Config.Parallel)
-	u.Print(" => Interval:", u.Config.Interval.Duration)
-	u.Print(" => Delete Delay:", u.Config.DeleteDelay.Duration)
-	u.Print(" => Start Delay:", u.Config.StartDelay.Duration)
-	u.Print(" => Retry Delay:", u.Config.RetryDelay.Duration)
-	u.Print(" => Debug / Quiet:", u.Config.Debug, "/", u.Config.Quiet)
-	u.Print(" => Directory & File Modes:", u.Config.DirMode, "&", u.Config.FileMode)
+	u.Printf(" => Parallel: %d", u.Config.Parallel)
+	u.Printf(" => Interval: %v", u.Config.Interval)
+	u.Printf(" => Delete Delay: %v", u.Config.DeleteDelay)
+	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
+	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
+	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)
+	u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
 
 	if u.Config.LogFile != "" {
 		msg := "no rotation"

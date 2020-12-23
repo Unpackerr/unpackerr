@@ -114,10 +114,11 @@ monitor your download client's "move to" path if you're not using it with an *ar
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps.|
-folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items after this duration; `0` to disable.|
-folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction.|
-folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder.|
+folder.path|`UN_FOLDER_0_PATH`|No Default. Folder to watch for archives. Not for *arr apps|
+folder.delete_after|`UN_FOLDER_0_DELETE_AFTER`|`10m` Delete extracted items and/or archives after this duration; `0` disables|
+folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives after successful extraction|
+folder.delete_fils|`UN_FOLDER_0_DELETE_FILES`|`false` Delete extracted files after successful extraction|
+folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder|
 
 ##### Webhooks
 
@@ -128,13 +129,13 @@ Works great with [discordnotifier.com](https://discordnotifier.com). You can use
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-webhook.url|`UN_WEBHOOK_0_URL`|No Default. URL to send POST webhook to.|
-webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL. Provide an optional name to hide the URL in logs.|
-webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`.|
-webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs.|
-webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates.|
-webhook.exclude|`UN_WEBHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc.|
-webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below).|
+webhook.url|`UN_WEBHOOK_0_URL`|No Default; URL to send POST webhook to|
+webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL; provide an optional name to hide the URL in logs|
+webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
+webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs|
+webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates|
+webhook.exclude|`UN_WEBHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
+webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below)|
 
 Event IDs (not all of these are used in webhooks): `0` = all,
 `1` = queued, `2` = extracting, `3` = extract failed, `4` = extracted,

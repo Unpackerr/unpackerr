@@ -260,7 +260,7 @@ func (f *Folders) processEvent(event *eventData) {
 	}
 
 	if _, ok := f.Folders[dirPath]; ok {
-		//f.Debugf("Item Updated: %v (file: %v)", fullPath, event.file)
+		// f.Debugf("Item Updated: %v (file: %v)", fullPath, event.file)
 		f.Folders[dirPath].last = time.Now()
 
 		return

@@ -21,13 +21,28 @@ type Extract struct {
 	Retries uint
 }
 
-// checkImportsDone checks if extracted items have been imported.
-func (u *Unpackerr) checkImportsDone() {
+// checkQueueChanges checks each item for state changes from the app queues.
+func (u *Unpackerr) checkQueueChanges() {
 	for name, data := range u.Map {
 		switch {
+		case data.App == FolderString:
+			continue // folders are handled in folder.go.
 		case !u.haveQitem(name, data.App):
-			// We only want finished items.
-			u.handleFinishedImport(data, name)
+			// This fires when an items becomes missing (imported) from the application queue.
+			switch elapsed := time.Since(data.Updated); {
+			case data.Status == WAITING:
+				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
+				delete(u.Map, name)
+				u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
+			case data.Status > IMPORTED:
+				u.Debugf("Already imported? %s", name)
+			case data.Status == IMPORTED:
+				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
+					data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
+			default:
+				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
+				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
+			}
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
 			u.Printf("%s: Extraction Not Imported: %s - De-queued and returned.", data.App, name)
@@ -44,32 +59,8 @@ func (u *Unpackerr) checkImportsDone() {
 	}
 }
 
-// handleItemFinishedImport checks if sonarr/radarr/lidarr files should be deleted.
-func (u *Unpackerr) handleFinishedImport(data *Extract, name string) {
-	switch elapsed := time.Since(data.Updated); {
-	case data.Status == WAITING:
-		// A waiting item just imported. We never extracted it. Remove it and move on.
-		delete(u.Map, name)
-		u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
-	case data.Status > IMPORTED:
-		u.Debugf("Already imported? %s", name)
-	case data.Status == IMPORTED && elapsed+time.Millisecond >= u.DeleteDelay.Duration:
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
-
-		if len(data.Resp.NewFiles) > 0 {
-			// In a routine so it can run slowly and not block.
-			go u.DeleteFiles(data.Resp.NewFiles...)
-		}
-	case data.Status == IMPORTED:
-		u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
-			data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
-	case data.Status != IMPORTED:
-		u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
-		u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
-	}
-}
-
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
+// This is called from the app methods.
 func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[string]interface{}) {
 	item, ok := u.Map[name]
 	if !ok {
@@ -114,9 +105,17 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
+// This runs at a short interval to check for extraction state changes, and shuold return quickly.
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
+		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration:
+			// Remove the item from history some time after it's deleted.
+			u.Finished++
+			delete(u.Map, name)
+			u.Printf("[%s] Finished, Removed History: %v", data.App, name)
+		case data.App == FolderString:
+			continue // folders are handled in folder.go.
 		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || data.Retries < u.MaxRetries):
 			u.Retries++
@@ -125,11 +124,13 @@ func (u *Unpackerr) checkExtractDone() {
 			data.Updated = time.Now()
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
-		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration*2:
-			// Remove the item from history some time after it's deleted.
-			u.Finished++
-			delete(u.Map, name)
-			u.Printf("[%s] Finished, Removed History: %v", data.App, name)
+		case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
+			if len(data.Resp.NewFiles) > 0 {
+				// In a routine so it can run slowly and not block.
+				go u.DeleteFiles(data.Resp.NewFiles...)
+			}
+
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
 		}
 	}
 }

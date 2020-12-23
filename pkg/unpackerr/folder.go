@@ -227,7 +227,9 @@ func (f *Folders) watchFSNotify() {
 				// event.Name: "/Users/Documents/auto/my_folder/file.rar"
 				// p: "my_folder"
 				p := strings.TrimPrefix(event.Name, cnfg.Path)
-				if np := filepath.Dir(p); np != "." {
+				np := filepath.Base(p)
+				// f.Printf("p: %v, np: %v, event.Name: %v, cnfg.Path: %v", p, np, event.Name, cnfg.Path)
+				if np != "." {
 					p = np
 				}
 
@@ -280,6 +282,7 @@ func (f *Folders) processEvent(event *eventData) {
 }
 
 // checkFolderStats runs at an interval to see if any folders need work done on them.
+// This runs on an interval ticker.
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := time.Since(folder.last); {

@@ -39,6 +39,7 @@ type Folder struct {
 	step ExtractStatus
 	cnfg *FolderConfig
 	list []string
+	retr uint
 }
 
 type eventData struct {
@@ -282,13 +283,14 @@ func (f *Folders) processEvent(event *eventData) {
 func (u *Unpackerr) checkFolderStats() {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := time.Since(folder.last); {
-		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration:
-			u.Printf("[Folder] Re-starting Failed Extraction: %s (failed %v ago)",
-				folder.cnfg.Path, elapsed.Round(time.Second))
-
+		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration &&
+			(u.MaxRetries == 0 || folder.retr < u.MaxRetries):
+			u.Retries++
+			folder.retr++
 			folder.last = time.Now()
 			folder.step = WAITING
-			u.Retries++
+			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
+				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			// Folder reached delete delay (after extraction), nuke it.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})

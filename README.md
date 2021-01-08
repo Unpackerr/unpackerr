@@ -210,7 +210,7 @@ brew services start unpackerr
 ## Troubleshooting
 
 Make sure your Downloads location matches on all your applications!
-[Find help on Discord](https://discord.gg/tvmpw6mczw).
+[Find help on Discord](https://golift.io/discord).
 
 Log files:
 

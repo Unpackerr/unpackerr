@@ -38,4 +38,4 @@ export LICENSE FORMULA SOURCE_URL VERSION_PATH SOURCE_PATH
 
 # Optional
 #export WINDOWS_LDFLAGS="-H windowsgui"
-#export MACAPP="Unpackerr"
+export MACAPP="Unpackerr"

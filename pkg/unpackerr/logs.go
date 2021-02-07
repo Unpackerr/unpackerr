@@ -158,9 +158,8 @@ func (u *Unpackerr) setupLogging() {
 	}
 
 	u.Config.LogFile = logFile
-
 	rotate := &rotatorr.Config{
-		Filepath: logFile,                                           // log file name.
+		Filepath: u.Config.LogFile,                                  // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
 		Rotatorr: &timerotator.Layout{FileCount: u.Config.LogFiles}, // number of files to keep.
 		DirMode:  logsDirMode,

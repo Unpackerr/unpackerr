@@ -98,7 +98,7 @@ func Start() (err error) {
 
 	u := New().ParseFlags() // Grab CLI args (like config file location).
 	if u.Flags.verReq {
-		fmt.Println(version.Print("unpackerr"))
+		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 
 		return nil // don't run anything else.
 	}
@@ -139,7 +139,7 @@ func Start() (err error) {
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.Usage = func() {
-		fmt.Println("Usage: unpackerr [--config=filepath] [--version]")
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version]") //nolint:forbidigo
 		flag.PrintDefaults()
 	}
 

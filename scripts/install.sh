@@ -1,6 +1,6 @@
-#!/bin/sh
-
-# This is a quick and dirty script to install the latest Linux package.
+#!/bin/bash
+#
+# This is a quick and dirty script to install the latest package.
 #
 # Use it like this, pick curl or wget:  (sudo is optional)
 # ----
@@ -15,7 +15,7 @@
 # This is part of application-builder.
 # https://github.com/golift/application-builder
 
-# Set these.
+# Set the repo name correctly.
 REPO=davidnewhall/unpackerr
 BREW=golift/mugs/unpackerr
 
@@ -27,6 +27,7 @@ OS=$(uname -s)
 P=" ==>"
 
 # Nothing else needs to be changed. Unless you're fixing things!
+
 echo "<-------------------------------------------------->"
 
 if [ "$OS" = "Darwin" ]; then
@@ -111,7 +112,7 @@ INSTALLER="rpm -Uvh"
 if [ "$FILE" = "deb" ]; then
   INSTALLER="dpkg --force-confdef --force-confold --install"
 elif [ "$FILE" = "txz" ]; then
-  INSTALLER="pkg install"
+  INSTALLER="pkg install --yes"
 fi
 
 FILE=$(basename ${URL})

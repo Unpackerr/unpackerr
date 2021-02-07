@@ -84,7 +84,7 @@ func (l *Logger) Debugf(msg string, v ...interface{}) {
 	if l.debug {
 		err := l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
 		if err != nil {
-			fmt.Println("Logger Error:", err)
+			fmt.Println("Logger Error:", err) //nolint:forbidigo
 		}
 	}
 }
@@ -93,7 +93,7 @@ func (l *Logger) Debugf(msg string, v ...interface{}) {
 func (l *Logger) Print(v ...interface{}) {
 	err := l.Logger.Output(callDepth, fmt.Sprintln(v...))
 	if err != nil {
-		fmt.Println("Logger Error:", err)
+		fmt.Println("Logger Error:", err) //nolint:forbidigo
 	}
 }
 
@@ -101,7 +101,7 @@ func (l *Logger) Print(v ...interface{}) {
 func (l *Logger) Printf(msg string, v ...interface{}) {
 	err := l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
-		fmt.Println("Logger Error:", err)
+		fmt.Println("Logger Error:", err) //nolint:forbidigo
 	}
 }
 

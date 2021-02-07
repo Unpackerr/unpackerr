@@ -2,17 +2,21 @@
 /unpackerr
 
 # The rest is probably fine.
+/init/macos/*.app/Contents/MacOS/*
 /rsrc*.syso
+/*.log
+/*.app
 /*.conf
 /*.gz
 /*.zip
+/*.upx
 /unpackerr*.1
 /*.deb
 /*.rpm
 /*.txz
 /*.*.arm
 /*.*.exe
-/.*.macos
+/*.*.macos
 /*.*.linux
 /*.*.freebsd
 /*.rb
@@ -28,7 +32,7 @@ README
 README.html
 /*_manual.html
 /homebrew-mugs
-.secret-files.tar
+.secret*files.tar
 github_deploy_key*
 .metadata.make
 /after-install-rendered.sh

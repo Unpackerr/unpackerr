@@ -8,9 +8,7 @@ source $(dirname "${BASH_SOURCE[0]}")/init/buildinfo.sh
 
 # Must match the repo name to make things easy. Otherwise, fix some other paths.
 BINARY="unpackerr"
-REPO="unpackerr"
-# github username
-GHUSER="davidnewhall"
+REPO="davidnewhall/unpackerr"
 # Github repo containing homebrew formula repo.
 HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
@@ -26,8 +24,6 @@ FORMULA="service"
 
 # Used for source links and wiki links.
 SOURCE_URL="https://github.com/${GHUSER}/${REPO}/"
-# Used for documentation links.
-URL="${SOURCE_URL}"
 
 # This parameter is passed in as -X to go build. Used to override the Version variable in a package.
 # Name the Version-containing library the same as the github repo, without dashes.
@@ -37,8 +33,9 @@ VERSION_PATH="golift.io/version"
 # Used by homebrew downloads, references VERSION which comes from buildinfo.sh.
 SOURCE_PATH=https://golift.io/${REPO}/archive/v${VERSION}.tar.gz
 
-# Use upx to compress binaries. Must install upx. apt/yum/brew install upx
-COMPRESS=true
+export BINARY HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
+export LICENSE FORMULA SOURCE_URL VERSION_PATH SOURCE_PATH
 
-export BINARY GHUSER HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
-export LICENSE FORMULA SOURCE_URL URL VERSION_PATH SOURCE_PATH COMPRESS
+# Optional
+#export WINDOWS_LDFLAGS="-H windowsgui"
+#export MACAPP="Unpackerr"

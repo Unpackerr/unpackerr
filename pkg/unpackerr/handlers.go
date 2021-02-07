@@ -97,7 +97,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 		Name:       name,
 		SearchPath: path,
 		TempFolder: false,
-		DeleteOrig: false,
+		DeleteOrig: u.DeleteOrig,
 		CBChannel:  u.updates,
 	})
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
@@ -125,7 +125,7 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
 		case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
-			if len(data.Resp.NewFiles) > 0 {
+			if len(data.Resp.NewFiles) > 0 && u.DeleteDelay.Duration > 0 {
 				// In a routine so it can run slowly and not block.
 				go u.DeleteFiles(data.Resp.NewFiles...)
 			}

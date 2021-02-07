@@ -31,7 +31,13 @@ timeout = "10s"
 # How long ago a file must have been imported before deletion. The file must
 # also not be part of an active queue item. Set this to "1m" to make sure files
 # are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+# Setting this to any negative number `-1` disables deleting extracted files.
 delete_delay = "5m"
+
+# If you use this app with NZB you may wish to delete archives after extraction.
+# General recommendation is: do not enable this for torrent use.
+# `delete_delay` does not affect this setting.
+delete_orig = false
 
 # How long an item must be queued (download complete) before extraction will start.
 # One minute is the historic default and works well. Set higher if your downloads

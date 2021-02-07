@@ -14,7 +14,7 @@ HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
 DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
-GOLANGCI_LINT_ARGS="--enable-all -D dupl -D exhaustivestruct"
+GOLANGCI_LINT_ARGS="--enable-all -D dupl,nlreturn,exhaustivestruct"
 # Example must exist at examples/$CONFIG_FILE.example
 CONFIG_FILE="unpackerr.conf"
 LICENSE="MIT"
@@ -37,5 +37,5 @@ export BINARY HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
 export LICENSE FORMULA SOURCE_URL VERSION_PATH SOURCE_PATH
 
 # Optional
-#export WINDOWS_LDFLAGS="-H windowsgui"
+export WINDOWS_LDFLAGS="-H windowsgui"
 export MACAPP="Unpackerr"

@@ -36,7 +36,6 @@ const (
 type Config struct {
 	Debug       bool             `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
-	DeleteOrig  bool             `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
 	LogFile     string           `json:"log_file" toml:"log_file" xml:"log_file" yaml:"log_file"`
 	LogFiles    int              `json:"log_files" toml:"log_files" xml:"log_files" yaml:"log_files"`

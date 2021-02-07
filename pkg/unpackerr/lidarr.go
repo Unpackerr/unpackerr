@@ -10,7 +10,7 @@ import (
 
 // LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
-	*starr.Config
+	starr.Config
 	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
@@ -43,7 +43,7 @@ func (u *Unpackerr) validateLidarr() {
 			u.Lidarr[i].Protocols = defaultProtocol
 		}
 
-		u.Lidarr[i].Lidarr = lidarr.New(u.Lidarr[i].Config)
+		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
 	"golift.io/rotatorr/timerotator"
 )
@@ -151,6 +152,12 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
+	logFile, err := homedir.Expand(u.Config.LogFile)
+	if err != nil {
+		logFile = u.Config.LogFile
+	}
+
+	u.Config.LogFile = logFile
 	rotate := &rotatorr.Config{
 		Filepath: u.Config.LogFile,                                  // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
@@ -160,18 +167,20 @@ func (u *Unpackerr) setupLogging() {
 
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && u.Config.LogFile != "":
-		u.Logger.Logger.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+		u.rotatorr = rotatorr.NewMust(rotate)
+		u.Logger.Logger.SetOutput(io.MultiWriter(u.rotatorr, os.Stdout))
 	case !u.Config.Quiet && u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(os.Stdout)
 	case u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(ioutil.Discard) // default is "nothing"
 	default:
-		u.Logger.Logger.SetOutput(rotatorr.NewMust(rotate))
+		u.rotatorr = rotatorr.NewMust(rotate)
+		u.Logger.Logger.SetOutput(u.rotatorr)
 	}
 }
 
 // logStartupInfo prints info about our startup config.
-func (u *Unpackerr) logStartupInfo() {
+func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf("==> %s <==", helpLink)
 	u.Print("==> Startup Settings <==")
 	u.logSonarr()
@@ -179,6 +188,7 @@ func (u *Unpackerr) logStartupInfo() {
 	u.logLidarr()
 	u.logReadarr()
 	u.logFolders()
+	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
 	u.Printf(" => Interval: %v", u.Config.Interval)
 	u.Printf(" => Delete Delay: %v", u.Config.DeleteDelay)

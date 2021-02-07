@@ -2,7 +2,4 @@
 
 package unpackerr
 
-const (
-	defaultConfFile = `unpackerr.conf`
-	defaultSavePath = `C:\downloads`
-)
+const defaultSavePath = `C:\downloads`

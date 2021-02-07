@@ -10,7 +10,7 @@ import (
 
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
-	*starr.Config
+	starr.Config
 	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
@@ -43,7 +43,7 @@ func (u *Unpackerr) validateReadarr() {
 			u.Readarr[i].Protocols = defaultProtocol
 		}
 
-		u.Readarr[i].Readarr = readarr.New(u.Readarr[i].Config)
+		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
 	}
 }
 

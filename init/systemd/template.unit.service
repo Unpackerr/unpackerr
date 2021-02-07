@@ -18,6 +18,7 @@ StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier={{BINARY}}
 Type=simple
+WorkingDirectory=/tmp
 
 # These should be set correctly for your environment.
 UMask=0002

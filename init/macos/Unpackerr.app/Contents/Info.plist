@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Unpackerr</string>
+
+	<key>CFBundleIdentifier</key>
+	<string>io.golift.unpackerr</string>
+
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+
+	<key>CFBundleExecutable</key>
+	<string>Unpackerr</string>
+
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>CFBundleIconFile</key>
+	<string>Unpackerr.icns</string>
+
+	<key>CFBundleDisplayName</key>
+	<string>Unpackerr</string>
+
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2020-2021 Go Lift, MIT License</string>
+
+	<key>LSEnvironment</key>
+	<dict>
+	     <key>USEGUI</key>
+	     <string>true</string>
+	</dict>
+
+	<key>NSHighResolutionCapable</key>
+	<string>True</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+</dict>
+</plist>

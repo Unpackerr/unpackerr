@@ -153,9 +153,11 @@ func (u *Unpackerr) setupLogging() {
 	}
 
 	logFile, err := homedir.Expand(u.Config.LogFile)
-	if err == nil {
+	if err != nil {
 		logFile = u.Config.LogFile
 	}
+
+	u.Config.LogFile = logFile
 
 	rotate := &rotatorr.Config{
 		Filepath: logFile,                                           // log file name.
@@ -166,13 +168,15 @@ func (u *Unpackerr) setupLogging() {
 
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && u.Config.LogFile != "":
-		u.Logger.Logger.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+		u.rotatorr = rotatorr.NewMust(rotate)
+		u.Logger.Logger.SetOutput(io.MultiWriter(u.rotatorr, os.Stdout))
 	case !u.Config.Quiet && u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(os.Stdout)
 	case u.Config.LogFile == "":
 		u.Logger.Logger.SetOutput(ioutil.Discard) // default is "nothing"
 	default:
-		u.Logger.Logger.SetOutput(rotatorr.NewMust(rotate))
+		u.rotatorr = rotatorr.NewMust(rotate)
+		u.Logger.Logger.SetOutput(u.rotatorr)
 	}
 }
 

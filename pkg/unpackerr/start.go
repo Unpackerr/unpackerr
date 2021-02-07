@@ -10,6 +10,7 @@ import (
 	"github.com/davidnewhall/unpackerr/pkg/ui"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
+	"golift.io/rotatorr"
 	"golift.io/version"
 	"golift.io/xtractr"
 )
@@ -44,7 +45,8 @@ type Unpackerr struct {
 	sigChan chan os.Signal
 	updates chan *xtractr.Response
 	*Logger
-	menu map[string]ui.MenuItem
+	rotatorr *rotatorr.Logger
+	menu     map[string]ui.MenuItem
 }
 
 // Logger provides a struct we can pass into other packages.

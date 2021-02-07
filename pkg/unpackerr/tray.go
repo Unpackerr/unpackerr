@@ -97,8 +97,7 @@ func (u *Unpackerr) watchGuiChannels() {
 			u.Printf("User Viewing Log File: %s", u.Config.LogFile)
 			ui.OpenLog(u.Config.LogFile)
 		case <-u.menu["logs_rotate"].Clicked():
-			// add rotate method, requires bubbling up logger.
-			ui.Info("Unpackerr", "That button does not work yet.")
+			u.rotateLogs()
 		case <-u.menu["update"].Clicked():
 			u.checkForUpdate()
 		}
@@ -120,8 +119,16 @@ func (u *Unpackerr) watchKillerChannels() {
 	}
 }
 
+func (u *Unpackerr) rotateLogs() {
+	u.Printf("User Requested: Rotate Log File!")
+
+	if _, err := u.rotatorr.Rotate(); err != nil {
+		u.Printf("[ERROR] Rotating Log Files: %v", err)
+	}
+}
+
 func (u *Unpackerr) checkForUpdate() {
-	u.Print("User Requested Update Check")
+	u.Print("User Requested: Update Check")
 
 	switch update, err := update.Check("davidnewhall/unpackerr", version.Version); {
 	case err != nil:

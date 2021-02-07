@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
 	"golift.io/rotatorr/timerotator"
 )
@@ -151,8 +152,13 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
+	logFile, err := homedir.Expand(u.Config.LogFile)
+	if err == nil {
+		logFile = u.Config.LogFile
+	}
+
 	rotate := &rotatorr.Config{
-		Filepath: u.Config.LogFile,                                  // log file name.
+		Filepath: logFile,                                           // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
 		Rotatorr: &timerotator.Layout{FileCount: u.Config.LogFiles}, // number of files to keep.
 		DirMode:  logsDirMode,
@@ -171,7 +177,7 @@ func (u *Unpackerr) setupLogging() {
 }
 
 // logStartupInfo prints info about our startup config.
-func (u *Unpackerr) logStartupInfo() {
+func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf("==> %s <==", helpLink)
 	u.Print("==> Startup Settings <==")
 	u.logSonarr()
@@ -179,6 +185,7 @@ func (u *Unpackerr) logStartupInfo() {
 	u.logLidarr()
 	u.logReadarr()
 	u.logFolders()
+	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
 	u.Printf(" => Interval: %v", u.Config.Interval)
 	u.Printf(" => Delete Delay: %v", u.Config.DeleteDelay)

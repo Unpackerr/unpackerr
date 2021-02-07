@@ -6,13 +6,11 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
-	"golift.io/cnfg/cnfgfile"
 	"golift.io/version"
 	"golift.io/xtractr"
 )
@@ -74,7 +72,7 @@ type History struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:   &Flags{ConfigFile: defaultConfFile, EnvPrefix: "UN"},
+		Flags:   &Flags{EnvPrefix: "UN"},
 		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
@@ -103,23 +101,24 @@ func Start() (err error) {
 		return nil // don't run anything else.
 	}
 
-	if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
-		return fmt.Errorf("config file: %w", err)
+	fm, dm, msg, err := u.unmarshalConfig()
+	if err != nil {
+		return fmt.Errorf("%s: %w", msg, err)
 	}
-
-	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
-		return fmt.Errorf("environment variables: %w", err)
-	}
-
-	fm, dm := u.validateConfig()
 	// Do not do any logging before this.
-	// ie. No running of u.Debugf or u.Print* before running validateConfig()
+	// ie. No running of u.Debugf or u.Print* before running unmarshalConfig()
+
+	// We cannot log anything until setupLogging() runs.
+	// We cannot run setupLogging until we read the above config.
+	u.setupLogging()
+	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), version.Started)
+	u.validateApps()
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
 	}
 
-	u.logStartupInfo()
+	u.logStartupInfo(msg)
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Parallel: int(u.Parallel),
@@ -143,7 +142,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 		flag.PrintDefaults()
 	}
 
-	flag.StringVarP(&u.Flags.ConfigFile, "config", "c", defaultConfFile, "Poller Config File (TOML Format)")
+	flag.StringVarP(&u.Flags.ConfigFile, "config", "c", os.Getenv("UN_CONFIG_FILE"), "Poller Config File (TOML Format)")
 	flag.StringVarP(&u.Flags.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
 	flag.UintVarP(&u.Flags.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
@@ -189,57 +188,6 @@ func (u *Unpackerr) Run() {
 			u.logCurrentQueue()
 		}
 	}
-}
-
-// validateConfig makes sure config file values are ok. Returns file and dir modes.
-func (u *Unpackerr) validateConfig() (uint64, uint64) {
-	if u.DeleteDelay.Duration >= 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
-		u.DeleteDelay.Duration = minimumDeleteDelay
-	}
-
-	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
-	if err != nil || u.FileMode == "" {
-		fm = defaultFileMode
-		u.FileMode = strconv.FormatUint(fm, 32)
-	}
-
-	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
-	if err != nil || u.DirMode == "" {
-		dm = defaultDirMode
-		u.DirMode = strconv.FormatUint(dm, 32)
-	}
-
-	if u.Parallel == 0 {
-		u.Parallel++
-	}
-
-	if u.Buffer == 0 {
-		u.Buffer = defaultFolderBuf
-	} else if u.Buffer < minimumFolderBuf {
-		u.Buffer = minimumFolderBuf
-	}
-
-	if u.Interval.Duration < minimumInterval {
-		u.Interval.Duration = minimumInterval
-	}
-
-	if u.Config.Debug && u.LogFiles == defaultLogFiles {
-		u.LogFiles *= 2 // Double default if debug is turned on.
-	}
-
-	if u.LogFileMb == 0 {
-		if u.LogFileMb = defaultLogFileMb; u.Config.Debug {
-			u.LogFileMb *= 2 // Double default if debug is turned on.
-		}
-	}
-
-	// We cannot log anything until setupLogging() runs.
-	// We cannot run setupLogging until we read the above config.
-	u.setupLogging()
-	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), version.Started)
-	u.validateApps()
-
-	return fm, dm
 }
 
 // custom percentage procedure for *arr apps.

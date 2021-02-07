@@ -10,7 +10,7 @@ import (
 
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
-	*starr.Config
+	starr.Config
 	Path           string            `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
@@ -43,7 +43,7 @@ func (u *Unpackerr) validateSonarr() {
 			u.Sonarr[i].Protocols = defaultProtocol
 		}
 
-		u.Sonarr[i].Sonarr = sonarr.New(u.Sonarr[i].Config)
+		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
 	}
 }
 

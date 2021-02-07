@@ -2,7 +2,9 @@
 
 package ui
 
-import "github.com/gen2brain/dlgs"
+import (
+	"github.com/gen2brain/dlgs"
+)
 
 // Warning wraps dlgs.Warning.
 func Warning(title, msg string) (bool, error) {

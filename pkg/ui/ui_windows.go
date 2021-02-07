@@ -8,7 +8,7 @@ import (
 )
 
 // SystrayIcon is the icon in the system tray or task bar.
-const SystrayIcon = "files/favicon.ico"
+const SystrayIcon = "files/windows.ico"
 
 func HasGUI() bool {
 	return true

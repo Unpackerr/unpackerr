@@ -10,7 +10,7 @@ import (
 
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
-	*starr.Config
+	starr.Config
 	Path           string          `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string        `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string          `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
@@ -43,7 +43,7 @@ func (u *Unpackerr) validateRadarr() {
 			u.Radarr[i].Protocols = defaultProtocol
 		}
 
-		u.Radarr[i].Radarr = radarr.New(u.Radarr[i].Config)
+		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
 	}
 }
 

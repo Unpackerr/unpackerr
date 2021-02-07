@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	"github.com/davidnewhall/unpackerr/pkg/ui"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/version"
@@ -45,6 +44,7 @@ type Unpackerr struct {
 	sigChan chan os.Signal
 	updates chan *xtractr.Response
 	*Logger
+	menu map[string]ui.MenuItem
 }
 
 // Logger provides a struct we can pass into other packages.
@@ -76,6 +76,7 @@ func New() *Unpackerr {
 		sigChan: make(chan os.Signal),
 		History: &History{Map: make(map[string]*Extract)},
 		updates: make(chan *xtractr.Response, updateChanBuf),
+		menu:    make(map[string]ui.MenuItem),
 		Config: &Config{
 			LogQueues:   cnfg.Duration{Duration: time.Minute},
 			MaxRetries:  defaultMaxRetries,
@@ -129,8 +130,7 @@ func Start() (err error) {
 	})
 
 	go u.Run()
-	signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
+	u.startTray() // runs tray or waits for exit depending on hasGUI.
 
 	return nil
 }

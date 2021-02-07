@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"sync"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/lidarr"
 )
@@ -13,6 +14,8 @@ type LidarrConfig struct {
 	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -22,6 +25,10 @@ func (u *Unpackerr) validateLidarr() {
 	for i := range u.Lidarr {
 		if u.Lidarr[i].Timeout.Duration == 0 {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Lidarr[i].DeleteDelay.Duration == 0 {
+			u.Lidarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
 		}
 
 		if u.Lidarr[i].Path != "" {
@@ -94,8 +101,13 @@ func (u *Unpackerr) checkLidarrQueue() {
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
-					map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID})
+				u.handleCompletedDownload(q.Title, &Extract{
+					App:         Lidarr,
+					DeleteOrig:  server.DeleteOrig,
+					DeleteDelay: server.DeleteDelay.Duration,
+					Path:        u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
+					IDs:         map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID},
+				})
 
 				fallthrough
 			default:

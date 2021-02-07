@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"sync"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
@@ -13,6 +14,8 @@ type RadarrConfig struct {
 	Path           string          `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string        `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string          `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig     bool            `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Queue          []*radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -22,6 +25,10 @@ func (u *Unpackerr) validateRadarr() {
 	for i := range u.Radarr {
 		if u.Radarr[i].Timeout.Duration == 0 {
 			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Radarr[i].DeleteDelay.Duration == 0 {
+			u.Radarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
 		}
 
 		if u.Radarr[i].Path != "" {
@@ -85,8 +92,17 @@ func (u *Unpackerr) checkRadarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, Radarr, u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
-					map[string]interface{}{"tmdbId": q.Movie.TmdbID, "imdbId": q.Movie.ImdbID, "downloadId": q.DownloadID})
+				u.handleCompletedDownload(q.Title, &Extract{
+					App:         Radarr,
+					DeleteOrig:  server.DeleteOrig,
+					DeleteDelay: server.DeleteDelay.Duration,
+					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
+					IDs: map[string]interface{}{
+						"tmdbId":     q.Movie.TmdbID,
+						"imdbId":     q.Movie.ImdbID,
+						"downloadId": q.DownloadID,
+					},
+				})
 
 				fallthrough
 			default:

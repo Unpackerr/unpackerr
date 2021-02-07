@@ -24,15 +24,6 @@ log_file_mb = 10
 # Recommend 1m-5m. Uses Go Duration.
 interval = "2m"
 
-# How long to wait for a reply from the backends: Sonarr, Radarr, Lidarr.
-# This can also be set per-app. Uses Go Duration.
-timeout = "10s"
-
-# How long ago a file must have been imported before deletion. The file must
-# also not be part of an active queue item. Set this to "1m" to make sure files
-# are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-delete_delay = "5m"
-
 # How long an item must be queued (download complete) before extraction will start.
 # One minute is the historic default and works well. Set higher if your downloads
 # take longer to finalize (or transfer locally). Uses Go Duration.
@@ -71,7 +62,6 @@ dir_mode = "0755"
 #  events     = [0]   # list of event ids to include, 0 == all.
 #  exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 
-
 ################
 ### Episodes ###
 ################
@@ -82,6 +72,17 @@ dir_mode = "0755"
 #  paths = ["/downloads"]
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## How long ago a file must have been imported before deletion. The file must
+## also not be part of an active queue item. Set this to "1m" to make sure files
+## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+## Setting this to any negative number `-1` disables deleting extracted files.
+#  delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## This setting is not affected by `delete_delay`.
+#  delete_orig = false
 
 ################
 #### Movies ####
@@ -93,6 +94,17 @@ dir_mode = "0755"
 #  paths = ["/downloads"]
 ## Default protocols is torrents. Alternative: "torrent,usenet"
 #  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## How long ago a file must have been imported before deletion. The file must
+## also not be part of an active queue item. Set this to "1m" to make sure files
+## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+## Setting this to any negative number `-1` disables deleting extracted files.
+#  delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## This setting is not affected by `delete_delay`.
+#  delete_orig = false
 
 ################
 #### Albums ####
@@ -104,6 +116,17 @@ dir_mode = "0755"
 #  paths = ["/downloads"]
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## How long ago a file must have been imported before deletion. The file must
+## also not be part of an active queue item. Set this to "1m" to make sure files
+## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+## Setting this to any negative number `-1` disables deleting extracted files.
+#  delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## This setting is not affected by `delete_delay`.
+#  delete_orig = false
 
 ################
 # Publications #
@@ -115,6 +138,17 @@ dir_mode = "0755"
 #  paths = ["/downloads"]
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## How long ago a file must have been imported before deletion. The file must
+## also not be part of an active queue item. Set this to "1m" to make sure files
+## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
+## Setting this to any negative number `-1` disables deleting extracted files.
+#  delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## This setting is not affected by `delete_delay`.
+#  delete_orig = false
 
 ##-Folders-####################################################################
 ## This application can also watch folders for things to extract. If you copy a

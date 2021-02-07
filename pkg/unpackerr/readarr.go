@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"sync"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
@@ -13,6 +14,8 @@ type ReadarrConfig struct {
 	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig       bool           `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay      cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -22,6 +25,10 @@ func (u *Unpackerr) validateReadarr() {
 	for i := range u.Readarr {
 		if u.Readarr[i].Timeout.Duration == 0 {
 			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Readarr[i].DeleteDelay.Duration == 0 {
+			u.Readarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
 		}
 
 		if u.Readarr[i].Path != "" {
@@ -93,8 +100,13 @@ func (u *Unpackerr) checkReadarrQueue() {
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-				u.handleCompletedDownload(q.Title, Readarr, u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
-					map[string]interface{}{"authorId": q.AuthorID, "bookId": q.BookID, "downloadId": q.DownloadID})
+				u.handleCompletedDownload(q.Title, &Extract{
+					App:         Readarr,
+					DeleteOrig:  server.DeleteOrig,
+					DeleteDelay: server.DeleteDelay.Duration,
+					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
+					IDs:         map[string]interface{}{"authorId": q.AuthorID, "bookId": q.BookID, "downloadId": q.DownloadID},
+				})
 
 				fallthrough
 			default:

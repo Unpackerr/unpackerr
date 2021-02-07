@@ -193,7 +193,7 @@ func (u *Unpackerr) Run() {
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
-	if u.DeleteDelay.Duration < minimumDeleteDelay {
+	if u.DeleteDelay.Duration >= 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
 

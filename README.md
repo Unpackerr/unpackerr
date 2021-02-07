@@ -62,8 +62,6 @@ log_file|`UN_LOG_FILE`|None by default. Optionally provide a file path to write 
 log_files|`UN_LOG_FILES`|`10` / Log files to keep after rotating. `0` disables rotation|
 log_file_mb|`UN_LOG_FILE_MB`|`10` / Max size of log files in megabytes|
 interval|`UN_INTERVAL`|`2m` / How often apps are polled, recommend `1m` to `5m`|
-timeout|`UN_TIMEOUT`|`10s` / Global API Timeouts (all apps default)|
-delete_delay|`UN_DELETE_DELAY`|`5m` / Extracts are deleted this long after import|
 start_delay|`UN_START_DELAY`|`1m` / Files are queued at least this long before extraction|
 retry_delay|`UN_RETRY_DELAY`|`5m` / Failed extractions are retried after at least this long|
 max_retries|`UN_MAX_RETRIES`|`3` / Times to retry failed extractions. `0` = unlimited.|
@@ -79,6 +77,9 @@ sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
 sonarr.paths|`UN_SONARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Sonarr|
 sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
+sonarr.timeout|`UN_SONARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
+sonarr.delete_orig|`UN_SONARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+sonarr.delete_delay|`UN_SONARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Radarr
 
@@ -88,6 +89,9 @@ radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
 radarr.paths|`UN_RADARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Radarr|
 radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
+radarr.timeout|`UN_RADARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
+radarr.delete_orig|`UN_RADARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+radarr.delete_delay|`UN_RADARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Lidarr
 
@@ -97,6 +101,9 @@ lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
 lidarr.paths|`UN_LIDARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Lidarr|
 lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
+lidarr.timeout|`UN_LIDARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
+lidarr.delete_orig|`UN_LIDARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+lidarr.delete_delay|`UN_LIDARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Readarr
 
@@ -106,6 +113,9 @@ readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:878
 readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
 readarr.paths|`UN_READARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Readarr|
 readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
+readarr.timeout|`UN_READARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
+readarr.delete_orig|`UN_READARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+readarr.delete_delay|`UN_READARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Folder
 

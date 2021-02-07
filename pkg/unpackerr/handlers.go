@@ -12,13 +12,15 @@ import (
 
 // Extract holds data for files being extracted.
 type Extract struct {
-	Path    string
-	App     string
-	IDs     map[string]interface{}
-	Status  ExtractStatus
-	Updated time.Time
-	Resp    *xtractr.Response
-	Retries uint
+	Retries     uint
+	Path        string
+	App         string
+	Updated     time.Time
+	DeleteDelay time.Duration
+	DeleteOrig  bool
+	Status      ExtractStatus
+	IDs         map[string]interface{}
+	Resp        *xtractr.Response
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -38,10 +40,10 @@ func (u *Unpackerr) checkQueueChanges() {
 				u.Debugf("Already imported? %s", name)
 			case data.Status == IMPORTED:
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
-					data.App, u.DeleteDelay.Duration-elapsed.Round(time.Second), name)
+					data.App, data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
 				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
-				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, u.DeleteDelay)
+				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, data.DeleteDelay)
 			}
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
@@ -61,31 +63,33 @@ func (u *Unpackerr) checkQueueChanges() {
 
 // handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
 // This is called from the app methods.
-func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[string]interface{}) {
+func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item, ok := u.Map[name]
 	if !ok {
 		u.Map[name] = &Extract{
-			App:     app,
-			Path:    path,
-			IDs:     ids,
-			Status:  WAITING,
-			Updated: time.Now(),
+			App:         x.App,
+			Path:        x.Path,
+			IDs:         x.IDs,
+			DeleteOrig:  x.DeleteOrig,
+			DeleteDelay: x.DeleteDelay,
+			Status:      WAITING,
+			Updated:     time.Now(),
 		}
 		item = u.Map[name]
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", app, name,
+		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", x.App, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 
 		return
 	}
 
-	files := xtractr.FindCompressedFiles(path)
+	files := xtractr.FindCompressedFiles(x.Path)
 	if len(files) == 0 {
-		_, err := os.Stat(path)
+		_, err := os.Stat(x.Path)
 		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
-			app, name, path, err)
+			x.App, name, x.Path, err)
 
 		return
 	}
@@ -95,12 +99,12 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Name:       name,
-		SearchPath: path,
+		SearchPath: x.Path,
 		TempFolder: false,
-		DeleteOrig: false,
+		DeleteOrig: x.DeleteOrig,
 		CBChannel:  u.updates,
 	})
-	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", app, path, len(files), queueSize)
+	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", x.App, x.Path, len(files), queueSize)
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
@@ -109,7 +113,7 @@ func (u *Unpackerr) handleCompletedDownload(name, app, path string, ids map[stri
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
-		case data.Status == DELETED && elapsed >= u.DeleteDelay.Duration:
+		case data.Status == DELETED && elapsed >= data.DeleteDelay:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
@@ -124,8 +128,8 @@ func (u *Unpackerr) checkExtractDone() {
 			data.Updated = time.Now()
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
-		case data.Status == IMPORTED && elapsed >= u.DeleteDelay.Duration:
-			if len(data.Resp.NewFiles) > 0 {
+		case data.Status == IMPORTED && elapsed >= data.DeleteDelay:
+			if len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
 				// In a routine so it can run slowly and not block.
 				go u.DeleteFiles(data.Resp.NewFiles...)
 			}

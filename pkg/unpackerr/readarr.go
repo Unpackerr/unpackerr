@@ -4,16 +4,18 @@ import (
 	"sync"
 
 	"golift.io/starr"
+	"golift.io/starr/readarr"
 )
 
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
 	*starr.Config
-	Path         string             `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths        []string           `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols    string             `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	Queue        *starr.ReadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
+	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
+	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 func (u *Unpackerr) validateReadarr() {
@@ -33,6 +35,8 @@ func (u *Unpackerr) validateReadarr() {
 		if u.Readarr[i].Protocols == "" {
 			u.Readarr[i].Protocols = defaultProtocol
 		}
+
+		u.Readarr[i].Readarr = readarr.New(u.Readarr[i].Config)
 	}
 }
 
@@ -60,7 +64,7 @@ func (u *Unpackerr) getReadarrQueue() {
 			continue
 		}
 
-		queue, err := server.ReadarrQueue(DefaultQueuePageSize)
+		queue, err := server.GetQueue(DefaultQueuePageSize)
 		if err != nil {
 			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
 
@@ -88,7 +92,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
-					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 				u.handleCompletedDownload(q.Title, Readarr, u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
 					map[string]interface{}{"authorId": q.AuthorID, "bookId": q.BookID, "downloadId": q.DownloadID})
 

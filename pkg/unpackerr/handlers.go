@@ -155,7 +155,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []starr.StatusMessage, app, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string, paths []string) string {
 	var errs []error
 
 	for _, path := range paths {

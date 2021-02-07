@@ -4,16 +4,18 @@ import (
 	"sync"
 
 	"golift.io/starr"
+	"golift.io/starr/lidarr"
 )
 
 // LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
 	*starr.Config
-	Path         string            `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths        []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols    string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	Queue        *starr.LidarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
+	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
+	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 func (u *Unpackerr) validateLidarr() {
@@ -33,6 +35,8 @@ func (u *Unpackerr) validateLidarr() {
 		if u.Lidarr[i].Protocols == "" {
 			u.Lidarr[i].Protocols = defaultProtocol
 		}
+
+		u.Lidarr[i].Lidarr = lidarr.New(u.Lidarr[i].Config)
 	}
 }
 
@@ -60,7 +64,7 @@ func (u *Unpackerr) getLidarrQueue() {
 			continue
 		}
 
-		queue, err := server.LidarrQueue(DefaultQueuePageSize)
+		queue, err := server.GetQueue(DefaultQueuePageSize)
 		if err != nil {
 			u.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
 
@@ -89,7 +93,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
-					starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 				u.handleCompletedDownload(q.Title, Lidarr, u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
 					map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID})
 

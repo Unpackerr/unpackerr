@@ -4,16 +4,18 @@ import (
 	"sync"
 
 	"golift.io/starr"
+	"golift.io/starr/radarr"
 )
 
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
 	*starr.Config
-	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths        []string            `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols    string              `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	Queue        []*starr.RadarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path           string          `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths          []string        `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols      string          `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue          []*radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
+	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
+	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 func (u *Unpackerr) validateRadarr() {
@@ -33,6 +35,8 @@ func (u *Unpackerr) validateRadarr() {
 		if u.Radarr[i].Protocols == "" {
 			u.Radarr[i].Protocols = defaultProtocol
 		}
+
+		u.Radarr[i].Radarr = radarr.New(u.Radarr[i].Config)
 	}
 }
 
@@ -60,7 +64,7 @@ func (u *Unpackerr) getRadarrQueue() {
 			continue
 		}
 
-		queue, err := server.RadarrQueue()
+		queue, err := server.GetQueueV2()
 		if err != nil {
 			u.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
 

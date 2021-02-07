@@ -4,16 +4,18 @@ import (
 	"sync"
 
 	"golift.io/starr"
+	"golift.io/starr/sonarr"
 )
 
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
 	*starr.Config
-	Path         string              `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths        []string            `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols    string              `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	Queue        []*starr.SonarQueue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path           string            `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths          []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols      string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	Queue          []*sonarr.QueueV2 `json:"-" toml:"-" xml:"-" yaml:"-"`
+	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
+	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 func (u *Unpackerr) validateSonarr() {
@@ -33,6 +35,8 @@ func (u *Unpackerr) validateSonarr() {
 		if u.Sonarr[i].Protocols == "" {
 			u.Sonarr[i].Protocols = defaultProtocol
 		}
+
+		u.Sonarr[i].Sonarr = sonarr.New(u.Sonarr[i].Config)
 	}
 }
 
@@ -60,7 +64,7 @@ func (u *Unpackerr) getSonarrQueue() {
 			continue
 		}
 
-		queue, err := server.SonarrQueue()
+		queue, err := server.GetQueueV2()
 		if err != nil {
 			u.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
 

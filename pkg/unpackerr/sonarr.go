@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"sync"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
 )
@@ -13,6 +14,8 @@ type SonarrConfig struct {
 	Path           string            `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths          []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols      string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig     bool              `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration     `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Queue          []*sonarr.QueueV2 `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -22,6 +25,10 @@ func (u *Unpackerr) validateSonarr() {
 	for i := range u.Sonarr {
 		if u.Sonarr[i].Timeout.Duration == 0 {
 			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
+		}
+
+		if u.Sonarr[i].DeleteDelay.Duration == 0 {
+			u.Sonarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
 		}
 
 		if u.Sonarr[i].Path != "" {
@@ -85,11 +92,16 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, Sonarr, u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
-					map[string]interface{}{
+				u.handleCompletedDownload(q.Title, &Extract{
+					App:         Sonarr,
+					DeleteOrig:  server.DeleteOrig,
+					DeleteDelay: server.DeleteDelay.Duration,
+					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
+					IDs: map[string]interface{}{
 						"tvdbId": q.Series.TvdbID, "imdbId": q.Series.ImdbID, "downloadId": q.DownloadID,
 						"seriesId": q.Episode.SeriesID, "tvRageId": q.Series.TvRageID, "tvMazeId": q.Series.TvMazeID,
-					})
+					},
+				})
 
 				fallthrough
 			default:

@@ -1,10 +1,10 @@
 # Powered by Application Builder: https://github.com/golift/application-builder
 jobs:
   include:
-#  - os: osx
-#    osx_image: xcode12
-#    language: go
-#    go: 1.15.x
+  - os: osx
+    osx_image: xcode12
+    language: go
+    go: 1.15.x
   - os: linux
     dist: bionic
     services: docker

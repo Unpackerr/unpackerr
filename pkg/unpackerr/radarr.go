@@ -97,7 +97,11 @@ func (u *Unpackerr) checkRadarrQueue() {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
-					IDs:         map[string]interface{}{"tmdbId": q.Movie.TmdbID, "imdbId": q.Movie.ImdbID, "downloadId": q.DownloadID},
+					IDs: map[string]interface{}{
+						"tmdbId":     q.Movie.TmdbID,
+						"imdbId":     q.Movie.ImdbID,
+						"downloadId": q.DownloadID,
+					},
 				})
 
 				fallthrough

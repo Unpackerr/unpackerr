@@ -191,7 +191,6 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
 	u.Printf(" => Interval: %v", u.Config.Interval)
-	u.Printf(" => Delete Delay: %v", u.Config.DeleteDelay)
 	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
 	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)

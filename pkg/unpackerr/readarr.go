@@ -49,15 +49,19 @@ func (u *Unpackerr) validateReadarr() {
 
 func (u *Unpackerr) logReadarr() {
 	if c := len(u.Readarr); c == 1 {
-		u.Printf(" => Readarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+		u.Printf(" => Readarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
+			"delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Readarr[0].URL, u.Readarr[0].APIKey != "", u.Readarr[0].Timeout,
-			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Paths)
+			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].DeleteOrig,
+			u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
 		u.Print(" => Readarr Config:", c, "servers")
 
 		for _, f := range u.Readarr {
-			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols, f.Paths)
+			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
+				"delete_orig: %v, delete_delay: %v, paths:%q",
+				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
+				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }

@@ -66,45 +66,39 @@ func (u *Unpackerr) checkQueueChanges() {
 func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item, ok := u.Map[name]
 	if !ok {
-		u.Map[name] = &Extract{
-			App:         x.App,
-			Path:        x.Path,
-			IDs:         x.IDs,
-			DeleteOrig:  x.DeleteOrig,
-			DeleteDelay: x.DeleteDelay,
-			Status:      WAITING,
-			Updated:     time.Now(),
-		}
+		x.Updated = time.Now()
+		u.Map[name] = x
 		item = u.Map[name]
 	}
 
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
-		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", x.App, name,
+		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 
 		return
 	}
 
-	files := xtractr.FindCompressedFiles(x.Path)
+	files := xtractr.FindCompressedFiles(item.Path)
 	if len(files) == 0 {
-		_, err := os.Stat(x.Path)
+		_, err := os.Stat(item.Path)
 		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
-			x.App, name, x.Path, err)
+			item.App, name, item.Path, err)
 
 		return
 	}
 
 	item.Status = QUEUED
 	item.Updated = time.Now()
-
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Name:       name,
-		SearchPath: x.Path,
+		SearchPath: item.Path,
 		TempFolder: false,
-		DeleteOrig: x.DeleteOrig,
+		DeleteOrig: false,
 		CBChannel:  u.updates,
 	})
-	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, items in queue: %d", x.App, x.Path, len(files), queueSize)
+
+	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
+		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
@@ -129,7 +123,9 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
 		case data.Status == IMPORTED && elapsed >= data.DeleteDelay:
-			if len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
+			if data.DeleteOrig {
+				go u.DeleteFiles(data.Path)
+			} else if len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
 				// In a routine so it can run slowly and not block.
 				go u.DeleteFiles(data.Resp.NewFiles...)
 			}

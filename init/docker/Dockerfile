@@ -20,7 +20,7 @@ COPY . /${BINARY}
 WORKDIR /${BINARY}
 
 RUN apt update && \
-    apt install -y upx && \
+    apt install -y upx tzdata && \
     CGO_ENABLED=0 make ${BINARY}.${ARCH}.${OS}
 
 FROM scratch

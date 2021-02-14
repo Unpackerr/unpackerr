@@ -81,7 +81,7 @@ dir_mode = "0755"
 #  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
-## This setting is not affected by `delete_delay`.
+## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
 ################
@@ -103,7 +103,7 @@ dir_mode = "0755"
 #  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
-## This setting is not affected by `delete_delay`.
+## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
 ################
@@ -125,7 +125,7 @@ dir_mode = "0755"
 #  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
-## This setting is not affected by `delete_delay`.
+## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
 ################
@@ -147,7 +147,7 @@ dir_mode = "0755"
 #  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
-## This setting is not affected by `delete_delay`.
+## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
 ##-Folders-####################################################################

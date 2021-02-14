@@ -84,7 +84,7 @@ func (u *Unpackerr) getReadarrQueue() {
 
 		// Only update if there was not an error fetching.
 		u.Readarr[i].Queue = queue
-		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retreived",
+		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved",
 			server.URL, queue.TotalRecords, len(u.Readarr[i].Queue.Records))
 	}
 }

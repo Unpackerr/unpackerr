@@ -162,7 +162,7 @@ func (u *Unpackerr) Run() {
 	)
 
 	u.PollFolders()       // This initializes channel(s) used below.
-	u.retreiveAppQueues() // Get in-app queues on startup.
+	u.retrieveAppQueues() // Get in-app queues on startup.
 
 	// one go routine to rule them all.
 	for {
@@ -173,7 +173,7 @@ func (u *Unpackerr) Run() {
 			u.checkFolderStats()
 		case <-poller.C:
 			// polling interval. pull queue data from all apps.
-			u.retreiveAppQueues()
+			u.retrieveAppQueues()
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges()
 		case resp := <-u.updates:

@@ -85,7 +85,7 @@ func (u *Unpackerr) getLidarrQueue() {
 		// Only update if there was not an error fetching.
 		u.Lidarr[i].Queue = queue
 
-		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retreived",
+		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved",
 			server.URL, queue.TotalRecords, len(u.Lidarr[i].Queue.Records))
 	}
 }

@@ -58,9 +58,9 @@ type Config struct {
 	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 }
 
-// retreiveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
+// retrieveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // The calls the check methods to scan their queues for changes.
-func (u *Unpackerr) retreiveAppQueues() {
+func (u *Unpackerr) retrieveAppQueues() {
 	var wg sync.WaitGroup
 
 	// Run each method in a go routine as a waitgroup.

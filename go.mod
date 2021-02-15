@@ -6,6 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gen2brain/dlgs v0.0.0-20201118155338-03fe7f81ad25
 	github.com/getlantern/systray v1.1.0
+	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c

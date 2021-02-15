@@ -78,7 +78,7 @@ sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you 
 sonarr.paths|`UN_SONARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Sonarr|
 sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 sonarr.timeout|`UN_SONARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
-sonarr.delete_orig|`UN_SONARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+sonarr.delete_orig|`UN_SONARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 sonarr.delete_delay|`UN_SONARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Radarr
@@ -90,7 +90,7 @@ radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you 
 radarr.paths|`UN_RADARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Radarr|
 radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 radarr.timeout|`UN_RADARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
-radarr.delete_orig|`UN_RADARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+radarr.delete_orig|`UN_RADARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 radarr.delete_delay|`UN_RADARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Lidarr
@@ -102,7 +102,7 @@ lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you 
 lidarr.paths|`UN_LIDARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Lidarr|
 lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 lidarr.timeout|`UN_LIDARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
-lidarr.delete_orig|`UN_LIDARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+lidarr.delete_orig|`UN_LIDARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 lidarr.delete_delay|`UN_LIDARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Readarr
@@ -114,7 +114,7 @@ readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if yo
 readarr.paths|`UN_READARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Readarr|
 readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 readarr.timeout|`UN_READARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
-readarr.delete_orig|`UN_READARR_0_DELETE_ORIG`|`false` / Delete archives? Recommend not setting this to true|
+readarr.delete_orig|`UN_READARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 readarr.delete_delay|`UN_READARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1` to disable|
 
 ##### Folder
@@ -134,7 +134,7 @@ folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into 
 
 This application can send a POST webhook to a URL when an extraction begins, and again
 when it finishes. Configure 1 or more webhook URLs with the parameters below.
-Works great with [discordnotifier.com](https://discordnotifier.com). You can use
+Works great with [notifiarr.com](https://notifiarr.com). You can use
 [requestbin.com](https://requestbin.com/r/) to test and _see_ the payload.
 
 |Config Name|Variable Name|Default / Note|
@@ -209,13 +209,28 @@ vi /usr/local/etc/unpackerr/unpackerr.conf
 brew services start unpackerr
 ```
 
+You can also use a GUI app on a Mac instead of CLI via Homebrew:
+
+-   Download a `.dmg` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases).
+-   Copy the `Unpackerr.app` to `/Applications`.
+-   Run it. It starts in the menu bar as an icon.
+-   Click the menu bar icon and select `Config` -> `Edit`.
+-   Edit the config to suit your system and save.
+-   Click the menu bar icon again and select `Config` -> `Reload`.
+-   View the logs by clicking the menu bar icon and `Logs` -> `View`.
+-   You can add it to login items to run it automatically when you login.
+
+The `.app` and the Homebrew version are the same application, but one runs in GUI mode and one does not.
+
 ### Windows Install
 
--   Create this folder: `C:\ProgramData\unpackerr\`
--   Extract a `.exe.zip` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases) into `C:\ProgramData\unpackerr\`
--   Edit the example config file from the zip file to suit your system. Rename the example to `unpackerr.conf`.
--   Run the `unpackerr.amd64.exe` binary. This starts the app prints out what it's doing.
--   Better directions, nor an automated installer are currently available. Sorry. Tracking [here](https://github.com/davidnewhall/unpackerr/issues/71).
+-   Extract a `.exe.zip` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases) into a folder like `C:\Program Files\unpackerr\`.
+-   Run the `unpackerr.amd64.exe` binary. This starts the app in the system tray.
+-   Click the systray icon and select `Config` -> `Edit`.
+-   Edit the config to suit your system and save.
+-   Click the systray icon again and select `Config` -> `Reload`.
+-   View the logs by clicking the systray icon and `Logs` -> `View`.
+-   Make a shortcut to the application in your Startup menu to run it when you login.
 
 ## Troubleshooting
 
@@ -226,18 +241,19 @@ Log files:
 
 -   Linux: `/var/log/messages` or `/var/log/syslog` (w/ default syslog)
 -   FreeBSD: `/var/log/syslog` (w/ default syslog)
--   macOS: `/usr/local/var/log/unpackerr.log`
+-   macOS: `/usr/local/var/log/unpackerr.log` or `~/.unpackerr/unpackerr.log`
+-   Windows: `~/.unpackerr/unpackerr.log`
 
 If transfers are in a Warning or Error state they will not be extracted.
-Try the Force Recheck option if you use Deluge.
+If Unpackerr prints information about transfers you do not see in your Starr app.
 
 Still having problems?
 [Let me know!](https://github.com/davidnewhall/unpackerr/issues/new)
 
 ## Logic
 
-The application polls radarr, sonarr and lidarr at the interval configured. The
-queued items are inspected for completeness. The interval of these pollers is set
+The application polls radarr, readarr, sonarr and lidarr at the interval configured.
+The queued items are inspected for completeness. The interval of these pollers is set
 in the config file. 1-10 minutes is generally sufficient.
 
 When Unpackerr finds an item in Sonarr or Radarr or Lidarr the download location
@@ -253,4 +269,4 @@ Yes, please.
 
 ## License
 
-[MIT](LICENSE) - Copyright (c) 2018 David Newhall II
+[MIT](LICENSE) - Copyright (c) 2018-2021 David Newhall II

@@ -49,15 +49,19 @@ func (u *Unpackerr) validateSonarr() {
 
 func (u *Unpackerr) logSonarr() {
 	if c := len(u.Sonarr); c == 1 {
-		u.Printf(" => Sonarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
+		u.Printf(" => Sonarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
+			"delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
-			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Paths)
+			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].DeleteOrig,
+			u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
 		u.Print(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
-			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, paths:%q",
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols, f.Paths)
+			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
+				"delete_orig: %v, delete_delay: %v, paths:%q",
+				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
+				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }

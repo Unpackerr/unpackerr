@@ -160,7 +160,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *NotifiarrPa
 			Embeds: []*DiscordPayloadEmbed{{
 				Title: "**" + payload.IDs["title"].(string) + "**", // welp.
 				Author: &DiscordPayloadEmbedAuthor{
-					Name:    "**Unpackerr: " + payload.Event.String() + "**",
+					Name:    "Unpackerr: " + payload.Event.Desc(),
 					IconURL: "https://github.com/davidnewhall/unpackerr/wiki/images/logo.png",
 				},
 				Fields: []*DiscordPayloadEmbedField{
@@ -170,10 +170,15 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *NotifiarrPa
 			}},
 		}
 
-		if payload.Event > EXTRACTING {
+		if payload.Data != nil {
 			discord.Embeds[0].Fields = append(discord.Embeds[0].Fields,
 				&DiscordPayloadEmbedField{Name: "**Size**", Value: HumanBytes(payload.Data.Bytes), Inline: true},
 				&DiscordPayloadEmbedField{Name: "**Elapsed**", Value: time.Since(payload.Data.Start).String(), Inline: true})
+			if payload.Data.Error != "" {
+				discord.Embeds[0].Color = 9383736
+				discord.Embeds[0].Fields = append(discord.Embeds[0].Fields,
+					&DiscordPayloadEmbedField{Name: "**Error**", Value: payload.Data.Error})
+			}
 		}
 
 		body, err = json.Marshal(discord)
@@ -186,7 +191,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *NotifiarrPa
 	if body, err := hook.Send(body); err != nil {
 		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
-		u.Printf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
+		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
 		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
 	}
 }
@@ -231,7 +236,7 @@ func (w *WebhookConfig) send(ctx context.Context, body []byte) ([]byte, error) {
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
 	reply, _ := ioutil.ReadAll(res.Body)
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
 		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, reply)
 	}
 

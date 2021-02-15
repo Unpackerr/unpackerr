@@ -102,8 +102,13 @@ func (u *Unpackerr) checkSonarrQueue() {
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
-						"tvdbId": q.Series.TvdbID, "imdbId": q.Series.ImdbID, "downloadId": q.DownloadID,
-						"seriesId": q.Episode.SeriesID, "tvRageId": q.Series.TvRageID, "tvMazeId": q.Series.TvMazeID,
+						"title":      q.Title,
+						"tvdbId":     q.Series.TvdbID,
+						"imdbId":     q.Series.ImdbID,
+						"downloadId": q.DownloadID,
+						"seriesId":   q.Episode.SeriesID,
+						"tvRageId":   q.Series.TvRageID,
+						"tvMazeId":   q.Series.TvMazeID,
 					},
 				})
 

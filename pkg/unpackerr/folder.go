@@ -340,6 +340,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 			App:     "Unknown",
 			Status:  QUEUED,
 			Updated: time.Now(),
+			IDs:     map[string]interface{}{"title": data.Name}, // required or webhook may break.
 		}
 		u.sendWebhooks(u.Map[data.Name])
 

@@ -110,7 +110,12 @@ func (u *Unpackerr) checkLidarrQueue() {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
-					IDs:         map[string]interface{}{"artistId": q.ArtistID, "albumId": q.AlbumID, "downloadId": q.DownloadID},
+					IDs: map[string]interface{}{
+						"title":      q.Title,
+						"artistId":   q.ArtistID,
+						"albumId":    q.AlbumID,
+						"downloadId": q.DownloadID,
+					},
 				})
 
 				fallthrough

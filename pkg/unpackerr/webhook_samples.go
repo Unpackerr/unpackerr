@@ -15,7 +15,7 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		return ErrInvalidStatus
 	}
 
-	payload := &WebhookPayload{
+	payload := &NotifiarrPayload{
 		App:  Sonarr,
 		Path: "/this/is/the/extraction/path",
 		IDs: map[string]interface{}{

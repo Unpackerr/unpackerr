@@ -102,6 +102,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
+						"title":      q.Movie.Title,
 						"tmdbId":     q.Movie.TmdbID,
 						"imdbId":     q.Movie.ImdbID,
 						"downloadId": q.DownloadID,

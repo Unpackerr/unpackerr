@@ -21,6 +21,7 @@ import (
 type WebhookConfig struct {
 	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
 	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
+	CType      string          `json:"content_type" toml:"content_type" xml:"content_type" yaml:"content_type"`
 	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	IgnoreSSL  bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
@@ -29,11 +30,39 @@ type WebhookConfig struct {
 	client     *http.Client
 	fails      uint
 	posts      uint
-	sync.Mutex `json:"-"`
+	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-// WebhookPayload defines the data sent to outbound webhooks.
-type WebhookPayload struct {
+// DiscordPayload - https://leovoel.github.io/embed-visualizer/
+type DiscordPayload struct {
+	Content   string                 `json:"content"`
+	Username  string                 `json:"username"`
+	AvatarURL string                 `json:"avatar_url"`
+	Embeds    []*DiscordPayloadEmbed `json:"embeds"`
+}
+
+type DiscordPayloadEmbed struct {
+	Title       string                      `json:"title"`
+	Description string                      `json:"description"`
+	URL         string                      `json:"url"`
+	Color       int                         `json:"color"`
+	Fields      []*DiscordPayloadEmbedField `json:"fields"`
+	Author      *DiscordPayloadEmbedAuthor  `json:"author"`
+}
+
+type DiscordPayloadEmbedField struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Inline bool   `json:"inline"`
+}
+
+type DiscordPayloadEmbedAuthor struct {
+	Name    string `json:"name"`
+	IconURL string `json:"icon_url"`
+}
+
+// NotifiarrPayload defines the data sent to notifarr.com webhooks.
+type NotifiarrPayload struct {
 	Path  string                 `json:"path"`                // Path for the extracted item.
 	App   string                 `json:"app"`                 // Application Triggering Event
 	IDs   map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
@@ -61,15 +90,17 @@ type XtractPayload struct {
 	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
 }
 
-// ErrInvalidStatus is an error message.
-var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+// Errors produced by this file.
+var (
+	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+)
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
 	if i.Status == IMPORTED && i.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
 
-	payload := &WebhookPayload{
+	payload := &NotifiarrPayload{
 		Path:  i.Path,
 		App:   i.App,
 		IDs:   i.IDs,
@@ -110,8 +141,49 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 	}
 }
 
-func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
-	if body, err := hook.Send(payload); err != nil {
+func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *NotifiarrPayload) {
+	var (
+		body []byte
+		err  error
+	)
+
+	switch url := strings.ToLower(hook.URL); {
+	default:
+		u.Printf("[WARN] Webhook URL is unknown; not notifiarr or discord: %v", hook.Name)
+		fallthrough
+	case strings.Contains(url, "discordnotifier.com") || strings.Contains(url, "notifiarr.com"):
+		body, err = json.Marshal(payload)
+	case strings.Contains(url, "discord.com"):
+		discord := &DiscordPayload{
+			Username:  "Unpackerr",
+			AvatarURL: "https://github.com/davidnewhall/unpackerr/wiki/images/logo.png",
+			Embeds: []*DiscordPayloadEmbed{{
+				Title: "**" + payload.IDs["title"].(string) + "**", // welp.
+				Author: &DiscordPayloadEmbedAuthor{
+					Name:    "**Unpackerr: " + payload.Event.String() + "**",
+					IconURL: "https://github.com/davidnewhall/unpackerr/wiki/images/logo.png",
+				},
+				Fields: []*DiscordPayloadEmbedField{
+					{Name: "**Path**", Value: payload.Path},
+					{Name: "**App**", Value: payload.App, Inline: true},
+				},
+			}},
+		}
+
+		if payload.Event > EXTRACTING {
+			discord.Embeds[0].Fields = append(discord.Embeds[0].Fields,
+				&DiscordPayloadEmbedField{Name: "**Size**", Value: HumanBytes(payload.Data.Bytes), Inline: true},
+				&DiscordPayloadEmbedField{Name: "**Elapsed**", Value: time.Since(payload.Data.Start).String(), Inline: true})
+		}
+
+		body, err = json.Marshal(discord)
+	}
+
+	if err != nil {
+		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+	}
+
+	if body, err := hook.Send(body); err != nil {
 		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
@@ -120,14 +192,14 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 }
 
 // Send marshals an interface{} into json and POSTs it to a URL.
-func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
+func (w *WebhookConfig) Send(body []byte) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
 	defer cancel()
 
-	b, err := w.send(ctx, i)
+	b, err := w.send(ctx, body)
 	if err != nil {
 		w.fails++
 	}
@@ -137,18 +209,17 @@ func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
 	return b, err
 }
 
-func (w *WebhookConfig) send(ctx context.Context, i interface{}) ([]byte, error) {
-	b, err := json.Marshal(i)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling payload '%s': %w", w.Name, err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, bytes.NewBuffer(b))
+func (w *WebhookConfig) send(ctx context.Context, body []byte) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("creating request '%s': %w", w.Name, err)
 	}
 
-	req.Header.Set("content-type", "application/json")
+	if w.CType == "" {
+		req.Header.Set("content-type", "application/json")
+	} else {
+		req.Header.Set("content-type", w.CType)
+	}
 
 	res, err := w.client.Do(req)
 	if err != nil {
@@ -158,13 +229,13 @@ func (w *WebhookConfig) send(ctx context.Context, i interface{}) ([]byte, error)
 
 	// The error is mostly ignored because we don't care about the body.
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	body, _ := ioutil.ReadAll(res.Body)
+	reply, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, body)
+		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, reply)
 	}
 
-	return body, nil
+	return reply, nil
 }
 
 func (u *Unpackerr) validateWebhook() {
@@ -263,4 +334,23 @@ func (w *WebhookConfig) Counts() (uint, uint) {
 	defer w.Unlock()
 
 	return w.posts, w.fails
+}
+
+// HumanBytes is from https://yourbasic.org/golang/formatting-byte-size-to-human-readable-format/
+// This converts an int to a human readable byte string.
+func HumanBytes(b int64) string {
+	const unit = 1024
+
+	if b < unit {
+		return fmt.Sprintf("%dB", b)
+	}
+
+	div, exp := int64(unit), 0
+
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+
+	return fmt.Sprintf("%.1f%ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }

@@ -141,11 +141,16 @@ Works great with [notifiarr.com](https://notifiarr.com). You can use
 |---|---|---|
 webhook.url|`UN_WEBHOOK_0_URL`|No Default; URL to send POST webhook to|
 webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL; provide an optional name to hide the URL in logs|
+webhook.nickname|`UN_WEBHOOK_0_NICKNAME`|`Unpackerr` / Passed into templates for discord.com and slack.com webhooks|
+webhook.channel|`UN_WEBHOOK_0_CHANNEL`|`""` / Passed into templates for slack.com webhooks|
 webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
 webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs|
 webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates|
 webhook.exclude|`UN_WEBHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
 webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below)|
+webhook.template_path|`UN_WEBHOOK_0_TEMPLATE_PATH`|`""` / Instead of internal template, provide your own|
+webhook.content_type|`UN_WEBHOOK_0_CONTENT_TYPE`|`application/json` / Content-Type header sent to webhook|
+
 
 Event IDs (not all of these are used in webhooks): `0` = all,
 `1` = queued, `2` = extracting, `3` = extract failed, `4` = extracted,

@@ -28,7 +28,8 @@ type WebhookConfig struct {
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	nickname   string
+	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname" yaml:"nickname"`
+	Channel    string          `json:"channel" toml:"channel" xml:"channel" yaml:"channel"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -69,6 +70,7 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 			Start:    i.Resp.Started,
 			Output:   i.Resp.Output,
 			Bytes:    i.Resp.Size,
+			Queue:    i.Resp.Queued,
 			Elapsed:  cnfg.Duration{Duration: i.Resp.Elapsed},
 		}
 
@@ -95,7 +97,11 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 	var body bytes.Buffer
 	if err = tmpl.Execute(&body, payload); err != nil {
 		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
-	} else if reply, err := hook.Send(&body); err != nil {
+	} else /*
+		// This is for testing payload output.
+		log.Print(string(body.Bytes()))
+		return /**/
+	if reply, err := hook.Send(&body); err != nil {
 		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
@@ -148,13 +154,14 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 
 func (u *Unpackerr) validateWebhook() {
 	for i := range u.Webhook {
-		if u.Webhook[i].nickname = u.Webhook[i].Name; u.Webhook[i].Name == "" {
-			u.Webhook[i].nickname = fmt.Sprintf("WebhookURL%d", i)
+		if u.Webhook[i].Name == "" {
 			u.Webhook[i].Name = u.Webhook[i].URL
 		}
 
-		if len(u.Webhook[i].nickname) > 80 { //nolint:gomnd // max discord nick length
-			u.Webhook[i].nickname = u.Webhook[i].nickname[:80]
+		if u.Webhook[i].Nickname == "" {
+			u.Webhook[i].Nickname = "Unpackerr"
+		} else if len(u.Webhook[i].Nickname) > 20 { //nolint:gomnd // be reasonable
+			u.Webhook[i].Nickname = u.Webhook[i].Nickname[:20]
 		}
 
 		if u.Webhook[i].CType == "" {

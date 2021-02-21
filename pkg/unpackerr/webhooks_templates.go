@@ -36,6 +36,7 @@ type XtractPayload struct {
 	Output   string        `json:"tmp_folder,omitempty"` // temporary items folder
 	Bytes    int64         `json:"bytes,omitempty"`      // Bytes written
 	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`    // Duration as a string: 5m32s
+	Queue    int           `json:"queue,omitempty"`      // Extraction Queue Size
 }
 
 // WebhookTemplateNotifiarr is the default template
@@ -69,29 +70,108 @@ const WebhookTemplateNotifiarr = `{
 
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
 const WebhookTemplateDiscord = `{
-  "username": "{{name}}",
+  "username": "{{nickname}}",
   "avatar_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
   "embeds": [
     {
      "title": "{{index .IDs "title"}}",
+     "timestamp": "{{timestamp .Time}}",
      "author": {
        "name": "Unpackerr: {{.Event.Desc}}",
        "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png"
      },
      "fields": [
        {"name": "Path", "value": "{{.Path}}", "inline": false},
-       {"name": "Version", "value": "{{.Version}}-{{.Revision}}", "inline": true},
        {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }},
        {"name": "Elapsed", "value": "{{.Data.Elapsed}}", "inline": true},
        {"name": "Archives", "value": "{{len .Data.Archives}}", "inline": true},
        {"name": "Files", "value": "{{len .Data.Files}}", "inline": true},
-       {"name": "Size", "value": "{{humanbytes .Data.Bytes}}", "inline": true}{{- if .Data.Error }},
+       {"name": "Size", "value": "{{humanbytes .Data.Bytes}}", "inline": true},
+       {"name": "Queue", "value": "{{.Data.Queue}}", "inline": true}{{- if .Data.Error }},
        {"name": "Error", "value": "{{.Data.Error}}", "inline": false}{{ end }}{{ end }}
-     ]
-    }
+     ],
+     "footer": {"text": "v{{.Version}}-{{.Revision}} ({{.OS}}/{{.Arch}})"}
+   }
   ]
 }
 `
+
+// WebhookTemplateSlack is a built-in template for sending a message to Slack.
+const WebhookTemplateSlack = `
+{
+  "username": "{{nickname}}",
+  {{if channel}}"channel": "{{channel}}",{{end}}
+  "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "Unpackerr: {{.Event.Desc}}"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":star: *{{index .IDs "title"}}*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Path*: {{.Path}}"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Version*\nv{{.Version}}-{{.Revision}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*OS (Go)*\n{{.OS}} ({{.Arch}}/{{.Go}})"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*App*\n{{.App}}"
+        }{{ if .Data }},
+        {
+          "type": "mrkdwn",
+          "text": "*Size*\n{{humanbytes .Data.Bytes}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Archives*\n{{len .Data.Archives}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Files*\n{{len .Data.Files}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Queue*\n{{.Data.Queue}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Elapsed*\n{{.Data.Elapsed}}"
+        }{{end}}
+      ]
+    }{{if .Data}}{{if .Data.Error}},
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Error*: {{.Data.Error}}"
+      }
+    }{{end}}{{end}}
+  ]
+}
+`
+
 const byteUnit = 1024
 
 // Template returns a template specific to this webhook.
@@ -127,9 +207,11 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	}
 
 	template := template.New("payload").Funcs(template.FuncMap{
-		"name":       func() string { return w.nickname },
 		"separator":  separator,
 		"humanbytes": humanbytes,
+		"nickname":   func() string { return w.Nickname },
+		"channel":    func() string { return w.Channel },
+		"timestamp":  func(t time.Time) string { return t.Format(time.RFC3339) },
 	})
 
 	// Figure out which template to use based on URL or template_path.
@@ -142,5 +224,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		return template.ParseFiles(w.TmplPath)
 	case strings.Contains(url, "discord.com"):
 		return template.Parse(WebhookTemplateDiscord)
+	case strings.Contains(url, "hooks.slack.com"):
+		return template.Parse(WebhookTemplateSlack)
 	}
 }

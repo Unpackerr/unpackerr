@@ -18,10 +18,10 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 	}
 
 	payload := &WebhookPayload{
-		App:  Sonarr,
-		Path: "/this/is/the/extraction-path/Some.Cool.Movie.Name.Here",
+		App:  "Starr",
+		Path: "/this/is/a/path",
 		IDs: map[string]interface{}{
-			"title":      "Some Cool Movie Name Here",
+			"title":      "Some Cool Title Name Here",
 			"downloadId": fmt.Sprintf("some-id-goes-here-%d", time.Now().Unix()),
 			"otherId":    "another-id-here-like-imdb",
 		},

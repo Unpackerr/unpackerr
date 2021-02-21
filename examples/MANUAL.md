@@ -1,4 +1,4 @@
-unpackerr(1) -- Utility Unpack compressed files for importing by Sonarr and Radarr.
+unpackerr(1) -- Unpack compressed files for importing by Starr applications.
 ===
 
 SYNOPSIS
@@ -30,6 +30,9 @@ OPTIONS
         This sends a webhook of the type specified then exits. This is only
         for testing and development. This requires a valid webhook configured
         in a config file or from environment variables.
+        Event IDs (not all of these are used in webhooks): 0 = all
+        1 = queued, 2 = extracting, 3 = extract failed, 4 = extracted
+        5 = imported, 6 = deleting, 7 = delete failed, 8 = deleted
 
     -v, --version
         Display version and exit.

@@ -96,18 +96,21 @@ func (u *Unpackerr) checkRadarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, &Extract{
+				x := &Extract{
 					App:         Radarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
-					IDs: map[string]interface{}{
-						"title":      q.Movie.Title,
-						"tmdbId":     q.Movie.TmdbID,
-						"imdbId":     q.Movie.ImdbID,
-						"downloadId": q.DownloadID,
-					},
-				})
+					IDs:         map[string]interface{}{"downloadId": q.DownloadID, "title": q.Title},
+				}
+
+				if q.Movie != nil {
+					x.IDs["title"] = q.Movie.Title
+					x.IDs["tmdbId"] = q.Movie.TmdbID
+					x.IDs["imdbId"] = q.Movie.ImdbID
+				}
+
+				u.handleCompletedDownload(q.Title, x)
 
 				fallthrough
 			default:

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"runtime"
@@ -22,72 +22,17 @@ type WebhookConfig struct {
 	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
 	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
 	CType      string          `json:"content_type" toml:"content_type" xml:"content_type" yaml:"content_type"`
+	TmplPath   string          `json:"template_path" toml:"template_path" xml:"template_path" yaml:"template_path"`
 	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	IgnoreSSL  bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	nickname   string
 	client     *http.Client
 	fails      uint
 	posts      uint
 	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-}
-
-// DiscordPayload - https://leovoel.github.io/embed-visualizer/
-type DiscordPayload struct {
-	Content   string                 `json:"content"`
-	Username  string                 `json:"username"`
-	AvatarURL string                 `json:"avatar_url"`
-	Embeds    []*DiscordPayloadEmbed `json:"embeds"`
-}
-
-type DiscordPayloadEmbed struct {
-	Title       string                      `json:"title"`
-	Description string                      `json:"description"`
-	URL         string                      `json:"url"`
-	Color       int                         `json:"color"`
-	Fields      []*DiscordPayloadEmbedField `json:"fields"`
-	Author      *DiscordPayloadEmbedAuthor  `json:"author"`
-}
-
-type DiscordPayloadEmbedField struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Inline bool   `json:"inline"`
-}
-
-type DiscordPayloadEmbedAuthor struct {
-	Name    string `json:"name"`
-	IconURL string `json:"icon_url"`
-}
-
-// NotifiarrPayload defines the data sent to notifarr.com webhooks.
-type NotifiarrPayload struct {
-	Path  string                 `json:"path"`                // Path for the extracted item.
-	App   string                 `json:"app"`                 // Application Triggering Event
-	IDs   map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
-	Time  time.Time              `json:"time"`                // Time of this event.
-	Data  *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
-	// Application Metadata.
-	Go       string    `json:"go_version"` // Version of go compiled with
-	OS       string    `json:"os"`         // Operating system: linux, windows, darwin
-	Arch     string    `json:"arch"`       // Architecture: amd64, armhf
-	Version  string    `json:"version"`    // Application Version
-	Revision string    `json:"revision"`   // Application Revision
-	Branch   string    `json:"branch"`     // Branch built from.
-	Started  time.Time `json:"started"`    // App start time.
-}
-
-// XtractPayload is a rewrite of xtractr.Response.
-type XtractPayload struct {
-	Error    string    `json:"error,omitempty"`      // error only during extractfailed
-	Archives []string  `json:"archives,omitempty"`   // list of all archive files extracted
-	Files    []string  `json:"files,omitempty"`      // list of all files extracted
-	Start    time.Time `json:"start,omitempty"`      // start time of extraction
-	Output   string    `json:"tmp_folder,omitempty"` // temporary items folder
-	Bytes    int64     `json:"bytes,omitempty"`      // Bytes written
-	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
 }
 
 // Errors produced by this file.
@@ -100,7 +45,7 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
-	payload := &NotifiarrPayload{
+	payload := &WebhookPayload{
 		Path:  i.Path,
 		App:   i.App,
 		IDs:   i.IDs,
@@ -141,63 +86,25 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 	}
 }
 
-func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *NotifiarrPayload) {
-	var (
-		body []byte
-		err  error
-	)
-
-	switch url := strings.ToLower(hook.URL); {
-	default:
-		u.Printf("[WARN] Webhook URL is unknown; not notifiarr or discord: %v", hook.Name)
-		fallthrough
-	case strings.Contains(url, "discordnotifier.com") || strings.Contains(url, "notifiarr.com"):
-		body, err = json.Marshal(payload)
-	case strings.Contains(url, "discord.com"):
-		discord := &DiscordPayload{
-			Username:  "Unpackerr",
-			AvatarURL: "https://github.com/davidnewhall/unpackerr/wiki/images/logo.png",
-			Embeds: []*DiscordPayloadEmbed{{
-				Title: "**" + payload.IDs["title"].(string) + "**", // welp.
-				Author: &DiscordPayloadEmbedAuthor{
-					Name:    "Unpackerr: " + payload.Event.Desc(),
-					IconURL: "https://github.com/davidnewhall/unpackerr/wiki/images/logo.png",
-				},
-				Fields: []*DiscordPayloadEmbedField{
-					{Name: "**Path**", Value: payload.Path},
-					{Name: "**App**", Value: payload.App, Inline: true},
-				},
-			}},
-		}
-
-		if payload.Data != nil {
-			discord.Embeds[0].Fields = append(discord.Embeds[0].Fields,
-				&DiscordPayloadEmbedField{Name: "**Size**", Value: HumanBytes(payload.Data.Bytes), Inline: true},
-				&DiscordPayloadEmbedField{Name: "**Elapsed**", Value: time.Since(payload.Data.Start).String(), Inline: true})
-			if payload.Data.Error != "" {
-				discord.Embeds[0].Color = 9383736
-				discord.Embeds[0].Fields = append(discord.Embeds[0].Fields,
-					&DiscordPayloadEmbedField{Name: "**Error**", Value: payload.Data.Error})
-			}
-		}
-
-		body, err = json.Marshal(discord)
-	}
-
+func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
+	tmpl, err := hook.Template()
 	if err != nil {
-		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Printf("[ERROR] Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
 	}
 
-	if body, err := hook.Send(body); err != nil {
+	var body bytes.Buffer
+	if err = tmpl.Execute(&body, payload); err != nil {
+		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+	} else if reply, err := hook.Send(&body); err != nil {
 		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
-		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
+		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(reply, []byte{'\n'}, []byte{' '})))
 	}
 }
 
 // Send marshals an interface{} into json and POSTs it to a URL.
-func (w *WebhookConfig) Send(body []byte) ([]byte, error) {
+func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -214,17 +121,13 @@ func (w *WebhookConfig) Send(body []byte) ([]byte, error) {
 	return b, err
 }
 
-func (w *WebhookConfig) send(ctx context.Context, body []byte) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, bytes.NewBuffer(body))
+func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("creating request '%s': %w", w.Name, err)
 	}
 
-	if w.CType == "" {
-		req.Header.Set("content-type", "application/json")
-	} else {
-		req.Header.Set("content-type", w.CType)
-	}
+	req.Header.Set("content-type", w.CType)
 
 	res, err := w.client.Do(req)
 	if err != nil {
@@ -245,8 +148,17 @@ func (w *WebhookConfig) send(ctx context.Context, body []byte) ([]byte, error) {
 
 func (u *Unpackerr) validateWebhook() {
 	for i := range u.Webhook {
-		if u.Webhook[i].Name == "" {
+		if u.Webhook[i].nickname = u.Webhook[i].Name; u.Webhook[i].Name == "" {
+			u.Webhook[i].nickname = fmt.Sprintf("WebhookURL%d", i)
 			u.Webhook[i].Name = u.Webhook[i].URL
+		}
+
+		if len(u.Webhook[i].nickname) > 80 { //nolint:gomnd // max discord nick length
+			u.Webhook[i].nickname = u.Webhook[i].nickname[:80]
+		}
+
+		if u.Webhook[i].CType == "" {
+			u.Webhook[i].CType = "application/json"
 		}
 
 		if u.Webhook[i].Timeout.Duration == 0 {
@@ -269,15 +181,26 @@ func (u *Unpackerr) validateWebhook() {
 }
 
 func (u *Unpackerr) logWebhook() {
+	var ex string
+
 	if c := len(u.Webhook); c == 1 {
-		u.Printf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
+		if u.Webhook[0].TmplPath != "" {
+			ex = fmt.Sprintf(", template: %s, content_type: %s", u.Webhook[0].TmplPath, u.Webhook[0].CType)
+		}
+
+		u.Printf(" => Webhook Config: 1 URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
+			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, ex,
+			logEvents(u.Webhook[0].Events))
 	} else {
 		u.Print(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
-			u.Printf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, logEvents(f.Events))
+			if ex = ""; f.TmplPath != "" {
+				ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
+			}
+
+			u.Printf(" =>    URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
+				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
 		}
 	}
 }
@@ -339,23 +262,4 @@ func (w *WebhookConfig) Counts() (uint, uint) {
 	defer w.Unlock()
 
 	return w.posts, w.fails
-}
-
-// HumanBytes is from https://yourbasic.org/golang/formatting-byte-size-to-human-readable-format/
-// This converts an int to a human readable byte string.
-func HumanBytes(b int64) string {
-	const unit = 1024
-
-	if b < unit {
-		return fmt.Sprintf("%dB", b)
-	}
-
-	div, exp := int64(unit), 0
-
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-
-	return fmt.Sprintf("%.1f%ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }

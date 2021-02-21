@@ -15,10 +15,11 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		return ErrInvalidStatus
 	}
 
-	payload := &NotifiarrPayload{
+	payload := &WebhookPayload{
 		App:  Sonarr,
 		Path: "/this/is/the/extraction/path",
 		IDs: map[string]interface{}{
+			"title":      "Some Cool Movie Name Here",
 			"downloadId": "some-id-goes-here",
 			"otherId":    "another-id-here-like-imdb",
 		},
@@ -45,7 +46,7 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 	if e != EXTRACTING && e != EXTRACTED && e != EXTRACTFAILED {
 		payload.Data = nil
 	} else {
-		payload.Data.Bytes = 1234567
+		payload.Data.Bytes = 1234567009
 	}
 
 	if e == QUEUED {

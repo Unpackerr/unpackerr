@@ -69,7 +69,7 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 			Start:    i.Resp.Started,
 			Output:   i.Resp.Output,
 			Bytes:    i.Resp.Size,
-			Elapsed:  i.Resp.Elapsed.Seconds(),
+			Elapsed:  cnfg.Duration{Duration: i.Resp.Elapsed},
 		}
 
 		if i.Resp.Error != nil {

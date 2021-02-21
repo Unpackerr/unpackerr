@@ -1,9 +1,11 @@
 package unpackerr
 
 import (
+	"fmt"
 	"runtime"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/version"
 	"golift.io/xtractr"
 )
@@ -17,10 +19,10 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 
 	payload := &WebhookPayload{
 		App:  Sonarr,
-		Path: "/this/is/the/extraction/path",
+		Path: "/this/is/the/extraction-path/Some.Cool.Movie.Name.Here",
 		IDs: map[string]interface{}{
 			"title":      "Some Cool Movie Name Here",
-			"downloadId": "some-id-goes-here",
+			"downloadId": fmt.Sprintf("some-id-goes-here-%d", time.Now().Unix()),
 			"otherId":    "another-id-here-like-imdb",
 		},
 		Time:     time.Now(),
@@ -34,12 +36,12 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		Event:    e,
 		Data: &XtractPayload{
 			Start:    version.Started,
-			Elapsed:  time.Since(version.Started).Seconds(),
-			Archives: []string{"/this/is/the/extraction/path/archive.rar"},
+			Elapsed:  cnfg.Duration{Duration: time.Since(version.Started)},
+			Archives: []string{"/this/is/the/extraction/path/archive.rar", "/this/is/the/extraction/path/archive.sub.rar"},
 			Error:    "",
 			Output:   "/this/is/the/extraction/path_unpackerred",
 			Bytes:    0,
-			Files:    []string{"/this/is/the/extraction/path/file.mkv"},
+			Files:    []string{"/this/is/the/extraction/path/file.mkv", "/this/is/the/extraction/path/file.sub"},
 		},
 	}
 

@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"strings"
 	"time"
+
+	"golift.io/cnfg"
 )
 
 // WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
@@ -27,13 +29,13 @@ type WebhookPayload struct {
 
 // XtractPayload is a rewrite of xtractr.Response.
 type XtractPayload struct {
-	Error    string    `json:"error,omitempty"`      // error only during extractfailed
-	Archives []string  `json:"archives,omitempty"`   // list of all archive files extracted
-	Files    []string  `json:"files,omitempty"`      // list of all files extracted
-	Start    time.Time `json:"start,omitempty"`      // start time of extraction
-	Output   string    `json:"tmp_folder,omitempty"` // temporary items folder
-	Bytes    int64     `json:"bytes,omitempty"`      // Bytes written
-	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
+	Error    string        `json:"error,omitempty"`      // error only during extractfailed
+	Archives []string      `json:"archives,omitempty"`   // list of all archive files extracted
+	Files    []string      `json:"files,omitempty"`      // list of all files extracted
+	Start    time.Time     `json:"start,omitempty"`      // start time of extraction
+	Output   string        `json:"tmp_folder,omitempty"` // temporary items folder
+	Bytes    int64         `json:"bytes,omitempty"`      // Bytes written
+	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`    // Duration as a string: 5m32s
 }
 
 // WebhookTemplateNotifiarr is the default template
@@ -78,8 +80,11 @@ const WebhookTemplateDiscord = `{
      },
      "fields": [
        {"name": "**Path**", "value": "{{.Path}}", "inline": false},
-       {"name": "**App**", "value": "{{.App}}", "inline": true},
-       {"name": "**Elapsed**", "value": "{{since .Started}}", "inline": true}{{ if .Data }},
+       {"name": "**Version**", "value": "{{.Version}}-{{.Revision}}", "inline": true},
+       {"name": "**App**", "value": "{{.App}}", "inline": true}{{ if .Data }},
+       {"name": "**Elapsed**", "value": "{{.Data.Elapsed}}", "inline": true},
+       {"name": "**Archives**", "value": "{{len .Data.Archives}}", "inline": true},
+       {"name": "**Files**", "value": "{{len .Data.Files}}", "inline": true},
        {"name": "**Size**", "value": "{{humanbytes .Data.Bytes}}", "inline": true}{{- if .Data.Error }},
        {"name": "**Error**", "value": "{{.Data.Error}}", "inline": false}{{ end }}{{ end }}
      ]
@@ -125,7 +130,6 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		"name":       func() string { return w.nickname },
 		"separator":  separator,
 		"humanbytes": humanbytes,
-		"since":      time.Since,
 	})
 
 	// Figure out which template to use based on URL or template_path.

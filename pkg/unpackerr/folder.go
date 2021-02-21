@@ -337,9 +337,10 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 		// Arr apps do not land here. They create their own queued items in u.Map.
 		u.Map[data.Name] = &Extract{
 			Path:    data.Name,
-			App:     "Unknown",
+			App:     "Folder",
 			Status:  QUEUED,
 			Updated: time.Now(),
+			IDs:     map[string]interface{}{"title": data.Name}, // required or webhook may break.
 		}
 		u.sendWebhooks(u.Map[data.Name])
 

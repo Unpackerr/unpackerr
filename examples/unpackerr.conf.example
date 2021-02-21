@@ -1,5 +1,6 @@
 ##      Unpackerr Example Configuration File      ##
 ## The following values are application defaults. ##
+## Environment Variables may override all values. ##
 ####################################################
 
 # [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
@@ -53,14 +54,22 @@ dir_mode = "0755"
 ### Webhooks ###
 ################
 # Sends a webhook when an extraction starts and again when it finishes.
-# Created to integrate with discordnotifier.com.
-# Can possibly be used with other services. Don't forget to uncomment [[webhook]].
+# Created to integrate with notifiarr.com. Also works natively with Discord.com and Slack.com webhooks.
+# Can possibly be used with other services by providing a custom template_path.
+###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
 #[[webhook]]
-#  url        = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
-#  name       = ""    # Set this to hide the URL in logs.
-#  silent     = false # do not log success (less log spam)
-#  events     = [0]   # list of event ids to include, 0 == all.
-#  exclude    = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+#  url    = "https://discordnotifier.com/notifier.php?api=abcdef-ghijklmn-op"
+#  name   = ""    # Set this to hide the URL in logs.
+#  silent = false # do not log success (less log spam)
+#  events = [0]   # list of event ids to include, 0 == all.
+## Advanced Optional Webhook Configuration
+#  nickname      = ""    # Passed into templates. Used in Discord and Slack templates as bot name.
+#  channel       = ""    # Passed into templates. Used in Slack templates for destination channel.
+#  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+#  template_path = ""    # Override internal webhook template for discord.com or other hooks.
+#  ignore_ssl    = false # Set this to true to ignore the SSL certificate on the server.
+#  timeout       = "10s" # You can adjust how long to wait for a server response.
+#  content_type  = "application/json" # If your custom template uses another MIME type, set this.
 
 ################
 ### Episodes ###

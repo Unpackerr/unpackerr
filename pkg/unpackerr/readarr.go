@@ -109,7 +109,12 @@ func (u *Unpackerr) checkReadarrQueue() {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
-					IDs:         map[string]interface{}{"authorId": q.AuthorID, "bookId": q.BookID, "downloadId": q.DownloadID},
+					IDs: map[string]interface{}{
+						"title":      q.Title,
+						"authorId":   q.AuthorID,
+						"bookId":     q.BookID,
+						"downloadId": q.DownloadID,
+					},
 				})
 
 				fallthrough

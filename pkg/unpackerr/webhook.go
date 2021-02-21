@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"runtime"
@@ -21,48 +21,25 @@ import (
 type WebhookConfig struct {
 	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
 	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
+	CType      string          `json:"content_type" toml:"content_type" xml:"content_type" yaml:"content_type"`
+	TmplPath   string          `json:"template_path" toml:"template_path" xml:"template_path" yaml:"template_path"`
 	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	IgnoreSSL  bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname" yaml:"nickname"`
+	Channel    string          `json:"channel" toml:"channel" xml:"channel" yaml:"channel"`
 	client     *http.Client
 	fails      uint
 	posts      uint
-	sync.Mutex `json:"-"`
+	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-// WebhookPayload defines the data sent to outbound webhooks.
-type WebhookPayload struct {
-	Path  string                 `json:"path"`                // Path for the extracted item.
-	App   string                 `json:"app"`                 // Application Triggering Event
-	IDs   map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
-	Time  time.Time              `json:"time"`                // Time of this event.
-	Data  *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
-	// Application Metadata.
-	Go       string    `json:"go_version"` // Version of go compiled with
-	OS       string    `json:"os"`         // Operating system: linux, windows, darwin
-	Arch     string    `json:"arch"`       // Architecture: amd64, armhf
-	Version  string    `json:"version"`    // Application Version
-	Revision string    `json:"revision"`   // Application Revision
-	Branch   string    `json:"branch"`     // Branch built from.
-	Started  time.Time `json:"started"`    // App start time.
-}
-
-// XtractPayload is a rewrite of xtractr.Response.
-type XtractPayload struct {
-	Error    string    `json:"error,omitempty"`      // error only during extractfailed
-	Archives []string  `json:"archives,omitempty"`   // list of all archive files extracted
-	Files    []string  `json:"files,omitempty"`      // list of all files extracted
-	Start    time.Time `json:"start,omitempty"`      // start time of extraction
-	Output   string    `json:"tmp_folder,omitempty"` // temporary items folder
-	Bytes    int64     `json:"bytes,omitempty"`      // Bytes written
-	Elapsed  float64   `json:"elapsed,omitempty"`    // Duration in seconds
-}
-
-// ErrInvalidStatus is an error message.
-var ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+// Errors produced by this file.
+var (
+	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+)
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
 	if i.Status == IMPORTED && i.App == FolderString {
@@ -93,7 +70,8 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 			Start:    i.Resp.Started,
 			Output:   i.Resp.Output,
 			Bytes:    i.Resp.Size,
-			Elapsed:  i.Resp.Elapsed.Seconds(),
+			Queue:    i.Resp.Queued,
+			Elapsed:  cnfg.Duration{Duration: i.Resp.Elapsed},
 		}
 
 		if i.Resp.Error != nil {
@@ -111,23 +89,35 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 }
 
 func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
-	if body, err := hook.Send(payload); err != nil {
+	tmpl, err := hook.Template()
+	if err != nil {
+		u.Printf("[ERROR] Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
+	}
+
+	var body bytes.Buffer
+	if err = tmpl.Execute(&body, payload); err != nil {
+		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+	} else /*
+		// This is for testing payload output.
+		log.Print(string(body.Bytes()))
+		return /**/
+	if reply, err := hook.Send(&body); err != nil {
 		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
 	} else if !hook.Silent {
-		u.Printf("[Webhook] Posted Payload (%s = %s): %s: 200 OK", payload.Path, payload.Event, hook.Name)
-		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(body, []byte{'\n'}, []byte{' '})))
+		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
+		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(reply, []byte{'\n'}, []byte{' '})))
 	}
 }
 
 // Send marshals an interface{} into json and POSTs it to a URL.
-func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
+func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
 	defer cancel()
 
-	b, err := w.send(ctx, i)
+	b, err := w.send(ctx, body)
 	if err != nil {
 		w.fails++
 	}
@@ -137,18 +127,13 @@ func (w *WebhookConfig) Send(i interface{}) ([]byte, error) {
 	return b, err
 }
 
-func (w *WebhookConfig) send(ctx context.Context, i interface{}) ([]byte, error) {
-	b, err := json.Marshal(i)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling payload '%s': %w", w.Name, err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, bytes.NewBuffer(b))
+func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("creating request '%s': %w", w.Name, err)
 	}
 
-	req.Header.Set("content-type", "application/json")
+	req.Header.Set("content-type", w.CType)
 
 	res, err := w.client.Do(req)
 	if err != nil {
@@ -158,19 +143,29 @@ func (w *WebhookConfig) send(ctx context.Context, i interface{}) ([]byte, error)
 
 	// The error is mostly ignored because we don't care about the body.
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	body, _ := ioutil.ReadAll(res.Body)
+	reply, _ := ioutil.ReadAll(res.Body)
 
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, body)
+	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
+		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, reply)
 	}
 
-	return body, nil
+	return reply, nil
 }
 
 func (u *Unpackerr) validateWebhook() {
 	for i := range u.Webhook {
 		if u.Webhook[i].Name == "" {
 			u.Webhook[i].Name = u.Webhook[i].URL
+		}
+
+		if u.Webhook[i].Nickname == "" {
+			u.Webhook[i].Nickname = "Unpackerr"
+		} else if len(u.Webhook[i].Nickname) > 20 { //nolint:gomnd // be reasonable
+			u.Webhook[i].Nickname = u.Webhook[i].Nickname[:20]
+		}
+
+		if u.Webhook[i].CType == "" {
+			u.Webhook[i].CType = "application/json"
 		}
 
 		if u.Webhook[i].Timeout.Duration == 0 {
@@ -193,15 +188,26 @@ func (u *Unpackerr) validateWebhook() {
 }
 
 func (u *Unpackerr) logWebhook() {
+	var ex string
+
 	if c := len(u.Webhook); c == 1 {
-		u.Printf(" => Webhook Config: 1 URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, logEvents(u.Webhook[0].Events))
+		if u.Webhook[0].TmplPath != "" {
+			ex = fmt.Sprintf(", template: %s, content_type: %s", u.Webhook[0].TmplPath, u.Webhook[0].CType)
+		}
+
+		u.Printf(" => Webhook Config: 1 URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
+			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, ex,
+			logEvents(u.Webhook[0].Events))
 	} else {
 		u.Print(" => Webhook Configs:", c, "URLs")
 
 		for _, f := range u.Webhook {
-			u.Printf(" =>    URL: %s (timeout: %v, ignore ssl: %v, silent: %v, events: %v)",
-				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, logEvents(f.Events))
+			if ex = ""; f.TmplPath != "" {
+				ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
+			}
+
+			u.Printf(" =>    URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
+				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
 		}
 	}
 }

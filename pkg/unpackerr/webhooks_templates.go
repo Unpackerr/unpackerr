@@ -79,14 +79,14 @@ const WebhookTemplateDiscord = `{
        "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png"
      },
      "fields": [
-       {"name": "**Path**", "value": "{{.Path}}", "inline": false},
-       {"name": "**Version**", "value": "{{.Version}}-{{.Revision}}", "inline": true},
-       {"name": "**App**", "value": "{{.App}}", "inline": true}{{ if .Data }},
-       {"name": "**Elapsed**", "value": "{{.Data.Elapsed}}", "inline": true},
-       {"name": "**Archives**", "value": "{{len .Data.Archives}}", "inline": true},
-       {"name": "**Files**", "value": "{{len .Data.Files}}", "inline": true},
-       {"name": "**Size**", "value": "{{humanbytes .Data.Bytes}}", "inline": true}{{- if .Data.Error }},
-       {"name": "**Error**", "value": "{{.Data.Error}}", "inline": false}{{ end }}{{ end }}
+       {"name": "Path", "value": "{{.Path}}", "inline": false},
+       {"name": "Version", "value": "{{.Version}}-{{.Revision}}", "inline": true},
+       {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }},
+       {"name": "Elapsed", "value": "{{.Data.Elapsed}}", "inline": true},
+       {"name": "Archives", "value": "{{len .Data.Archives}}", "inline": true},
+       {"name": "Files", "value": "{{len .Data.Files}}", "inline": true},
+       {"name": "Size", "value": "{{humanbytes .Data.Bytes}}", "inline": true}{{- if .Data.Error }},
+       {"name": "Error", "value": "{{.Data.Error}}", "inline": false}{{ end }}{{ end }}
      ]
     }
   ]

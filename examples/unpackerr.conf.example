@@ -54,7 +54,8 @@ dir_mode = "0755"
 ### Webhooks ###
 ################
 # Sends a webhook when an extraction starts and again when it finishes.
-# Created to integrate with notifiarr.com. Also works natively with Discord.com and Slack.com webhooks.
+# Created to integrate with notifiarr.com.
+# Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
 # Can possibly be used with other services by providing a custom template_path.
 ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
 #[[webhook]]
@@ -63,8 +64,8 @@ dir_mode = "0755"
 #  silent = false # do not log success (less log spam)
 #  events = [0]   # list of event ids to include, 0 == all.
 ## Advanced Optional Webhook Configuration
-#  nickname      = ""    # Passed into templates. Used in Discord and Slack templates as bot name.
-#  channel       = ""    # Passed into templates. Used in Slack templates for destination channel.
+#  nickname      = ""    # Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+#  channel       = ""    # Also passed into templates. Used in Slack templates for destination channel.
 #  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 #  template_path = ""    # Override internal webhook template for discord.com or other hooks.
 #  ignore_ssl    = false # Set this to true to ignore the SSL certificate on the server.

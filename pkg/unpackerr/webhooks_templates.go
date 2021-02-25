@@ -201,6 +201,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		"nickname":   func() string { return w.Nickname },
 		"channel":    func() string { return w.Channel },
 		"timestamp":  func(t time.Time) string { return t.Format(time.RFC3339) },
+		"name":       func() string { return w.Name },
 	})
 
 	// Figure out which template to use based on URL or template_path.

@@ -185,7 +185,7 @@ const WebhookTemplateSlack = `
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text":  {{encode (print "*Error*: " .Data.Error)}}"
+        "text": {{encode (print "*Error*: " .Data.Error)}}
       }
     }{{end}}{{end}}
   ]

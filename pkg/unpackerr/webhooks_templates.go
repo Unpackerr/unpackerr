@@ -99,6 +99,7 @@ const WebhookTemplateDiscord = `{
        "name": "Unpackerr: {{.Event.Desc}}",
        "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png"
      },
+     "color": {{if (eq 3 .Event)}} 8995162 {{else}} 1 {{end}},
      "fields": [
        {"name": "Path", "value": {{encode .Path}}, "inline": false},
        {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }},

@@ -115,13 +115,16 @@ func Start() (err error) {
 	// We cannot run setupLogging until we read the above config.
 	u.setupLogging()
 	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), version.Started)
-	u.validateApps()
+
+	if err := u.validateApps(); err != nil {
+		return err
+	}
+
+	u.logStartupInfo(msg)
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
 	}
-
-	u.logStartupInfo(msg)
 
 	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Parallel: int(u.Parallel),

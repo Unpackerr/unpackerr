@@ -302,24 +302,31 @@ func (u *Unpackerr) checkFolderStats() {
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
 			delete(u.folders.Folders, name)
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
-			// Folder reached delete delay (after extraction), nuke it.
-			if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
-				go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
-			} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
-				go u.DeleteFiles(folder.list...)
-			}
-
-			if folder.cnfg.DeleteOrig && !folder.cnfg.MoveBack {
-				go u.DeleteFiles(name)
-			} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
-				go u.DeleteFiles(folder.rars...)
-			}
-
-			// Folder reached delete delay (after extraction), nuke it.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
-			delete(u.folders.Folders, name)
+			u.deleteAfterReached(name, folder)
 		}
 	}
+}
+
+func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
+	// Folder reached delete delay (after extraction), nuke it.
+	if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
+		go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+	} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
+		go u.DeleteFiles(folder.list...)
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+	}
+
+	if folder.cnfg.DeleteOrig && !folder.cnfg.MoveBack {
+		go u.DeleteFiles(name)
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+	} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
+		go u.DeleteFiles(folder.rars...) // probably does not delete all the files.
+		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+	}
+
+	// Folder reached delete delay (after extraction), nuke it.
+	delete(u.folders.Folders, name)
 }
 
 type newStatus struct {
@@ -353,7 +360,10 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 
 	u.Map[data.Name].Status = data.Status
 	u.Map[data.Name].Updated = time.Now()
-	u.sendWebhooks(u.Map[data.Name])
+
+	if data.Status != IMPORTED { // folder do not import, just in case.
+		u.sendWebhooks(u.Map[data.Name])
+	}
 
 	return u.Map[data.Name]
 }

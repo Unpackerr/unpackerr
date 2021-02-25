@@ -87,12 +87,13 @@ func (u *Unpackerr) retrieveAppQueues() {
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.
-func (u *Unpackerr) validateApps() {
+func (u *Unpackerr) validateApps() error {
 	u.validateSonarr()
 	u.validateRadarr()
 	u.validateLidarr()
 	u.validateReadarr()
-	u.validateWebhook()
+
+	return u.validateWebhook()
 }
 
 func (u *Unpackerr) haveQitem(name, app string) bool {

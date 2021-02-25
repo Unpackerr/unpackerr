@@ -11,7 +11,7 @@ import (
 )
 
 func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
-	u.Printf("Sending webhooks.")
+	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", e)
 
 	if e == WAITING || e > DELETED {
 		return ErrInvalidStatus

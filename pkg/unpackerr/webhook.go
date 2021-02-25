@@ -39,6 +39,7 @@ type WebhookConfig struct {
 // Errors produced by this file.
 var (
 	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
+	ErrNoURL         = fmt.Errorf("webhook without a URL configured; fix it")
 )
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
@@ -89,23 +90,24 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 }
 
 func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
-	tmpl, err := hook.Template()
-	if err != nil {
+	var body bytes.Buffer
+
+	if tmpl, err := hook.Template(); err != nil {
 		u.Printf("[ERROR] Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
+		return
+	} else if err = tmpl.Execute(&body, payload); err != nil {
+		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+		return
 	}
 
-	var body bytes.Buffer
-	if err = tmpl.Execute(&body, payload); err != nil {
-		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
-	} else /*
-		// This is for testing payload output.
-		log.Print(string(body.Bytes()))
-		return /**/
+	b := body.String() // nolint: ifshort
+
 	if reply, err := hook.Send(&body); err != nil {
-		u.Printf("[ERROR] Webhook (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Debugf("Webhook Payload: %s", b)
+		u.Printf("[ERROR] Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
+		u.Debugf("Webhook Response: %s", string(reply))
 	} else if !hook.Silent {
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
-		u.Debugf("[DEBUG] Webhook Response: %s", string(bytes.ReplaceAll(reply, []byte{'\n'}, []byte{' '})))
 	}
 }
 
@@ -113,6 +115,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
+	w.posts++
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
 	defer cancel()
@@ -122,22 +125,20 @@ func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 		w.fails++
 	}
 
-	w.posts++
-
 	return b, err
 }
 
 func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, body)
 	if err != nil {
-		return nil, fmt.Errorf("creating request '%s': %w", w.Name, err)
+		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Set("content-type", w.CType)
 
 	res, err := w.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("POSTing payload '%s': %w", w.Name, err)
+		return nil, fmt.Errorf("POSTing payload: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -146,14 +147,18 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 	reply, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
-		return nil, fmt.Errorf("%w (%s) '%s': %s", ErrInvalidStatus, res.Status, w.Name, reply)
+		return nil, fmt.Errorf("%w (%s): %s", ErrInvalidStatus, res.Status, reply)
 	}
 
 	return reply, nil
 }
 
-func (u *Unpackerr) validateWebhook() {
+func (u *Unpackerr) validateWebhook() error {
 	for i := range u.Webhook {
+		if u.Webhook[i].URL == "" {
+			return ErrNoURL
+		}
+
 		if u.Webhook[i].Name == "" {
 			u.Webhook[i].Name = u.Webhook[i].URL
 		}
@@ -185,30 +190,27 @@ func (u *Unpackerr) validateWebhook() {
 			}
 		}
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logWebhook() {
-	var ex string
+	var ex, pfx string
 
-	if c := len(u.Webhook); c == 1 {
-		if u.Webhook[0].TmplPath != "" {
-			ex = fmt.Sprintf(", template: %s, content_type: %s", u.Webhook[0].TmplPath, u.Webhook[0].CType)
-		}
-
-		u.Printf(" => Webhook Config: 1 URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
-			u.Webhook[0].Name, u.Webhook[0].Timeout, u.Webhook[0].IgnoreSSL, u.Webhook[0].Silent, ex,
-			logEvents(u.Webhook[0].Events))
+	if len(u.Webhook) == 1 {
+		pfx = " => Webhook Config: 1 URL"
 	} else {
-		u.Print(" => Webhook Configs:", c, "URLs")
+		u.Print(" => Webhook Configs:", len(u.Webhook), "URLs")
+		pfx = " =>    URL"
+	}
 
-		for _, f := range u.Webhook {
-			if ex = ""; f.TmplPath != "" {
-				ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
-			}
-
-			u.Printf(" =>    URL: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v",
-				f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
+	for _, f := range u.Webhook {
+		if ex = ""; f.TmplPath != "" {
+			ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
 		}
+
+		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v, channel: %s, nickname: %s",
+			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events), f.Channel, f.Nickname)
 	}
 }
 

@@ -92,6 +92,7 @@ func (u *Unpackerr) validateApps() error {
 	u.validateRadarr()
 	u.validateLidarr()
 	u.validateReadarr()
+
 	return u.validateWebhook()
 }
 

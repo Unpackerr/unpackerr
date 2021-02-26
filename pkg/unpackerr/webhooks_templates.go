@@ -97,7 +97,7 @@ const WebhookTemplateDiscord = `{
     "author": {
      "name": "Unpackerr: {{.Event.Desc}}",
      "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
-     "url": "https://github.com/davidnewhall/unpackerr"
+     "url": "https://github.com/davidnewhall/unpackerr/releases"
     },
     "color": {{ if (eq 1 .Event)}}1752220
             {{- else if (eq 2 .Event)}}16384255
@@ -128,12 +128,6 @@ const WebhookTemplateDiscord = `{
   }]
 }
 `
-
-/*
-Event IDs (not all of these are used in webhooks): `0` = all,
-`1` = queued, `2` = extracting, `3` = extract failed, `4` = extracted,
-`5` = imported, `6` = deleting, `7` = delete failed, `8` = deleted
-*/
 
 // WebhookTemplateSlack is a built-in template for sending a message to Slack.
 const WebhookTemplateSlack = `

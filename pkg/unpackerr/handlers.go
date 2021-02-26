@@ -90,6 +90,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item.Status = QUEUED
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
+		Password:   u.getPasswordFromPath(item.Path),
 		Name:       name,
 		SearchPath: item.Path,
 		TempFolder: false,
@@ -99,6 +100,18 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
+}
+
+func (u *Unpackerr) getPasswordFromPath(s string) string {
+	start, end := strings.Index(s, "{{"), strings.Index(s, "}}")
+
+	if start == -1 || end == -1 || start > end {
+		return ""
+	}
+
+	u.Debugf("Found password in Path: %s", s[start+2:end])
+
+	return s[start+2 : end]
 }
 
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
@@ -174,7 +187,7 @@ func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string,
 		}
 	}
 
-	defer u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
+	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
 
 	// The following code tries to find the path in the queued item's error message.
 	for _, m := range s {

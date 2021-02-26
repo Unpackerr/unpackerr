@@ -13,11 +13,46 @@ import (
 func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", e)
 
-	if e == WAITING || e > DELETED {
+	payload := samplePayload()
+	switch payload.Event = e; payload.Event {
+	default:
+		fallthrough
+	case WAITING:
 		return ErrInvalidStatus
+	case QUEUED:
+		payload.App = FolderString
+		payload.Data = nil
+	case EXTRACTING:
+		payload.Data.Bytes = 0
+		payload.Data.Files = nil
+		payload.Data.Elapsed.Duration = 0
+	case EXTRACTED:
+		payload.Data.Bytes = 1234567009
+	case EXTRACTFAILED:
+		payload.Data.Files = nil
+		payload.Data.Bytes = 0
+		payload.Data.Error = xtractr.ErrInvalidHead.Error()
+	case IMPORTED:
+		payload.Data.Bytes = 0
+		payload.Data.Files = nil
+	case DELETING:
+		payload.Data.Elapsed.Duration = 0
+	case DELETED:
+		payload.Data.Elapsed.Duration = 0
+	case DELETEFAILED:
+		payload.Data.Elapsed.Duration = 0
+		payload.Data.Error = "unable to delete files"
 	}
 
-	payload := &WebhookPayload{
+	for _, hook := range u.Webhook {
+		u.sendWebhookWithLog(hook, payload)
+	}
+
+	return nil
+}
+
+func samplePayload() *WebhookPayload {
+	return &WebhookPayload{
 		App:  "Starr",
 		Path: "/this/is/a/path",
 		IDs: map[string]interface{}{
@@ -33,7 +68,6 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 		Revision: version.Revision,
 		Branch:   version.Branch,
 		Started:  version.Started,
-		Event:    e,
 		Data: &XtractPayload{
 			Start:    version.Started,
 			Elapsed:  cnfg.Duration{Duration: time.Since(version.Started)},
@@ -44,24 +78,4 @@ func (u *Unpackerr) sampleWebhook(e ExtractStatus) error {
 			Files:    []string{"/this/is/the/extraction/path/file.mkv", "/this/is/the/extraction/path/file.sub"},
 		},
 	}
-
-	if e != EXTRACTING && e != EXTRACTED && e != EXTRACTFAILED {
-		payload.Data = nil
-	} else {
-		payload.Data.Bytes = 1234567009
-	}
-
-	if e == QUEUED {
-		payload.App = FolderString
-	}
-
-	if e == EXTRACTFAILED {
-		payload.Data.Error = xtractr.ErrInvalidHead.Error()
-	}
-
-	for _, hook := range u.Webhook {
-		u.sendWebhookWithLog(hook, payload)
-	}
-
-	return nil
 }

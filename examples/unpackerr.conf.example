@@ -44,16 +44,16 @@ parallel = 1
 file_mode = "0644"
 dir_mode = "0755"
 
-##-Notes-######################################################################
-## The following sections can be repeated if you have more than one Sonarr,   #
-## Radarr or Lidarr, Readarr, Folder or Webhook.                              #
-## You must uncomment the [[header]] and api_key at a minimum for Starr apps. #
-###############################################################################
+##-Notes-#######################################################################
+## The following sections can be repeated if you have more than one Sonarr,   ##
+## Radarr or Lidarr, Readarr, Folder or Webhook.                              ##
+## You must uncomment the [[header]] and api_key at a minimum for Starr apps. ##
+################################################################################
 
 ################
 ### Webhooks ###
 ################
-# Sends a webhook when an extraction starts and again when it finishes.
+# Sends a webhook when an extraction queues, starts, finishes, and is deleted.
 # Created to integrate with notifiarr.com.
 # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
 # Can possibly be used with other services by providing a custom template_path.
@@ -160,11 +160,11 @@ dir_mode = "0755"
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
-##-Folders-####################################################################
-## This application can also watch folders for things to extract. If you copy a
-## subfolder into a watched folder (defined below) any extractable items in the
-## folder will be decompressed. This has nothing to do with Starr applications.
-###############################################################################
+##-Folders-#######################################################################
+## This application can also watch folders for things to extract. If you copy a ##
+## subfolder into a watched folder (defined below) any extractable items in the ##
+## folder will be decompressed. This has nothing to do with Starr applications. ##
+##################################################################################
 #[[folder]]
 ## Windows paths must use two backslashes: "C:\\Some\\Folder\\To\\Watch"
 #  path = "/some/folder/to/watch"

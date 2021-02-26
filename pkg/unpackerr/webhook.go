@@ -107,6 +107,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 		u.Printf("[ERROR] Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
 		u.Debugf("Webhook Response: %s", string(reply))
 	} else if !hook.Silent {
+		u.Debugf("Webhook Payload: %s", b)
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
 	}
 }

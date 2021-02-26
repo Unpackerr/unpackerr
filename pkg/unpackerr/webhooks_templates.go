@@ -91,33 +91,49 @@ const WebhookTemplateTelegram = `
 const WebhookTemplateDiscord = `{
   "username": "{{nickname}}",
   "avatar_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
-  "embeds": [
-    {
-     "title": {{encode (index .IDs "title")}},
-     "timestamp": "{{timestamp .Time}}",
-     "author": {
-       "name": "Unpackerr: {{.Event.Desc}}",
-       "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png"
-     },
-     "color": {{if (eq 3 .Event)}} 8995162 {{else}} 1 {{end}},
-     "fields": [
-       {"name": "Path", "value": {{encode .Path}}, "inline": false},
-       {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }},
-       {"name": "Elapsed", "value": "{{.Data.Elapsed}}", "inline": true},
-       {"name": "Archives", "value": "{{len .Data.Archives}}", "inline": true},
-       {"name": "Files", "value": "{{len .Data.Files}}", "inline": true},
-       {"name": "Size", "value": "{{humanbytes .Data.Bytes}}", "inline": true},
-       {"name": "Queue", "value": "{{.Data.Queue}}", "inline": true}{{- if .Data.Error }},
-       {"name": "Error", "value": {{encode .Data.Error}}, "inline": false}{{ end }}{{ end }}
-     ],
-     "footer": {
-       "text": "v{{.Version}}-{{.Revision}} ({{.OS}}/{{.Arch}})",
-       "icon_url": "https://docs.golift.io/integrations/golift.png"
-     }
-   }
-  ]
+  "embeds": [{
+    "title": {{encode (index .IDs "title")}},
+    "timestamp": "{{timestamp .Time}}",
+    "author": {
+     "name": "Unpackerr: {{.Event.Desc}}",
+     "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+     "url": "https://github.com/davidnewhall/unpackerr"
+    },
+    "color": {{ if (eq 1 .Event)}}1752220
+            {{- else if (eq 2 .Event)}}16384255
+            {{- else if(eq 3 .Event)}}10038562
+            {{- else if(eq 4 .Event)}}786176
+            {{- else if(eq 5 .Event)}}12745742
+            {{- else}}16711695{{end}},
+    "fields": [
+     {"name": "Path", "value": {{encode .Path}}, "inline": false},
+     {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }}
+     {{ if .Data.Archives}},{"name": "Archives", "value": "{{len .Data.Archives}}", "inline": true}
+     {{end -}}
+     {{ if .Data.Elapsed.Duration}},{"name": "Elapsed", "value": "{{.Data.Elapsed}}", "inline": true}
+     {{end -}}
+     {{ if .Data.Files}},{"name": "Files", "value": "{{len .Data.Files}}", "inline": true}
+     {{end -}}
+     {{ if .Data.Bytes}},{"name": "Size", "value": "{{humanbytes .Data.Bytes}}", "inline": true}
+     {{end -}}
+     {{ if and (gt .Event 1) (lt .Event 5)}},{"name": "Queue", "value": "{{.Data.Queue}}", "inline": true}
+     {{end -}}
+     {{ if .Data.Error }},{"name": "Error", "value": {{encode .Data.Error}}, "inline": false}
+     {{end}}{{end -}}
+    ],
+    "footer": {
+     "text": "v{{.Version}}-{{.Revision}} ({{.OS}}/{{.Arch}})",
+     "icon_url": "https://docs.golift.io/integrations/golift.png"
+    }
+  }]
 }
 `
+
+/*
+Event IDs (not all of these are used in webhooks): `0` = all,
+`1` = queued, `2` = extracting, `3` = extract failed, `4` = extracted,
+`5` = imported, `6` = deleting, `7` = delete failed, `8` = deleted
+*/
 
 // WebhookTemplateSlack is a built-in template for sending a message to Slack.
 const WebhookTemplateSlack = `

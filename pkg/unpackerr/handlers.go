@@ -42,7 +42,7 @@ func (u *Unpackerr) checkQueueChanges() {
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 					data.App, data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
-				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp})
+				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, true)
 				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, data.DeleteDelay)
 			}
 		case data.Status == IMPORTED:
@@ -104,6 +104,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 // This runs at a short interval to check for extraction state changes, and shuold return quickly.
+// nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
@@ -123,14 +124,18 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
 		case data.Status == IMPORTED && elapsed >= data.DeleteDelay:
+			var webhook bool
+
 			if data.DeleteOrig {
 				go u.DeleteFiles(data.Path)
+				webhook = true
 			} else if len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
 				// In a routine so it can run slowly and not block.
 				go u.DeleteFiles(data.Resp.NewFiles...)
+				webhook = true
 			}
 
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp})
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp}, webhook)
 		}
 	}
 }
@@ -141,15 +146,15 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp})
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, true)
 	case resp.Error != nil:
 		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp})
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp})
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
 	}
 }
 

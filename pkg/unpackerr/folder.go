@@ -147,7 +147,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.updateQueueStatus(&newStatus{Name: name}).App = FolderString
+	u.updateQueueStatus(&newStatus{Name: name}, true)
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -199,7 +199,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 	folder.last = time.Now()
 
-	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.step})
+	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.step}, true)
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -297,9 +297,9 @@ func (u *Unpackerr) checkFolderStats() {
 			folder.step = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
 				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
-		case folder.cnfg.DeleteAfter.Duration < 1:
+		case folder.cnfg.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, false)
 			delete(u.folders.Folders, name)
 		case EXTRACTED == folder.step && elapsed >= folder.cnfg.DeleteAfter.Duration:
 			u.deleteAfterReached(name, folder)
@@ -307,24 +307,28 @@ func (u *Unpackerr) checkFolderStats() {
 	}
 }
 
+// nolint:wsl
 func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
+	var webhook bool
+
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
 		go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+		webhook = true
 	} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
 		go u.DeleteFiles(folder.list...)
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+		webhook = true
 	}
 
 	if folder.cnfg.DeleteOrig && !folder.cnfg.MoveBack {
 		go u.DeleteFiles(name)
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+		webhook = true
 	} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
 		go u.DeleteFiles(folder.rars...) // probably does not delete all the files.
-		u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil})
+		webhook = true
 	}
 
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, webhook)
 	// Folder reached delete delay (after extraction), nuke it.
 	delete(u.folders.Folders, name)
 }
@@ -338,20 +342,23 @@ type newStatus struct {
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders in a few other places as well.
-func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
+func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 	if _, ok := u.Map[data.Name]; !ok {
 		// This is a new Folder being queued for extraction.
 		// Arr apps do not land here. They create their own queued items in u.Map.
 		u.Map[data.Name] = &Extract{
 			Path:    data.Name,
-			App:     "Folder",
+			App:     FolderString,
 			Status:  QUEUED,
 			Updated: time.Now(),
 			IDs:     map[string]interface{}{"title": data.Name}, // required or webhook may break.
 		}
-		u.sendWebhooks(u.Map[data.Name])
 
-		return u.Map[data.Name]
+		if sendHook {
+			u.sendWebhooks(u.Map[data.Name])
+		}
+
+		return
 	}
 
 	if data.Resp != nil {
@@ -361,9 +368,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus) *Extract {
 	u.Map[data.Name].Status = data.Status
 	u.Map[data.Name].Updated = time.Now()
 
-	if data.Status != IMPORTED { // folder do not import, just in case.
+	if sendHook {
 		u.sendWebhooks(u.Map[data.Name])
 	}
-
-	return u.Map[data.Name]
 }

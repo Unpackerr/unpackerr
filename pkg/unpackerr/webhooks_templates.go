@@ -110,7 +110,10 @@ const WebhookTemplateDiscord = `{
        {"name": "Queue", "value": "{{.Data.Queue}}", "inline": true}{{- if .Data.Error }},
        {"name": "Error", "value": {{encode .Data.Error}}, "inline": false}{{ end }}{{ end }}
      ],
-     "footer": {"text": "v{{.Version}}-{{.Revision}} ({{.OS}}/{{.Arch}})"}
+     "footer": {
+       "text": "v{{.Version}}-{{.Revision}} ({{.OS}}/{{.Arch}})",
+       "icon_url": "https://docs.golift.io/integrations/golift.png"
+     }
    }
   ]
 }

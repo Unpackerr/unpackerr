@@ -90,7 +90,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item.Status = QUEUED
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
-		Password:   getPasswordFromPath(item.Path),
+		Password:   u.getPasswordFromPath(item.Path),
 		Name:       name,
 		SearchPath: item.Path,
 		TempFolder: false,
@@ -102,12 +102,14 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
 }
 
-func getPasswordFromPath(s string) string {
+func (u *Unpackerr) getPasswordFromPath(s string) string {
 	start, end := strings.Index(s, "{{"), strings.Index(s, "}}")
 
 	if start == -1 || end == -1 || start > end {
 		return ""
 	}
+
+	u.Debugf("Found password in Path: %s", s[start+2:end])
 
 	return s[start+2 : end]
 }

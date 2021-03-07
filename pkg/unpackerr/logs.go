@@ -142,7 +142,8 @@ func (u *Unpackerr) logCurrentQueue() {
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
 	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d stacks]",
 		u.Retries, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
-	u.updateTray(waiting, queued, extracting, failed, extracted, imported, deleted, hookOK, hookFail)
+	u.updateTray(u.Retries, u.Finished, waiting, queued, extracting, failed, extracted, imported, deleted,
+		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)))
 }
 
 // setupLogging splits log write into a file and/or stdout.

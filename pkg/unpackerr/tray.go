@@ -134,6 +134,8 @@ func (u *Unpackerr) watchGuiChannels() {
 func (u *Unpackerr) makeStatsChannels() {
 	stats := systray.AddMenuItem("Stats", "Unpackerr Stats")
 	u.menu["stats"] = ui.WrapMenu(stats)
+	u.menu["stats_finished"] = ui.WrapMenu(stats.AddSubMenuItem("Finished: 0", "total items processed and completed"))
+	u.menu["stats_retries"] = ui.WrapMenu(stats.AddSubMenuItem("Retries: 0", "total times an item was restarted"))
 	u.menu["stats_waiting"] = ui.WrapMenu(stats.AddSubMenuItem("Waiting: 0", "unprocessed items in starr apps"))
 	u.menu["stats_queued"] = ui.WrapMenu(stats.AddSubMenuItem("Queued: 0", "items queued for extraction"))
 	u.menu["stats_extracting"] = ui.WrapMenu(stats.AddSubMenuItem("Extracting: 0 ", "items currently extracting"))
@@ -142,7 +144,10 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_imported"] = ui.WrapMenu(stats.AddSubMenuItem("Imported: 0", "items extracted AND imported"))
 	u.menu["stats_deleted"] = ui.WrapMenu(stats.AddSubMenuItem("Deleted: 0", "items imported and deleted"))
 	u.menu["stats_hookOK"] = ui.WrapMenu(stats.AddSubMenuItem("Webhooks: 0", "webhooks sent"))
-	u.menu["stats_hookFail"] = ui.WrapMenu(stats.AddSubMenuItem("- Failed: 0", "webhooks failed to send"))
+	u.menu["stats_hookFail"] = ui.WrapMenu(stats.AddSubMenuItem("Hook Errors: 0", "webhooks failed to send"))
+	u.menu["stats_stacks"] = ui.WrapMenu(stats.AddSubMenuItem("Stacks: 0", "internal loop stack depth"))
+	u.menu["stats_finished"].Disable()
+	u.menu["stats_retries"].Disable()
 	u.menu["stats_waiting"].Disable()
 	u.menu["stats_queued"].Disable()
 	u.menu["stats_extracting"].Disable()
@@ -152,23 +157,27 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_deleted"].Disable()
 	u.menu["stats_hookOK"].Disable()
 	u.menu["stats_hookFail"].Disable()
+	u.menu["stats_stacks"].Disable()
 }
 
-func (u *Unpackerr) updateTray(waiting, queued, extracting, failed, extracted,
-	imported, deleted, hookOK, hookFail uint) {
+func (u *Unpackerr) updateTray(retries, finished, waiting, queued, extracting, failed, extracted,
+	imported, deleted, hookOK, hookFail, stacks uint) {
 	if !ui.HasGUI() {
 		return
 	}
 
+	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(finished), 10))
+	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(retries), 10))
 	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(waiting), 10))
 	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(queued), 10))
 	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(extracting), 10))
-	u.menu["stats_failed"].SetTitle("Waiting: " + strconv.FormatUint(uint64(failed), 10))
+	u.menu["stats_failed"].SetTitle("Failed: " + strconv.FormatUint(uint64(failed), 10))
 	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(extracted), 10))
 	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(imported), 10))
 	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(deleted), 10))
 	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(hookOK), 10))
-	u.menu["stats_hookFail"].SetTitle("- Failed: " + strconv.FormatUint(uint64(hookFail), 10))
+	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(hookFail), 10))
+	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), 10))
 }
 
 func (u *Unpackerr) watchKillerChannels() {

@@ -136,8 +136,13 @@ func (u *Unpackerr) watchGuiChannels() {
 func (u *Unpackerr) makeHistoryChannels() {
 	history := systray.AddMenuItem("History", fmt.Sprintf("display last %d items queued", u.KeepHistory))
 	u.menu["history"] = ui.WrapMenu(history)
-	u.menu["hist_none"] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", ""))
+	u.menu["hist_none"] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", "nothing has been queued yet"))
 	u.menu["hist_none"].Disable()
+
+	if u.KeepHistory == 0 {
+		u.menu["hist_none"].SetTitle("-- history disabled --")
+		u.menu["hist_none"].SetTooltip("history is disabled in the config")
+	}
 
 	for i := 0; i <= int(u.KeepHistory); i++ {
 		u.menu["hist_"+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
@@ -247,7 +252,6 @@ func (u *Unpackerr) checkForUpdate() {
 // This is called every time an item is queued.
 func (u *Unpackerr) updateHistory(item string) {
 	if u.KeepHistory == 0 {
-		u.menu["hist_none"].SetTooltip("-- history disabled --")
 		return
 	}
 

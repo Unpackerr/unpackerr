@@ -5,6 +5,7 @@ package unpackerr
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -49,6 +50,8 @@ func (u *Unpackerr) readyTray() {
 	u.menu["info"].Disable()
 
 	go u.watchKillerChannels()
+	go u.watchDebugChannels()
+
 	u.watchGuiChannels()
 }
 
@@ -69,9 +72,33 @@ func (u *Unpackerr) makeChannels() {
 	u.menu["logs_view"] = ui.WrapMenu(logs.AddSubMenuItem("View", "view the application log"))
 	u.menu["logs_rotate"] = ui.WrapMenu(logs.AddSubMenuItem("Rotate", "rotate log file"))
 
+	if u.Config.Debug {
+		debug := systray.AddMenuItem("Debug", "Debug Menu")
+		u.menu["debug"] = ui.WrapMenu(debug)
+		u.menu["debug_panic"] = ui.WrapMenu(debug.AddSubMenuItem("Panic", "cause an application panic"))
+	}
+
 	// top level
+	u.makeStatsChannels()
 	u.menu["update"] = ui.WrapMenu(systray.AddMenuItem("Update", "Check GitHub for Update"))
 	u.menu["exit"] = ui.WrapMenu(systray.AddMenuItem("Quit", "Exit Unpackerr"))
+}
+
+func (u *Unpackerr) watchDebugChannels() {
+	if !u.Config.Debug {
+		return
+	}
+
+	for {
+		select {
+		case <-u.menu["debug"].Clicked():
+			// turn on and off debug?
+			// u.menu["debug"].Check()
+		case <-u.menu["debug_panic"].Clicked():
+			u.Printf("User Requested Application Panic, good bye.")
+			panic("user requested panic")
+		}
+	}
 }
 
 func (u *Unpackerr) watchGuiChannels() {
@@ -102,6 +129,46 @@ func (u *Unpackerr) watchGuiChannels() {
 			u.checkForUpdate()
 		}
 	}
+}
+
+func (u *Unpackerr) makeStatsChannels() {
+	stats := systray.AddMenuItem("Stats", "Unpackerr Stats")
+	u.menu["stats"] = ui.WrapMenu(stats)
+	u.menu["stats_waiting"] = ui.WrapMenu(stats.AddSubMenuItem("Waiting: 0", "unprocessed items in starr apps"))
+	u.menu["stats_queued"] = ui.WrapMenu(stats.AddSubMenuItem("Queued: 0", "items queued for extraction"))
+	u.menu["stats_extracting"] = ui.WrapMenu(stats.AddSubMenuItem("Extracting: 0 ", "items currently extracting"))
+	u.menu["stats_failed"] = ui.WrapMenu(stats.AddSubMenuItem("Failed: 0", "failed extractions"))
+	u.menu["stats_extracted"] = ui.WrapMenu(stats.AddSubMenuItem("Extracted: 0", "items extracted, not imported"))
+	u.menu["stats_imported"] = ui.WrapMenu(stats.AddSubMenuItem("Imported: 0", "items extracted AND imported"))
+	u.menu["stats_deleted"] = ui.WrapMenu(stats.AddSubMenuItem("Deleted: 0", "items imported and deleted"))
+	u.menu["stats_hookOK"] = ui.WrapMenu(stats.AddSubMenuItem("Webhooks: 0", "webhooks sent"))
+	u.menu["stats_hookFail"] = ui.WrapMenu(stats.AddSubMenuItem("- Failed: 0", "webhooks failed to send"))
+	u.menu["stats_waiting"].Disable()
+	u.menu["stats_queued"].Disable()
+	u.menu["stats_extracting"].Disable()
+	u.menu["stats_failed"].Disable()
+	u.menu["stats_extracted"].Disable()
+	u.menu["stats_imported"].Disable()
+	u.menu["stats_deleted"].Disable()
+	u.menu["stats_hookOK"].Disable()
+	u.menu["stats_hookFail"].Disable()
+}
+
+func (u *Unpackerr) updateTray(waiting, queued, extracting, failed, extracted,
+	imported, deleted, hookOK, hookFail uint) {
+	if !ui.HasGUI() {
+		return
+	}
+
+	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(waiting), 10))
+	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(queued), 10))
+	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(extracting), 10))
+	u.menu["stats_failed"].SetTitle("Waiting: " + strconv.FormatUint(uint64(failed), 10))
+	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(extracted), 10))
+	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(imported), 10))
+	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(deleted), 10))
+	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(hookOK), 10))
+	u.menu["stats_hookFail"].SetTitle("- Failed: " + strconv.FormatUint(uint64(hookFail), 10))
 }
 
 func (u *Unpackerr) watchKillerChannels() {

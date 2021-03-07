@@ -32,6 +32,8 @@ github.com/getlantern/systray v1.1.0/go.mod h1:AecygODWIsBquJCJFop8MEQcJbWFfw/1y
 github.com/go-stack/stack v1.8.0 h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71h+4=
+github.com/gonutz/w32 v1.0.0 h1:3t1z6ZfkFvirjFYBx9pHeHBuKoN/VBVk9yHb/m2Ll/k=
+github.com/gonutz/w32 v1.0.0/go.mod h1:Rc/YP5K9gv0FW4p6X9qL3E7Y56lfMflEol1fLElfMW4=
 github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe h1:rcf1P0fm+1l0EjG16p06mYLj9gW9X36KgdHJ/88hS4g=
 github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026 h1:BpJ2o0OR5FV7vrkDYfXYVJQeMNWa8RhklZOpW2ITAIQ=
@@ -75,6 +77,8 @@ golift.io/cnfg v0.0.7 h1:qkNpP5Bq+5Gtoc6HcI8kapMD5zFOVan6qguxqBQF3OY=
 golift.io/cnfg v0.0.7/go.mod h1:AsB0DJe7nv0bizKaoy3e3MjjOF7upTpMOMvsfv4CNNk=
 golift.io/rotatorr v0.0.0-20201213130124-94efc0b9aff1 h1:8SDkFT5QpXyN24BCPw5Yux7SiMExnbL8o2hK1yfW3pk=
 golift.io/rotatorr v0.0.0-20201213130124-94efc0b9aff1/go.mod h1:EZevRvIGRh8jDMwuYL0/tlPns0KynquPZzb0SerIC1s=
+golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9 h1:j/WeLF6Ew1lc/m8/bh5qleZ66aSeJ72B1fUWigF69OE=
+golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9/go.mod h1:EZevRvIGRh8jDMwuYL0/tlPns0KynquPZzb0SerIC1s=
 golift.io/starr v0.9.9 h1:5TIjrtwISD04NdtAbd0tIlDtoeVSI6tuO4wHW43ie5E=
 golift.io/starr v0.9.9/go.mod h1:EE8B7OlqZlE/EGmBP1bLsK1OHEgWwbNpyjDXX0B2f0Y=
 golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=

@@ -70,21 +70,21 @@ const WebhookTemplateNotifiarr = `{
 }
 `
 
-const WebhookTemplateTelegram = `
-{ "chat_id": "{{nickname}}",
+const WebhookTemplateTelegram = `{
+  "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
-  "text": "<b>Unpackerr: {{.Event.Desc}}</b>\n\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
+  "text": "<b><a href="https://github.com/davidnewhall/unpackerr/releases">Unpackerr<a>: {{.Event.Desc}}</b>
+    \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}
-    \n{{if .Data -}}
-    \n<b>Path</b>: <code>{{rawencode .Path}}</code>\n<b>Elapsed</b>: {{.Data.Elapsed -}}
-    \n<b>Archives</b>: {{len .Data.Archives -}}
-    \n<b>Files</b>: {{len .Data.Files -}}
-    \n<b>Size</b>: {{humanbytes .Data.Bytes -}}
-    \n<b>Queue</b>: {{.Data.Queue -}}
-    {{if .Data.Error -}}
-    \n\n<b>ERROR</b>: <pre>{{rawencode .Data.Error}}</pre>\n{{end}}{{end -}}
-  "
-}
+    \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
+  {{ if .Data -}}\n
+    {{ if .Data.Elapsed.Duration}}\n <b>Elapsed</b>: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives}}\n <b>Archives</b>: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files}}\n <b>Files</b>: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes}}\n <b>Size</b>: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5)}}\n <b>Queue</b>: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}\n\n <b>ERROR</b>: <pre>{{rawencode .Data.Error}}</pre>\n{{end -}}
+  {{end -}}"}
 `
 
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
@@ -171,36 +171,35 @@ const WebhookTemplateSlack = `
         {
           "type": "mrkdwn",
           "text": "*App*\n{{.App}}"
-        }{{ if .Data }},
-        {
+        }{{ if .Data }}
+        {{ if .Data.Bytes }},{
           "type": "mrkdwn",
           "text": "*Size*\n{{humanbytes .Data.Bytes}}"
-        },
-        {
+        }{{end -}}
+        {{ if .Data.Archives }},{
           "type": "mrkdwn",
           "text": "*Archives*\n{{len .Data.Archives}}"
-        },
-        {
+        }{{end -}}
+        {{ if .Data.Files }},{
           "type": "mrkdwn",
           "text": "*Files*\n{{len .Data.Files}}"
-        },
-        {
+        }{{end -}}
+        {{ if and (gt .Event 1) (lt .Event 5)}},{
           "type": "mrkdwn",
           "text": "*Queue*\n{{.Data.Queue}}"
-        },
-        {
+        }{{end -}}
+        {{ if .Data.Elapsed.Duration }},{
           "type": "mrkdwn",
           "text": "*Elapsed*\n{{.Data.Elapsed}}"
-        }{{end}}
+        }{{end}}{{end -}}
       ]
-    }{{if .Data}}{{if .Data.Error}},
-    {
+    }{{if and (.Data .Data.Error)}},{
       "type": "section",
       "text": {
         "type": "mrkdwn",
         "text": {{encode (print "*Error*: " .Data.Error)}}
       }
-    }{{end}}{{end}}
+    }{{end}}
   ]
 }
 `

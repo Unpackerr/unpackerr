@@ -2,6 +2,7 @@ package ui
 
 import (
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -10,8 +11,10 @@ import (
 // SystrayIcon is the icon in the system tray or task bar.
 const SystrayIcon = "files/windows.ico"
 
+var hasGUI = os.Getenv("USEGUI") != "false" // nolint:gochecknoglobals
+
 func HasGUI() bool {
-	return true
+	return hasGUI
 }
 
 // StartCmd starts a command.

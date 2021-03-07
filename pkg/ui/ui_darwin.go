@@ -9,7 +9,7 @@ import (
 // SystrayIcon is the icon in the menu bar.
 const SystrayIcon = "files/macos.png"
 
-var hasGUI = os.Getenv("USEGUI") == "true"
+var hasGUI = os.Getenv("USEGUI") == "true" // nolint:gochecknoglobals
 
 // HasGUI returns false on Linux, true on Windows and optional on macOS.
 func HasGUI() bool {

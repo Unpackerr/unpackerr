@@ -16,7 +16,7 @@ require (
 	golang.org/x/mod v0.4.1
 	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073 // indirect
 	golift.io/cnfg v0.0.7
-	golift.io/rotatorr v0.0.0-20201213130124-94efc0b9aff1
+	golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9
 	golift.io/starr v0.9.9
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.0.5

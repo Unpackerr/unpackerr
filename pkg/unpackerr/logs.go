@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"syscall"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -142,6 +143,7 @@ func (u *Unpackerr) logCurrentQueue() {
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
 	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d stacks]",
 		u.Retries, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
+	u.updateTray(waiting, queued, extracting, failed, extracted, imported, deleted, hookOK, hookFail)
 }
 
 // setupLogging splits log write into a file and/or stdout.
@@ -159,23 +161,43 @@ func (u *Unpackerr) setupLogging() {
 
 	u.Config.LogFile = logFile
 	rotate := &rotatorr.Config{
-		Filepath: u.Config.LogFile,                                  // log file name.
-		FileSize: int64(u.Config.LogFileMb) * megabyte,              // megabytes
-		Rotatorr: &timerotator.Layout{FileCount: u.Config.LogFiles}, // number of files to keep.
-		DirMode:  logsDirMode,
+		Filepath: u.Config.LogFile,                     // log file name.
+		FileSize: int64(u.Config.LogFileMb) * megabyte, // megabytes
+		Rotatorr: &timerotator.Layout{
+			FileCount:  u.Config.LogFiles,
+			PostRotate: u.postLogRotate,
+		}, // number of files to keep.
+		DirMode: logsDirMode,
 	}
+
+	var writer io.Writer
 
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && u.Config.LogFile != "":
 		u.rotatorr = rotatorr.NewMust(rotate)
-		u.Logger.Logger.SetOutput(io.MultiWriter(u.rotatorr, os.Stdout))
+		writer = io.MultiWriter(u.rotatorr, os.Stdout)
+		log.SetOutput(writer)
 	case !u.Config.Quiet && u.Config.LogFile == "":
-		u.Logger.Logger.SetOutput(os.Stdout)
+		writer = os.Stdout
 	case u.Config.LogFile == "":
-		u.Logger.Logger.SetOutput(ioutil.Discard) // default is "nothing"
+		writer = ioutil.Discard // default is "nothing"
 	default:
 		u.rotatorr = rotatorr.NewMust(rotate)
-		u.Logger.Logger.SetOutput(u.rotatorr)
+		writer = u.rotatorr
+		log.SetOutput(writer)
+	}
+
+	u.Logger.Logger.SetOutput(writer)
+	u.postLogRotate("", "")
+}
+
+func (u *Unpackerr) postLogRotate(old, newFile string) {
+	if newFile != "" {
+		go u.Printf("Rotated log file to: %s", newFile)
+	}
+
+	if u.rotatorr != nil && u.rotatorr.File != nil {
+		_ = syscall.Dup2(int(u.rotatorr.File.Fd()), 2)
 	}
 }
 

@@ -25,6 +25,7 @@ const (
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
+	defaultHistory     = 10             // items keps in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
@@ -65,6 +66,7 @@ type Flags struct {
 
 // History holds the history of extracted items.
 type History struct {
+	Items    []string
 	Finished uint
 	Retries  uint
 	Map      map[string]*Extract
@@ -80,6 +82,7 @@ func New() *Unpackerr {
 		updates: make(chan *xtractr.Response, updateChanBuf),
 		menu:    make(map[string]ui.MenuItem),
 		Config: &Config{
+			KeepHistory: defaultHistory,
 			LogQueues:   cnfg.Duration{Duration: time.Minute},
 			MaxRetries:  defaultMaxRetries,
 			LogFiles:    defaultLogFiles,

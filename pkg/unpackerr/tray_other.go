@@ -13,7 +13,18 @@ func (u *Unpackerr) startTray() {
 	u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 }
 
-func (u *Unpackerr) updateTray(waiting, queued, extracting, failed, extracted,
-	imported, deleted, hookOK, hookFail uint) {
+func (u *Unpackerr) updateTray(_, _, _, _, _, _, _, _, _, _, _, _ uint) {
 	// there is no tray.
+}
+
+func (u *Unpackerr) updateHistory(item string) {
+	if u.KeepHistory == 0 {
+		return
+	}
+
+	u.History.Items[0] = item
+	// u.History.Items is a slice with a set (identical) length and capacity.
+	for i := len(u.History.Items) - 1; i > 0; i-- {
+		u.History.Items[i] = u.History.Items[i-1]
+	}
 }

@@ -49,7 +49,8 @@ type Config struct {
 	DeleteDelay cnfg.Duration    `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	StartDelay  cnfg.Duration    `json:"start_delay" toml:"start_delay" xml:"start_delay" yaml:"start_delay"`
 	RetryDelay  cnfg.Duration    `json:"retry_delay" toml:"retry_delay" xml:"retry_delay" yaml:"retry_delay"`
-	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"` // undocumented.
+	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                         //nolint:lll // undocumented.
+	KeepHistory uint             `json:"keep_history" toml:"keep_history" xml:"keep_history" yaml:"keep_history"` //nolint:lll // undocumented.
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`

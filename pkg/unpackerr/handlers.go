@@ -100,6 +100,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
+	u.updateHistory(item.App + ": " + item.Path)
 }
 
 func (u *Unpackerr) getPasswordFromPath(s string) string {

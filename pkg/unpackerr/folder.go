@@ -148,6 +148,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
 	u.updateQueueStatus(&newStatus{Name: name}, true)
+	u.updateHistory(FolderString + ": " + name)
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{

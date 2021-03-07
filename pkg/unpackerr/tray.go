@@ -3,6 +3,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -80,6 +81,7 @@ func (u *Unpackerr) makeChannels() {
 
 	// top level
 	u.makeStatsChannels()
+	u.makeHistoryChannels()
 	u.menu["update"] = ui.WrapMenu(systray.AddMenuItem("Update", "Check GitHub for Update"))
 	u.menu["exit"] = ui.WrapMenu(systray.AddMenuItem("Quit", "Exit Unpackerr"))
 }
@@ -131,11 +133,24 @@ func (u *Unpackerr) watchGuiChannels() {
 	}
 }
 
+func (u *Unpackerr) makeHistoryChannels() {
+	history := systray.AddMenuItem("History", fmt.Sprintf("display last %d items queued", u.KeepHistory))
+	u.menu["history"] = ui.WrapMenu(history)
+	u.menu["hist_none"] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", ""))
+	u.menu["hist_none"].Disable()
+
+	for i := 0; i <= int(u.KeepHistory); i++ {
+		u.menu["hist_"+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
+		u.menu["hist_"+strconv.Itoa(i)].Disable()
+		u.menu["hist_"+strconv.Itoa(i)].Hide()
+	}
+}
+
 func (u *Unpackerr) makeStatsChannels() {
-	stats := systray.AddMenuItem("Stats", "Unpackerr Stats")
+	stats := systray.AddMenuItem("Stats", "")
 	u.menu["stats"] = ui.WrapMenu(stats)
-	u.menu["stats_finished"] = ui.WrapMenu(stats.AddSubMenuItem("Finished: 0", "total items processed and completed"))
-	u.menu["stats_retries"] = ui.WrapMenu(stats.AddSubMenuItem("Retries: 0", "total times an item was restarted"))
+	ui.WrapMenu(stats.AddSubMenuItem("-- counters --", "these counters reset as data is processed")).Disable()
+	u.menu["stats_stacks"] = ui.WrapMenu(stats.AddSubMenuItem("Stacks: 0", "internal loop stack depth"))
 	u.menu["stats_waiting"] = ui.WrapMenu(stats.AddSubMenuItem("Waiting: 0", "unprocessed items in starr apps"))
 	u.menu["stats_queued"] = ui.WrapMenu(stats.AddSubMenuItem("Queued: 0", "items queued for extraction"))
 	u.menu["stats_extracting"] = ui.WrapMenu(stats.AddSubMenuItem("Extracting: 0 ", "items currently extracting"))
@@ -143,11 +158,12 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_extracted"] = ui.WrapMenu(stats.AddSubMenuItem("Extracted: 0", "items extracted, not imported"))
 	u.menu["stats_imported"] = ui.WrapMenu(stats.AddSubMenuItem("Imported: 0", "items extracted AND imported"))
 	u.menu["stats_deleted"] = ui.WrapMenu(stats.AddSubMenuItem("Deleted: 0", "items imported and deleted"))
+	ui.WrapMenu(stats.AddSubMenuItem("-- totals --", "these increment until the app is stopped")).Disable()
+	u.menu["stats_finished"] = ui.WrapMenu(stats.AddSubMenuItem("Finished: 0", "total items processed and completed"))
+	u.menu["stats_retries"] = ui.WrapMenu(stats.AddSubMenuItem("Retries: 0", "total times an item was restarted"))
 	u.menu["stats_hookOK"] = ui.WrapMenu(stats.AddSubMenuItem("Webhooks: 0", "webhooks sent"))
 	u.menu["stats_hookFail"] = ui.WrapMenu(stats.AddSubMenuItem("Hook Errors: 0", "webhooks failed to send"))
-	u.menu["stats_stacks"] = ui.WrapMenu(stats.AddSubMenuItem("Stacks: 0", "internal loop stack depth"))
-	u.menu["stats_finished"].Disable()
-	u.menu["stats_retries"].Disable()
+
 	u.menu["stats_waiting"].Disable()
 	u.menu["stats_queued"].Disable()
 	u.menu["stats_extracting"].Disable()
@@ -155,6 +171,8 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_extracted"].Disable()
 	u.menu["stats_imported"].Disable()
 	u.menu["stats_deleted"].Disable()
+	u.menu["stats_finished"].Disable()
+	u.menu["stats_retries"].Disable()
 	u.menu["stats_hookOK"].Disable()
 	u.menu["stats_hookFail"].Disable()
 	u.menu["stats_stacks"].Disable()
@@ -166,8 +184,6 @@ func (u *Unpackerr) updateTray(retries, finished, waiting, queued, extracting, f
 		return
 	}
 
-	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(finished), 10))
-	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(retries), 10))
 	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(waiting), 10))
 	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(queued), 10))
 	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(extracting), 10))
@@ -175,6 +191,8 @@ func (u *Unpackerr) updateTray(retries, finished, waiting, queued, extracting, f
 	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(extracted), 10))
 	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(imported), 10))
 	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(deleted), 10))
+	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(finished), 10))
+	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(retries), 10))
 	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(hookOK), 10))
 	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(hookFail), 10))
 	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), 10))
@@ -223,5 +241,37 @@ func (u *Unpackerr) checkForUpdate() {
 		_, _ = ui.Info("Unpackerr", "You're up to date! Version: "+update.Version+"\n"+
 			"Updated: "+update.RelDate.Format("Jan 2, 2006")+" ("+
 			durafmt.Parse(time.Since(update.RelDate).Round(time.Hour)).String()+" ago)")
+	}
+}
+
+// This is called every time an item is queued.
+func (u *Unpackerr) updateHistory(item string) {
+	if u.KeepHistory == 0 {
+		u.menu["hist_none"].SetTooltip("-- history disabled --")
+		return
+	}
+
+	if ui.HasGUI() && item != "" {
+		u.menu["hist_none"].Hide()
+	}
+
+	// u.History.Items is a slice with a set (identical) length and capacity.
+	for i := len(u.History.Items) - 1; i >= 0; i-- {
+		if i == 0 {
+			u.History.Items[0] = item
+		} else {
+			u.History.Items[i] = u.History.Items[i-1]
+		}
+
+		if !ui.HasGUI() {
+			continue
+		}
+
+		if u.History.Items[i] != "" {
+			u.menu["hist_"+strconv.Itoa(i)].SetTitle(u.History.Items[i])
+			u.menu["hist_"+strconv.Itoa(i)].Show()
+		} else {
+			u.menu["hist_"+strconv.Itoa(i)].Hide()
+		}
 	}
 }

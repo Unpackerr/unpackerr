@@ -99,7 +99,7 @@ func configFileLocactions() (string, []string) {
 }
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
-func (u *Unpackerr) validateConfig() (uint64, uint64) {
+func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 	if u.DeleteDelay.Duration >= 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
@@ -142,6 +142,10 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 
 	if ui.HasGUI() && u.LogFile == "" {
 		u.LogFile = filepath.Join("~", ".unpackerr", "unpackerr.log")
+	}
+
+	if u.KeepHistory != 0 {
+		u.History.Items = make([]string, u.KeepHistory)
 	}
 
 	return fm, dm

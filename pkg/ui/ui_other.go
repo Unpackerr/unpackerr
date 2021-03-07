@@ -17,6 +17,12 @@ func HasGUI() bool {
 	return false
 }
 
+// HideConsoleWindow does nothing on OSes besides Windows.
+func HideConsoleWindow() {}
+
+// ShowConsoleWindow does nothing on OSes besides Windows.
+func ShowConsoleWindow() {}
+
 // StartCmd starts a command.
 func StartCmd(c string, v ...string) error {
 	cmd := exec.Command(c, v...)

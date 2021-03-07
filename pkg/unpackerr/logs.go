@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"syscall"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -191,13 +190,13 @@ func (u *Unpackerr) setupLogging() {
 	u.postLogRotate("", "")
 }
 
-func (u *Unpackerr) postLogRotate(old, newFile string) {
+func (u *Unpackerr) postLogRotate(_, newFile string) {
 	if newFile != "" {
 		go u.Printf("Rotated log file to: %s", newFile)
 	}
 
 	if u.rotatorr != nil && u.rotatorr.File != nil {
-		_ = syscall.Dup2(int(u.rotatorr.File.Fd()), 2)
+		_ = dupFD2(u.rotatorr.File.Fd(), 2)
 	}
 }
 

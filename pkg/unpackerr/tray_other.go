@@ -13,6 +13,7 @@ func (u *Unpackerr) startTray() {
 	u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 }
 
-func (u *Unpackerr) updateTray(waiting, queued, extracting, failed, extracted, imported, deleted, hookOK, hookFail uint) {
+func (u *Unpackerr) updateTray(waiting, queued, extracting, failed, extracted,
+	imported, deleted, hookOK, hookFail uint) {
 	// there is no tray.
 }

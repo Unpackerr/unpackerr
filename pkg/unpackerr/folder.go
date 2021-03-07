@@ -147,7 +147,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.updateQueueStatus(&newStatus{Name: name}, true)
+	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, true)
 	u.updateHistory(FolderString + ": " + name)
 
 	// extract it.
@@ -298,7 +298,7 @@ func (u *Unpackerr) checkFolderStats() {
 			folder.step = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
 				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
-		case folder.cnfg.DeleteAfter.Duration <= 0:
+		case folder.step > EXTRACTING && folder.cnfg.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, false)
 			delete(u.folders.Folders, name)

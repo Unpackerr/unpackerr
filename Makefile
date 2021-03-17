@@ -62,7 +62,7 @@ VERSION_LDFLAGS:= -X \"$(VERSION_PATH).Branch=$(BRANCH) ($(COMMIT))\" \
 
 # Makefile targets follow.
 
-all: clean build
+all: clean generate build
 
 ####################
 ##### Releases #####

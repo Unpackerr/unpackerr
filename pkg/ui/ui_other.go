@@ -29,7 +29,7 @@ func StartCmd(c string, v ...string) error {
 	cmd.Stdout = ioutil.Discard
 	cmd.Stderr = ioutil.Discard
 
-	return cmd.Start() //nolint:wrapcheck
+	return cmd.Start()
 }
 
 // ErrUnsupported is just an error.

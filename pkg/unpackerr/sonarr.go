@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
@@ -21,8 +23,16 @@ type SonarrConfig struct {
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateSonarr() {
+func (u *Unpackerr) validateSonarr() error {
 	for i := range u.Sonarr {
+		if !strings.HasPrefix(u.Sonarr[i].URL, "http") {
+			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Sonarr[i].URL)
+		}
+
+		if len(u.Sonarr[i].APIKey) < 5 {
+			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Sonarr[i].APIKey)
+		}
+
 		if u.Sonarr[i].Timeout.Duration == 0 {
 			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
 		}
@@ -45,6 +55,8 @@ func (u *Unpackerr) validateSonarr() {
 
 		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logSonarr() {

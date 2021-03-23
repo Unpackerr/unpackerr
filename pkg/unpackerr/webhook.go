@@ -39,7 +39,7 @@ type WebhookConfig struct {
 // Errors produced by this file.
 var (
 	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
-	ErrNoURL         = fmt.Errorf("webhook without a URL configured; fix it")
+	ErrWebhookNoURL  = fmt.Errorf("webhook without a URL configured; fix it")
 )
 
 func (u *Unpackerr) sendWebhooks(i *Extract) {
@@ -157,7 +157,7 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 func (u *Unpackerr) validateWebhook() error {
 	for i := range u.Webhook {
 		if u.Webhook[i].URL == "" {
-			return ErrNoURL
+			return ErrWebhookNoURL
 		}
 
 		if u.Webhook[i].Name == "" {

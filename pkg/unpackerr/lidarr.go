@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
@@ -21,8 +23,16 @@ type LidarrConfig struct {
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateLidarr() {
+func (u *Unpackerr) validateLidarr() error {
 	for i := range u.Lidarr {
+		if !strings.HasPrefix(u.Lidarr[i].URL, "http") {
+			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Lidarr[i].URL)
+		}
+
+		if len(u.Lidarr[i].APIKey) < 5 {
+			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Lidarr[i].APIKey)
+		}
+
 		if u.Lidarr[i].Timeout.Duration == 0 {
 			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
 		}
@@ -45,6 +55,8 @@ func (u *Unpackerr) validateLidarr() {
 
 		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logLidarr() {

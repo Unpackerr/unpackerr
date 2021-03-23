@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
@@ -21,8 +23,16 @@ type ReadarrConfig struct {
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateReadarr() {
+func (u *Unpackerr) validateReadarr() error {
 	for i := range u.Readarr {
+		if !strings.HasPrefix(u.Readarr[i].URL, "http") {
+			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Readarr[i].URL)
+		}
+
+		if len(u.Readarr[i].APIKey) < 5 {
+			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Readarr[i].APIKey)
+		}
+
 		if u.Readarr[i].Timeout.Duration == 0 {
 			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
 		}
@@ -45,6 +55,8 @@ func (u *Unpackerr) validateReadarr() {
 
 		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logReadarr() {

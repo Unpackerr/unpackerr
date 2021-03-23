@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"sync"
 
 	"golift.io/cnfg"
@@ -30,6 +31,12 @@ const (
 	Lidarr       = "Lidarr"
 	Readarr      = "Readarr"
 	FolderString = "Folder"
+)
+
+// Application validation errors.
+var (
+	ErrInvalidURL = fmt.Errorf("provided application URL is invalid")
+	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid")
 )
 
 // Config defines the configuration data used to start the application.
@@ -89,10 +96,21 @@ func (u *Unpackerr) retrieveAppQueues() {
 
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
-	u.validateSonarr()
-	u.validateRadarr()
-	u.validateLidarr()
-	u.validateReadarr()
+	if err := u.validateSonarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateRadarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateLidarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateReadarr(); err != nil {
+		return err
+	}
 
 	return u.validateWebhook()
 }

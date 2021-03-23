@@ -11,12 +11,12 @@ require (
 	github.com/getlantern/systray v1.1.0
 	github.com/gonutz/w32 v1.0.0
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
-	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
+	github.com/hako/durafmt v0.0.0-20210316092057-3a2c319c1acd
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
-	golang.org/x/mod v0.4.1
-	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073 // indirect
+	golang.org/x/mod v0.4.2
+	golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4 // indirect
 	golift.io/cnfg v0.0.7
 	golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9
 	golift.io/starr v0.9.9

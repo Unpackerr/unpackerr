@@ -25,11 +25,11 @@ type RadarrConfig struct {
 
 func (u *Unpackerr) validateRadarr() error {
 	for i := range u.Radarr {
-		if !strings.HasPrefix(u.Radarr[i].URL, "http") {
+		if !strings.HasPrefix(u.Radarr[i].URL, "http://") && !strings.HasPrefix(u.Radarr[i].URL, "https://") {
 			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Radarr[i].URL)
 		}
 
-		if len(u.Radarr[i].APIKey) < 5 {
+		if len(u.Radarr[i].APIKey) != apiKeyLength {
 			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Radarr[i].APIKey)
 		}
 

@@ -204,7 +204,7 @@ const WebhookTemplateSlack = `
 }
 `
 
-// Template returns a template specific to this webhook.
+//nolint:wrapcheck // Template returns a template specific to this webhook.
 func (w *WebhookConfig) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
 		"encode":     func(v interface{}) string { b, _ := json.Marshal(v); return string(b) },

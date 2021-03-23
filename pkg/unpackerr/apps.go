@@ -22,6 +22,7 @@ const (
 	defaultProtocol = "torrent"
 	// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
 	prefixPathMsg = "No files found are eligible for import in "
+	apiKeyLength  = 32
 )
 
 // These are the names used to identify each app.
@@ -36,7 +37,7 @@ const (
 // Application validation errors.
 var (
 	ErrInvalidURL = fmt.Errorf("provided application URL is invalid")
-	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid")
+	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be 32 characters")
 )
 
 // Config defines the configuration data used to start the application.

@@ -25,11 +25,11 @@ type ReadarrConfig struct {
 
 func (u *Unpackerr) validateReadarr() error {
 	for i := range u.Readarr {
-		if !strings.HasPrefix(u.Readarr[i].URL, "http") {
+		if !strings.HasPrefix(u.Readarr[i].URL, "http://") && !strings.HasPrefix(u.Readarr[i].URL, "https://") {
 			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Readarr[i].URL)
 		}
 
-		if len(u.Readarr[i].APIKey) < 5 {
+		if len(u.Readarr[i].APIKey) != apiKeyLength {
 			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Readarr[i].APIKey)
 		}
 

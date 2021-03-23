@@ -25,11 +25,11 @@ type SonarrConfig struct {
 
 func (u *Unpackerr) validateSonarr() error {
 	for i := range u.Sonarr {
-		if !strings.HasPrefix(u.Sonarr[i].URL, "http") {
+		if !strings.HasPrefix(u.Sonarr[i].URL, "http://") && !strings.HasPrefix(u.Sonarr[i].URL, "https://") {
 			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Sonarr[i].URL)
 		}
 
-		if len(u.Sonarr[i].APIKey) < 5 {
+		if len(u.Sonarr[i].APIKey) != apiKeyLength {
 			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Sonarr[i].APIKey)
 		}
 

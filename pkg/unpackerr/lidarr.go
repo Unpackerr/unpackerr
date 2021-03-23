@@ -25,11 +25,11 @@ type LidarrConfig struct {
 
 func (u *Unpackerr) validateLidarr() error {
 	for i := range u.Lidarr {
-		if !strings.HasPrefix(u.Lidarr[i].URL, "http") {
+		if !strings.HasPrefix(u.Lidarr[i].URL, "http://") && !strings.HasPrefix(u.Lidarr[i].URL, "https://") {
 			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Lidarr[i].URL)
 		}
 
-		if len(u.Lidarr[i].APIKey) < 5 {
+		if len(u.Lidarr[i].APIKey) != apiKeyLength {
 			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Lidarr[i].APIKey)
 		}
 

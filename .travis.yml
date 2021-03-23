@@ -4,12 +4,12 @@ jobs:
   - os: osx
     osx_image: xcode12
     language: go
-    go: 1.15.x
+    go: 1.16.x
   - os: linux
     dist: bionic
     services: docker
     language: go
-    go: 1.15.x
+    go: 1.16.x
 git:
   depth: false
 addons:

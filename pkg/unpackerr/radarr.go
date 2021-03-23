@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
@@ -21,8 +23,16 @@ type RadarrConfig struct {
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateRadarr() {
+func (u *Unpackerr) validateRadarr() error {
 	for i := range u.Radarr {
+		if !strings.HasPrefix(u.Radarr[i].URL, "http://") && !strings.HasPrefix(u.Radarr[i].URL, "https://") {
+			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Radarr[i].URL)
+		}
+
+		if len(u.Radarr[i].APIKey) != apiKeyLength {
+			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Radarr[i].APIKey)
+		}
+
 		if u.Radarr[i].Timeout.Duration == 0 {
 			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
 		}
@@ -45,6 +55,8 @@ func (u *Unpackerr) validateRadarr() {
 
 		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logRadarr() {

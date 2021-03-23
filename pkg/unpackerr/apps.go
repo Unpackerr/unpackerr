@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"sync"
 
 	"golift.io/cnfg"
@@ -21,6 +22,7 @@ const (
 	defaultProtocol = "torrent"
 	// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
 	prefixPathMsg = "No files found are eligible for import in "
+	apiKeyLength  = 32
 )
 
 // These are the names used to identify each app.
@@ -30,6 +32,12 @@ const (
 	Lidarr       = "Lidarr"
 	Readarr      = "Readarr"
 	FolderString = "Folder"
+)
+
+// Application validation errors.
+var (
+	ErrInvalidURL = fmt.Errorf("provided application URL is invalid")
+	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be 32 characters")
 )
 
 // Config defines the configuration data used to start the application.
@@ -89,10 +97,21 @@ func (u *Unpackerr) retrieveAppQueues() {
 
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
-	u.validateSonarr()
-	u.validateRadarr()
-	u.validateLidarr()
-	u.validateReadarr()
+	if err := u.validateSonarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateRadarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateLidarr(); err != nil {
+		return err
+	}
+
+	if err := u.validateReadarr(); err != nil {
+		return err
+	}
 
 	return u.validateWebhook()
 }

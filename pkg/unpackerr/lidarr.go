@@ -24,13 +24,20 @@ type LidarrConfig struct {
 }
 
 func (u *Unpackerr) validateLidarr() error {
+	tmp := u.Lidarr[:0]
+
 	for i := range u.Lidarr {
+		if u.Lidarr[i].URL == "" {
+			u.Printf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Lidarr[i].URL, "http://") && !strings.HasPrefix(u.Lidarr[i].URL, "https://") {
-			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Lidarr[i].URL)
+			return fmt.Errorf("%w: (lidarr) %s", ErrInvalidURL, u.Lidarr[i].URL)
 		}
 
 		if len(u.Lidarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Lidarr[i].APIKey)
+			u.Printf("Lidarr (%s): ignored, invalid API key: %s", u.Lidarr[i].URL, u.Lidarr[i].APIKey)
 		}
 
 		if u.Lidarr[i].Timeout.Duration == 0 {
@@ -54,7 +61,10 @@ func (u *Unpackerr) validateLidarr() error {
 		}
 
 		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
+		tmp = append(tmp, u.Lidarr[i])
 	}
+
+	u.Lidarr = tmp
 
 	return nil
 }

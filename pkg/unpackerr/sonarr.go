@@ -24,13 +24,20 @@ type SonarrConfig struct {
 }
 
 func (u *Unpackerr) validateSonarr() error {
+	tmp := u.Sonarr[:0]
+
 	for i := range u.Sonarr {
+		if u.Sonarr[i].URL == "" {
+			u.Printf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Sonarr[i].URL, "http://") && !strings.HasPrefix(u.Sonarr[i].URL, "https://") {
-			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Sonarr[i].URL)
+			return fmt.Errorf("%w: (sonarr) %s", ErrInvalidURL, u.Sonarr[i].URL)
 		}
 
 		if len(u.Sonarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Sonarr[i].APIKey)
+			u.Printf("Sonarr (%s): ignored, invalid API key: %s", u.Sonarr[i].URL, u.Sonarr[i].APIKey)
 		}
 
 		if u.Sonarr[i].Timeout.Duration == 0 {
@@ -54,7 +61,10 @@ func (u *Unpackerr) validateSonarr() error {
 		}
 
 		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
+		tmp = append(tmp, u.Sonarr[i])
 	}
+
+	u.Sonarr = tmp
 
 	return nil
 }

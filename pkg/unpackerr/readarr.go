@@ -24,13 +24,20 @@ type ReadarrConfig struct {
 }
 
 func (u *Unpackerr) validateReadarr() error {
+	tmp := u.Readarr[:0]
+
 	for i := range u.Readarr {
+		if u.Readarr[i].URL == "" {
+			u.Printf("Missing Readarr URL in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Readarr[i].URL, "http://") && !strings.HasPrefix(u.Readarr[i].URL, "https://") {
-			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Readarr[i].URL)
+			return fmt.Errorf("%w: (readarr) %s", ErrInvalidURL, u.Readarr[i].URL)
 		}
 
 		if len(u.Readarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Readarr[i].APIKey)
+			u.Printf("Readarr (%s): ignored, invalid API key: %s", u.Readarr[i].URL, u.Readarr[i].APIKey)
 		}
 
 		if u.Readarr[i].Timeout.Duration == 0 {
@@ -54,7 +61,10 @@ func (u *Unpackerr) validateReadarr() error {
 		}
 
 		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
+		tmp = append(tmp, u.Readarr[i])
 	}
+
+	u.Readarr = tmp
 
 	return nil
 }

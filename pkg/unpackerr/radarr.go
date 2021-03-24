@@ -24,13 +24,20 @@ type RadarrConfig struct {
 }
 
 func (u *Unpackerr) validateRadarr() error {
+	tmp := u.Radarr[:0]
+
 	for i := range u.Radarr {
+		if u.Radarr[i].URL == "" {
+			u.Printf("Missing Radarr URL in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Radarr[i].URL, "http://") && !strings.HasPrefix(u.Radarr[i].URL, "https://") {
-			return fmt.Errorf("%w: %s", ErrInvalidURL, u.Radarr[i].URL)
+			return fmt.Errorf("%w: (radarr) %s", ErrInvalidURL, u.Radarr[i].URL)
 		}
 
 		if len(u.Radarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%w: %s", ErrInvalidKey, u.Radarr[i].APIKey)
+			u.Printf("Radarr (%s): ignored, invalid API key: %s", u.Radarr[i].URL, u.Radarr[i].APIKey)
 		}
 
 		if u.Radarr[i].Timeout.Duration == 0 {
@@ -54,7 +61,10 @@ func (u *Unpackerr) validateRadarr() error {
 		}
 
 		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
+		tmp = append(tmp, u.Radarr[i])
 	}
+
+	u.Radarr = tmp
 
 	return nil
 }

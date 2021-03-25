@@ -107,13 +107,13 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
 	if err != nil || u.FileMode == "" {
 		fm = defaultFileMode
-		u.FileMode = strconv.FormatUint(fm, 32)
+		u.FileMode = strconv.FormatUint(fm, 8)
 	}
 
 	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
 	if err != nil || u.DirMode == "" {
 		dm = defaultDirMode
-		u.DirMode = strconv.FormatUint(dm, 32)
+		u.DirMode = strconv.FormatUint(dm, 8)
 	}
 
 	if u.Parallel == 0 {

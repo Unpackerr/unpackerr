@@ -65,6 +65,9 @@ type Config struct {
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
+	Folder      struct {
+		Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
+	} `json:"folders,omitempty" toml:"folders" xml:"folders" yaml:"folders,omitempty"` // undocumented.
 }
 
 // retrieveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.

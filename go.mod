@@ -21,6 +21,6 @@ require (
 	golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9
 	golift.io/starr v0.9.9
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.0.6
+	golift.io/xtractr v0.0.8-0.20210325050400-2931a0c4c2d3
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

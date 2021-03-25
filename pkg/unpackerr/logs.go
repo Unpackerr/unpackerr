@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"runtime"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -216,7 +217,10 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
 	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)
-	u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
+
+	if runtime.GOOS != "windows" {
+		u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
+	}
 
 	if u.Config.LogFile != "" {
 		msg := "no rotation"

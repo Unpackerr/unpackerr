@@ -180,6 +180,7 @@ windows: $(BINARY).amd64.exe
 $(BINARY).amd64.exe: rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) $(WINDOWS_LDFLAGS)"
+	# UPX causes Virus warnings on Windows.
 	#[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
 ####################

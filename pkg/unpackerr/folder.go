@@ -16,7 +16,8 @@ import (
 	"golift.io/xtractr"
 )
 
-const pollInterval = time.Second
+// defaultPollInterval is used if Docker is detected.
+const defaultPollInterval = time.Second
 
 // FolderConfig defines the input data for a watched folder.
 type FolderConfig struct {
@@ -30,6 +31,7 @@ type FolderConfig struct {
 
 // Folders holds all known (created) folders in all watch paths.
 type Folders struct {
+	Interval time.Duration
 	Config   []*FolderConfig
 	Folders  map[string]*Folder
 	Events   chan *eventData
@@ -86,6 +88,10 @@ func (u *Unpackerr) PollFolders() {
 		err   error
 	)
 
+	if isRunningInDocker() && u.Folder.Interval.Duration == 0 {
+		u.Folder.Interval.Duration = defaultPollInterval
+	}
+
 	u.Folders, flist = u.checkFolders()
 
 	if u.folders, err = u.newFolderWatcher(); err != nil {
@@ -99,18 +105,18 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
-	u.Print("[Folder] Watching:", strings.Join(flist, ", "))
+	u.Print("[Folder] Watching (fsnotify):", strings.Join(flist, ", "))
 
-	if !isRunningInDocker() {
+	if u.Folder.Interval.Duration == 0 {
 		return
 	}
 
 	go func() {
-		if err := u.folders.Watcher.Start(pollInterval); err != nil {
+		if err := u.folders.Watcher.Start(u.Folder.Interval.Duration); err != nil {
 			u.Print("[ERROR] Folder poller stopped:", err)
 		}
 	}()
-	u.Print("[Folder] Polling:", strings.Join(flist, ", "))
+	u.Printf("[Folder] Polling @ %v: %s", u.Folder.Interval, strings.Join(flist, ", "))
 }
 
 // newFolderWatcher returns a new folder watcher.
@@ -138,6 +144,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	}
 
 	return &Folders{
+		Interval: u.Folder.Interval.Duration,
 		Config:   u.Folders,
 		Folders:  make(map[string]*Folder),
 		Events:   make(chan *eventData, u.Config.Buffer),
@@ -151,7 +158,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 
 // Add uses either fsnotify or watcher.
 func (f *Folders) Add(folder string) error {
-	if isRunningInDocker() {
+	if f.Interval != 0 {
 		if err := f.Watcher.Add(folder); err != nil {
 			return fmt.Errorf("watcher: %w", err)
 		}
@@ -299,7 +306,7 @@ func (f *Folders) handleFileEvent(name string) {
 		// cnfg.Path: "/Users/Documents/watched_folder"
 		// event.Name: "/Users/Documents/watched_folder/new_folder/file.rar"
 		// eventData.name: "new_folder"
-		if !strings.HasPrefix(name, cnfg.Path) {
+		if !strings.HasPrefix(name, cnfg.Path) || name == cnfg.Path {
 			continue // Not the configured folder for the event we just got.
 		} else if p := filepath.Dir(name); p == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name}
@@ -445,17 +452,9 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 	}
 }
 
-var isDocker *bool // nolint:gochecknoglobals
-
+// only run this once.
 func isRunningInDocker() bool {
-	if isDocker != nil {
-		return *isDocker
-	}
-
 	// docker creates a .dockerenv file at the root of the container.
 	_, err := os.Stat("/.dockerenv")
-	w := err == nil
-	isDocker = &w
-
-	return w
+	return err == nil
 }

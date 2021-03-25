@@ -31,6 +31,7 @@ func (u *Unpackerr) startTray() {
 }
 
 func (u *Unpackerr) exitTray() {
+	u.Xtractr.Stop() // stop and wait for extractions.
 	// because systray wants to control the exit code? no..
 	os.Exit(0)
 }

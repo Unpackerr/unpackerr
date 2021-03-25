@@ -396,7 +396,7 @@ func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
 		go u.DeleteFiles(name)
 		webhook = true
 	} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
-		go u.DeleteFiles(folder.rars...) // probably does not delete all the files.
+		go u.DeleteFiles(folder.rars...)
 		webhook = true
 	}
 

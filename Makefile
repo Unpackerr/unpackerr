@@ -180,7 +180,7 @@ windows: $(BINARY).amd64.exe
 $(BINARY).amd64.exe: rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) $(WINDOWS_LDFLAGS)"
-	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
+	#[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
 ####################
 ##### Packages #####

@@ -6,6 +6,8 @@ github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWo
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/gen2brain/dlgs v0.0.0-20210222160047-2f436553172f h1:HPKrg4xeWLWOGAJGVJIYXWhVSdy2kaihuoSy7kBP7S4=
 github.com/gen2brain/dlgs v0.0.0-20210222160047-2f436553172f/go.mod h1:/eFcjDXaU2THSOOqLxOPETIbHETnamk8FA/hMjhg/gU=
+github.com/gen2brain/dlgs v0.0.0-20210324163825-f2c7498414a6 h1:4HQTMBjXkPKrr5Q18jq0N6xksnXigqJNtzZZDBFSVXE=
+github.com/gen2brain/dlgs v0.0.0-20210324163825-f2c7498414a6/go.mod h1:/eFcjDXaU2THSOOqLxOPETIbHETnamk8FA/hMjhg/gU=
 github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 h1:NRUJuo3v3WGC/g5YiyF790gut6oQr5f3FBI88Wv0dx4=
 github.com/getlantern/context v0.0.0-20190109183933-c447772a6520/go.mod h1:L+mq6/vvYHKjCX2oez0CgEAJmbq1fbb/oNJIWQkBybY=
 github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7/go.mod h1:l+xpFBrCtDLpK9qNjxs+cHU6+BAdlBaxHqikB6Lku3A=
@@ -65,6 +67,8 @@ golang.org/x/sys v0.0.0-20191005200804-aed5e4c7ecf9/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4 h1:EZ2mChiOa8udjfp6rRmswTbtZN/QzUQp4ptM4rnjHvc=
 golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210326220804-49726bf1d181 h1:64ChN/hjER/taL4YJuA+gpLfIMT+/NFherRZixbxOhg=
+golang.org/x/sys v0.0.0-20210326220804-49726bf1d181/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/tools v0.0.0-20190425150028-36563e24a262/go.mod h1:RgjU9mgBXZiqYHBnxXauZ1Gv1EHHAz9KjViQ78xBX0Q=
 golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
@@ -84,6 +88,8 @@ golift.io/xtractr v0.0.8-0.20210325050400-2931a0c4c2d3 h1:SoPsYzCog7u3Qz1feKfewW
 golift.io/xtractr v0.0.8-0.20210325050400-2931a0c4c2d3/go.mod h1:kpUkpBNj/Ir3oz3LxRyy/gOYphe8cJMjpobAaXzy9tw=
 golift.io/xtractr v0.0.8-0.20210326072427-3a1c2dc0b8c8 h1:LP2E5JWPpj4r94Aehok58GjSxXo3p4ZLw+Y5iuJorzc=
 golift.io/xtractr v0.0.8-0.20210326072427-3a1c2dc0b8c8/go.mod h1:qC8gN8oDta/C9brTrggqfVqmS/tcxWSNCOCvgjVVsH8=
+golift.io/xtractr v0.0.8 h1:Ql7ngbnfC32Uc862tR8DSMS6TCo0vmRRU727B0T8C1w=
+golift.io/xtractr v0.0.8/go.mod h1:qC8gN8oDta/C9brTrggqfVqmS/tcxWSNCOCvgjVVsH8=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

@@ -222,18 +222,18 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	default:
 		fallthrough
 	case strings.Contains(url, "discordnotifier.com") || strings.Contains(url, "notifiarr.com"):
-		return template.Parse(WebhookTemplateNotifiarr)
+		return template.Parse(WebhookTemplateNotifiarr) //nolint:wrapcheck
 	case w.TmplPath != "":
 		s, err := ioutil.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}
 
-		return template.Parse(string(s))
+		return template.Parse(string(s)) //nolint:wrapcheck
 	case strings.Contains(url, "discord.com"):
-		return template.Parse(WebhookTemplateDiscord)
+		return template.Parse(WebhookTemplateDiscord) //nolint:wrapcheck
 	case strings.Contains(url, "api.telegram.org"):
-		return template.Parse(WebhookTemplateTelegram)
+		return template.Parse(WebhookTemplateTelegram) //nolint:wrapcheck
 	case strings.Contains(url, "hooks.slack.com"):
 		return template.Parse(WebhookTemplateSlack)
 	}

@@ -80,6 +80,8 @@ golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9 h1:j/WeLF6Ew1lc/m8/bh5qleZ
 golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9/go.mod h1:EZevRvIGRh8jDMwuYL0/tlPns0KynquPZzb0SerIC1s=
 golift.io/starr v0.9.9 h1:5TIjrtwISD04NdtAbd0tIlDtoeVSI6tuO4wHW43ie5E=
 golift.io/starr v0.9.9/go.mod h1:EE8B7OlqZlE/EGmBP1bLsK1OHEgWwbNpyjDXX0B2f0Y=
+golift.io/starr v0.9.10-0.20210310051019-8d3335849120 h1:/t0AgzriWQOCPpFK6xKZlwP9dE99keRHa8lXlS1c598=
+golift.io/starr v0.9.10-0.20210310051019-8d3335849120/go.mod h1:EE8B7OlqZlE/EGmBP1bLsK1OHEgWwbNpyjDXX0B2f0Y=
 golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=
 golift.io/version v0.0.2/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
 golift.io/xtractr v0.0.8-0.20210325033854-6acae81c990d h1:xQqLduFCzdB26ZGDAlJ1WjV4ijz/6LqobmQkK12d39A=

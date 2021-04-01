@@ -18,13 +18,13 @@ services:
       - UN_LOG_FILE_MB=10  #Max size of log files in megabytes
       - UN_INTERVAL=2m  #How often apps are polled, recommend 1m to 5m
       - UN_START_DELAY=1m  #Files are queued at least this long before extraction
-      - UN_RETRY_DELAY=5  #Failed extractions are retried after at least this long
+      - UN_RETRY_DELAY=5m  #Failed extractions are retried after at least this long
       - UN_MAX_RETRIES=3  #Times to retry failed extractions. 0 = unlimited
       - UN_PARALLEL=1  #Concurrent extractions, only recommend 1
       - UN_FILE_MODE=0644  #Extracted files are written with this mode
       - UN_DIR_MODE=0755  #Extracted folders are written with this mode
       # Sonarr Config
-      - UN_SONARR_0_URL=  #Something like: http://localhost:8989
+      - UN_SONARR_0_URL=  #Something like: http://localhost:8989, http://sonarr:8989
       - UN_SONARR_0_API_KEY=  #No Default. Provide URL and API key if you use Sonarr
       - UN_SONARR_0_PATHS_0=/downloads  # List of paths where content is downloaded for Sonarr
       - UN_SONARR_0_PROTOCOLS=torrent  #Protocols to process. Alt: torrent,usenet
@@ -32,7 +32,7 @@ services:
       - UN_SONARR_0_DELETE_ORIG=false  #Delete archives after import? Recommend not setting this to true
       - UN_SONARR_0_DELETE_DELAY=5m  #Extracts are deleted this long after import, -1 to disable
       # Radarr Config
-      - UN_RADARR_0_URL=  #Something like: http://localhost:7878
+      - UN_RADARR_0_URL=  #Something like: http://localhost:7878, http://radarr:8989
       - UN_RADARR_0_API_KEY=  #No Default. Provide URL and API key if you use radarr
       - UN_RADARR_0_PATHS_0=/downloads  # List of paths where content is downloaded for radarr
       - UN_RADARR_0_PROTOCOLS=torrent  #Protocols to process. Alt: torrent,usenet
@@ -40,7 +40,7 @@ services:
       - UN_RADARR_0_DELETE_ORIG=false  #Delete archives after import? Recommend not setting this to true
       - UN_RADARR_0_DELETE_DELAY=5m  #Extracts are deleted this long after import, -1 to disable
       # Lidarr Config
-      - UN_LIDARR_0_URL=  #Something like: http://localhost:8686
+      - UN_LIDARR_0_URL=  #Something like: http://localhost:8686, http://lidarr:8989
       - UN_LIDARR_0_API_KEY=  #No Default. Provide URL and API key if you use Lidarr
       - UN_LIDARR_0_PATHS_0=/downloads  # List of paths where content is downloaded for Lidarr
       - UN_LIDARR_0_PROTOCOLS=torrent  #Protocols to process. Alt: torrent,usenet
@@ -48,7 +48,7 @@ services:
       - UN_LIDARR_0_DELETE_ORIG=false  #Delete archives after import? Recommend not setting this to true
       - UN_LIDARR_0_DELETE_DELAY=5m  #Extracts are deleted this long after import, -1 to disable
       # Readarr Config
-      - UN_READARR_0_URL=  #Something like: http://localhost:8787
+      - UN_READARR_0_URL=  #Something like: http://localhost:8787, http://readarr:8989
       - UN_READARR_0_API_KEY=  #No Default. Provide URL and API key if you use Readarr
       - UN_READARR_0_PATHS_0=/downloads  # List of paths where content is downloaded for Readarr
       - UN_READARR_0_PROTOCOLS=torrent  #Protocols to process. Alt: torrent,usenet

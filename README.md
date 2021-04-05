@@ -45,6 +45,14 @@ docker pull golift/unpackerr
 docker run -d -v /mnt/HostDownloads:/downloads -v /your/config/unpackerr.conf:/etc/unpackerr/unpackerr.conf golift/unpackerr
 docker logs <container id from docker run>
 ```
+#### Docker Compose
+
+-   Copy the [example docker-compose.yml](https://github.com/davidnewhall/unpackerr/blob/master/examples/docker-compose.yml) from this repo.
+-   Edit the docker-compose.yml file with your environment variables and save
+
+```shell
+docker-compose up -d
+```
 
 #### Docker Env Variables
 

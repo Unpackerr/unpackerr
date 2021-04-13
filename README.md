@@ -1,8 +1,5 @@
 <img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/unpackerr-logo-text.png">
 
--   formerly `unpacker-poller`
--   formerly `deluge-unpacker`
-
 ## About
 
 This application runs as a daemon on your download host. It checks for completed
@@ -193,7 +190,61 @@ docker logs <container id from docker run>
     [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
     for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
-### Linux and FreeBSD Install
+### Linux Install
+
+Linux repository hosting provided by
+[![packagecloud](https://docs.golift.io/integrations/packagecloud-full.png "PackageCloud.io")](http://packagecloud.io)
+
+On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
+user or group read and write access to your archives. That may mean adding the `unpackerr`
+user, for example, to the `debian-transmission` group.
+
+After install, edit the config and start the service:
+
+```
+sudo nano /etc/unpackerr/unpackerr.conf
+sudo service systemctl restart unpackerr
+```
+
+#### Debian Variants
+
+- Ubuntu, etc.
+
+Install the repo like this. All variants use the same `ubuntu/focal` repo. The app works on all Linuxes.
+
+```shell
+curl -L https://packagecloud.io/golift/pkgs/gpgkey | sudo apt-key add -
+echo "deb https://packagecloud.io/golift/pkgs/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/golift.conf
+sudo apt update
+sudo apt install unpackerr
+```
+
+#### RedHat Variants
+
+- CentOS, Fedora, SUSE, etc.
+
+Install the repo like this. All variants use the same `el/6` repo. The app works on all Linuxes.
+
+```shell
+sudo tee /etc/yum.repos.d/golift.repo <<-EOF
+[golift]
+name=golift
+baseurl=https://packagecloud.io/golift/pkgs/el/6/\$basearch
+repo_gpgcheck=1
+gpgcheck=1
+enabled=1
+gpgkey=https://packagecloud.io/golift/pkgs/gpgkey
+       https://packagecloud.io/golift/pkgs/gpgkey/golift-pkgs-7F7791485BF8996D.pub.gpg
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+EOF
+
+sudo yum -q makecache -y --disablerepo='*' --enablerepo='golift'
+sudo yum install unpackerr
+```
+
+### FreeBSD Install
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/unpackerr/releases) page.
 -   Install it, edit config, start it.
@@ -202,17 +253,9 @@ Example of the above in shell form:
 
 ```shell
 wget -qO- https://golift.io/unpackerr/raw/master/scripts/install.sh | sudo bash
-
-nano /etc/unpackerr/unpackerr.conf         # linux
-vi /usr/local/etc/unpackerr/unpackerr.conf # freebsd
-
-sudo systemctl restart unpackerr    # linux
-service unpackerr start             # freebsd
+vi /usr/local/etc/unpackerr/unpackerr.conf
+service unpackerr start
 ```
-
-On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
-user or group read and write access to your archives. That may mean adding the `unpackerr`
-user, for example, to the `debian-transmission` group.
 
 On FreeBSD the app runs as `nobody`. That's not very good and will probably change in the future.
 
@@ -251,6 +294,21 @@ The `.app` and the Homebrew version are the same application, but one runs in GU
 -   Click the systray icon again and select `Config` -> `Reload`.
 -   View the logs by clicking the systray icon and `Logs` -> `View`.
 -   Make a shortcut to the application in your Startup menu to run it when you login.
+
+## Intergrations
+
+The following fine folks are providing their services, completely free! These service
+integrations are used for things like storage, building, compiling, distribution and
+documentation support. This project succeeds because of them. Thank you!
+
+<p style="text-align: center;">
+<a title="PackageCloud" alt="PackageCloud" href="https://packagecloud.io"><img src="https://docs.golift.io/integrations/packagecloud.png"/></a>
+<a title="GitHub" alt="GitHub" href="https://GitHub.com"><img src="https://docs.golift.io/integrations/octocat.png"/></a>
+<a title="Docker Cloud" alt="Docker" href="https://cloud.docker.com"><img src="https://docs.golift.io/integrations/docker.png"/></a>
+<a title="Travis-CI" alt="Travis-CI" href="https://Travis-CI.com"><img src="https://docs.golift.io/integrations/travis-ci.png"/></a>
+<a title="Homebrew" alt="Homebrew" href="https://brew.sh"><img src="https://docs.golift.io/integrations/homebrew.png"/></a>
+<a title="Go Lift" alt="Go Lift" href="https://golift.io"><img src="https://docs.golift.io/integrations/golift.png"/></a>
+</p>
 
 ## Troubleshooting
 

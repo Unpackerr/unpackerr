@@ -25,6 +25,7 @@ const (
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
+	defaultDeleteDelay = 5 * time.Minute
 	defaultHistory     = 10             // items keps in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
@@ -90,7 +91,7 @@ func New() *Unpackerr {
 			Interval:    cnfg.Duration{Duration: minimumInterval},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
-			DeleteDelay: cnfg.Duration{Duration: minimumDeleteDelay},
+			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
 		},
 		Logger: &Logger{Logger: log.New(ioutil.Discard, "", 0)},
 	}

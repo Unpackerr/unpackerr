@@ -28,8 +28,7 @@ addons:
     - fakeroot
     - zip
     - debsigs
-#    - gnupg
-    - expect
+    - gnupg
     - upx
 install:
   - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin latest
@@ -37,8 +36,9 @@ install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then rvm 2.6.0 do gem install --no-document fpm; fi
 before_script:
   # Create your own deploy key, tar it, and encrypt the file to make this work. Optionally add a bitly_token file to the archive.
-  - openssl aes-256-cbc -K $encrypted_e5c248149abf_key -iv $encrypted_e5c248149abf_iv -in .secret_files.tar.enc -out .secret_files.tar -d
+  - openssl aes-256-cbc -K $encrypted_772fc4772f04_key -iv $encrypted_772fc4772f04_iv -in .secret_files.tar.enc -out .secret_files.tar -d
   - tar -xf .secret_files.tar
+  - gpg --import gpg.signing.key
   - rm -f gpg.signing.key .secret_files.tar
   - source settings.sh
 script:
@@ -68,6 +68,30 @@ after_success:
         "  StrictHostKeyChecking no" \
         "  LogLevel ERROR" >> $HOME/.ssh/config)
 deploy:
+  - provider: packagecloud
+    repository: "pkgs"
+    username: "golift"
+    token:
+      secure: "aSgftmry/omgN1oEgKY2HczFcdE95qRoF0J+koTBw/iu9cr5Sdj1/4pNHBKb1ehah5CrjLJZs9EYu95sFwDTWWbSmhrth6tb1BJRSKXmQAxFSHLKVlI+nQlU75i+CyLJuLn4s/6efFCP8vQmRa+AAbZ5jFSTFph8Mcj+tYB1PxSpyZPeutbsbSxjzO40skwEMdiUUrrxl8lwzRzqjheimdumtpccpRTnKSj6eMcj1Dq5W+J+RoI2/lCc45OmPy+wsbaPiUBDf4yINhom9/t8XeDBUCjmZ87CjfsqkA2LcVxwqti1qrrBeW4q3UI4vzRa/gUoG3k8cgJmoVVFmBPgducLSD5zpOADY88ZtGQCJMurIY6zSxRPGHTy1t9pCstYun/HILbtkrEJoxqGjpVglczGkq1ZHerFgUydAF2AdTuupy2t9NsYmgcZk7b1wWgMimDfLpEcvGCtDja86f9WCjh5LeTcnWsKMKKp5RMvbSxlGnCItz35VLYBw6yPz0e6wInhQRPIShBsTinMxagaheVvLJm+gwPC4SLsLY25/jweN1JtsXkD757Y6trjNyzg/y9ZourHU12g6MxDQCLfaedDcy//0fjb9XyizB+NmKhBO5Xfv82iJ7XxpF7HFGyBdgi2fg7Zp7jVhHb3sD/srlk+LyrjmnZanmUolNSL3g0="
+    dist: "ubuntu/focal"
+    local-dir: release
+    package_glob: "*.deb"
+    skip_cleanup: true
+    cleanup: false
+    on:
+     tags: true
+  - provider: packagecloud
+    repository: "pkgs"
+    username: "golift"
+    token:
+      secure: "aSgftmry/omgN1oEgKY2HczFcdE95qRoF0J+koTBw/iu9cr5Sdj1/4pNHBKb1ehah5CrjLJZs9EYu95sFwDTWWbSmhrth6tb1BJRSKXmQAxFSHLKVlI+nQlU75i+CyLJuLn4s/6efFCP8vQmRa+AAbZ5jFSTFph8Mcj+tYB1PxSpyZPeutbsbSxjzO40skwEMdiUUrrxl8lwzRzqjheimdumtpccpRTnKSj6eMcj1Dq5W+J+RoI2/lCc45OmPy+wsbaPiUBDf4yINhom9/t8XeDBUCjmZ87CjfsqkA2LcVxwqti1qrrBeW4q3UI4vzRa/gUoG3k8cgJmoVVFmBPgducLSD5zpOADY88ZtGQCJMurIY6zSxRPGHTy1t9pCstYun/HILbtkrEJoxqGjpVglczGkq1ZHerFgUydAF2AdTuupy2t9NsYmgcZk7b1wWgMimDfLpEcvGCtDja86f9WCjh5LeTcnWsKMKKp5RMvbSxlGnCItz35VLYBw6yPz0e6wInhQRPIShBsTinMxagaheVvLJm+gwPC4SLsLY25/jweN1JtsXkD757Y6trjNyzg/y9ZourHU12g6MxDQCLfaedDcy//0fjb9XyizB+NmKhBO5Xfv82iJ7XxpF7HFGyBdgi2fg7Zp7jVhHb3sD/srlk+LyrjmnZanmUolNSL3g0="
+    dist: "el/6"
+    local-dir: release
+    package_glob: "*.rpm"
+    skip_cleanup: true
+    cleanup: false
+    on:
+     tags: true
   - provider: releases
     overwrite: true
     skip_cleanup: true

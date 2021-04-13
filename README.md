@@ -191,11 +191,9 @@ docker logs <container id from docker run>
     for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
 ### Linux Install
-<p style="text-align: center;">
-Linux repository hosting provided by
 
+Linux repository hosting provided by
 [![packagecloud](https://docs.golift.io/integrations/packagecloud-full.png "PackageCloud.io")](http://packagecloud.io)
-</p>
 
 On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
 user or group read and write access to your archives. That may mean adding the `unpackerr`

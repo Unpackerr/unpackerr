@@ -19,14 +19,15 @@
 REPO=davidnewhall/unpackerr
 BREW=golift/mugs/unpackerr
 
-# Don't set these.
+PACKAGE=$(echo "$REPO" | cut -d/ -f 2)
+
+# Nothing else needs to be changed. Unless you're fixing things!
+
 LATEST=https://api.github.com/repos/${REPO}/releases/latest
 ISSUES=https://github.com/${REPO}/issues/new
 ARCH=$(uname -m)
 OS=$(uname -s)
 P=" ==>"
-
-# Nothing else needs to be changed. Unless you're fixing things!
 
 echo "<-------------------------------------------------->"
 
@@ -98,7 +99,9 @@ if [ "$CMD" = "" ]; then
 fi
 
 # Grab latest release file from github.
-URL=$($CMD ${LATEST} | egrep "browser_download_url.*(${ARCH})\.${FILE}\"" | cut -d\" -f 4)
+PAYLOAD=$($CMD ${LATEST})
+URL=$(echo "$PAYLOAD" | egrep "browser_download_url.*(${ARCH})\.${FILE}\"" | cut -d\" -f 4)
+TAG=$(echo "$PAYLOAD" | grep 'tag_name' | cut -d\" -f4 | tr -d v)
 
 if [ "$?" != "0" ] || [ "$URL" = "" ]; then
   echo "${P} [ERROR] Missing latest release for '${FILE}' file ($OS/${ARCH}) at ${LATEST}"
@@ -108,12 +111,53 @@ if [ "$?" != "0" ] || [ "$URL" = "" ]; then
   exit 1
 fi
 
-INSTALLER="rpm -Uvh"
-if [ "$FILE" = "deb" ]; then
+if [ "$FILE" = "rpm" ]; then
+  INSTALLER="rpm -Uvh"
+  INSTALLED="$(rpm -q --last --info ${PACKAGE} 2>/dev/null | grep Version | cut -d: -f2 | cut -d- -f1 | awk '{print $1}')"
+elif [ "$FILE" = "deb" ]; then
+  dpkg -s ${PACKAGE} 2>/dev/null | grep Status | grep -q installed
+  [ "$?" != "0" ] || INSTALLED="$(dpkg -s ${PACKAGE} 2>/dev/null | grep ^Version | cut -d: -f2 | cut -d- -f1 | awk '{print $1}')"
   INSTALLER="dpkg --force-confdef --force-confold --install"
 elif [ "$FILE" = "txz" ]; then
   INSTALLER="pkg install --yes"
+  INSTALLED="$(pkg info ${PACKAGE} 2>/dev/null | grep Version | cut -d: -f2 | cut -d- -f1 | awk '{print $1}')"
 fi
+
+# https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+vercomp () {
+  if [ "$1" = "" ]; then
+    return 3
+  elif [ "$1" = "$2" ]; then
+    return 0
+  fi
+
+  local IFS=.
+  local i ver1=($1) ver2=($2)
+  # fill empty fields in ver1 with zeros
+  for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
+    ver1[i]=0
+  done
+
+  for ((i=0; i<${#ver1[@]}; i++)); do
+    if [[ -z ${ver2[i]} ]]; then
+      # fill empty fields in ver2 with zeros
+      ver2[i]=0
+    elif ((10#${ver1[i]} > 10#${ver2[i]})); then
+      return 1
+    elif ((10#${ver1[i]} < 10#${ver2[i]})); then
+      return 2
+    fi
+  done
+  return 0
+}
+
+vercomp "$INSTALLED" "$TAG"
+case $? in
+  0) echo "${P} The installed version of ${PACKAGE} (${INSTALLED}) is current: ${TAG}" ; exit 0 ;;
+  1) echo "${P} The installed version of ${PACKAGE} (${INSTALLED}) is newer than the current release (${TAG})" ; exit 0 ;;
+  2) echo "${P} Upgrading ${PACKAGE} to ${TAG} from ${INSTALLED}." ;;
+  3) echo "${P} Installing ${PACKAGE} version ${TAG}." ;;
+esac
 
 FILE=$(basename ${URL})
 echo "${P} Downloading: ${URL}"

@@ -80,6 +80,7 @@ deploy:
     cleanup: false
     on:
      tags: true
+      condition: "$TRAVIS_OS_NAME = linux"
   - provider: packagecloud
     repository: "pkgs"
     username: "golift"
@@ -92,6 +93,7 @@ deploy:
     cleanup: false
     on:
      tags: true
+      condition: "$TRAVIS_OS_NAME = linux"
   - provider: releases
     overwrite: true
     skip_cleanup: true
@@ -110,4 +112,4 @@ deploy:
     script: bash scripts/formula-deploy.sh
     on:
       tags: true
-      condition: "$TRAVIS_OS_NAME = osx"
+      condition: "$TRAVIS_OS_NAME = linux"

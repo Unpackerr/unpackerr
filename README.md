@@ -1,8 +1,5 @@
 <img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/unpackerr-logo-text.png">
 
--   formerly `unpacker-poller`
--   formerly `deluge-unpacker`
-
 ## About
 
 This application runs as a daemon on your download host. It checks for completed
@@ -193,7 +190,61 @@ docker logs <container id from docker run>
     [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
     for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
-### Linux and FreeBSD Install
+### Linux Install
+
+[![packagecloud](https://docs.golift.io/integrations/packagecloud.png "PackageCloud.io")](http://packagecloud.io)
+Linux repository hosting provided by [Packagecloud.io](https://packagecloud.io)!
+
+On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
+user or group read and write access to your archives. That may mean adding the `unpackerr`
+user, for example, to the `debian-transmission` group.
+
+After install, edit the config and start the service:
+
+```
+sudo nano /etc/unpackerr/unpackerr.conf
+sudo service systemctl restart unpackerr
+```
+
+#### Debian Variants
+
+- Ubuntu, etc.
+
+Install the repo like this. All variants use the same `debian/focal` repo. The app works on all Linuxes.
+
+```shell
+curl -L https://packagecloud.io/golift/pkgs/gpgkey | sudo apt-key add -
+echo "deb https://packagecloud.io/golift/pkgs/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/golift.conf
+sudo apt update
+sudo apt install unpackerr
+```
+
+#### RedHat Variants
+
+- CentOS, Fedora, SUSE, etc.
+
+Install the repo like this. All variants use the same `el/6` repo. The app works on all Linuxes.
+
+```shell
+sudo tee /etc/yum.repos.d/golift.repo <<-EOF
+[golift]
+name=golift
+baseurl=https://packagecloud.io/golift/pkgs/el/6/\$basearch
+repo_gpgcheck=1
+gpgcheck=1
+enabled=1
+gpgkey=https://packagecloud.io/golift/pkgs/gpgkey
+       https://packagecloud.io/golift/pkgs/gpgkey/golift-pkgs-7F7791485BF8996D.pub.gpg
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+EOF
+
+sudo yum -q makecache -y --disablerepo='*' --enablerepo='golift'
+sudo yum install unpackerr
+```
+
+### FreeBSD Install
 
 -   Download a package from the [Releases](https://github.com/davidnewhall/unpackerr/releases) page.
 -   Install it, edit config, start it.
@@ -202,17 +253,9 @@ Example of the above in shell form:
 
 ```shell
 wget -qO- https://golift.io/unpackerr/raw/master/scripts/install.sh | sudo bash
-
-nano /etc/unpackerr/unpackerr.conf         # linux
-vi /usr/local/etc/unpackerr/unpackerr.conf # freebsd
-
-sudo systemctl restart unpackerr    # linux
-service unpackerr start             # freebsd
+vi /usr/local/etc/unpackerr/unpackerr.conf
+service unpackerr start
 ```
-
-On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
-user or group read and write access to your archives. That may mean adding the `unpackerr`
-user, for example, to the `debian-transmission` group.
 
 On FreeBSD the app runs as `nobody`. That's not very good and will probably change in the future.
 

@@ -191,9 +191,11 @@ docker logs <container id from docker run>
     for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
 
 ### Linux Install
+<p style="text-align: center;">
+Linux repository hosting provided by
 
-[![packagecloud](https://docs.golift.io/integrations/packagecloud.png "PackageCloud.io")](http://packagecloud.io)
-Linux repository hosting provided by [Packagecloud.io](https://packagecloud.io)!
+[![packagecloud](https://docs.golift.io/integrations/packagecloud-full.png "PackageCloud.io")](http://packagecloud.io)
+</p>
 
 On Linux, unpackerr runs as `user:group` `unpackerr:unpackerr`. You will need to give that
 user or group read and write access to your archives. That may mean adding the `unpackerr`
@@ -294,6 +296,21 @@ The `.app` and the Homebrew version are the same application, but one runs in GU
 -   Click the systray icon again and select `Config` -> `Reload`.
 -   View the logs by clicking the systray icon and `Logs` -> `View`.
 -   Make a shortcut to the application in your Startup menu to run it when you login.
+
+## Intergrations
+
+The following fine folks are providing their services, completely free! These service
+integrations are used for things like storage, building, compiling, distribution and
+documentation support. This project succeeds because of them. Thank you!
+
+<p style="text-align: center;">
+<a title="PackageCloud" alt="PackageCloud" href="https://packagecloud.io"><img src="https://docs.golift.io/integrations/packagecloud.png"/></a>
+<a title="GitHub" alt="GitHub" href="https://GitHub.com"><img src="https://docs.golift.io/integrations/octocat.png"/></a>
+<a title="Docker Cloud" alt="Docker" href="https://cloud.docker.com"><img src="https://docs.golift.io/integrations/docker.png"/></a>
+<a title="Travis-CI" alt="Travis-CI" href="https://Travis-CI.com"><img src="https://docs.golift.io/integrations/travis-ci.png"/></a>
+<a title="Homebrew" alt="Homebrew" href="https://brew.sh"><img src="https://docs.golift.io/integrations/homebrew.png"/></a>
+<a title="Go Lift" alt="Go Lift" href="https://golift.io"><img src="https://docs.golift.io/integrations/golift.png"/></a>
+</p>
 
 ## Troubleshooting
 

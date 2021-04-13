@@ -79,7 +79,7 @@ deploy:
     skip_cleanup: true
     cleanup: false
     on:
-     tags: true
+      tags: true
       condition: "$TRAVIS_OS_NAME = linux"
   - provider: packagecloud
     repository: "pkgs"
@@ -92,7 +92,7 @@ deploy:
     skip_cleanup: true
     cleanup: false
     on:
-     tags: true
+      tags: true
       condition: "$TRAVIS_OS_NAME = linux"
   - provider: releases
     overwrite: true

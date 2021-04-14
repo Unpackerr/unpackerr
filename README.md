@@ -295,7 +295,7 @@ The `.app` and the Homebrew version are the same application, but one runs in GU
 -   View the logs by clicking the systray icon and `Logs` -> `View`.
 -   Make a shortcut to the application in your Startup menu to run it when you login.
 
-## Intergrations
+## Integrations
 
 The following fine folks are providing their services, completely free! These service
 integrations are used for things like storage, building, compiling, distribution and

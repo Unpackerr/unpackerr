@@ -13,12 +13,12 @@ import (
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
 	starr.Config
-	Path           string            `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string          `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string            `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool              `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration     `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Queue          []*sonarr.QueueV2 `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -97,7 +97,7 @@ func (u *Unpackerr) getSonarrQueue() {
 			continue
 		}
 
-		queue, err := server.GetQueueV2()
+		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
 			u.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
 
@@ -106,18 +106,22 @@ func (u *Unpackerr) getSonarrQueue() {
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue.Records))
 	}
 }
 
 // checkSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkSonarrQueue() {
 	for _, server := range u.Sonarr {
-		for _, q := range server.Queue {
+		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				// This shoehorns the Sonarr OutputPath into a StatusMessage that getDownloadPath can parse.
+				q.StatusMessages = append(q.StatusMessages,
+					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         Sonarr,
 					DeleteOrig:  server.DeleteOrig,
@@ -125,19 +129,16 @@ func (u *Unpackerr) checkSonarrQueue() {
 					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
-						"tvdbId":     q.Series.TvdbID,
-						"imdbId":     q.Series.ImdbID,
 						"downloadId": q.DownloadID,
-						"seriesId":   q.Episode.SeriesID,
-						"tvRageId":   q.Series.TvRageID,
-						"tvMazeId":   q.Series.TvMazeID,
+						"seriesId":   q.SeriesID,
+						"episodeId":  q.EpisodeID,
 					},
 				})
 
 				fallthrough
 			default:
 				u.Debugf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
-					Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.Episode.Title)
+					Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
 			}
 		}
 	}
@@ -146,7 +147,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
-		for _, q := range server.Queue {
+		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true
 			}

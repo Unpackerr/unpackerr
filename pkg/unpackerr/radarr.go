@@ -13,12 +13,12 @@ import (
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
 	starr.Config
-	Path           string          `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string        `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string          `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool            `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration   `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Queue          []*radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
@@ -90,14 +90,14 @@ func (u *Unpackerr) logRadarr() {
 
 // getRadarrQueue saves the Radarr Queue(s).
 func (u *Unpackerr) getRadarrQueue() {
-	for _, server := range u.Radarr {
+	for i, server := range u.Radarr {
 		if server.APIKey == "" {
 			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
 
 			continue
 		}
 
-		queue, err := server.GetQueueV2()
+		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
 			u.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
 
@@ -105,34 +105,34 @@ func (u *Unpackerr) getRadarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue))
+		u.Radarr[i].Queue = queue
+		u.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue.Records))
 	}
 }
 
 // checkRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkRadarrQueue() {
 	for _, server := range u.Radarr {
-		for _, q := range server.Queue {
+		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				x := &Extract{
+				// This shoehorns the Radarr OutputPath into a StatusMessage that getDownloadPath can parse.
+				q.StatusMessages = append(q.StatusMessages,
+					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+
+				u.handleCompletedDownload(q.Title, &Extract{
 					App:         Radarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
-					IDs:         map[string]interface{}{"downloadId": q.DownloadID, "title": q.Title},
-				}
-
-				if q.Movie != nil {
-					x.IDs["title"] = q.Movie.Title
-					x.IDs["tmdbId"] = q.Movie.TmdbID
-					x.IDs["imdbId"] = q.Movie.ImdbID
-				}
-
-				u.handleCompletedDownload(q.Title, x)
+					IDs: map[string]interface{}{
+						"downloadId": q.DownloadID,
+						"title":      q.Title,
+						"movieId":    q.MovieID,
+					},
+				})
 
 				fallthrough
 			default:
@@ -146,7 +146,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
-		for _, q := range server.Queue {
+		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true
 			}

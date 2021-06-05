@@ -352,6 +352,7 @@ test: lint
 	go test -race -covermode=atomic ./...
 lint:
 	# Checking lint.
+	$(shell go env GOPATH)/bin/golangci-lint --version
 	GOOS=linux $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
 	GOOS=freebsd $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
 	GOOS=windows $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)

@@ -127,6 +127,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
+
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         Lidarr,
 					DeleteOrig:  server.DeleteOrig,

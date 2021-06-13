@@ -3,9 +3,11 @@
 package unpackerr
 
 import (
+	"os"
 	"syscall"
 )
 
-func dupFD2(oldfd uintptr, newfd uintptr) error {
-	return syscall.Dup2(int(oldfd), int(newfd)) //nolint:wrapcheck
+func dupStderr(file *os.File) {
+	os.Stderr = file
+	_ = syscall.Dup2(int(file.Fd()), syscall.Stderr)
 }

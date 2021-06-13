@@ -188,6 +188,10 @@ func (u *Unpackerr) setupLogging() {
 		log.SetOutput(writer)
 	}
 
+	if u.rotatorr != nil && u.rotatorr.File != nil {
+		dupStderr(u.rotatorr.File)
+	}
+
 	u.Logger.Logger.SetOutput(writer)
 	u.postLogRotate("", "")
 }
@@ -198,7 +202,7 @@ func (u *Unpackerr) postLogRotate(_, newFile string) {
 	}
 
 	if u.rotatorr != nil && u.rotatorr.File != nil {
-		_ = dupFD2(u.rotatorr.File.Fd(), 2)
+		dupStderr(u.rotatorr.File)
 	}
 }
 

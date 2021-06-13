@@ -113,6 +113,10 @@ func (u *Unpackerr) getRadarrQueue() {
 // checkRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkRadarrQueue() {
 	for _, server := range u.Radarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):

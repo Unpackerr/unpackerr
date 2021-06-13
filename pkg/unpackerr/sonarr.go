@@ -113,6 +113,10 @@ func (u *Unpackerr) getSonarrQueue() {
 // checkSonarrQueue passes completed Sonarr-queued downloads to the HandleCompleted method.
 func (u *Unpackerr) checkSonarrQueue() {
 	for _, server := range u.Sonarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):

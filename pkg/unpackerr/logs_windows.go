@@ -1,20 +1,18 @@
 package unpackerr
 
 import (
+	"os"
 	"syscall"
 )
 
-// From https://play.golang.org/p/ue8ULfyHGG.
-func dupFD2(oldfd uintptr, newfd uintptr) error {
-	r0, _, e1 := syscall.Syscall(syscall.MustLoadDLL("kernel32.dll").
-		MustFindProc("SetStdHandle").Addr(), 2, oldfd, newfd, 0)
-	if r0 == 0 {
-		if e1 != 0 {
-			return error(e1)
-		}
+// nolint:gochecknoglobals // These can be reused if needed.
+var (
+	kernel    = syscall.MustLoadDLL("kernel32.dll")
+	setHandle = kernel.MustFindProc("SetStdHandle")
+)
 
-		return syscall.EINVAL
-	}
-
-	return nil
+//nolint:errcheck
+func dupStderr(file *os.File) {
+	os.Stderr = file
+	syscall.Syscall(setHandle.Addr(), 2, file.Fd(), uintptr(syscall.Stderr), 0)
 }

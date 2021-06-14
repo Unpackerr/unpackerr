@@ -1,20 +1,22 @@
 package unpackerr
 
+/* The purpose of this code is to log stderr (application panics) to a log file. */
+
 import (
+	"os"
 	"syscall"
 )
 
-// From https://play.golang.org/p/ue8ULfyHGG.
-func dupFD2(oldfd uintptr, newfd uintptr) error {
-	r0, _, e1 := syscall.Syscall(syscall.MustLoadDLL("kernel32.dll").
-		MustFindProc("SetStdHandle").Addr(), 2, oldfd, newfd, 0)
-	if r0 == 0 {
-		if e1 != 0 {
-			return error(e1)
-		}
+// nolint:gochecknoglobals // These can be reused if needed.
+var (
+	kernel    = syscall.MustLoadDLL("kernel32.dll")
+	setHandle = kernel.MustFindProc("SetStdHandle")
+)
 
-		return syscall.EINVAL
-	}
+//nolint:errcheck
+func redirectStderr(file *os.File) {
+	os.Stderr = file
+	stderr := syscall.STD_ERROR_HANDLE
 
-	return nil
+	syscall.Syscall(setHandle.Addr(), 2, uintptr(stderr), file.Fd(), 0)
 }

@@ -198,7 +198,7 @@ func (u *Unpackerr) postLogRotate(_, newFile string) {
 	}
 
 	if u.rotatorr != nil && u.rotatorr.File != nil {
-		_ = dupFD2(u.rotatorr.File.Fd(), 2)
+		redirectStderr(u.rotatorr.File) // Log panics.
 	}
 }
 

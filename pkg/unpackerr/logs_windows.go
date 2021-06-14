@@ -1,5 +1,7 @@
 package unpackerr
 
+/* The purpose of this code is to log stderr (application panics) to a log file. */
+
 import (
 	"os"
 	"syscall"
@@ -12,10 +14,9 @@ var (
 )
 
 //nolint:errcheck
-func dupStderr(file *os.File) {
+func redirectStderr(file *os.File) {
 	os.Stderr = file
-	h := syscall.STD_ERROR_HANDLE
-	f := file.Fd()
+	stderr := syscall.STD_ERROR_HANDLE
 
-	syscall.Syscall(setHandle.Addr(), 2, uintptr(h), uintptr(f), 0)
+	syscall.Syscall(setHandle.Addr(), 2, uintptr(stderr), file.Fd(), 0)
 }

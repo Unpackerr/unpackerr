@@ -14,5 +14,8 @@ var (
 //nolint:errcheck
 func dupStderr(file *os.File) {
 	os.Stderr = file
-	syscall.Syscall(setHandle.Addr(), 2, file.Fd(), uintptr(syscall.Stderr), 0)
+	h := syscall.STD_ERROR_HANDLE
+	f := file.Fd()
+
+	syscall.Syscall(setHandle.Addr(), 2, uintptr(h), uintptr(f), 0)
 }

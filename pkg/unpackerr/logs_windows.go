@@ -18,5 +18,7 @@ func redirectStderr(file *os.File) {
 	os.Stderr = file
 	stderr := syscall.STD_ERROR_HANDLE
 
-	syscall.Syscall(setHandle.Addr(), 2, uintptr(stderr), file.Fd(), 0)
+	const noIdeaWhatThisIs = 2
+
+	syscall.Syscall(setHandle.Addr(), noIdeaWhatThisIs, uintptr(stderr), file.Fd(), 0)
 }

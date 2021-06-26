@@ -104,16 +104,21 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
 
-	fm, err := strconv.ParseUint(u.FileMode, 8, 32)
+	const (
+		bits = 8
+		base = 32
+	)
+
+	fm, err := strconv.ParseUint(u.FileMode, bits, base)
 	if err != nil || u.FileMode == "" {
 		fm = defaultFileMode
-		u.FileMode = strconv.FormatUint(fm, 8)
+		u.FileMode = strconv.FormatUint(fm, bits)
 	}
 
-	dm, err := strconv.ParseUint(u.DirMode, 8, 32)
+	dm, err := strconv.ParseUint(u.DirMode, bits, base)
 	if err != nil || u.DirMode == "" {
 		dm = defaultDirMode
-		u.DirMode = strconv.FormatUint(dm, 8)
+		u.DirMode = strconv.FormatUint(dm, bits)
 	}
 
 	if u.Parallel == 0 {
@@ -166,7 +171,7 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 	}
 
 	dir := filepath.Dir(file)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, logsDirMode); err != nil {
 		return "", fmt.Errorf("making config dir: %w", err)
 	}
 

@@ -42,7 +42,7 @@ services:
       - UN_RADARR_0_DELETE_ORIG=false
       - UN_RADARR_0_DELETE_DELAY=5m
       # Lidarr Config
-      - UN_LIDARR_0_URL=http://lidarr:8989
+      - UN_LIDARR_0_URL=http://lidarr:8686
       - UN_LIDARR_0_API_KEY=
       - UN_LIDARR_0_PATHS_0=/downloads
       - UN_LIDARR_0_PROTOCOLS=torrent
@@ -50,7 +50,7 @@ services:
       - UN_LIDARR_0_DELETE_ORIG=false
       - UN_LIDARR_0_DELETE_DELAY=5m
       # Readarr Config
-      - UN_READARR_0_URL=http://readarr:8989
+      - UN_READARR_0_URL=http://readarr:8787
       - UN_READARR_0_API_KEY=
       - UN_READARR_0_PATHS_0=/downloads
       - UN_READARR_0_PROTOCOLS=torrent

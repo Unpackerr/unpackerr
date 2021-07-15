@@ -34,7 +34,7 @@ services:
       - UN_SONARR_0_DELETE_ORIG=false
       - UN_SONARR_0_DELETE_DELAY=5m
       # Radarr Config
-      - UN_RADARR_0_URL=http://radarr:8989
+      - UN_RADARR_0_URL=http://radarr:7878
       - UN_RADARR_0_API_KEY=
       - UN_RADARR_0_PATHS_0=/downloads
       - UN_RADARR_0_PROTOCOLS=torrent

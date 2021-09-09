@@ -34,7 +34,7 @@ Use the methods below to install using Docker.
 
 #### Docker Config File
 
--   Copy the [example config file](examples/unpackerr.conf.example) from this repo.
+-   Copy the [example config file](https://github.com/davidnewhall/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
 -   Then grab the image from docker hub and run it using an overlay for the config file.
 
 ```shell
@@ -44,7 +44,7 @@ docker logs <container id from docker run>
 ```
 #### Docker Compose
 
--   Copy the [example docker-compose.yml](examples/docker-compose.yml) from this repo.
+-   Copy the [example docker-compose.yml](https://github.com/davidnewhall/unpackerr/blob/master/examples/docker-compose.yml) from this repo.
 -   Edit the docker-compose.yml file with your environment variables and save
 
 ```shell
@@ -295,6 +295,14 @@ If Unpackerr prints information about transfers you do not see in your Starr app
 Still having problems?
 [Let me know!](https://github.com/davidnewhall/unpackerr/issues/new)
 
+## Archive Support
+
+Unpackerr will decompress archives of these types:
+
+-   `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`
+-   Multi-file archives are only supported with RAR format.
+-   Archives are detected by the file extension.
+
 ## Logic
 
 The application polls radarr, readarr, sonarr and lidarr at the interval configured.
@@ -302,11 +310,11 @@ The queued items are inspected for completeness. The interval of these pollers i
 in the config file. 1-10 minutes is generally sufficient.
 
 When Unpackerr finds an item in Sonarr or Radarr or Lidarr the download location
-is checked for a `.rar` file. If an extractable archive exists, and **Sonarr/Radarr/Lidarr
+is checked for an archive file. If an extractable archive exists, and **Radarr/Sonarr/etc
 has `status=Completed` from your download client** Unpackerr will extract the file.
 Files are extracted to a temporary folder, and then moved back into the download
 location for Completed Download Handling to import them. When the item falls out of the
-(Radarr/Sonarr/Lidarr) queue, the extracted files are deleted.
+Lidarr/Radarr/Readarr/Sonarr queue, the extracted files are deleted.
 
 ## Contributing
 

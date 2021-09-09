@@ -17,7 +17,7 @@ import (
 const (
 	callDepth   = 2 // log the line that called us.
 	megabyte    = 1024 * 1024
-	logsDirMode = 0755
+	logsDirMode = 0o755
 )
 
 // ExtractStatus is our enum for an extract's status.

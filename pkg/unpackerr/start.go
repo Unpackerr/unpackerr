@@ -17,8 +17,8 @@ import (
 
 const (
 	defaultMaxRetries  = 3
-	defaultFileMode    = 0644
-	defaultDirMode     = 0755
+	defaultFileMode    = 0o644
+	defaultDirMode     = 0o755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
 	cleanerInterval    = 5 * time.Second

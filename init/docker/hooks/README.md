@@ -18,4 +18,28 @@ any build.
 
 Keep the build simple; see screenshot. This only supports one build tag, but it creates many more.
 
-![Application Builder Docker Cloud Build Rules](https://raw.githubusercontent.com/wiki/unifi-poller/unifi-poller/images/unifi-poller-build-rules.png "Application Builder Docker Cloud Build Rules")
+## Manual Builds
+
+DockerHub turned off Automated builds unless you pay $300/year, so I had to figure out how to run the build scripts locally.
+I [added a few lines to settings.sh](https://github.com/davidnewhall/unpackerr/commit/2fcd790a4d7544c1cb40525f06c1e922dd15f6af#diff-9766226a804c653af0e5003a333bf8c2378874ec62d11e64623e1cfb041057cf)
+to make sure variables docker normally sets are there.
+Then run these commands to build and push a new release. Run them from the `init/docker` directory.
+
+```
+SOURCE_BRANCH=v0.9.8 bash hooks/build
+SOURCE_BRANCH=v0.9.8 bash hooks/push
+```
+
+You may omit `SOURCE_BRNCH` to pick up the current branch instead of a release.
+
+If you screw up somehow and need to fix a manifest, delete it first. Example:
+
+```
+docker manifest rm golift/unpackerr:0.9.8
+docker manifest rm golift/unpackerr:0.9
+docker manifest rm golift/unpackerr:0
+docker manifest rm golift/unpackerr:latest
+docker manifest rm golift/unpackerr:stable
+# if you messed up a branch:
+docker manifest rm golift/unpackerr:<branch_name>
+```

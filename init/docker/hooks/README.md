@@ -21,7 +21,8 @@ Keep the build simple; see screenshot. This only supports one build tag, but it 
 ## Manual Builds
 
 DockerHub turned off Automated builds unless you pay $300/year, so I had to figure out how to run the build scripts locally.
-I added a few lines to settings.sh to make sure variables docker normally sets are there.
+I [added a few lines to settings.sh](https://github.com/davidnewhall/unpackerr/commit/2fcd790a4d7544c1cb40525f06c1e922dd15f6af#diff-9766226a804c653af0e5003a333bf8c2378874ec62d11e64623e1cfb041057cf)
+to make sure variables docker normally sets are there.
 Then run these commands to build and push a new release. Run them from the `init/docker` directory.
 
 ```

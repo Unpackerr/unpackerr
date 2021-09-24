@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -129,6 +130,20 @@ const WebhookTemplateDiscord = `{
 }
 `
 
+const WebhookTemplatePushover = `token={{token}}&user={{channel}}&html=1&title={{formencode .Event.Desc}}&` +
+	`{{if nickname}}device={{nickname}}&{{end}}message=<pre><b>App</b>: {{.App}}
+<b>Name</b>: {{formencode (index .IDs "title")}}
+<b>Path</b>: {{formencode .Path}}
+{{ if .Data -}}
+{{ if .Data.Elapsed.Duration}}<b>Time</b>: {{.Data.Elapsed}}
+{{end}}{{ if .Data.Archives}}<b>RARs</b>: {{len .Data.Archives}}
+{{end}}{{ if .Data.Files}}<b>Files</b>: {{len .Data.Files}}
+{{end}}{{ if .Data.Bytes}}<b>Bytes</b>: {{humanbytes .Data.Bytes}}
+{{end}}{{ if and (gt .Event 1) (lt .Event 5)}}<b>Queue</b>: {{.Data.Queue}}
+{{end}}{{ if .Data.Error}}
+<font color="#FF0000"><b>ERROR</b>: {{formencode .Data.Error}}</font>
+{{end}}{{end -}}</pre>`
+
 // WebhookTemplateSlack is a built-in template for sending a message to Slack.
 const WebhookTemplateSlack = `
 {
@@ -209,10 +224,12 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
 		"encode":     func(v interface{}) string { b, _ := json.Marshal(v); return string(b) },
 		"rawencode":  func(v interface{}) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck
+		"formencode": url.QueryEscape,
 		"separator":  separator,
 		"humanbytes": humanbytes,
 		"nickname":   func() string { return w.Nickname },
 		"channel":    func() string { return w.Channel },
+		"token":      func() string { return w.Token },
 		"timestamp":  func(t time.Time) string { return t.Format(time.RFC3339) },
 		"name":       func() string { return w.Name },
 	})
@@ -236,6 +253,8 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		return template.Parse(WebhookTemplateTelegram) //nolint:wrapcheck
 	case strings.Contains(url, "hooks.slack.com"):
 		return template.Parse(WebhookTemplateSlack) //nolint:wrapcheck
+	case strings.Contains(url, "pushover.net"):
+		return template.Parse(WebhookTemplatePushover) //nolint:wrapcheck
 	}
 }
 

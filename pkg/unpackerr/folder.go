@@ -435,6 +435,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 
 		if sendHook {
 			u.sendWebhooks(u.Map[data.Name])
+			u.runCmdHooks(u.Map[data.Name])
 		}
 
 		return
@@ -449,6 +450,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 
 	if sendHook {
 		u.sendWebhooks(u.Map[data.Name])
+		u.runCmdHooks(u.Map[data.Name])
 	}
 }
 

@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1
-	github.com/gen2brain/dlgs v0.0.0-20210609125024-bf6c92aaa984
+	github.com/gen2brain/dlgs v0.0.0-20210911090025-cbd38e821b98
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
 	github.com/getlantern/errors v1.0.1 // indirect
 	github.com/getlantern/golog v0.0.0-20210606115803-bce9f9fe5a5f // indirect
@@ -28,9 +28,9 @@ require (
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	golang.org/x/mod v0.5.0
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
-	golift.io/cnfg v0.0.8
+	golift.io/cnfg v0.1.0
 	golift.io/rotatorr v0.0.0-20210307012029-65b11a8ea8f9
-	golift.io/starr v0.10.8
+	golift.io/starr v0.10.10
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.0.10
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect

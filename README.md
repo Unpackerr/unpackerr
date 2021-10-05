@@ -136,6 +136,57 @@ folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives aft
 folder.delete_files|`UN_FOLDER_0_DELETE_FILES`|`false` Delete extracted files after successful extraction|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder|
 
+##### Command Hooks
+
+Unpackerr can execute commands (or scripts) before and after an archive extraction.
+The only thing required is a command. Name is optional, and used in logs only.
+Setting `shell` to `true` executes your command after `/bin/sh -c`.
+All extraction data is passed to the command using environment variables, see example below.
+Try `/usr/bin/env` as an example command to see what variables are available.
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
+webhook.url|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
+webhook.name|`UN_CMDHOOK_0_NAME`|Defaults to first word in command; provide an optional name for logs|
+webhook.timeout|`UN_CMDHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
+webhook.silent|`UN_CMDHOOK_0_SILENT`|`false` / Hide command output from logs|
+webhook.shell|`UN_CMDHOOK_0_SHELL`|`false` / Run command inside a shell|
+webhook.exclude|`UN_CMDHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
+webhook.events|`UN_CMDHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown under Webhooks)|
+
+Example Input Data:
+
+```
+UN_DATA_OUTPUT=folder/subfolder_unpackerred
+UN_PATH=folder/subfolder
+UN_DATA_START=2021-10-04T23:04:27.849216-07:00
+UN_REVISION=
+UN_EVENT=extracted
+UN_GO=go1.17
+UN_DATA_ARCHIVES_2=folder/subfolder/files.zip
+UN_DATA_ARCHIVES_1=folder/subfolder_unpackerred/Funjetting.r00
+UN_DATA_ARCHIVES_0=folder/subfolder_unpackerred/Funjetting.rar
+UN_DATA_FILES_1=folder/subfolder/Funjetting.r00
+UN_DATA_BYTES=2407624
+PWD=/Users/david/go/src/github.com/davidnewhall/unpackerr
+UN_DATA_FILES_0=folder/subfolder/Funjetting.mp3
+UN_OS=darwin
+UN_DATA_FILES_3=folder/subfolder/_unpackerred.subfolder.txt
+UN_DATA_FILES_2=folder/subfolder/Funjetting.rar
+UN_BRANCH=
+UN_TIME=2021-10-04T23:04:27.869613-07:00
+UN_VERSION=
+UN_DATA_QUEUE=0
+SHLVL=1
+UN_APP=Folder
+UN_STARTED=2021-10-04T23:03:22.849253-07:00
+UN_ARCH=amd64
+UN_DATA_ELAPSED=20.365752ms
+UN_DATA_ERROR=
+```
+
+Extracted files variables names begin with `UN_DATA_FILES_`.
+
 ##### Webhooks
 
 This application can send a POST webhook to a URL when an extraction begins, and again

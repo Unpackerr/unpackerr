@@ -47,6 +47,7 @@ type Unpackerr struct {
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
 	hookChan chan *hookQueueItem
+	delChan  chan []string
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -80,6 +81,7 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
+		delChan:  make(chan []string, updateChanBuf),
 		sigChan:  make(chan os.Signal),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
@@ -144,10 +146,19 @@ func Start() (err error) {
 		go u.watchCmdAndWebhooks()
 	}
 
+	go u.watchDeleteChannel()
 	go u.Run()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 
 	return nil
+}
+
+func (u *Unpackerr) watchDeleteChannel() {
+	for f := range u.delChan {
+		if len(f) > 0 && f[0] != "" {
+			u.DeleteFiles(f...)
+		}
+	}
 }
 
 func (u *Unpackerr) watchCmdAndWebhooks() {

@@ -84,11 +84,7 @@ func (u *Unpackerr) retrieveAppQueues() {
 		u.getSonarrQueue,
 	} {
 		wg.Add(1)
-
-		go func(f func()) {
-			f()
-			wg.Done()
-		}(f)
+		go func(f func()) { f(); wg.Done() }(f) //nolint:wsl
 	}
 
 	wg.Wait()

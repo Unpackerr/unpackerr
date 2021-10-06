@@ -392,18 +392,18 @@ func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
 
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.cnfg.DeleteFiles && !folder.cnfg.MoveBack {
-		go u.DeleteFiles(strings.TrimRight(name, `/\`) + suffix)
+		u.delChan <- []string{strings.TrimRight(name, `/\`) + suffix}
 		webhook = true
 	} else if folder.cnfg.DeleteFiles && len(folder.list) > 0 {
-		go u.DeleteFiles(folder.list...)
+		u.delChan <- folder.list
 		webhook = true
 	}
 
 	if folder.cnfg.DeleteOrig && !folder.cnfg.MoveBack {
-		go u.DeleteFiles(name)
+		u.delChan <- []string{name}
 		webhook = true
 	} else if folder.cnfg.DeleteOrig && len(folder.rars) > 0 {
-		go u.DeleteFiles(folder.rars...)
+		u.delChan <- folder.rars
 		webhook = true
 	}
 

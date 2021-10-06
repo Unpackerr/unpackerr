@@ -29,6 +29,7 @@ type WebhookConfig struct {
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
 	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname" yaml:"nickname"`
+	Token      string          `json:"token" toml:"token" xml:"token" yaml:"token"`
 	Channel    string          `json:"channel" toml:"channel" xml:"channel" yaml:"channel"`
 	client     *http.Client
 	fails      uint
@@ -154,7 +155,7 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 	return reply, nil
 }
 
-func (u *Unpackerr) validateWebhook() error {
+func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 	for i := range u.Webhook {
 		if u.Webhook[i].URL == "" {
 			return ErrWebhookNoURL
@@ -164,14 +165,16 @@ func (u *Unpackerr) validateWebhook() error {
 			u.Webhook[i].Name = u.Webhook[i].URL
 		}
 
-		if u.Webhook[i].Nickname == "" {
+		if u.Webhook[i].Nickname == "" && u.Webhook[i].TmplPath == "" &&
+			!strings.Contains(u.Webhook[i].URL, "pushover.net") {
 			u.Webhook[i].Nickname = "Unpackerr"
-		} else if len(u.Webhook[i].Nickname) > 20 { //nolint:gomnd // be reasonable
-			u.Webhook[i].Nickname = u.Webhook[i].Nickname[:20]
 		}
 
 		if u.Webhook[i].CType == "" {
 			u.Webhook[i].CType = "application/json"
+			if strings.Contains(u.Webhook[i].URL, "pushover.net") {
+				u.Webhook[i].CType = "application/x-www-form-urlencoded"
+			}
 		}
 
 		if u.Webhook[i].Timeout.Duration == 0 {

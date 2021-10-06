@@ -36,13 +36,20 @@ type WebhookConfig struct {
 	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
+type hookQueueItem struct {
+	*CmdhookConfig
+	*WebhookConfig
+	*WebhookPayload
+}
+
 // Errors produced by this file.
 var (
 	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 	ErrWebhookNoURL  = fmt.Errorf("webhook without a URL configured; fix it")
 )
 
-func (u *Unpackerr) sendWebhooks(i *Extract) {
+// runAllHooks sends webhooks and executes command hooks.
+func (u *Unpackerr) runAllHooks(i *Extract) {
 	if i.Status == IMPORTED && i.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
@@ -81,11 +88,15 @@ func (u *Unpackerr) sendWebhooks(i *Extract) {
 	}
 
 	for _, hook := range u.Webhook {
-		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
-			continue
+		if hook.HasEvent(i.Status) && !hook.Excluded(i.App) {
+			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
 		}
+	}
 
-		go u.sendWebhookWithLog(hook, payload)
+	for _, hook := range u.Cmdhook {
+		if hook.HasEvent(i.Status) && !hook.Excluded(i.App) {
+			u.hookChan <- &hookQueueItem{CmdhookConfig: hook, WebhookPayload: payload}
+		}
 	}
 }
 

@@ -434,8 +434,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 		}
 
 		if sendHook {
-			u.sendWebhooks(u.Map[data.Name])
-			u.runCmdHooks(u.Map[data.Name])
+			u.runAllHooks(u.Map[data.Name])
 		}
 
 		return
@@ -449,8 +448,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 	u.Map[data.Name].Updated = time.Now()
 
 	if sendHook {
-		u.sendWebhooks(u.Map[data.Name])
-		u.runCmdHooks(u.Map[data.Name])
+		u.runAllHooks(u.Map[data.Name])
 	}
 }
 

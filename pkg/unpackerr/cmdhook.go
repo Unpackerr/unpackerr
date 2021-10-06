@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 
 	"golift.io/cnfg"
-	"golift.io/version"
 )
 
 // CmdhookConfig is the configuration for a command hook.
@@ -55,72 +53,29 @@ func (u *Unpackerr) validateCmdhook() error {
 	return nil
 }
 
-func (u *Unpackerr) runCmdHooks(i *Extract) {
-	if i.Status == IMPORTED && i.App == FolderString {
-		return // This is an internal state change we don't need to fire on.
-	}
+func (u *Unpackerr) runCmdhookWithLog(hook *CmdhookConfig, payload *WebhookPayload) {
+	out, err := u.runCmdhook(hook, payload)
 
-	payload := &WebhookPayload{
-		Path:  i.Path,
-		App:   i.App,
-		IDs:   i.IDs,
-		Time:  i.Updated,
-		Event: i.Status,
-		// Application Metadata.
-		Go:       runtime.Version(),
-		OS:       runtime.GOOS,
-		Arch:     runtime.GOARCH,
-		Version:  version.Version,
-		Revision: version.Revision,
-		Branch:   version.Branch,
-		Started:  version.Started,
-	}
-
-	if i.Status <= EXTRACTED && i.Resp != nil {
-		payload.Data = &XtractPayload{
-			Archives: append(i.Resp.Extras, i.Resp.Archives...),
-			Files:    i.Resp.NewFiles,
-			Start:    i.Resp.Started,
-			Output:   i.Resp.Output,
-			Bytes:    i.Resp.Size,
-			Queue:    i.Resp.Queued,
-			Elapsed:  cnfg.Duration{Duration: i.Resp.Elapsed},
-		}
-
-		if i.Resp.Error != nil {
-			payload.Data.Error = i.Resp.Error.Error()
-		}
-	}
-
-	go u.runCmdhooksWithLog(i, payload)
-}
-
-func (u *Unpackerr) runCmdhooksWithLog(i *Extract, payload *WebhookPayload) {
-	for _, hook := range u.Cmdhook {
-		if !hook.HasEvent(i.Status) || hook.Excluded(i.App) {
-			continue
-		}
-
-		switch out, err := u.runCmdhook(hook, payload); {
-		case err != nil:
-			u.Printf("[ERROR] Command Hook %s: %v", hook.Name, err)
-		case hook.Silent || out == nil:
-			u.Printf("[Cmdhook] Ran command %s", hook.Name)
-		default:
-			u.Printf("[Cmdhook] Ran command %s: %s", hook.Name, strings.TrimSpace(out.String()))
-		}
-	}
-}
-
-func (u *Unpackerr) runCmdhook(hook *CmdhookConfig, payload *WebhookPayload) (*bytes.Buffer, error) {
-	hook.Lock()
+	hook.Lock() // we only lock for the integer increments.
 	defer hook.Unlock()
 
 	hook.execs++
 
+	switch {
+	case err != nil:
+		u.Printf("[ERROR] Command Hook %s: %v", hook.Name, err)
+		hook.fails++
+	case hook.Silent || out == nil:
+		u.Printf("[Cmdhook] Queue: %d/%d. Ran command %s", len(u.hookChan), cap(u.hookChan), hook.Name)
+	default:
+		u.Printf("[Cmdhook] Queue: %d/%d. Ran command %s: %s",
+			len(u.hookChan), cap(u.hookChan), hook.Name, strings.TrimSpace(out.String()))
+	}
+}
+
+func (u *Unpackerr) runCmdhook(hook *CmdhookConfig, payload *WebhookPayload) (*bytes.Buffer, error) {
 	env, err := cnfg.MarshalENV(payload, "UN")
 	if err != nil {
-		hook.fails++
 		return nil, fmt.Errorf("creating environment: %w", err)
 	}
 
@@ -150,7 +105,6 @@ func (u *Unpackerr) runCmdhook(hook *CmdhookConfig, payload *WebhookPayload) (*b
 	cmd.Env = append(cmd.Env, os.Getenv("PATH"))
 
 	if err := cmd.Run(); err != nil {
-		hook.fails++
 		return &out, fmt.Errorf("running cmd: %w", err)
 	}
 

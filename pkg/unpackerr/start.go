@@ -43,9 +43,10 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	folders *Folders
-	sigChan chan os.Signal
-	updates chan *xtractr.Response
+	folders  *Folders
+	sigChan  chan os.Signal
+	updates  chan *xtractr.Response
+	hookChan chan *hookQueueItem
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -77,11 +78,12 @@ type History struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:   &Flags{EnvPrefix: "UN"},
-		sigChan: make(chan os.Signal),
-		History: &History{Map: make(map[string]*Extract)},
-		updates: make(chan *xtractr.Response, updateChanBuf),
-		menu:    make(map[string]ui.MenuItem),
+		Flags:    &Flags{EnvPrefix: "UN"},
+		hookChan: make(chan *hookQueueItem, updateChanBuf),
+		sigChan:  make(chan os.Signal),
+		History:  &History{Map: make(map[string]*Extract)},
+		updates:  make(chan *xtractr.Response, updateChanBuf),
+		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory: defaultHistory,
 			LogQueues:   cnfg.Duration{Duration: time.Minute},
@@ -138,10 +140,26 @@ func Start() (err error) {
 		DirMode:  os.FileMode(dm),
 	})
 
+	if len(u.Webhook) > 0 || len(u.Cmdhook) > 0 {
+		go u.watchCmdAndWebhooks()
+	}
+
 	go u.Run()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 
 	return nil
+}
+
+func (u *Unpackerr) watchCmdAndWebhooks() {
+	for qh := range u.hookChan {
+		if qh.WebhookConfig != nil {
+			u.sendWebhookWithLog(qh.WebhookConfig, qh.WebhookPayload)
+		}
+
+		if qh.CmdhookConfig != nil {
+			u.runCmdhookWithLog(qh.CmdhookConfig, qh.WebhookPayload)
+		}
+	}
 }
 
 // ParseFlags turns CLI args into usable data.

@@ -142,8 +142,9 @@ func (u *Unpackerr) logCurrentQueue() {
 
 	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
-	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d|%d webhooks] [%d stacks]",
-		u.Retries, u.Finished, hookOK, hookFail, cmdOK, cmdFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
+	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d|%d cmdhooks] [%d|%d stacks]",
+		u.Retries, u.Finished, hookOK, hookFail, cmdOK, cmdFail,
+		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan))
 	u.updateTray(u.Retries, u.Finished, waiting, queued, extracting, failed, extracted, imported, deleted,
 		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)))
 }

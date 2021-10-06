@@ -60,6 +60,13 @@ func (u *Unpackerr) validateLidarr() error {
 			u.Lidarr[i].Protocols = defaultProtocol
 		}
 
+		if r, err := u.Lidarr[i].GetURL(); err != nil {
+			u.Printf("[ERROR] Checking Lidarr Path: %v", err)
+		} else if r = strings.TrimRight(r, "/"); r != u.Lidarr[i].URL {
+			u.Printf("[WARN] Lidarr URL fixed: %s -> %s (continuing)", u.Lidarr[i].URL, r)
+			u.Lidarr[i].URL = r
+		}
+
 		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
 		tmp = append(tmp, u.Lidarr[i])
 	}

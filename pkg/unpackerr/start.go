@@ -48,6 +48,7 @@ type Unpackerr struct {
 	updates  chan *xtractr.Response
 	hookChan chan *hookQueueItem
 	delChan  chan []string
+	workChan chan *workThread
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -83,6 +84,7 @@ func New() *Unpackerr {
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan []string, updateChanBuf),
 		sigChan:  make(chan os.Signal),
+		workChan: make(chan *workThread, 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
 		menu:     make(map[string]ui.MenuItem),
@@ -148,6 +150,7 @@ func Start() (err error) {
 
 	go u.watchDeleteChannel()
 	go u.Run()
+	u.watchWorkThread()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 
 	return nil
@@ -163,12 +166,12 @@ func (u *Unpackerr) watchDeleteChannel() {
 
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for qh := range u.hookChan {
-		if qh.WebhookConfig != nil {
+		if qh.WebhookConfig.URL != "" {
 			u.sendWebhookWithLog(qh.WebhookConfig, qh.WebhookPayload)
 		}
 
-		if qh.CmdhookConfig != nil {
-			u.runCmdhookWithLog(qh.CmdhookConfig, qh.WebhookPayload)
+		if qh.WebhookConfig.Command != "" {
+			u.runCmdhookWithLog(qh.WebhookConfig, qh.WebhookPayload)
 		}
 	}
 }

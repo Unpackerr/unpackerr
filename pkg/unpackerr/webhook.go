@@ -20,17 +20,19 @@ import (
 // WebhookConfig defines the data to send webhooks to a server.
 type WebhookConfig struct {
 	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
-	URL        string          `json:"url" toml:"url" xml:"url" yaml:"url"`
-	CType      string          `json:"content_type" toml:"content_type" xml:"content_type" yaml:"content_type"`
-	TmplPath   string          `json:"template_path" toml:"template_path" xml:"template_path" yaml:"template_path"`
+	URL        string          `json:"url" toml:"url" xml:"url,omitempty" yaml:"url"`
+	Command    string          `json:"command" toml:"command" xml:"command,omitempty" yaml:"command"`
+	CType      string          `json:"contentType" toml:"content_type" xml:"content_type,omitempty" yaml:"contentType"`
+	TmplPath   string          `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
 	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	IgnoreSSL  bool            `json:"ignore_ssl" toml:"ignore_ssl" xml:"ignore_ssl" yaml:"ignore_ssl"`
+	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
+	IgnoreSSL  bool            `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
 	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
 	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname" yaml:"nickname"`
-	Token      string          `json:"token" toml:"token" xml:"token" yaml:"token"`
-	Channel    string          `json:"channel" toml:"channel" xml:"channel" yaml:"channel"`
+	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname,omitempty" yaml:"nickname"`
+	Token      string          `json:"token" toml:"token" xml:"token,omitempty" yaml:"token"`
+	Channel    string          `json:"channel" toml:"channel" xml:"channel,omitempty" yaml:"channel"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -38,7 +40,6 @@ type WebhookConfig struct {
 }
 
 type hookQueueItem struct {
-	*CmdhookConfig
 	*WebhookConfig
 	*WebhookPayload
 }
@@ -96,7 +97,7 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 
 	for _, hook := range u.Cmdhook {
 		if hook.HasEvent(i.Status) && !hook.Excluded(i.App) {
-			u.hookChan <- &hookQueueItem{CmdhookConfig: hook, WebhookPayload: payload}
+			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
 		}
 	}
 }
@@ -168,6 +169,8 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 
 func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 	for i := range u.Webhook {
+		u.Webhook[i].Command = ""
+
 		if u.Webhook[i].URL == "" {
 			return ErrWebhookNoURL
 		}

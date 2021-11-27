@@ -7,24 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 
 	"golift.io/cnfg"
 )
-
-// CmdhookConfig is the configuration for a command hook.
-type CmdhookConfig struct {
-	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
-	Command    string          `json:"command" toml:"command" xml:"command" yaml:"command"`
-	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
-	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
-	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	fails      uint
-	execs      uint
-	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-}
 
 // Errors produced by this file.
 var (
@@ -33,6 +18,8 @@ var (
 
 func (u *Unpackerr) validateCmdhook() error {
 	for i := range u.Cmdhook {
+		u.Cmdhook[i].URL = ""
+
 		if u.Cmdhook[i].Command == "" {
 			return ErrCmdhookNoCmd
 		}
@@ -53,13 +40,13 @@ func (u *Unpackerr) validateCmdhook() error {
 	return nil
 }
 
-func (u *Unpackerr) runCmdhookWithLog(hook *CmdhookConfig, payload *WebhookPayload) {
+func (u *Unpackerr) runCmdhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
 	out, err := u.runCmdhook(hook, payload)
 
 	hook.Lock() // we only lock for the integer increments.
 	defer hook.Unlock()
 
-	hook.execs++
+	hook.posts++
 
 	switch {
 	case err != nil:
@@ -73,7 +60,9 @@ func (u *Unpackerr) runCmdhookWithLog(hook *CmdhookConfig, payload *WebhookPaylo
 	}
 }
 
-func (u *Unpackerr) runCmdhook(hook *CmdhookConfig, payload *WebhookPayload) (*bytes.Buffer, error) {
+func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*bytes.Buffer, error) {
+	payload.Config = hook
+
 	env, err := cnfg.MarshalENV(payload, "UN")
 	if err != nil {
 		return nil, fmt.Errorf("creating environment: %w", err)
@@ -136,35 +125,4 @@ func (u *Unpackerr) CmdhookCounts() (total uint, fails uint) {
 	}
 
 	return total, fails
-}
-
-// Excluded returns true if an app is in the Exclude slice.
-func (w *CmdhookConfig) Excluded(app string) bool {
-	for _, a := range w.Exclude {
-		if strings.EqualFold(a, app) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// HasEvent returns true if a status event is in the Events slice.
-// Also returns true if the Events slice has only one value of WAITING.
-func (w *CmdhookConfig) HasEvent(e ExtractStatus) bool {
-	for _, h := range w.Events {
-		if (h == WAITING && len(w.Events) == 1) || h == e {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Counts returns the total count of requests and failures for a webhook.
-func (w *CmdhookConfig) Counts() (uint, uint) {
-	w.Lock()
-	defer w.Unlock()
-
-	return w.execs, w.fails
 }

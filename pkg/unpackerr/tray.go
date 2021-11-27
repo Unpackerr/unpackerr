@@ -61,7 +61,6 @@ func (u *Unpackerr) makeChannels() {
 	conf := systray.AddMenuItem("Config", "show configuration")
 	u.menu["conf"] = ui.WrapMenu(conf)
 	u.menu["edit"] = ui.WrapMenu(conf.AddSubMenuItem("Edit", "open configuration file"))
-	// u.menu["load"] = ui.WrapMenu(conf.AddSubMenuItem("Reload", "reload configuration"))
 
 	link := systray.AddMenuItem("Links", "external resources")
 	u.menu["link"] = ui.WrapMenu(link)

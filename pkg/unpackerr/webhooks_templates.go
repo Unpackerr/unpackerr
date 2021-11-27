@@ -14,32 +14,33 @@ import (
 
 // WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
 type WebhookPayload struct {
-	Path  string                 `json:"path"`                // Path for the extracted item.
-	App   string                 `json:"app"`                 // Application Triggering Event
-	IDs   map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
-	Time  time.Time              `json:"time"`                // Time of this event.
-	Data  *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
+	Path   string                 `json:"path"`                // Path for the extracted item.
+	App    string                 `json:"app"`                 // Application Triggering Event
+	IDs    map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
+	Event  ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
+	Time   time.Time              `json:"time"`                // Time of this event.
+	Data   *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
+	Config *WebhookConfig         `json:"-"`                   // Payload from extraction process.
 	// Application Metadata.
-	Go       string    `json:"go_version"` // Version of go compiled with
-	OS       string    `json:"os"`         // Operating system: linux, windows, darwin
-	Arch     string    `json:"arch"`       // Architecture: amd64, armhf
-	Version  string    `json:"version"`    // Application Version
-	Revision string    `json:"revision"`   // Application Revision
-	Branch   string    `json:"branch"`     // Branch built from.
-	Started  time.Time `json:"started"`    // App start time.
+	Go       string    `json:"go"`       // Version of go compiled with
+	OS       string    `json:"os"`       // Operating system: linux, windows, darwin
+	Arch     string    `json:"arch"`     // Architecture: amd64, armhf
+	Version  string    `json:"version"`  // Application Version
+	Revision string    `json:"revision"` // Application Revision
+	Branch   string    `json:"branch"`   // Branch built from.
+	Started  time.Time `json:"started"`  // App start time.
 }
 
 // XtractPayload is a rewrite of xtractr.Response.
 type XtractPayload struct {
-	Error    string        `json:"error,omitempty"`      // error only during extractfailed
-	Archives []string      `json:"archives,omitempty"`   // list of all archive files extracted
-	Files    []string      `json:"files,omitempty"`      // list of all files extracted
-	Start    time.Time     `json:"start,omitempty"`      // start time of extraction
-	Output   string        `json:"tmp_folder,omitempty"` // temporary items folder
-	Bytes    int64         `json:"bytes,omitempty"`      // Bytes written
-	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`    // Duration as a string: 5m32s
-	Queue    int           `json:"queue,omitempty"`      // Extraction Queue Size
+	Error    string        `json:"error,omitempty"`    // error only during extractfailed
+	Archives []string      `json:"archives,omitempty"` // list of all archive files extracted
+	Files    []string      `json:"files,omitempty"`    // list of all files extracted
+	Start    time.Time     `json:"start,omitempty"`    // start time of extraction
+	Output   string        `json:"output,omitempty"`   // temporary items folder
+	Bytes    int64         `json:"bytes,omitempty"`    // Bytes written
+	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`  // Duration as a string: 5m32s
+	Queue    int           `json:"queue,omitempty"`    // Extraction Queue Size
 }
 
 // WebhookTemplateNotifiarr is the default template

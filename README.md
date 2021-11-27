@@ -141,8 +141,6 @@ folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into 
 Unpackerr can execute commands (or scripts) before and after an archive extraction.
 The only thing required is a command. Name is optional, and used in logs only.
 Setting `shell` to `true` executes your command after `/bin/sh -c`.
-All extraction data is passed to the command using environment variables, see example below.
-Try `/usr/bin/env` as an example command to see what variables are available.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
@@ -154,7 +152,9 @@ webhook.shell|`UN_CMDHOOK_0_SHELL`|`false` / Run command inside a shell|
 webhook.exclude|`UN_CMDHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
 webhook.events|`UN_CMDHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown under Webhooks)|
 
-Example Input Data:
+All extraction data is input to the command using environment variables, see example below.
+Extracted files variables names begin with `UN_DATA_FILES_`.
+Try `/usr/bin/env` as an example command to see what variables are available.
 
 ```
 UN_DATA_OUTPUT=folder/subfolder_unpackerred
@@ -185,8 +185,6 @@ UN_DATA_ELAPSED=20.365752ms
 UN_DATA_ERROR=
 ```
 
-Extracted files variables names begin with `UN_DATA_FILES_`.
-
 ##### Webhooks
 
 This application can send a POST webhook to a URL when an extraction begins, and again
@@ -199,8 +197,7 @@ Works great with [notifiarr.com](https://notifiarr.com). You can use
 webhook.url|`UN_WEBHOOK_0_URL`|No Default; URL to send POST webhook to|
 webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL; provide an optional name to hide the URL in logs|
 webhook.nickname|`UN_WEBHOOK_0_NICKNAME`|`Unpackerr` / Passed into templates for telegram, discord and slack hooks|
-webhook.channel|`UN_WEBHOOK_0_CHANNEL`|`""` / Passed into templates for slack.com/pushover webhooks|
-webhook.token|`UN_WEBHOOK_0_TOKEN`|`""` / Passed into templates for Pushover webhooks as `API_TOKEN`.|
+webhook.channel|`UN_WEBHOOK_0_CHANNEL`|`""` / Passed into templates for slack.com webhooks|
 webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
 webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs|
 webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates|
@@ -215,9 +212,9 @@ Event IDs (not all of these are used in webhooks): `0` = all,
 
 ###### Webhook Notes
 
-1. _`Nickname` should equal the `chat_id` value in Telegram webhooks. It may be used as a device ID in Pushover._
-1. _`Channel` is used as destination channel for Slack, and as `USER_TOKEN` in Pushover. It's not used in others._
-1. _`Nickname`, `Token` and `Channel` may be used as custom values in custom templates._
+1. _`Nickname` should equal the `chat_id` value in Telegram webhooks._
+1. _`Channel` is used as destination channel for Slack. It's not used in others._
+1. _`Nickname` and `Channel` may be used as custom values in custom templates._
 1. _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
 
 ##### Example Usage

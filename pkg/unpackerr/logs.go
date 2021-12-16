@@ -221,7 +221,7 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
 	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != windows {
 		u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
 	}
 

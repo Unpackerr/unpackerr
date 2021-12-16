@@ -35,6 +35,7 @@ const (
 	defaultLogFileMb   = 10
 	defaultLogFiles    = 10
 	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
+	windows            = "windows"
 )
 
 // Unpackerr stores all the running data.

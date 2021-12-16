@@ -85,7 +85,7 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 	}
 
 	if hook.Shell {
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == windows {
 			args = append([]string{"cmd", "/C"}, args...)
 		} else {
 			args = append([]string{"/bin/sh", "-c"}, args...)

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"golift.io/cnfg"
@@ -50,7 +52,7 @@ func (u *Unpackerr) runCmdhookWithLog(hook *WebhookConfig, payload *WebhookPaylo
 
 	switch {
 	case err != nil:
-		u.Printf("[ERROR] Command Hook %s: %v", hook.Name, err)
+		u.Printf("[ERROR] Command Hook (%s) %s: %v: %s", payload.Event, hook.Name, err, out.String())
 		hook.fails++
 	case hook.Silent || out == nil:
 		u.Printf("[Cmdhook] Queue: %d/%d. Ran command %s", len(u.hookChan), cap(u.hookChan), hook.Name)
@@ -73,17 +75,30 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 
 	var cmd *exec.Cmd
 
+	args := strings.Fields(hook.Command)
+	if len(args) == 0 {
+		return nil, ErrCmdhookNoCmd
+	}
+
+	if args[0], err = filepath.Abs(args[0]); err != nil {
+		return nil, fmt.Errorf("finding command hook command: %w", err)
+	}
+
 	if hook.Shell {
-		cmd = exec.CommandContext(ctx, "/bin/sh", "-c", hook.Command) //nolint:gosec
-	} else {
-		switch args := strings.Fields(hook.Command); len(args) {
-		case 0:
-			return nil, ErrCmdhookNoCmd
-		case 1:
-			cmd = exec.CommandContext(ctx, args[0]) //nolint:gosec
-		default:
-			cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
+		if runtime.GOOS == "windows" {
+			args = append([]string{"cmd", "/C"}, args...)
+		} else {
+			args = append([]string{"/bin/sh", "-c"}, args...)
 		}
+	}
+
+	switch len(args) {
+	case 0:
+		return nil, ErrCmdhookNoCmd
+	case 1:
+		cmd = exec.CommandContext(ctx, args[0]) //nolint:gosec
+	default:
+		cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
 	}
 
 	var out bytes.Buffer
@@ -91,10 +106,10 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	cmd.Env = env.Env()
-	cmd.Env = append(cmd.Env, os.Getenv("PATH"))
+	cmd.Env = append(cmd.Env, "PATH="+os.Getenv("PATH"))
 
 	if err := cmd.Run(); err != nil {
-		return &out, fmt.Errorf("running cmd: %w", err)
+		return &out, fmt.Errorf("running cmd %q: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	return &out, nil

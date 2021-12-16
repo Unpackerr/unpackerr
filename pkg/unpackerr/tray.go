@@ -144,7 +144,7 @@ func (u *Unpackerr) makeHistoryChannels() {
 		u.menu["hist_none"].SetTooltip("history is disabled in the config")
 	}
 
-	for i := 0; i <= int(u.KeepHistory); i++ {
+	for i := 0; i < int(u.KeepHistory); i++ {
 		u.menu["hist_"+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
 		u.menu["hist_"+strconv.Itoa(i)].Disable()
 		u.menu["hist_"+strconv.Itoa(i)].Hide()

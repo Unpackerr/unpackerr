@@ -23,6 +23,7 @@ const defaultPollInterval = time.Second
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
 	DeleteFiles bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
+	DisableLog  bool          `json:"disable_log" toml:"disable_log" xml:"disable_log" yaml:"disable_log"`
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	ExtractPath string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
@@ -59,22 +60,25 @@ type eventData struct {
 }
 
 func (u *Unpackerr) logFolders() {
-	if epath, c := "", len(u.Folders); c == 1 {
-		if u.Folders[0].ExtractPath != "" {
-			epath = ", extract to: " + u.Folders[0].ExtractPath
+	if epath, count := "", len(u.Folders); count == 1 {
+		folder := u.Folders[0]
+		if folder.ExtractPath != "" {
+			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
-			u.Folders[0].Path, epath, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
+		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
+			"log file: %v, move back:%v, event buffer:%d)",
+			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
+			!folder.DisableLog, folder.MoveBack, u.Buffer)
 	} else {
-		u.Print(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
+		u.Print(" => Folder Config:", count, "paths,", "event buffer:", u.Buffer)
 
-		for _, f := range u.Folders {
-			if epath = ""; f.ExtractPath != "" {
-				epath = ", extract to: " + f.ExtractPath
+		for _, folder := range u.Folders {
+			if epath = ""; folder.ExtractPath != "" {
+				epath = ", extract to: " + folder.ExtractPath
 			}
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, move back:%v)",
-				f.Path, epath, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
+			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v)",
+				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack)
 		}
 	}
 }
@@ -227,6 +231,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		DeleteOrig: false,
 		CBChannel:  u.folders.Updates,
 		CBFunction: nil,
+		LogFile:    !folder.cnfg.DisableLog,
 	})
 	if err != nil {
 		u.Print("[ERROR]", err)

@@ -248,7 +248,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		}
 
 		return template.Parse(string(s)) //nolint:wrapcheck
-	case strings.Contains(url, "discord.com"):
+	case strings.Contains(url, "discord.com"), strings.Contains(url, "discordapp.com"):
 		return template.Parse(WebhookTemplateDiscord) //nolint:wrapcheck
 	case strings.Contains(url, "api.telegram.org"):
 		return template.Parse(WebhookTemplateTelegram) //nolint:wrapcheck

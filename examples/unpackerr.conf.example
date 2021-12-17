@@ -176,5 +176,7 @@ dir_mode = "0755"
 #  delete_files = false
 ## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
 #  delete_original = false
+## Disable extraction log (unpackerred.txt) file creation? true/false, no quotes.
+#  disable_log = false
 ## Move extracted files into original folder? If false, files go into an _unpackerred folder.
 #  move_back = false

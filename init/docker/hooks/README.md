@@ -26,8 +26,8 @@ to make sure variables docker normally sets are there.
 Then run these commands to build and push a new release. Run them from the `init/docker` directory.
 
 ```
-SOURCE_BRANCH=v0.9.8 bash hooks/build
-SOURCE_BRANCH=v0.9.8 bash hooks/push
+SOURCE_BRANCH=v0.9.10 bash hooks/build
+SOURCE_BRANCH=v0.9.10 bash hooks/push
 ```
 
 You may omit `SOURCE_BRNCH` to pick up the current branch instead of a release.

@@ -39,6 +39,8 @@ echo "Version: $VERSION, Source: $SOURCE_BRANCH, Building tags: ${TAGS}"
 
 # Create multi-architecture manifests for each tag with all the built images.
 for tag in $TAGS; do
+  # Delete first, otherwise we can contaminate this build.
+  docker manifest rm ${DOCKER_REPO}:${tag}
   docker manifest create --amend ${DOCKER_REPO}:${tag} $IMAGES
   for build in $BUILDS; do
     # os:name:arch, ie linux:amd64:amd64

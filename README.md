@@ -141,7 +141,8 @@ folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into 
 
 Unpackerr can execute commands (or scripts) before and after an archive extraction.
 The only thing required is a command. Name is optional, and used in logs only.
-Setting `shell` to `true` executes your command after `/bin/sh -c`.
+Setting `shell` to `true` executes your command after `/bin/sh -c` or `cmd.exe /c`
+on Windows.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|

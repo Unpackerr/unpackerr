@@ -23,6 +23,7 @@ const defaultPollInterval = time.Second
 type FolderConfig struct {
 	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
 	DeleteFiles bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
+	DisableLog  bool          `json:"disable_log" toml:"disable_log" xml:"disable_log" yaml:"disable_log"`
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	ExtractPath string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
@@ -227,6 +228,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		DeleteOrig: false,
 		CBChannel:  u.folders.Updates,
 		CBFunction: nil,
+		LogFile:    !folder.cnfg.DisableLog,
 	})
 	if err != nil {
 		u.Print("[ERROR]", err)

@@ -65,7 +65,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 
 func configFileLocactions() (string, []string) {
 	switch runtime.GOOS {
-	case "windows":
+	case windows:
 		return `C:\ProgramData\unpackerr\unpackerr.conf`, []string{
 			`~\.unpackerr\unpackerr.conf`,
 			`C:\ProgramData\unpackerr\unpackerr.conf`,

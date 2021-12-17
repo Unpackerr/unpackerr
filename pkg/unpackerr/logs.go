@@ -118,6 +118,7 @@ func (u *Unpackerr) logCurrentQueue() {
 		imported         uint
 		deleted          uint
 		hookOK, hookFail = u.WebhookCounts()
+		cmdOK, cmdFail   = u.CmdhookCounts()
 	)
 
 	for name := range u.Map {
@@ -141,10 +142,12 @@ func (u *Unpackerr) logCurrentQueue() {
 
 	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
 		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
-	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks] [%d stacks]",
-		u.Retries, u.Finished, hookOK, hookFail, len(u.folders.Events)+len(u.updates)+len(u.folders.Updates))
+	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks]"+
+		" [%d|%d cmdhooks] [stacks; event:%d, hook:%d, del:%d]",
+		u.Retries, u.Finished, hookOK, hookFail, cmdOK, cmdFail,
+		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan))
 	u.updateTray(u.Retries, u.Finished, waiting, queued, extracting, failed, extracted, imported, deleted,
-		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)))
+		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 
 // setupLogging splits log write into a file and/or stdout.
@@ -218,7 +221,7 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
 	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != windows {
 		u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
 	}
 
@@ -232,4 +235,5 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	}
 
 	u.logWebhook()
+	u.logCmdhook()
 }

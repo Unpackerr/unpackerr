@@ -61,7 +61,6 @@ func (u *Unpackerr) makeChannels() {
 	conf := systray.AddMenuItem("Config", "show configuration")
 	u.menu["conf"] = ui.WrapMenu(conf)
 	u.menu["edit"] = ui.WrapMenu(conf.AddSubMenuItem("Edit", "open configuration file"))
-	// u.menu["load"] = ui.WrapMenu(conf.AddSubMenuItem("Reload", "reload configuration"))
 
 	link := systray.AddMenuItem("Links", "external resources")
 	u.menu["link"] = ui.WrapMenu(link)
@@ -145,7 +144,7 @@ func (u *Unpackerr) makeHistoryChannels() {
 		u.menu["hist_none"].SetTooltip("history is disabled in the config")
 	}
 
-	for i := 0; i <= int(u.KeepHistory); i++ {
+	for i := 0; i < int(u.KeepHistory); i++ {
 		u.menu["hist_"+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
 		u.menu["hist_"+strconv.Itoa(i)].Disable()
 		u.menu["hist_"+strconv.Itoa(i)].Hide()

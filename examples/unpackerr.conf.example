@@ -59,7 +59,7 @@ dir_mode = "0755"
 # Can possibly be used with other services by providing a custom template_path.
 ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
 #[[webhook]]
-#  url    = "https://notifiarr.com/notifier.php?integration=unpackerr&api=api_key_from_notifiarr_com"
+#  url    = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
 #  name   = ""    # Set this to hide the URL in logs.
 #  silent = false # do not log success (less log spam)
 #  events = [0]   # list of event ids to include, 0 == all.

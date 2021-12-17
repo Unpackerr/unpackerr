@@ -136,6 +136,55 @@ folder.delete_original|`UN_FOLDER_0_DELETE_ORIGINAL`|`false` Delete archives aft
 folder.delete_files|`UN_FOLDER_0_DELETE_FILES`|`false` Delete extracted files after successful extraction|
 folder.move_back|`UN_FOLDER_0_MOVE_BACK`|`false` Move extracted items back into original folder|
 
+##### Command Hooks
+
+Unpackerr can execute commands (or scripts) before and after an archive extraction.
+The only thing required is a command. Name is optional, and used in logs only.
+Setting `shell` to `true` executes your command after `/bin/sh -c`.
+
+|Config Name|Variable Name|Default / Note|
+|---|---|---|
+webhook.url|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
+webhook.name|`UN_CMDHOOK_0_NAME`|Defaults to first word in command; provide an optional name for logs|
+webhook.timeout|`UN_CMDHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
+webhook.silent|`UN_CMDHOOK_0_SILENT`|`false` / Hide command output from logs|
+webhook.shell|`UN_CMDHOOK_0_SHELL`|`false` / Run command inside a shell|
+webhook.exclude|`UN_CMDHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
+webhook.events|`UN_CMDHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown under Webhooks)|
+
+All extraction data is input to the command using environment variables, see example below.
+Extracted files variables names begin with `UN_DATA_FILES_`.
+Try `/usr/bin/env` as an example command to see what variables are available.
+
+```
+UN_DATA_OUTPUT=folder/subfolder_unpackerred
+UN_PATH=folder/subfolder
+UN_DATA_START=2021-10-04T23:04:27.849216-07:00
+UN_REVISION=
+UN_EVENT=extracted
+UN_GO=go1.17
+UN_DATA_ARCHIVES_2=folder/subfolder/files.zip
+UN_DATA_ARCHIVES_1=folder/subfolder_unpackerred/Funjetting.r00
+UN_DATA_ARCHIVES_0=folder/subfolder_unpackerred/Funjetting.rar
+UN_DATA_FILES_1=folder/subfolder/Funjetting.r00
+UN_DATA_BYTES=2407624
+PWD=/Users/david/go/src/github.com/davidnewhall/unpackerr
+UN_DATA_FILES_0=folder/subfolder/Funjetting.mp3
+UN_OS=darwin
+UN_DATA_FILES_3=folder/subfolder/_unpackerred.subfolder.txt
+UN_DATA_FILES_2=folder/subfolder/Funjetting.rar
+UN_BRANCH=
+UN_TIME=2021-10-04T23:04:27.869613-07:00
+UN_VERSION=
+UN_DATA_QUEUE=0
+SHLVL=1
+UN_APP=Folder
+UN_STARTED=2021-10-04T23:03:22.849253-07:00
+UN_ARCH=amd64
+UN_DATA_ELAPSED=20.365752ms
+UN_DATA_ERROR=
+```
+
 ##### Webhooks
 
 This application can send a POST webhook to a URL when an extraction begins, and again
@@ -148,8 +197,7 @@ Works great with [notifiarr.com](https://notifiarr.com). You can use
 webhook.url|`UN_WEBHOOK_0_URL`|No Default; URL to send POST webhook to|
 webhook.name|`UN_WEBHOOK_0_NAME`|Defaults to URL; provide an optional name to hide the URL in logs|
 webhook.nickname|`UN_WEBHOOK_0_NICKNAME`|`Unpackerr` / Passed into templates for telegram, discord and slack hooks|
-webhook.channel|`UN_WEBHOOK_0_CHANNEL`|`""` / Passed into templates for slack.com/pushover webhooks|
-webhook.token|`UN_WEBHOOK_0_TOKEN`|`""` / Passed into templates for Pushover webhooks as `API_TOKEN`.|
+webhook.channel|`UN_WEBHOOK_0_CHANNEL`|`""` / Passed into templates for slack.com webhooks|
 webhook.timeout|`UN_WEBHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
 webhook.silent|`UN_WEBHOOK_0_SILENT`|`false` / Hide successful POSTs from logs|
 webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certificates|
@@ -164,9 +212,9 @@ Event IDs (not all of these are used in webhooks): `0` = all,
 
 ###### Webhook Notes
 
-1. _`Nickname` should equal the `chat_id` value in Telegram webhooks. It may be used as a device ID in Pushover._
-1. _`Channel` is used as destination channel for Slack, and as `USER_TOKEN` in Pushover. It's not used in others._
-1. _`Nickname`, `Token` and `Channel` may be used as custom values in custom templates._
+1. _`Nickname` should equal the `chat_id` value in Telegram webhooks._
+1. _`Channel` is used as destination channel for Slack. It's not used in others._
+1. _`Nickname` and `Channel` may be used as custom values in custom templates._
 1. _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
 
 ##### Example Usage

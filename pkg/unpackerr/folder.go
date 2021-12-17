@@ -60,22 +60,25 @@ type eventData struct {
 }
 
 func (u *Unpackerr) logFolders() {
-	if epath, c := "", len(u.Folders); c == 1 {
-		if u.Folders[0].ExtractPath != "" {
-			epath = ", extract to: " + u.Folders[0].ExtractPath
+	if epath, count := "", len(u.Folders); count == 1 {
+		folder := u.Folders[0]
+		if folder.ExtractPath != "" {
+			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, move back:%v, event buffer:%d)",
-			u.Folders[0].Path, epath, u.Folders[0].DeleteAfter, u.Folders[0].DeleteOrig, u.Folders[0].MoveBack, u.Buffer)
+		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
+			"log file: %v, move back:%v, event buffer:%d)",
+			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
+			!folder.DisableLog, folder.MoveBack, u.Buffer)
 	} else {
-		u.Print(" => Folder Config:", c, "paths,", "event buffer:", u.Buffer)
+		u.Print(" => Folder Config:", count, "paths,", "event buffer:", u.Buffer)
 
-		for _, f := range u.Folders {
-			if epath = ""; f.ExtractPath != "" {
-				epath = ", extract to: " + f.ExtractPath
+		for _, folder := range u.Folders {
+			if epath = ""; folder.ExtractPath != "" {
+				epath = ", extract to: " + folder.ExtractPath
 			}
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, move back:%v)",
-				f.Path, epath, f.DeleteAfter, f.DeleteOrig, f.MoveBack)
+			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v)",
+				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack)
 		}
 	}
 }

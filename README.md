@@ -146,13 +146,13 @@ on Windows.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-webhook.url|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
-webhook.name|`UN_CMDHOOK_0_NAME`|Defaults to first word in command; provide an optional name for logs|
-webhook.timeout|`UN_CMDHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
-webhook.silent|`UN_CMDHOOK_0_SILENT`|`false` / Hide command output from logs|
-webhook.shell|`UN_CMDHOOK_0_SHELL`|`false` / Run command inside a shell|
-webhook.exclude|`UN_CMDHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
-webhook.events|`UN_CMDHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown under Webhooks)|
+cmdhook.url|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
+cmdhook.name|`UN_CMDHOOK_0_NAME`|Defaults to first word in command; provide an optional name for logs|
+cmdhook.timeout|`UN_CMDHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
+cmdhook.silent|`UN_CMDHOOK_0_SILENT`|`false` / Hide command output from logs|
+cmdhook.shell|`UN_CMDHOOK_0_SHELL`|`false` / Run command inside a shell|
+cmdhook.exclude|`UN_CMDHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
+cmdhook.events|`UN_CMDHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown under Webhooks)|
 
 All extraction data is input to the command using environment variables, see example below.
 Extracted files variables names begin with `UN_DATA_FILES_`.

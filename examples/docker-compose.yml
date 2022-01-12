@@ -4,18 +4,18 @@ version: "3.7"
 services:
 
   unpackerr:
-    image: "golift/unpackerr"
-    container_name: "unpackerr"
+    image: golift/unpackerr
+    container_name: unpackerr
     volumes:
       - /mnt/HostDownloads:/data/downloads
     restart: always
+    user: ${PUID}:${PGID}
+    # What you see below are defaults. You only need to include things you change.
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
       - TZ=${TZ}
       # General config
       - UN_DEBUG=false
-      - UN_LOG_FILE=None
+      - UN_LOG_FILE=
       - UN_LOG_FILES=10
       - UN_LOG_FILE_MB=10
       - UN_INTERVAL=2m
@@ -68,13 +68,13 @@ services:
       - UN_WEBHOOK_0_URL=
       - UN_WEBHOOK_0_NAME=
       - UN_WEBHOOK_0_NICKNAME=Unpackerr
-      - UN_WEBHOOK_0_CHANNEL=""
+      - UN_WEBHOOK_0_CHANNEL=
       - UN_WEBHOOK_0_TIMEOUT=
       - UN_WEBHOOK_0_SILENT=false
       - UN_WEBHOOK_0_IGNORE_SSL=false
       - UN_WEBHOOK_0_EXCLUDE=[]
       - UN_WEBHOOK_0_EVENTS=[0]
-      - UN_WEBHOOK_0_TEMPLATE_PATH=""
+      - UN_WEBHOOK_0_TEMPLATE_PATH=
       - UN_WEBHOOK_0_CONTENT_TYPE=application/json
     security_opt:
       - no-new-privileges:true

@@ -7,7 +7,9 @@ services:
     image: golift/unpackerr
     container_name: unpackerr
     volumes:
-      - /mnt/HostDownloads:/data/downloads
+      # You need at least this one volume mapped so Unapckerr can find your files to extract.
+      # Make sure this matches your Starr apps; the folder mount (/downloads or /data) should be identical.
+      - /mnt/HostDownloads:/downloads
     restart: always
     user: ${PUID}:${PGID}
     # What you see below are defaults. You only need to include things you change.

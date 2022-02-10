@@ -146,7 +146,7 @@ on Windows.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
-cmdhook.url|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
+cmdhook.command|`UN_CMDHOOK_0_COMMAND`|No Default; command to run|
 cmdhook.name|`UN_CMDHOOK_0_NAME`|Defaults to first word in command; provide an optional name for logs|
 cmdhook.timeout|`UN_CMDHOOK_0_TIMEOUT`|Defaults to global timeout, usually `10s`|
 cmdhook.silent|`UN_CMDHOOK_0_SILENT`|`false` / Hide command output from logs|

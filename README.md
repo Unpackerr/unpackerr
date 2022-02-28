@@ -259,7 +259,7 @@ After install, edit the config and start the service:
 
 ```
 sudo nano /etc/unpackerr/unpackerr.conf
-sudo service systemctl restart unpackerr
+sudo systemctl restart unpackerr
 ```
 
 ### FreeBSD Install

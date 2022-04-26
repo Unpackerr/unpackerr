@@ -23,7 +23,7 @@ LICENSE="MIT"
 FORMULA="service"
 
 # Used for source links and wiki links.
-SOURCE_URL="https://github.com/${GHUSER}/${REPO}/"
+SOURCE_URL="https://github.com/${REPO}/"
 
 # This parameter is passed in as -X to go build. Used to override the Version variable in a package.
 # Name the Version-containing library the same as the github repo, without dashes.
@@ -31,7 +31,7 @@ SOURCE_URL="https://github.com/${GHUSER}/${REPO}/"
 VERSION_PATH="golift.io/version"
 
 # Used by homebrew downloads, references VERSION which comes from buildinfo.sh.
-SOURCE_PATH=https://golift.io/${REPO}/archive/v${VERSION}.tar.gz
+SOURCE_PATH=https://golift.io/${BINARY}/archive/v${VERSION}.tar.gz
 
 export BINARY HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
 export LICENSE FORMULA SOURCE_URL VERSION_PATH SOURCE_PATH

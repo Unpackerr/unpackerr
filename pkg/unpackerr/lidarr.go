@@ -104,7 +104,7 @@ func (u *Unpackerr) getLidarrQueue() {
 			continue
 		}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize)
+		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
 			u.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
 

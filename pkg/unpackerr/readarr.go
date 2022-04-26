@@ -104,7 +104,7 @@ func (u *Unpackerr) getReadarrQueue() {
 			continue
 		}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize)
+		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
 			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
 

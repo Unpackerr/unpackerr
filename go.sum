@@ -105,6 +105,8 @@ golift.io/xtractr v0.0.11-0.20211217004218-e5619c723c27 h1:jzpzw9f48RUArcIuAHW2m
 golift.io/xtractr v0.0.11-0.20211217004218-e5619c723c27/go.mod h1:fhpokqVyrJEJzgTo1WHs3WrUv4xlhWvfHVhOb0nyVSI=
 golift.io/xtractr v0.0.11 h1:6SVjqX7aCT7Zl4y1rVunBnzwAqK56m90IMywbgeh3r8=
 golift.io/xtractr v0.0.11/go.mod h1:fhpokqVyrJEJzgTo1WHs3WrUv4xlhWvfHVhOb0nyVSI=
+golift.io/xtractr v0.0.12-0.20220426020015-d1595cd6de57 h1:Rh+IEeZDC8L0oNKedYHHxAXEaVKPZMehP03ipaI+y0o=
+golift.io/xtractr v0.0.12-0.20220426020015-d1595cd6de57/go.mod h1:2hakiivW5N8uJumEc2ydEpYZyiddcm09pXOkzOLvlz4=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

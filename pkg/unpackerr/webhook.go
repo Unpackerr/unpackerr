@@ -75,13 +75,16 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 
 	if i.Status <= EXTRACTED && i.Resp != nil {
 		payload.Data = &XtractPayload{
-			Archives: append(i.Resp.Extras, i.Resp.Archives...),
-			Files:    i.Resp.NewFiles,
-			Start:    i.Resp.Started,
-			Output:   i.Resp.Output,
-			Bytes:    i.Resp.Size,
-			Queue:    i.Resp.Queued,
-			Elapsed:  cnfg.Duration{Duration: i.Resp.Elapsed},
+			Files:   i.Resp.NewFiles,
+			Start:   i.Resp.Started,
+			Output:  i.Resp.Output,
+			Bytes:   i.Resp.Size,
+			Queue:   i.Resp.Queued,
+			Elapsed: cnfg.Duration{Duration: i.Resp.Elapsed},
+		}
+
+		for _, v := range i.Resp.Archives {
+			payload.Data.Archives = append(payload.Data.Archives, v...)
 		}
 
 		if i.Resp.Error != nil {

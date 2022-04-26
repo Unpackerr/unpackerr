@@ -183,8 +183,20 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_stacks"].Disable()
 }
 
-func (u *Unpackerr) updateTray(retries, finished, waiting, queued, extracting, failed, extracted,
-	imported, deleted, hookOK, hookFail, stacks uint) {
+func (u *Unpackerr) updateTray(
+	retries,
+	finished,
+	waiting,
+	queued,
+	extracting,
+	failed,
+	extracted,
+	imported,
+	deleted,
+	hookOK,
+	hookFail,
+	stacks uint,
+) {
 	if !ui.HasGUI() {
 		return
 	}

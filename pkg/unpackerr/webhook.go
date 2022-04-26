@@ -84,7 +84,7 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 		}
 
 		for _, v := range i.Resp.Archives {
-			payload.Data.Archives = append(payload.Data.Archives, v...)
+			payload.Data.Archives = append(i.Resp.Extras, v...)
 		}
 
 		if i.Resp.Error != nil {

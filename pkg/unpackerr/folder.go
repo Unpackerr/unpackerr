@@ -224,6 +224,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
+		Password:   u.getPasswordFromPath(name),
 		Name:       name,
 		SearchPath: name,
 		TempFolder: !folder.cnfg.MoveBack,

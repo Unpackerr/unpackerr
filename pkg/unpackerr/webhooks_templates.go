@@ -75,18 +75,30 @@ const WebhookTemplateNotifiarr = `{
 const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
-  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc}}</b>
-    \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
+  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc}}</b>\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
-  {{ if .Data -}}\n
-    {{ if .Data.Elapsed.Duration}}\n <b>Elapsed</b>: {{.Data.Elapsed}}{{end -}}
+  {{- if .Data }}\n
+    {{- if .Data.Elapsed.Duration}}\n <b>Elapsed</b>: {{.Data.Elapsed}}{{end -}}
     {{ if .Data.Archives}}\n <b>Archives</b>: {{len .Data.Archives}}{{end -}}
     {{ if .Data.Files}}\n <b>Files</b>: {{len .Data.Files}}{{end -}}
     {{ if .Data.Bytes}}\n <b>Size</b>: {{humanbytes .Data.Bytes}}{{end -}}
     {{ if and (gt .Event 1) (lt .Event 5)}}\n <b>Queue</b>: {{.Data.Queue}}{{end -}}
     {{ if .Data.Error}}\n\n <b>ERROR</b>: <pre>{{rawencode .Data.Error}}</pre>\n{{end -}}
   {{end -}}"}
+`
+const WebhookTemplateGotify = `title={{nickname}}: {{formencode .Event.Desc}}&message=App: {{.App}}
+Name: {{formencode (index .IDs "title")}}
+Path: {{formencode .Path}}
+{{ if .Data -}}
+{{ if .Data.Elapsed.Duration }}Time: {{.Data.Elapsed}}
+{{end}}{{ if .Data.Archives }}RARs: {{len .Data.Archives}}
+{{end}}{{ if .Data.Files }}Files: {{len .Data.Files}}
+{{end}}{{ if .Data.Bytes }}Bytes: {{humanbytes .Data.Bytes}}
+{{end}}{{ if and (gt .Event 1) (lt .Event 5) }}Queue: {{.Data.Queue}}
+{{end}}{{ if .Data.Error}}
+ERROR: {{formencode .Data.Error}}
+{{end}}{{end}}
 `
 
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
@@ -221,6 +233,7 @@ const WebhookTemplateSlack = `
 `
 
 // Template returns a template specific to this webhook.
+//nolint:wrapcheck
 func (w *WebhookConfig) Template() (*template.Template, error) {
 	//nolint:errchkjson
 	template := template.New("webhook").Funcs(template.FuncMap{
@@ -236,27 +249,44 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		"name":       func() string { return w.Name },
 	})
 
+	switch strings.ToLower(w.TempName) {
+	case "notifiarr", "discordnotifier":
+		return template.Parse(WebhookTemplateNotifiarr)
+	case "discord":
+		return template.Parse(WebhookTemplateDiscord)
+	case "telegram":
+		return template.Parse(WebhookTemplateTelegram)
+	case "slack":
+		return template.Parse(WebhookTemplateSlack)
+	case "pushover":
+		return template.Parse(WebhookTemplatePushover)
+	case "gotify":
+		return template.Parse(WebhookTemplateGotify)
+	}
+
 	// Figure out which template to use based on URL or template_path.
 	switch url := strings.ToLower(w.URL); {
 	default:
 		fallthrough
 	case strings.Contains(url, "discordnotifier.com") || strings.Contains(url, "notifiarr.com"):
-		return template.Parse(WebhookTemplateNotifiarr) //nolint:wrapcheck
+		return template.Parse(WebhookTemplateNotifiarr)
 	case w.TmplPath != "":
 		s, err := ioutil.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}
 
-		return template.Parse(string(s)) //nolint:wrapcheck
+		return template.Parse(string(s))
 	case strings.Contains(url, "discord.com"), strings.Contains(url, "discordapp.com"):
-		return template.Parse(WebhookTemplateDiscord) //nolint:wrapcheck
+		return template.Parse(WebhookTemplateDiscord)
 	case strings.Contains(url, "api.telegram.org"):
-		return template.Parse(WebhookTemplateTelegram) //nolint:wrapcheck
+		return template.Parse(WebhookTemplateTelegram)
 	case strings.Contains(url, "hooks.slack.com"):
-		return template.Parse(WebhookTemplateSlack) //nolint:wrapcheck
+		return template.Parse(WebhookTemplateSlack)
 	case strings.Contains(url, "pushover.net"):
-		return template.Parse(WebhookTemplatePushover) //nolint:wrapcheck
+		return template.Parse(WebhookTemplatePushover)
+	case strings.Contains(url, "gotify"):
+		return template.Parse(WebhookTemplateGotify)
 	}
 }
 

@@ -206,6 +206,7 @@ webhook.ignore_ssl|`UN_WEBHOOK_0_IGNORE_SSL`|`false` / Ignore invalid SSL certif
 webhook.exclude|`UN_WEBHOOK_0_EXCLUDE`|`[]` / List of apps to exclude: radarr, sonarr, folders, etc|
 webhook.events|`UN_WEBHOOK_0_EVENTS`|`[0]` / List of event IDs to send (shown below)|
 webhook.template_path|`UN_WEBHOOK_0_TEMPLATE_PATH`|`""` / Instead of an internal template, provide your own|
+webhook.template|`UN_WEBHOOK_0_TEMPLATE`|`""` / Instead of auto template selecton, force one; options below|
 webhook.content_type|`UN_WEBHOOK_0_CONTENT_TYPE`|`application/json` / Content-Type header sent to webhook|
 
 Event IDs (not all of these are used in webhooks): `0` = all,
@@ -218,7 +219,7 @@ Event IDs (not all of these are used in webhooks): `0` = all,
 1. _`Channel` is used as destination channel for Slack. It's not used in others._
 1. _`Nickname` and `Channel` may be used as custom values in custom templates._
 1. _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
-
+1. Available Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`
 ##### Example Usage
 
 ```shell

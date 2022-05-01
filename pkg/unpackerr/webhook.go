@@ -24,6 +24,7 @@ type WebhookConfig struct {
 	Command    string          `json:"command" toml:"command" xml:"command,omitempty" yaml:"command"`
 	CType      string          `json:"contentType" toml:"content_type" xml:"content_type,omitempty" yaml:"contentType"`
 	TmplPath   string          `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
+	TempName   string          `json:"template" toml:"template" xml:"template,omitempty" yaml:"template"`
 	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
 	IgnoreSSL  bool            `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
@@ -193,7 +194,7 @@ func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 
 		if u.Webhook[i].CType == "" {
 			u.Webhook[i].CType = "application/json"
-			if strings.Contains(u.Webhook[i].URL, "pushover.net") {
+			if strings.Contains(u.Webhook[i].URL, "pushover.net") || strings.Contains(u.Webhook[i].URL, "gotify") {
 				u.Webhook[i].CType = "application/x-www-form-urlencoded"
 			}
 		}

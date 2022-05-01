@@ -75,7 +75,8 @@ const WebhookTemplateNotifiarr = `{
 const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
-  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc}}</b>\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
+  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc -}}
+    </b>\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
   {{- if .Data }}\n
@@ -85,8 +86,10 @@ const WebhookTemplateTelegram = `{
     {{ if .Data.Bytes}}\n <b>Size</b>: {{humanbytes .Data.Bytes}}{{end -}}
     {{ if and (gt .Event 1) (lt .Event 5)}}\n <b>Queue</b>: {{.Data.Queue}}{{end -}}
     {{ if .Data.Error}}\n\n <b>ERROR</b>: <pre>{{rawencode .Data.Error}}</pre>\n{{end -}}
-  {{end -}}"}
+  {{end -}}"
+}
 `
+
 const WebhookTemplateGotify = `title={{nickname}}: {{formencode .Event.Desc}}&message=App: {{.App}}
 Name: {{formencode (index .IDs "title")}}
 Path: {{formencode .Path}}

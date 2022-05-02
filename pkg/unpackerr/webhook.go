@@ -194,7 +194,7 @@ func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 
 		if u.Webhook[i].CType == "" {
 			u.Webhook[i].CType = "application/json"
-			if strings.Contains(u.Webhook[i].URL, "pushover.net") || strings.Contains(u.Webhook[i].URL, "gotify") {
+			if strings.Contains(u.Webhook[i].URL, "pushover.net") {
 				u.Webhook[i].CType = "application/x-www-form-urlencoded"
 			}
 		}

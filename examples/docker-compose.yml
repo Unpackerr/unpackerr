@@ -1,5 +1,7 @@
-###Unpackerr docker-compose.yml Example
-###See https://github.com/davidnewhall/unpackerr#readme for variable descriptions and options
+### Unpackerr docker-compose.yml Example
+### See this URL for variable descriptions and options:
+### https://github.com/davidnewhall/unpackerr#docker-env-variables
+##################################################################
 version: "3.7"
 services:
 
@@ -11,7 +13,9 @@ services:
       # Make sure this matches your Starr apps; the folder mount (/downloads or /data) should be identical.
       - /mnt/HostDownloads:/downloads
     restart: always
+    # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
+    #user: 1000:1000
     # What you see below are defaults. You only need to include things you change.
     environment:
       - TZ=${TZ}
@@ -71,12 +75,21 @@ services:
       - UN_WEBHOOK_0_NAME=
       - UN_WEBHOOK_0_NICKNAME=Unpackerr
       - UN_WEBHOOK_0_CHANNEL=
-      - UN_WEBHOOK_0_TIMEOUT=
+      - UN_WEBHOOK_0_TIMEOUT=10s
       - UN_WEBHOOK_0_SILENT=false
       - UN_WEBHOOK_0_IGNORE_SSL=false
-      - UN_WEBHOOK_0_EXCLUDE=[]
-      - UN_WEBHOOK_0_EVENTS=[0]
+      - UN_WEBHOOK_0_EXCLUDE_0=
+      - UN_WEBHOOK_0_EVENTS_0=0
       - UN_WEBHOOK_0_TEMPLATE_PATH=
       - UN_WEBHOOK_0_CONTENT_TYPE=application/json
+      # Command Hook Config
+      - UN_CMDHOOK_0_COMMAND=
+      - UN_CMDHOOK_0_NAME=
+      - UN_CMDHOOK_0_TIMEOUT=10s
+      - UN_CMDHOOK_0_SILENT=false
+      - UN_CMDHOOK_0_SHELL=false
+      - UN_WEBHOOK_0_EXCLUDE_0=
+      - UN_WEBHOOK_0_EVENTS_0=0
+
     security_opt:
       - no-new-privileges:true

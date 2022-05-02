@@ -90,18 +90,29 @@ const WebhookTemplateTelegram = `{
 }
 `
 
-const WebhookTemplateGotify = `title={{nickname}}: {{formencode .Event.Desc}}&message=App: {{.App}}
-Name: {{formencode (index .IDs "title")}}
-Path: {{formencode .Path}}
-{{ if .Data -}}
-{{ if .Data.Elapsed.Duration }}Time: {{.Data.Elapsed}}
-{{end}}{{ if .Data.Archives }}RARs: {{len .Data.Archives}}
-{{end}}{{ if .Data.Files }}Files: {{len .Data.Files}}
-{{end}}{{ if .Data.Bytes }}Bytes: {{humanbytes .Data.Bytes}}
-{{end}}{{ if and (gt .Event 1) (lt .Event 5) }}Queue: {{.Data.Queue}}
-{{end}}{{ if .Data.Error}}
-ERROR: {{formencode .Data.Error}}
-{{end}}{{end}}
+const WebhookTemplateGotify = `{
+  "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.Event.Desc}}",
+  "message": "*App*: {{.App -}}
+    \n*Name*: {{rawencode (index .IDs "title") -}}
+    \n*Path*: {{rawencode .Path -}}
+    {{ if .Data.Elapsed.Duration }}\n*Elapsed*: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives }}\n*RARs*: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files }}\n*Files*: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes }}\n*Bytes*: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5) }}\n*Queue*: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}\n\n*ERROR*:\n` + "```" + `\n{{rawencode .Data.Error}}\n` + "```" + `{{end}}",
+  "extras": {
+    "client::display": {
+      "contentType": "text/markdown"
+    },
+    "client::notification": {
+      "click": {
+          "url": ""
+      },
+      "bigImageUrl": ""
+    }
+  }
+}
 `
 
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
@@ -252,8 +263,10 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 		"name":       func() string { return w.Name },
 	})
 
+	// Providing a template name that exists overrides template_path.
+	// Do not add a 'default' case here.
 	switch strings.ToLower(w.TempName) {
-	case "notifiarr", "discordnotifier":
+	case "notifiarr", "default":
 		return template.Parse(WebhookTemplateNotifiarr)
 	case "discord":
 		return template.Parse(WebhookTemplateDiscord)
@@ -271,7 +284,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	switch url := strings.ToLower(w.URL); {
 	default:
 		fallthrough
-	case strings.Contains(url, "discordnotifier.com") || strings.Contains(url, "notifiarr.com"):
+	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
 		return template.Parse(WebhookTemplateNotifiarr)
 	case w.TmplPath != "":
 		s, err := ioutil.ReadFile(w.TmplPath)

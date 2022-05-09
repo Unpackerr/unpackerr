@@ -59,6 +59,7 @@ type Config struct {
 	RetryDelay  cnfg.Duration    `json:"retryDelay" toml:"retry_delay" xml:"retry_delay" yaml:"retryDelay"`
 	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
 	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
+	Passwords   []string         `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`

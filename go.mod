@@ -13,11 +13,11 @@ require (
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
 	golang.org/x/mod v0.5.1
 	golift.io/cnfg v0.2.0
-	golift.io/cnfgfile v0.0.0-20220228094812-5864a2124d02
+	golift.io/cnfgfile v0.0.0-20220509075834-08755d9ef3f5
 	golift.io/rotatorr v0.0.0-20220126065426-d6b5acaac41c
 	golift.io/starr v0.14.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.1.1
+	golift.io/xtractr v0.1.2-0.20220509075323-cbe896e0c4bf
 )
 
 require (

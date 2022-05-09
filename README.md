@@ -2,13 +2,23 @@
 
 ## About
 
-This application runs as a daemon on your download host. It checks for completed
-downloads and extracts them so [Lidarr](http://lidarr.audio), [Radarr](http://radarr.video), [Readarr](http://readarr.com),
+This application runs as a daemon on your download host. 
+It checks for completed downloads and extracts them so 
+[Lidarr](http://lidarr.audio), 
+[Radarr](http://radarr.video), 
+[Readarr](http://readarr.com), and
 [Sonarr](http://sonarr.tv) may import them.
 There are a handful of options out there for extracting and deleting files after
 your client downloads them. I just didn't care for any of them, so I wrote my own. I
 wanted a small single-binary with reasonable logging that can extract downloaded
 archives and clean up the mess after they've been imported.
+
+This application can also run standalone and extract files found in a "watch" folder.
+In other words, you can configure this application to watch your download folder, and
+it will happily extract everything you download. This has nothing to do with the four 
+Starr apps mentioned in the previous paragraph. This Folder-watch feature may be used
+with or without Starr apps.
+
 
 ## Installation
 
@@ -19,10 +29,11 @@ archives and clean up the mess after they've been imported.
 
 ### Docker
 
-This project builds automatically in [Docker Cloud](https://hub.docker.com/r/golift/unpackerr)
-and creates [ready-to-use multi-architecture images](https://hub.docker.com/r/golift/unpackerr/tags).
-The `latest` tag is always a tagged release in GitHub. The `master` tag corresponds
-to the `master` branch in GitHub and may be broken.
+This project used to build automatically in [Docker Cloud](https://hub.docker.com/r/golift/unpackerr)
+and create [ready-to-use multi-architecture images](https://hub.docker.com/r/golift/unpackerr/tags).
+Then Docker said I have to pay some ridiculous amount of money to do that, so now I just build
+the images locally and push them when there's a new version.
+The `latest` tag is always a tagged release in GitHub. Recommend using that.
 
 Use the methods below to install using Docker.
 
@@ -60,6 +71,7 @@ docker-compose up -d
 -   You may provide multiple sonarr, radarr or lidarr instances using
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
+##### Global Settings
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs|
@@ -73,6 +85,11 @@ max_retries|`UN_MAX_RETRIES`|`3` / Times to retry failed extractions. `0` = unli
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
 file_mode|`UN_FILE_MODE`|`0644` / Extracted files are written with this mode|
 dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode|
+passwords|`UN_PASSWORD_0`|No default; empty list. Provide a list of RAR passwords to try.
+
+_Note about about providing `passwords`. If a wrong password is provided, the entire archive must
+be read before we know it's a bad password. Providing many passwords here can drastically slow down
+extractions and cause extra disk IO. You may also specify a password file by prefixing it with `filepath:`_
 
 ##### Sonarr
 
@@ -219,7 +236,8 @@ Event IDs (not all of these are used in webhooks): `0` = all,
 1. _`Channel` is used as destination channel for Slack. It's not used in others._
 1. _`Nickname` and `Channel` may be used as custom values in custom templates._
 1. _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
-1. Available Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`
+1. Built-In Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`
+
 ##### Example Usage
 
 ```shell
@@ -344,6 +362,9 @@ Log files:
 If transfers are in a Warning or Error state they will not be extracted.
 If Unpackerr prints information about transfers you do not see in your Starr app.
 
+**Permissions** tend to mess things up too, so make sure the user unpackerr runs as can read 
+and write to your download location.
+
 Still having problems?
 [Let me know!](https://github.com/davidnewhall/unpackerr/issues/new)
 
@@ -353,6 +374,7 @@ Unpackerr will decompress archives of these types:
 
 -   `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`
 -   Multi-file archives are only supported with RAR format.
+-   Password protected archived are only supported with RAR format.
 -   Archives are detected by the file extension.
 
 ## Logic
@@ -370,8 +392,8 @@ Lidarr/Radarr/Readarr/Sonarr queue, the extracted files are deleted.
 
 ## Contributing
 
-Yes, please.
+Yes, please. Just make a pull request and lets chat about it in the PR or on Discord.
 
 ## License
 
-[MIT](LICENSE) - Copyright (c) 2018-2021 David Newhall II
+[MIT](LICENSE) - Copyright (c) 2018-2022 David Newhall II

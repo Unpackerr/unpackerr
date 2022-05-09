@@ -2,7 +2,7 @@
 jobs:
   include:
   - os: osx
-    osx_image: xcode12
+    osx_image: xcode13.2
     language: go
     go: 1.18.x
   - os: linux

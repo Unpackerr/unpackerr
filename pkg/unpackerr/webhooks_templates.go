@@ -92,15 +92,13 @@ const WebhookTemplateTelegram = `{
 
 const WebhookTemplateGotify = `{
   "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.Event.Desc}}",
-  "message": "*App*: {{.App -}}
-    \n*Name*: {{rawencode (index .IDs "title") -}}
-    \n*Path*: {{rawencode .Path -}}
-    {{ if .Data.Elapsed.Duration }}\n*Elapsed*: {{.Data.Elapsed}}{{end -}}
-    {{ if .Data.Archives }}\n*RARs*: {{len .Data.Archives}}{{end -}}
-    {{ if .Data.Files }}\n*Files*: {{len .Data.Files}}{{end -}}
-    {{ if .Data.Bytes }}\n*Bytes*: {{humanbytes .Data.Bytes}}{{end -}}
-    {{ if and (gt .Event 1) (lt .Event 5) }}\n*Queue*: {{.Data.Queue}}{{end -}}
-    {{ if .Data.Error}}\n\n*ERROR*:\n` + "```" + `\n{{rawencode .Data.Error}}\n` + "```" + `{{end}}",
+  "message": "**App**: {{.App}}  \n**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
+    {{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives }}  \n**RARs**: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files }}  \n**Files**: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes }}  \n**Bytes**: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5) }}  \n**Queue**: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}  \n**ERROR**: \n~~~\n{{rawencode .Data.Error}}\n~~~{{end}}",
   "extras": {
     "client::display": {
       "contentType": "text/markdown"

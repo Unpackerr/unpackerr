@@ -3,31 +3,29 @@
 # https://github.com/golift/application-builder
 #
 
-ARG ARCH=amd64
-ARG OS=linux
 ARG BUILD_DATE=0
 ARG COMMIT=0
 ARG VERSION=unknown
 ARG BINARY=application-builder
 
 FROM golang:latest as builder
-ARG ARCH
-ARG OS
+ARG TARGETOS
 ARG BINARY
+ARG TARGETARCH
 
 RUN mkdir -p $GOPATH/pkg/mod $GOPATH/bin $GOPATH/src /${BINARY}
 COPY . /${BINARY}
 WORKDIR /${BINARY}
 
 RUN apt update && \
-    apt install -y upx tzdata && \
-    CGO_ENABLED=0 make ${BINARY}.${ARCH}.${OS}
+    apt install -y tzdata && \
+    CGO_ENABLED=0 make ${BINARY}.${TARGETARCH}.${TARGETOS}
 
 FROM scratch
-ARG ARCH
-ARG OS
+ARG TARGETOS
 ARG BUILD_DATE
 ARG COMMIT
+ARG TARGETARCH
 ARG VERSION
 ARG LICENSE=MIT
 ARG BINARY
@@ -47,11 +45,11 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.source="${SOURCE_URL}" \
       org.opencontainers.image.vendor="${VENDOR}" \
       org.opencontainers.image.authors="${AUTHOR}" \
-      org.opencontainers.image.architecture="${OS} ${ARCH}" \
+      org.opencontainers.image.architecture="${TARGETOS} ${TARGETARCH}" \
       org.opencontainers.image.licenses="${LICENSE}" \
       org.opencontainers.image.version="${VERSION}"
 
-COPY --from=builder /${BINARY}/${BINARY}.${ARCH}.${OS} /image
+COPY --from=builder /${BINARY}/${BINARY}.${TARGETARCH}.${TARGETOS} /image
 # COPY --from=builder /${BINARY}/examples/${CONFIG_FILE}.example /etc/${BINARY}/${CONFIG_FILE}
 
 # Make sure we have an ssl cert chain and timezone data.

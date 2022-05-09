@@ -2,10 +2,12 @@ package unpackerr
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/davidnewhall/unpackerr/pkg/bindata"
 	"github.com/davidnewhall/unpackerr/pkg/ui"
@@ -56,6 +58,10 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 
 	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
+	}
+
+	if err := u.setPasswords(); err != nil {
+		return 0, 0, msg, err
 	}
 
 	fm, dm := u.validateConfig()
@@ -192,4 +198,36 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 	}
 
 	return file, nil
+}
+
+// This function checks if rar passwords need to be read from a file path.
+// Only runs once at startup to load passwords into memory.
+func (u *Unpackerr) setPasswords() error {
+	const filePrefix = "filepath:"
+
+	newPasswords := []string{}
+
+	for _, pass := range u.Passwords {
+		if !strings.HasPrefix(pass, filePrefix) {
+			newPasswords = append(newPasswords, pass)
+			continue
+		}
+
+		fileContent, err := ioutil.ReadFile(strings.TrimPrefix(pass, filePrefix))
+		if err != nil {
+			return fmt.Errorf("reading password file: %w", err)
+		}
+
+		filePasswords := strings.Split(string(fileContent), "\n")
+		if len(filePasswords) > 0 && filePasswords[len(filePasswords)-1] == "" {
+			// Remove the last "password" if it's blank (newline at end of file).
+			filePasswords = filePasswords[:len(filePasswords)-1]
+		}
+
+		newPasswords = append(newPasswords, filePasswords...)
+	}
+
+	u.Passwords = newPasswords
+
+	return nil
 }

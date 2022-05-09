@@ -71,6 +71,7 @@ docker-compose up -d
 -   You may provide multiple sonarr, radarr or lidarr instances using
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
+##### Global Settings
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs|
@@ -84,6 +85,11 @@ max_retries|`UN_MAX_RETRIES`|`3` / Times to retry failed extractions. `0` = unli
 parallel|`UN_PARALLEL`|`1` / Concurrent extractions, only recommend `1`|
 file_mode|`UN_FILE_MODE`|`0644` / Extracted files are written with this mode|
 dir_mode|`UN_DIR_MODE`|`0755` / Extracted folders are written with this mode|
+passwords|`UN_PASSWORD_0`|No default; empty list. Provide a list of RAR passwords to try.
+
+_Note about about providing `passwords`. If a wrong password is provided, the entire archive must
+be read before we know it's a bad password. Providing many passwords here can drastically slow down
+extractions and cause extra disk IO. You may also specify a password file by prefixing it with `filepath:`_
 
 ##### Sonarr
 

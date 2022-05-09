@@ -91,6 +91,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:   u.getPasswordFromPath(item.Path),
+		Passwords:  u.Passwords,
 		Name:       name,
 		SearchPath: item.Path,
 		TempFolder: false,

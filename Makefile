@@ -150,8 +150,8 @@ $(BINARY).amd64.linux: generate main.go
 	GOOS=linux GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
-linux386: $(BINARY).i386.linux
-$(BINARY).i386.linux: generate main.go
+linux386: $(BINARY).386.linux
+$(BINARY).386.linux: generate main.go
 	# Building linux 32-bit x86 binary.
 	GOOS=linux GOARCH=386 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
@@ -165,8 +165,8 @@ $(BINARY).arm64.linux: generate main.go
 	# https://github.com/upx/upx/issues/351#issuecomment-599116973
 	# [ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
-armhf: $(BINARY).armhf.linux
-$(BINARY).armhf.linux: generate main.go
+armhf: $(BINARY).arm.linux
+$(BINARY).arm.linux: generate main.go
 	# Building linux 32-bit ARM binary.
 	GOOS=linux GOARCH=arm GOARM=6 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
@@ -366,7 +366,7 @@ package_build_linux_386_deb: package_build_linux_deb linux386
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *386.so ] || cp *386.so $@/usr/lib/$(BINARY)/
-	cp $(BINARY).i386.linux $@/usr/bin/$(BINARY)
+	cp $(BINARY).386.linux $@/usr/bin/$(BINARY)
 
 package_build_linux_arm64_deb: package_build_linux_deb arm64
 	mkdir -p $@
@@ -378,12 +378,12 @@ package_build_linux_armhf_deb: package_build_linux_deb armhf
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *armhf.so ] || cp *armhf.so $@/usr/lib/$(BINARY)/
-	cp $(BINARY).armhf.linux $@/usr/bin/$(BINARY)
+	cp $(BINARY).arm.linux $@/usr/bin/$(BINARY)
 package_build_linux_386_rpm: package_build_linux_rpm linux386
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *386.so ] || cp *386.so $@/usr/lib/$(BINARY)/
-	cp $(BINARY).i386.linux $@/usr/bin/$(BINARY)
+	cp $(BINARY).386.linux $@/usr/bin/$(BINARY)
 
 package_build_linux_arm64_rpm: package_build_linux_rpm arm64
 	mkdir -p $@
@@ -395,7 +395,7 @@ package_build_linux_armhf_rpm: package_build_linux_rpm armhf
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *armhf.so ] || cp *armhf.so $@/usr/lib/$(BINARY)/
-	cp $(BINARY).armhf.linux $@/usr/bin/$(BINARY)
+	cp $(BINARY).arm.linux $@/usr/bin/$(BINARY)
 
 # Build an environment that can be packaged for freebsd.
 package_build_freebsd: readme man after-install-rendered.sh before-remove-rendered.sh freebsd

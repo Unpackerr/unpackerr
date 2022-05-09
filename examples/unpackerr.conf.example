@@ -8,7 +8,7 @@
 debug = false
 
 # Disable writing messages to stdout. This silences the app. You should set a log
-# file below if you set this to true.
+# file below if you set this to true. Recommended when starting with systemctl.
 quiet = false
 
 # Write messages to a log file. This is the same data that is normally output to stdout.
@@ -50,6 +50,90 @@ dir_mode = "0755"
 ## You MUST uncomment the [[header]] and api_key at a minimum for Starr apps. ##
 ################################################################################
 
+#[[sonarr]]
+#  url = "http://127.0.0.1:8989"
+#  api_key = "0123456789abcdef0123456789abcdef"
+## File system path where downloaded Sonarr items are located.
+#  paths = ["/downloads"]
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+#  delete_orig = false
+
+#[[radarr]]
+#  url = "http://127.0.0.1:7878"
+#  api_key = "0123456789abcdef0123456789abcdef"
+## File system path where downloaded Radarr items are located.
+#  paths = ["/downloads"]
+## Default protocols is torrents. Alternative: "torrent,usenet"
+#  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+#  delete_orig = false
+
+#[[lidarr]]
+#  url = "http://127.0.0.1:8686"
+#  api_key = "0123456789abcdef0123456789abcdef"
+## File system path where downloaded Lidarr items are located.
+#  paths = ["/downloads"]
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+#  delete_orig = false
+
+#[[readarr]]
+#  url = "http://127.0.0.1:8787"
+#  api_key = "0123456789abcdef0123456789abc"
+## File system path where downloaded Readarr items are located.
+#  paths = ["/downloads"]
+## Default protocols is torrent. Alternative: "torrent,usenet"
+#  protocols = "torrent"
+## How long to wait for a reply from the backend.
+#  timeout = "10s"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+#  delete_orig = false
+
+
+##################################################################################
+### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
+### Only using Starr apps? The things above. The below configs are OPTIONAL. ### #
+##################################################################################
+
+##-Folders-#######################################################################
+## This application can also watch folders for things to extract. If you copy a ##
+## subfolder into a watched folder (defined below) any extractable items in the ##
+## folder will be decompressed. This has nothing to do with Starr applications. ##
+##################################################################################
+#[[folder]]
+## Windows paths must use two backslashes: "C:\\Some\\Folder\\To\\Watch"
+#  path = "/some/folder/to/watch"
+## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
+#  extract_path = ""
+## Delete extracted or original files this long after extraction. Set to 0 to disable all deletes. Uses Go Duration.
+#  delete_after = "10m"
+## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
+#  delete_files = false
+## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
+#  delete_original = false
+## Disable extraction log (unpackerred.txt) file creation? true/false, no quotes.
+#  disable_log = false
+## Move extracted files into original folder? If false, files go into an _unpackerred folder.
+#  move_back = false
+
+
 ################
 ### Webhooks ###
 ################
@@ -73,6 +157,7 @@ dir_mode = "0755"
 #  timeout       = "10s" # You can adjust how long to wait for a server response.
 #  content_type  = "application/json" # If your custom template uses another MIME type, set this.
 
+
 #####################
 ### Command Hooks ###
 #####################
@@ -88,113 +173,3 @@ dir_mode = "0755"
 ## Optional Command Hook Configuration
 #  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 #  timeout       = "10s" # You can adjust how long to wait for a server response.
-
-
-################
-### Episodes ###
-################
-#[[sonarr]]
-#  url = "http://127.0.0.1:8989"
-#  api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Sonarr items are located.
-#  paths = ["/downloads"]
-## Default protocols is torrent. Alternative: "torrent,usenet"
-#  protocols = "torrent"
-## How long to wait for a reply from the backend.
-#  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
-## If you use this app with NZB you may wish to delete archives after extraction.
-## General recommendation is: do not enable this for torrent use.
-## Setting this to true deletes the entire original download folder after import.
-#  delete_orig = false
-
-################
-#### Movies ####
-################
-#[[radarr]]
-#  url = "http://127.0.0.1:7878"
-#  api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Radarr items are located.
-#  paths = ["/downloads"]
-## Default protocols is torrents. Alternative: "torrent,usenet"
-#  protocols = "torrent"
-## How long to wait for a reply from the backend.
-#  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
-## If you use this app with NZB you may wish to delete archives after extraction.
-## General recommendation is: do not enable this for torrent use.
-## Setting this to true deletes the entire original download folder after import.
-#  delete_orig = false
-
-################
-#### Albums ####
-################
-#[[lidarr]]
-#  url = "http://127.0.0.1:8686"
-#  api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Lidarr items are located.
-#  paths = ["/downloads"]
-## Default protocols is torrent. Alternative: "torrent,usenet"
-#  protocols = "torrent"
-## How long to wait for a reply from the backend.
-#  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
-## If you use this app with NZB you may wish to delete archives after extraction.
-## General recommendation is: do not enable this for torrent use.
-## Setting this to true deletes the entire original download folder after import.
-#  delete_orig = false
-
-################
-# Publications #
-################
-#[[readarr]]
-#  url = "http://127.0.0.1:8787"
-#  api_key = "0123456789abcdef0123456789abc"
-## File system path where downloaded Readarr items are located.
-#  paths = ["/downloads"]
-## Default protocols is torrent. Alternative: "torrent,usenet"
-#  protocols = "torrent"
-## How long to wait for a reply from the backend.
-#  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
-## If you use this app with NZB you may wish to delete archives after extraction.
-## General recommendation is: do not enable this for torrent use.
-## Setting this to true deletes the entire original download folder after import.
-#  delete_orig = false
-
-##-Folders-#######################################################################
-## This application can also watch folders for things to extract. If you copy a ##
-## subfolder into a watched folder (defined below) any extractable items in the ##
-## folder will be decompressed. This has nothing to do with Starr applications. ##
-##################################################################################
-#[[folder]]
-## Windows paths must use two backslashes: "C:\\Some\\Folder\\To\\Watch"
-#  path = "/some/folder/to/watch"
-## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
-#  extract_path = ""
-## Delete extracted or original files this long after extraction. Set to 0 to disable all deletes. Uses Go Duration.
-#  delete_after = "10m"
-## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
-#  delete_files = false
-## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
-#  delete_original = false
-## Disable extraction log (unpackerred.txt) file creation? true/false, no quotes.
-#  disable_log = false
-## Move extracted files into original folder? If false, files go into an _unpackerred folder.
-#  move_back = false

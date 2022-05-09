@@ -224,6 +224,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
+		Password:   u.getPasswordFromPath(name),
 		Name:       name,
 		SearchPath: name,
 		TempFolder: !folder.cnfg.MoveBack,
@@ -260,7 +261,10 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		u.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
 
 		folder.step = EXTRACTFAILED
-		folder.rars = resp.Archives
+
+		for _, v := range resp.Archives {
+			folder.rars = append(folder.rars, v...)
+		}
 	default: // this runs in a go routine
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
@@ -268,8 +272,11 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
 
 		folder.step = EXTRACTED
-		folder.rars = resp.Archives
 		folder.list = resp.NewFiles
+
+		for _, v := range resp.Archives {
+			folder.rars = append(folder.rars, v...)
+		}
 	}
 
 	folder.last = time.Now()

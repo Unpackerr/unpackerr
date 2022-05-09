@@ -11,7 +11,7 @@ import (
 	"github.com/davidnewhall/unpackerr/pkg/ui"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
-	"golift.io/cnfg/cnfgfile"
+	"golift.io/cnfgfile"
 )
 
 const (

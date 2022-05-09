@@ -72,7 +72,7 @@ func samplePayload() *WebhookPayload {
 			Start:    version.Started,
 			Elapsed:  cnfg.Duration{Duration: time.Since(version.Started)},
 			Archives: []string{"/this/is/the/extraction/path/archive.rar", "/this/is/the/extraction/path/archive.sub.rar"},
-			Error:    "",
+			Error:    "This is where an error goes.",
 			Output:   "/this/is/the/extraction/path_unpackerred",
 			Bytes:    0,
 			Files:    []string{"/this/is/the/extraction/path/file.mkv", "/this/is/the/extraction/path/file.sub"},

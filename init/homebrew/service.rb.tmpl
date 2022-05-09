@@ -10,7 +10,6 @@ class {{Class}} < Formula
   head "{{URL}}"
 
   depends_on "go" => :build
-  depends_on "upx" => :build
 
   def install
     bin_path = buildpath/"#{name}"

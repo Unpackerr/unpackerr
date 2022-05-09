@@ -8,10 +8,13 @@ SYNOPSIS
 
 DESCRIPTION
 ---
-*   This application extracts downloaded files and makes sure
-    Radarr / Sonarr imported the extracted files before deleting them.
+*   This application extracts downloaded archives then makes sure
+    a Starr app imports the extracted files before deleting them.
 
-*   Other tunable and configurable options are available in the config file.
+*   Provides the ability to extract items that are copied or moved 
+    into a 'watch' folder. Example config file has those settings.
+
+*   Other configuration settings are available in the config file.
 
 OPTIONS
 ---
@@ -43,9 +46,10 @@ OPTIONS
 
 GO DURATION
 ---
-This application uses the Go Time Durations for a polling interval.
-The format is an integer followed by a time unit. You may append
-multiple time units to add them together. Some valid time units are:
+This application uses Go Time Durations for intervals, like polling and timeout.
+The format is an integer followed by a time unit. 
+Appending multiple time units sums them. 
+Some valid time units are:
 
      `ms` (millisecond)
      `s`  (second)

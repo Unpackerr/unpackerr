@@ -8,7 +8,7 @@
 debug = false
 
 # Disable writing messages to stdout. This silences the app. You should set a log
-# file below if you set this to true.
+# file below if you set this to true. Recommended when starting with systemctl.
 quiet = false
 
 # Write messages to a log file. This is the same data that is normally output to stdout.
@@ -44,37 +44,12 @@ parallel = 1
 file_mode = "0644"
 dir_mode = "0755"
 
-##-Notes-#######################################################################
+##-Notes-#######-READ THIS!!!-##################################################
 ## The following sections can be repeated if you have more than one Sonarr,   ##
-## Radarr or Lidarr, Readarr, Folder or Webhook.                              ##
-## You must uncomment the [[header]] and api_key at a minimum for Starr apps. ##
+## Radarr or Lidarr, Readarr, Folder, Webhook, or Command Hook.               ##
+## You MUST uncomment the [[header]] and api_key at a minimum for Starr apps. ##
 ################################################################################
 
-################
-### Webhooks ###
-################
-# Sends a webhook when an extraction queues, starts, finishes, and is deleted.
-# Created to integrate with notifiarr.com.
-# Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
-# Can possibly be used with other services by providing a custom template_path.
-###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
-#[[webhook]]
-#  url    = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
-#  name   = ""    # Set this to hide the URL in logs.
-#  silent = false # do not log success (less log spam)
-#  events = [0]   # list of event ids to include, 0 == all.
-## Advanced Optional Webhook Configuration
-#  nickname      = ""    # Used in Discord and Slack templates as bot name, in Telegram as chat_id.
-#  channel       = ""    # Also passed into templates. Used in Slack templates for destination channel.
-#  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
-#  template_path = ""    # Override internal webhook template for discord.com or other hooks.
-#  ignore_ssl    = false # Set this to true to ignore the SSL certificate on the server.
-#  timeout       = "10s" # You can adjust how long to wait for a server response.
-#  content_type  = "application/json" # If your custom template uses another MIME type, set this.
-
-################
-### Episodes ###
-################
 #[[sonarr]]
 #  url = "http://127.0.0.1:8989"
 #  api_key = "0123456789abcdef0123456789abcdef"
@@ -84,19 +59,11 @@ dir_mode = "0755"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
 #  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
-################
-#### Movies ####
-################
 #[[radarr]]
 #  url = "http://127.0.0.1:7878"
 #  api_key = "0123456789abcdef0123456789abcdef"
@@ -106,19 +73,11 @@ dir_mode = "0755"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
 #  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
-################
-#### Albums ####
-################
 #[[lidarr]]
 #  url = "http://127.0.0.1:8686"
 #  api_key = "0123456789abcdef0123456789abcdef"
@@ -128,19 +87,11 @@ dir_mode = "0755"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
 #  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
 
-################
-# Publications #
-################
 #[[readarr]]
 #  url = "http://127.0.0.1:8787"
 #  api_key = "0123456789abcdef0123456789abc"
@@ -150,15 +101,16 @@ dir_mode = "0755"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
 #  timeout = "10s"
-## How long ago a file must have been imported before deletion. The file must
-## also not be part of an active queue item. Set this to "1m" to make sure files
-## are deleted quickly after being imported. Recommend "5m". Uses Go Duration.
-## Setting this to any negative number `-1` disables deleting extracted files.
-#  delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
+
+
+##################################################################################
+### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
+### Only using Starr apps? The things above. The below configs are OPTIONAL. ### #
+##################################################################################
 
 ##-Folders-#######################################################################
 ## This application can also watch folders for things to extract. If you copy a ##
@@ -180,3 +132,44 @@ dir_mode = "0755"
 #  disable_log = false
 ## Move extracted files into original folder? If false, files go into an _unpackerred folder.
 #  move_back = false
+
+
+################
+### Webhooks ###
+################
+# Sends a webhook when an extraction queues, starts, finishes, and/or is deleted.
+# Created to integrate with notifiarr.com.
+# Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
+# Can possibly be used with other services by providing a custom template_path.
+###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
+#[[webhook]]
+#  url    = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
+#  name   = ""    # Set this to hide the URL in logs.
+#  silent = false # do not log success (less log spam)
+#  events = [0]   # list of event ids to include, 0 == all.
+## Advanced Optional Webhook Configuration
+#  nickname      = ""    # Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+#  channel       = ""    # Also passed into templates. Used in Slack templates for destination channel.
+#  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+#  template_path = ""    # Override internal webhook template for discord.com or other hooks.
+#  template      = ""    # Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack
+#  ignore_ssl    = false # Set this to true to ignore the SSL certificate on the server.
+#  timeout       = "10s" # You can adjust how long to wait for a server response.
+#  content_type  = "application/json" # If your custom template uses another MIME type, set this.
+
+
+#####################
+### Command Hooks ###
+#####################
+# Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
+# All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
+###### Don't forget to uncomment [[cmdhook]] and url at a minimum !!!!
+#[[cmdhook]]
+#  command = "/my/cool/app" # Path to command or script.
+#  shell   = false # Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
+#  name    = ""    # Provide an optional name for logging.
+#  silent  = false # Hides command output from logs.
+#  events  = [0]   # list of event ids to include, 0 == all.
+## Optional Command Hook Configuration
+#  exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
+#  timeout       = "10s" # You can adjust how long to wait for a server response.

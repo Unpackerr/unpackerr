@@ -14,6 +14,16 @@ RSRC_BIN=github.com/akavel/rsrc
 # If upx is available, use it to compress the binaries.
 UPXPATH=$(shell which upx)
 
+# Skip upx in Mac environments: https://github.com/upx/upx/issues/446
+ifeq ($(shell uname -s),Darwin)
+  UPXPATH=
+endif
+
+# Skip upx on arch linux too.
+ifeq ($(shell grep -o 'Arch Linux' /etc/issue 2>/dev/null),Arch Linux)
+  UPXPATH=
+endif
+
 # Travis CI passes the version in. Local builds get it from the current git tag.
 ifeq ($(VERSION),)
 	include .metadata.make
@@ -61,7 +71,7 @@ VERSION_LDFLAGS:= -X \"$(VERSION_PATH).Branch=$(BRANCH) ($(COMMIT))\" \
 
 # Makefile targets follow.
 
-all: clean generate build
+all: clean build
 
 ####################
 ##### Releases #####
@@ -78,20 +88,22 @@ release: clean linux_packages freebsd_packages windows
 	# Generating File Hashes
 	openssl dgst -r -sha256 $@/* | sed 's#release/##' | tee $@/checksums.sha256.txt
 
-# DMG only makes a DMG file is MACAPP is set. Otherwise, it makes a gzipped binary for macOS.
-dmg: clean macapp
+# DMG only makes a DMG file if MACAPP is set. Otherwise, it makes a gzipped binary for macOS.
+dmg: clean $(MACAPP).app
 	mkdir -p release
 	[ "$(MACAPP)" = "" ] || hdiutil create release/$(MACAPP).dmg -srcfolder $(MACAPP).app -ov
 	[ "$(MACAPP)" != "" ] || mv $(BINARY).*.macos release/
 	[ "$(MACAPP)" != "" ] || gzip -9r release/
 	openssl dgst -r -sha256 release/* | sed 's#release/##' | tee release/macos_checksum.sha256.txt
 
+
 # Delete all build assets.
 clean:
 	rm -f $(BINARY) $(BINARY).*.{macos,freebsd,linux,exe,upx}{,.gz,.zip} $(BINARY).1{,.gz} $(BINARY).rb
 	rm -f $(BINARY){_,-}*.{deb,rpm,txz} v*.tar.gz.sha256 examples/MANUAL .metadata.make rsrc_*.syso
-	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html rsrc.syso $(MACAPP).app.zip
-	rm -rf package_build_* release after-install-rendered.sh before-remove-rendered.sh $(MACAPP).app
+	rm -f cmd/$(BINARY)/README{,.html} README{,.html} ./$(BINARY)_manual.html rsrc.syso $(MACAPP).*.app.zip
+	rm -f $(BINARY).aur.install PKGBUILD $(BINARY).service pkg/bindata/bindata.go
+	rm -rf aur package_build_* release after-install-rendered.sh before-remove-rendered.sh $(MACAPP).*.app $(MACAPP).app
 
 ####################
 ##### Sidecars #####
@@ -128,18 +140,18 @@ $(shell go env GOPATH)/bin/rsrc:
 ####################
 
 build: $(BINARY)
-$(BINARY): main.go
+$(BINARY): generate main.go
 	go build -o $(BINARY) -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
 linux: $(BINARY).amd64.linux
-$(BINARY).amd64.linux: main.go
+$(BINARY).amd64.linux: generate main.go
 	# Building linux 64-bit x86 binary.
 	GOOS=linux GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
 linux386: $(BINARY).i386.linux
-$(BINARY).i386.linux: main.go
+$(BINARY).i386.linux: generate main.go
 	# Building linux 32-bit x86 binary.
 	GOOS=linux GOARCH=386 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
@@ -147,39 +159,46 @@ $(BINARY).i386.linux: main.go
 arm: arm64 armhf
 
 arm64: $(BINARY).arm64.linux
-$(BINARY).arm64.linux: main.go
+$(BINARY).arm64.linux: generate main.go
 	# Building linux 64-bit ARM binary.
 	GOOS=linux GOARCH=arm64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
-	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
+	# https://github.com/upx/upx/issues/351#issuecomment-599116973
+	# [ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
 armhf: $(BINARY).armhf.linux
-$(BINARY).armhf.linux: main.go
+$(BINARY).armhf.linux: generate main.go
 	# Building linux 32-bit ARM binary.
 	GOOS=linux GOARCH=arm GOARM=6 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
 
-macos: $(BINARY).amd64.macos
-$(BINARY).amd64.macos: main.go
+macos: $(BINARY).universal.macos
+$(BINARY).universal.macos: $(BINARY).amd64.macos $(BINARY).arm64.macos
+	# Building darwin 64-bit universal binary.
+	lipo -create -output $@ $(BINARY).amd64.macos $(BINARY).arm64.macos
+$(BINARY).amd64.macos: generate main.go
 	# Building darwin 64-bit x86 binary.
-	GOOS=darwin GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
-	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CGO_LDFLAGS=-mmacosx-version-min=10.8 CGO_CFLAGS=-mmacosx-version-min=10.8 go build -o $@ -ldflags "-v -w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
+$(BINARY).arm64.macos: generate main.go
+	# Building darwin 64-bit arm binary.
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 CGO_LDFLAGS=-mmacosx-version-min=10.8 CGO_CFLAGS=-mmacosx-version-min=10.8 go build -o $@ -ldflags "-v -w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
+
 
 freebsd: $(BINARY).amd64.freebsd
-$(BINARY).amd64.freebsd: main.go
+$(BINARY).amd64.freebsd: generate main.go
 	GOOS=freebsd GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 
 freebsd386: $(BINARY).i386.freebsd
-$(BINARY).i386.freebsd: main.go
+$(BINARY).i386.freebsd: generate main.go
 	GOOS=freebsd GOARCH=386 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@ || true
 
 freebsdarm: $(BINARY).armhf.freebsd
-$(BINARY).armhf.freebsd: main.go
+$(BINARY).armhf.freebsd: generate main.go
 	GOOS=freebsd GOARCH=arm go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) "
 
 exe: $(BINARY).amd64.exe
 windows: $(BINARY).amd64.exe
-$(BINARY).amd64.exe: rsrc.syso main.go
+$(BINARY).amd64.exe: generate rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) $(WINDOWS_LDFLAGS)"
 	[ -z "$(UPXPATH)" ] || $(UPXPATH) -q9 $@
@@ -193,55 +212,83 @@ linux_packages: rpm deb rpm386 deb386 debarm rpmarm debarmhf rpmarmhf
 freebsd_packages: freebsd_pkg freebsd386_pkg freebsdarm_pkg
 
 macapp: $(MACAPP).app
-$(MACAPP).app: macos
+$(MACAPP).app: $(BINARY).universal.macos
 	[ -z "$(MACAPP)" ] || mkdir -p init/macos/$(MACAPP).app/Contents/MacOS
-	[ -z "$(MACAPP)" ] || cp $(BINARY).amd64.macos init/macos/$(MACAPP).app/Contents/MacOS/$(MACAPP)
+	[ -z "$(MACAPP)" ] || cp $(BINARY).universal.macos init/macos/$(MACAPP).app/Contents/MacOS/$(MACAPP)
 	[ -z "$(MACAPP)" ] || cp -rp init/macos/$(MACAPP).app $(MACAPP).app
 
+aur: PKGBUILD SRCINFO $(BINARY).aur.install
+	mkdir -p $@
+	mv PKGBUILD $(BINARY).aur.install $@/
+	mv SRCINFO $@/.SRCINFO
+
+PKGBUILD: v$(VERSION).tar.gz.sha256
+	@echo "Creating 'aur' PKGBUILD file for $(BINARY) version '$(RPMVERSION)-$(ITERATION)'."
+	sed -e "s/{{VERSION}}/$(VERSION)/g" \
+		-e "s/{{Iter}}/$(ITERATION)/g" \
+		-e "s/{{SHA256}}/$(shell head -c64 $<)/g" \
+		-e "s/{{Desc}}/$(DESC)/g" \
+		-e "s%{{BINARY}}%$(BINARY)%g" \
+		-e "s%{{SOURCE_URL}}%$(SOURCE_URL)%g" \
+		-e "s%{{SOURCE_PATH}}%$(SOURCE_PATH)%g" \
+		-e "s%{{CONFIG_FILE}}%$(CONFIG_FILE)%g" \
+		init/archlinux/PKGBUILD.template | tee PKGBUILD
+
+SRCINFO: v$(VERSION).tar.gz.sha256
+	sed -e "s/{{VERSION}}/$(VERSION)/g" \
+		-e "s/{{Iter}}/$(ITERATION)/g" \
+		-e "s/{{SHA256}}/$(shell head -c64 $<)/g" \
+		-e "s/{{Desc}}/$(DESC)/g" \
+		-e "s%{{BINARY}}%$(BINARY)%g" \
+		-e "s%{{SOURCE_URL}}%$(SOURCE_URL)%g" \
+		-e "s%{{SOURCE_PATH}}%$(SOURCE_PATH)%g" \
+		-e "s%{{CONFIG_FILE}}%$(CONFIG_FILE)%g" \
+		init/archlinux/SRCINFO.template | tee SRCINFO
+
 rpm: $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm
-$(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm: package_build_linux check_fpm
+$(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm: package_build_linux_rpm check_fpm
 	@echo "Building 'rpm' package for $(BINARY) version '$(RPMVERSION)-$(ITERATION)'."
 	fpm -s dir -t rpm $(PACKAGE_ARGS) -a x86_64 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $(BINARY)-$(RPMVERSION)-$(ITERATION).x86_64.rpm
 
 deb: $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
-$(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb: package_build_linux check_fpm
+$(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb: package_build_linux_deb check_fpm
 	@echo "Building 'deb' package for $(BINARY) version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $(BINARY)_$(VERSION)-$(ITERATION)_amd64.deb
 
 rpm386: $(BINARY)-$(RPMVERSION)-$(ITERATION).i386.rpm
-$(BINARY)-$(RPMVERSION)-$(ITERATION).i386.rpm: package_build_linux_386 check_fpm
+$(BINARY)-$(RPMVERSION)-$(ITERATION).i386.rpm: package_build_linux_386_rpm check_fpm
 	@echo "Building 32-bit 'rpm' package for $(BINARY) version '$(RPMVERSION)-$(ITERATION)'."
 	fpm -s dir -t rpm $(PACKAGE_ARGS) -a i386 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $(BINARY)-$(RPMVERSION)-$(ITERATION).i386.rpm
 
 deb386: $(BINARY)_$(VERSION)-$(ITERATION)_i386.deb
-$(BINARY)_$(VERSION)-$(ITERATION)_i386.deb: package_build_linux_386 check_fpm
+$(BINARY)_$(VERSION)-$(ITERATION)_i386.deb: package_build_linux_386_deb check_fpm
 	@echo "Building 32-bit 'deb' package for $(BINARY) version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a i386 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $(BINARY)_$(VERSION)-$(ITERATION)_i386.deb
 
 rpmarm: $(BINARY)-$(RPMVERSION)-$(ITERATION).arm64.rpm
-$(BINARY)-$(RPMVERSION)-$(ITERATION).arm64.rpm: package_build_linux_arm64 check_fpm
+$(BINARY)-$(RPMVERSION)-$(ITERATION).arm64.rpm: package_build_linux_arm64_rpm check_fpm
 	@echo "Building 64-bit ARM8 'rpm' package for $(BINARY) version '$(RPMVERSION)-$(ITERATION)'."
 	fpm -s dir -t rpm $(PACKAGE_ARGS) -a arm64 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $(BINARY)-$(RPMVERSION)-$(ITERATION).arm64.rpm
 
 debarm: $(BINARY)_$(VERSION)-$(ITERATION)_arm64.deb
-$(BINARY)_$(VERSION)-$(ITERATION)_arm64.deb: package_build_linux_arm64 check_fpm
+$(BINARY)_$(VERSION)-$(ITERATION)_arm64.deb: package_build_linux_arm64_deb check_fpm
 	@echo "Building 64-bit ARM8 'deb' package for $(BINARY) version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a arm64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $(BINARY)_$(VERSION)-$(ITERATION)_arm64.deb
 
 rpmarmhf: $(BINARY)-$(RPMVERSION)-$(ITERATION).armhf.rpm
-$(BINARY)-$(RPMVERSION)-$(ITERATION).armhf.rpm: package_build_linux_armhf check_fpm
+$(BINARY)-$(RPMVERSION)-$(ITERATION).armhf.rpm: package_build_linux_armhf_rpm check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'rpm' package for $(BINARY) version '$(RPMVERSION)-$(ITERATION)'."
 	fpm -s dir -t rpm $(PACKAGE_ARGS) -a armhf -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $(BINARY)-$(RPMVERSION)-$(ITERATION).armhf.rpm
 
 debarmhf: $(BINARY)_$(VERSION)-$(ITERATION)_armhf.deb
-$(BINARY)_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf check_fpm
+$(BINARY)_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf_deb check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'deb' package for $(BINARY) version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $(BINARY)_$(VERSION)-$(ITERATION)_armhf.deb
@@ -262,7 +309,7 @@ $(BINARY)-$(VERSION)_$(ITERATION).armhf.txz: package_build_freebsd_arm check_fpm
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p $(BINARY)-$(VERSION)_$(ITERATION).armhf.txz -C $< $(EXTRA_FPM_FLAGS)
 
 # Build an environment that can be packaged for linux.
-package_build_linux: readme man plugins_linux_amd64 after-install-rendered.sh before-remove-rendered.sh linux
+package_build_linux_rpm: readme man plugins_linux_amd64 after-install-rendered.sh before-remove-rendered.sh $(BINARY).service linux
 	# Building package environment for linux.
 	mkdir -p $@/usr/bin $@/etc/$(BINARY) $@/usr/share/man/man1 $@/usr/share/doc/$(BINARY) $@/usr/lib/$(BINARY)
 	# Copying the binary, config file, unit file, and man page into the env.
@@ -274,9 +321,29 @@ package_build_linux: readme man plugins_linux_amd64 after-install-rendered.sh be
 	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/$(CONFIG_FILE)
 	cp LICENSE *.html examples/*?.?* $@/usr/share/doc/$(BINARY)/
 	[ "$(FORMULA)" != "service" ] || mkdir -p $@/lib/systemd/system
+	[ "$(FORMULA)" != "service" ] || cp $(BINARY).service $@/lib/systemd/system/
+	[ ! -d "init/linux/rpm" ] || cp -r init/linux/rpm/* $@
+
+# Build an environment that can be packaged for linux.
+package_build_linux_deb: readme man plugins_linux_amd64 after-install-rendered.sh before-remove-rendered.sh $(BINARY).service linux
+	# Building package environment for linux.
+	mkdir -p $@/usr/bin $@/etc/$(BINARY) $@/usr/share/man/man1 $@/usr/share/doc/$(BINARY) $@/usr/lib/$(BINARY)
+	# Copying the binary, config file, unit file, and man page into the env.
+	cp $(BINARY).amd64.linux $@/usr/bin/$(BINARY)
+	cp *.1.gz $@/usr/share/man/man1
+	rm -f $@/usr/lib/$(BINARY)/*.so
+	[ ! -f *amd64.so ] || cp *amd64.so $@/usr/lib/$(BINARY)/
+	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/
+	cp examples/$(CONFIG_FILE).example $@/etc/$(BINARY)/$(CONFIG_FILE)
+	cp LICENSE *.html examples/*?.?* $@/usr/share/doc/$(BINARY)/
+	[ "$(FORMULA)" != "service" ] || mkdir -p $@/lib/systemd/system
+	[ "$(FORMULA)" != "service" ] || cp $(BINARY).service $@/lib/systemd/system/
+	[ ! -d "init/linux/deb" ] || cp -r init/linux/deb/* $@
+
+$(BINARY).service:
 	[ "$(FORMULA)" != "service" ] || \
 		sed -e "s/{{BINARY}}/$(BINARY)/g" -e "s/{{DESC}}/$(DESC)/g" \
-		init/systemd/template.unit.service > $@/lib/systemd/system/$(BINARY).service
+		init/systemd/template.unit.service > $(BINARY).service
 
 after-install-rendered.sh:
 	sed -e "s/{{BINARY}}/$(BINARY)/g" scripts/after-install.sh > after-install-rendered.sh
@@ -284,19 +351,47 @@ after-install-rendered.sh:
 before-remove-rendered.sh:
 	sed -e "s/{{BINARY}}/$(BINARY)/g" scripts/before-remove.sh > before-remove-rendered.sh
 
-package_build_linux_386: package_build_linux linux386
+# This is used for arch linux
+$(BINARY).aur.install:
+	echo "post_upgrade() {" >> $@
+	echo "  /bin/systemctl restart $(BINARY)" >> $@
+	echo "}" >> $@
+	echo "" >> $@
+	echo "pre_remove() {" >> $@
+	echo "  /bin/systemctl stop $(BINARY)" >> $@
+	echo "  /bin/systemctl disable $(BINARY)" >> $@
+	echo "}" >> $@
+
+package_build_linux_386_deb: package_build_linux_deb linux386
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *386.so ] || cp *386.so $@/usr/lib/$(BINARY)/
 	cp $(BINARY).i386.linux $@/usr/bin/$(BINARY)
 
-package_build_linux_arm64: package_build_linux arm64
+package_build_linux_arm64_deb: package_build_linux_deb arm64
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *arm64.so ] || cp *arm64.so $@/usr/lib/$(BINARY)/
 	cp $(BINARY).arm64.linux $@/usr/bin/$(BINARY)
 
-package_build_linux_armhf: package_build_linux armhf
+package_build_linux_armhf_deb: package_build_linux_deb armhf
+	mkdir -p $@
+	cp -r $</* $@/
+	[ ! -f *armhf.so ] || cp *armhf.so $@/usr/lib/$(BINARY)/
+	cp $(BINARY).armhf.linux $@/usr/bin/$(BINARY)
+package_build_linux_386_rpm: package_build_linux_rpm linux386
+	mkdir -p $@
+	cp -r $</* $@/
+	[ ! -f *386.so ] || cp *386.so $@/usr/lib/$(BINARY)/
+	cp $(BINARY).i386.linux $@/usr/bin/$(BINARY)
+
+package_build_linux_arm64_rpm: package_build_linux_rpm arm64
+	mkdir -p $@
+	cp -r $</* $@/
+	[ ! -f *arm64.so ] || cp *arm64.so $@/usr/lib/$(BINARY)/
+	cp $(BINARY).arm64.linux $@/usr/bin/$(BINARY)
+
+package_build_linux_armhf_rpm: package_build_linux_rpm armhf
 	mkdir -p $@
 	cp -r $</* $@/
 	[ ! -f *armhf.so ] || cp *armhf.so $@/usr/lib/$(BINARY)/
@@ -350,25 +445,28 @@ $(patsubst %,%.darwin.so,$(PLUGINS)):
 test: lint
 	# Testing.
 	go test -race -covermode=atomic ./...
-lint:
+lint: generate
 	# Checking lint.
-	$(shell go env GOPATH)/bin/golangci-lint --version
-	GOOS=linux $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
-	GOOS=freebsd $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
-	GOOS=windows $(shell go env GOPATH)/bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
+	$(shell go env GOPATH)/bin/golangci-lint version
+	GOOS=linux $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
+	GOOS=freebsd $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
+	GOOS=windows $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
 
 # Mockgen and bindata are examples.
 # Your `go generate` may require other tools; add them!
 
 mockgen: $(shell go env GOPATH)/bin/mockgen
 $(shell go env GOPATH)/bin/mockgen:
-	cd /tmp ; go get github.com/golang/mock/mockgen ; go install github.com/golang/mock/mockgen
+	cd /tmp ; go install github.com/golang/mock/mockgen@latest
 
 bindata: $(shell go env GOPATH)/bin/go-bindata
 $(shell go env GOPATH)/bin/go-bindata:
-	cd /tmp ; go get -u github.com/go-bindata/go-bindata/... ; go install github.com/go-bindata/go-bindata
+	cd /tmp ; go install github.com/kevinburke/go-bindata/...@latest
 
-generate: mockgen bindata
+#generate: mockgen bindata pkg/bindata/bindata.go
+generate: bindata pkg/bindata/bindata.go
+pkg/bindata/bindata.go: pkg/bindata/files/*
+	find pkg -name .DS\* -delete
 	go generate ./...
 
 ##################
@@ -377,6 +475,7 @@ generate: mockgen bindata
 
 docker:
 	docker build -f init/docker/Dockerfile \
+		--no-cache --pull \
 		--build-arg "BUILD_DATE=$(DATE)" \
 		--build-arg "COMMIT=$(COMMIT)" \
 		--build-arg "VERSION=$(VERSION)-$(ITERATION)" \

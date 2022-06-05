@@ -88,8 +88,8 @@ services:
       - UN_CMDHOOK_0_TIMEOUT=10s
       - UN_CMDHOOK_0_SILENT=false
       - UN_CMDHOOK_0_SHELL=false
-      - UN_WEBHOOK_0_EXCLUDE_0=
-      - UN_WEBHOOK_0_EVENTS_0=0
+      - UN_CMDHOOK_0_EXCLUDE_0=
+      - UN_CMDHOOK_0_EVENTS_0=0
 
     security_opt:
       - no-new-privileges:true

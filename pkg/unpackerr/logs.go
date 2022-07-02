@@ -73,13 +73,9 @@ func (status *ExtractStatus) UnmarshalENV(tag, envval string) error {
 		return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
 	}
 
-	*status = ExtractStatus(uint8(i))
+	*status = ExtractStatus(i)
 
 	return nil
-}
-
-type ENVUnmarshaler interface {
-	UnmarshalENV(tag, envval string) error
 }
 
 // String turns a status into a short string.

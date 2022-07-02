@@ -136,6 +136,8 @@ golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 h1:go1bK/D/BFZV2I8cIQd1N
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golift.io/cnfg v0.2.0 h1:g8PP3xW0egBohsW8WrUIL8QKDgXflI5dpN4HDhVJ8b4=
 golift.io/cnfg v0.2.0/go.mod h1:333ixAK2eoXCr+OYXo2/TXE5pChTtRccE3JbiIKweek=
+golift.io/cnfg v0.2.1-0.20220702204350-e844fae512c7 h1:eHWHDODk6t6FuwUwNh7X6BjR+fBqAFTyd7mEdM4GxXQ=
+golift.io/cnfg v0.2.1-0.20220702204350-e844fae512c7/go.mod h1:333ixAK2eoXCr+OYXo2/TXE5pChTtRccE3JbiIKweek=
 golift.io/cnfgfile v0.0.0-20220509075834-08755d9ef3f5 h1:W9EKFeDCvnMCXrXZ/z33fmDZZmUQYJPkUqlQ95Sbg+o=
 golift.io/cnfgfile v0.0.0-20220509075834-08755d9ef3f5/go.mod h1:oXt/WBhSizIK6GmS2ka85IQ4TLmL2BFh4jHKR0bbThI=
 golift.io/rotatorr v0.0.0-20220126065426-d6b5acaac41c h1:QfBF3Y5bAf6hGjkJ/QjOixKTx29mkA2BpR/FwqEhLOA=

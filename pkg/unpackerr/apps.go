@@ -44,6 +44,7 @@ var (
 type Config struct {
 	Debug       bool             `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
+	Activity    bool             `json:"activity" toml:"activity" xml:"activity" yaml:"activity"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
 	LogFile     string           `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
 	LogFiles    int              `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
@@ -51,7 +52,7 @@ type Config struct {
 	MaxRetries  uint             `json:"maxRetries" toml:"max_retries" xml:"max_retries" yaml:"maxRetries"`
 	FileMode    string           `json:"fileMode" toml:"file_mode" xml:"file_mode" yaml:"fileMode"`
 	DirMode     string           `json:"dirMode" toml:"dir_mode" xml:"dir_mode" yaml:"dirMode"`
-	LogQueues   cnfg.Duration    `json:"logQueues" toml:"log_queues" xml:"log_queues" yaml:"logQueues"` // undocumented.
+	LogQueues   cnfg.Duration    `json:"logQueues" toml:"log_queues" xml:"log_queues" yaml:"logQueues"`
 	Interval    cnfg.Duration    `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
 	Timeout     cnfg.Duration    `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 	DeleteDelay cnfg.Duration    `json:"deleteDelay" toml:"delete_delay" xml:"delete_delay" yaml:"deleteDelay"`

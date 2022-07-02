@@ -14,7 +14,6 @@ HBREPO="golift/homebrew-mugs"
 MAINT="David Newhall II <david at sleepers dot pro>"
 VENDOR="Go Lift"
 DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
-GOLANGCI_LINT_ARGS="--enable-all -D dupl,nlreturn,exhaustivestruct,cyclop,tagliatelle,interfacer,scopelint,maligned,golint,varnamelen"
 # Example must exist at examples/$CONFIG_FILE.example
 CONFIG_FILE="unpackerr.conf"
 LICENSE="MIT"
@@ -33,7 +32,7 @@ VERSION_PATH="golift.io/version"
 # Used by homebrew downloads, references VERSION which comes from buildinfo.sh.
 SOURCE_PATH=https://golift.io/${BINARY}/archive/v${VERSION}.tar.gz
 
-export BINARY HBREPO MAINT VENDOR DESC GOLANGCI_LINT_ARGS CONFIG_FILE
+export BINARY HBREPO MAINT VENDOR DESC CONFIG_FILE
 export LICENSE FORMULA SOURCE_URL VERSION_PATH SOURCE_PATH
 
 ### Optional ###

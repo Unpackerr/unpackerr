@@ -148,6 +148,8 @@ golift.io/cnfg v0.2.1-0.20220702204350-e844fae512c7 h1:eHWHDODk6t6FuwUwNh7X6BjR+
 golift.io/cnfg v0.2.1-0.20220702204350-e844fae512c7/go.mod h1:333ixAK2eoXCr+OYXo2/TXE5pChTtRccE3JbiIKweek=
 golift.io/cnfg v0.2.1-0.20220702210310-4a51521ab470 h1:seMX6r5DSU1Jom1KrHqmCFfnAbVvIyBjLOcXDsuIgG4=
 golift.io/cnfg v0.2.1-0.20220702210310-4a51521ab470/go.mod h1:333ixAK2eoXCr+OYXo2/TXE5pChTtRccE3JbiIKweek=
+golift.io/cnfg v0.2.1 h1:E4q4I8hxxaC4Ywt4Tlpw2z6H3cJUU42fLrjfF4e7BjY=
+golift.io/cnfg v0.2.1/go.mod h1:333ixAK2eoXCr+OYXo2/TXE5pChTtRccE3JbiIKweek=
 golift.io/cnfgfile v0.0.0-20220509075834-08755d9ef3f5 h1:W9EKFeDCvnMCXrXZ/z33fmDZZmUQYJPkUqlQ95Sbg+o=
 golift.io/cnfgfile v0.0.0-20220509075834-08755d9ef3f5/go.mod h1:oXt/WBhSizIK6GmS2ka85IQ4TLmL2BFh4jHKR0bbThI=
 golift.io/rotatorr v0.0.0-20220126065426-d6b5acaac41c h1:QfBF3Y5bAf6hGjkJ/QjOixKTx29mkA2BpR/FwqEhLOA=
@@ -158,6 +160,8 @@ golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=
 golift.io/version v0.0.2/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
 golift.io/xtractr v0.1.2-0.20220509075323-cbe896e0c4bf h1:DlZbKaOv3S83gTYkG4L6EPUM2KgTqi8FrTAvRdy5Y/w=
 golift.io/xtractr v0.1.2-0.20220509075323-cbe896e0c4bf/go.mod h1:2hakiivW5N8uJumEc2ydEpYZyiddcm09pXOkzOLvlz4=
+golift.io/xtractr v0.1.2 h1:KscliIem7C6LhcLOMziBgE8wn+gy2HEde9hxkhi7ZOk=
+golift.io/xtractr v0.1.2/go.mod h1:2hakiivW5N8uJumEc2ydEpYZyiddcm09pXOkzOLvlz4=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

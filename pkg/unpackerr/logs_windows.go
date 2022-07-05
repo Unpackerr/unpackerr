@@ -20,6 +20,5 @@ func redirectStderr(file *os.File) {
 
 	const noIdeaWhatThisIs = 2
 
-	//nolint:staticcheck
 	syscall.Syscall(setHandle.Addr(), noIdeaWhatThisIs, uintptr(stderr), file.Fd(), 0)
 }

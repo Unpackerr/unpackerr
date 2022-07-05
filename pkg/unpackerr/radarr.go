@@ -98,7 +98,7 @@ func (u *Unpackerr) logRadarr() {
 
 // getRadarrQueue saves the Radarr Queue(s).
 func (u *Unpackerr) getRadarrQueue() {
-	for i, server := range u.Radarr {
+	for _, server := range u.Radarr {
 		if server.APIKey == "" {
 			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
 
@@ -113,8 +113,11 @@ func (u *Unpackerr) getRadarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		u.Radarr[i].Queue = queue
-		u.Printf("[Radarr] Updated (%s): %d Items Queued", server.URL, len(queue.Records))
+		server.Queue = queue
+
+		if !u.Activity || queue.TotalRecords > 0 {
+			u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
+		}
 	}
 }
 

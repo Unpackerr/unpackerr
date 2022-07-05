@@ -97,7 +97,7 @@ func (u *Unpackerr) logLidarr() {
 
 // getLidarrQueue saves the Lidarr Queue(s).
 func (u *Unpackerr) getLidarrQueue() {
-	for i, server := range u.Lidarr {
+	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debugf("Lidarr (%s): skipped, no API key", server.URL)
 
@@ -112,10 +112,11 @@ func (u *Unpackerr) getLidarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		u.Lidarr[i].Queue = queue
+		server.Queue = queue
 
-		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved",
-			server.URL, queue.TotalRecords, len(u.Lidarr[i].Queue.Records))
+		if !u.Activity || queue.TotalRecords > 0 {
+			u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
+		}
 	}
 }
 

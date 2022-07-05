@@ -1,13 +1,10 @@
 #!/bin/bash
-# The Docker Cloud config must pass in the BUILDS env variable.
-# See README.md (in this dir) and the screenshot for more info.
-# This is part of Application Builder.
-# https://github.com/golift/application-builder
 
 # This always run local to the Dockerfile folder, so the path is ../..
 pushd ../..
 
 source settings.sh
+
 
 if [ "v$VERSION" = "$SOURCE_BRANCH" ]; then
   TAGS="--tag ${DOCKER_REPO}:$VERSION"
@@ -17,11 +14,16 @@ if [ "v$VERSION" = "$SOURCE_BRANCH" ]; then
     # tag does not contain a dash, so assume it's a prod tag.
     TAGS="$TAGS --tag ${DOCKER_REPO}:latest --tag ${DOCKER_REPO}:stable --tag ${DOCKER_REPO}:$(echo $VERSION | cut -d. -f1,2) --tag ${DOCKER_REPO}:$(echo $VERSION | cut -d. -f1)"
   fi
+else
+  TAGS="--tag ${DOCKER_REPO}:${SOURCE_BRANCH}"
 fi
 
-docker buildx build --push ${TAGS} \
+
+read -r -d '' CMD << EOF 
+ docker buildx build --push ${TAGS} \
   --platform linux/arm/v7,linux/arm64/v8,linux/amd64 \
   --build-arg "BUILD_DATE=${DATE}" \
+  --build-arg "BUILD_FLAGS=${BUILD_FLAGS}" \
   --build-arg "COMMIT=${COMMIT}" \
   --build-arg "VERSION=${VERSION}-${ITERATION}" \
   --build-arg "LICENSE=${LICENSE}" \
@@ -32,5 +34,9 @@ docker buildx build --push ${TAGS} \
   --build-arg "SOURCE_URL=${SOURCE_URL}" \
   --build-arg "CONFIG_FILE=${CONFIG_FILE}" \
   --file ${DOCKERFILE_PATH} .
+EOF
+
+echo "Running command: ${CMD}"
+eval $CMD
 
 popd

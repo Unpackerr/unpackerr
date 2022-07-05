@@ -448,9 +448,9 @@ test: lint
 lint: generate
 	# Checking lint.
 	$(shell go env GOPATH)/bin/golangci-lint version
-	GOOS=linux $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
-	GOOS=freebsd $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
-	GOOS=windows $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run $(GOLANGCI_LINT_ARGS)
+	GOOS=linux $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run 
+	GOOS=freebsd $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run 
+	GOOS=windows $(shell go env GOPATH)/bin/golangci-lint --timeout=3m run 
 
 # Mockgen and bindata are examples.
 # Your `go generate` may require other tools; add them!

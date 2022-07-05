@@ -11,6 +11,14 @@ debug = false
 # file below if you set this to true. Recommended when starting with systemctl.
 quiet = false
 
+# Setting activity to true will silence all app queue log lines with only zeros.
+# Set this to true when you want less log spam.
+activity = false
+
+# The application queue data is logged on an interval. Adjust that interval with this setting.
+# Default is a minute. 2m, 5m, 10m, 30m, 1h are also perfectly acceptable.
+log_queues = "1m"
+
 # Write messages to a log file. This is the same data that is normally output to stdout.
 # This setting is great for Docker users that want to export their logs to a file.
 # The alternative is to use syslog to log the output of the application to a file.

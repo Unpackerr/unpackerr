@@ -113,7 +113,10 @@ func (u *Unpackerr) getSonarrQueue() {
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.Printf("[Sonarr] Updated (%s): %d Items Queued", server.URL, len(queue.Records))
+
+		if !u.Activity || queue.TotalRecords > 0 {
+			u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
+		}
 	}
 }
 

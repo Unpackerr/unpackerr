@@ -21,6 +21,7 @@ const (
 	defaultDirMode     = 0o755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
+	defaultInterval    = 2 * time.Minute
 	cleanerInterval    = 5 * time.Second
 	defaultRetryDelay  = 5 * time.Minute
 	defaultStartDelay  = time.Minute
@@ -95,7 +96,7 @@ func New() *Unpackerr {
 			MaxRetries:  defaultMaxRetries,
 			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},
-			Interval:    cnfg.Duration{Duration: minimumInterval},
+			Interval:    cnfg.Duration{Duration: defaultInterval},
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},

@@ -97,7 +97,7 @@ func (u *Unpackerr) logReadarr() {
 
 // getReadarrQueue saves the Readarr Queue(s).
 func (u *Unpackerr) getReadarrQueue() {
-	for i, server := range u.Readarr {
+	for _, server := range u.Readarr {
 		if server.APIKey == "" {
 			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
 
@@ -112,9 +112,11 @@ func (u *Unpackerr) getReadarrQueue() {
 		}
 
 		// Only update if there was not an error fetching.
-		u.Readarr[i].Queue = queue
-		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved",
-			server.URL, queue.TotalRecords, len(u.Readarr[i].Queue.Records))
+		server.Queue = queue
+
+		if !u.Activity || queue.TotalRecords > 0 {
+			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
+		}
 	}
 }
 

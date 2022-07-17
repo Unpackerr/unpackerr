@@ -136,18 +136,13 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	}
 
 	for _, folder := range u.Folders {
-		path, err := filepath.Abs(folder.Path)
-		if err != nil {
-			u.Printf("[ERROR] Folder (bad path): %v", err)
-			continue
+
+		if err := w.Add(folder.Path); err != nil {
+			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", folder.Path, err)
 		}
 
-		if err := w.Add(path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", path, err)
-		}
-
-		if err := fsn.Add(path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", path, err)
+		if err := fsn.Add(folder.Path); err != nil {
+			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
 		}
 	}
 
@@ -197,20 +192,24 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	goodFolders := []*FolderConfig{}
 	goodFlist := []string{}
 
-	for _, f := range u.Folders {
-		f.Path = strings.TrimSuffix(f.Path, `/\`)
-		if stat, err := os.Stat(f.Path); err != nil {
-			u.Print("[ERROR] Folder (cannot watch):", err)
-
-			continue
-		} else if !stat.IsDir() {
-			u.Printf("[ERROR] Folder (cannot watch): %s: not a folder", f.Path)
-
+	for _, folder := range u.Folders {
+		path, err := filepath.Abs(folder.Path)
+		if err != nil {
+			u.Printf("[ERROR] Folder '%s' (bad path): %v", folder.Path, err)
 			continue
 		}
 
-		goodFolders = append(goodFolders, f)
-		goodFlist = append(goodFlist, f.Path)
+		folder.Path = path // rewrite it. might not be safe.
+		if stat, err := os.Stat(folder.Path); err != nil {
+			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
+			continue
+		} else if !stat.IsDir() {
+			u.Printf("[ERROR] Folder '%s' (cannot watch): not a folder", folder.Path)
+			continue
+		}
+
+		goodFolders = append(goodFolders, folder)
+		goodFlist = append(goodFlist, folder.Path)
 	}
 
 	return goodFolders, goodFlist
@@ -344,19 +343,17 @@ func (f *Folders) processEvent(event *eventData) {
 			f.Remove(dirPath)
 		}
 
-		f.Debugf("Folder: Ignored File Event: '%v' (unreadable): %v", event.file, err)
+		f.Debugf("Folder: Ignored File Event '%v' (unreadable): %v", event.file, err)
 
 		return
 	} else if !stat.IsDir() {
-		f.Debugf("Folder: Ignoring Item: %v (not a folder)", dirPath)
-
+		f.Debugf("Folder: Ignoring Item '%v' (not a folder)", dirPath)
 		return
 	}
 
 	if _, ok := f.Folders[dirPath]; ok {
 		// f.Debugf("Item Updated: %v", event.file)
 		f.Folders[dirPath].last = time.Now()
-
 		return
 	}
 

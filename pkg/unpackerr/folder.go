@@ -339,8 +339,7 @@ func (f *Folders) processEvent(event *eventData) {
 			delete(f.Folders, dirPath)
 			f.Remove(dirPath)
 		}
-
-		f.Debugf("Folder: Ignored File Event: %v (unreadable)", event.file)
+		f.Debugf("Folder: Ignored File Event: %v (unreadable, %v)", event.file, err)
 
 		return
 	} else if !stat.IsDir() {

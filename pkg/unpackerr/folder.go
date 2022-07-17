@@ -136,7 +136,6 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	}
 
 	for _, folder := range u.Folders {
-
 		if err := w.Add(folder.Path); err != nil {
 			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", folder.Path, err)
 		}

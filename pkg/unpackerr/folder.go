@@ -130,20 +130,24 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 	w.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
 	w.IgnoreHiddenFiles(true)
 
-	for _, folder := range u.Folders {
-		if err := w.Add(folder.Path); err != nil {
-			u.Print("[ERROR] Folder (cannot poll):", err)
-		}
-	}
-
 	fsn, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("fsnotify.NewWatcher: %w", err)
 	}
 
 	for _, folder := range u.Folders {
-		if err := fsn.Add(folder.Path); err != nil {
-			u.Print("[ERROR] Folder (cannot watch):", err)
+		path, err := filepath.Abs(folder.Path)
+		if err != nil {
+			u.Printf("[ERROR] Folder (bad path): %v", err)
+			continue
+		}
+
+		if err := w.Add(path); err != nil {
+			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", path, err)
+		}
+
+		if err := fsn.Add(path); err != nil {
+			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", path, err)
 		}
 	}
 
@@ -339,7 +343,8 @@ func (f *Folders) processEvent(event *eventData) {
 			delete(f.Folders, dirPath)
 			f.Remove(dirPath)
 		}
-		f.Debugf("Folder: Ignored File Event: %v (unreadable, %v)", event.file, err)
+
+		f.Debugf("Folder: Ignored File Event: '%v' (unreadable): %v", event.file, err)
 
 		return
 	} else if !stat.IsDir() {

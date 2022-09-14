@@ -69,6 +69,8 @@ VERSION_LDFLAGS:= -X \"$(VERSION_PATH).Branch=$(BRANCH) ($(COMMIT))\" \
   -X \"$(VERSION_PATH).Revision=$(ITERATION)\" \
   -X \"$(VERSION_PATH).Version=$(VERSION)\"
 
+WINDOWS_LDFLAGS:= -H=windowsgui
+
 # Makefile targets follow.
 
 all: clean build

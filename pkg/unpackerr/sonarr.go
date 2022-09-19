@@ -162,6 +162,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

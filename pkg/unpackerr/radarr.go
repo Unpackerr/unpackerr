@@ -161,6 +161,10 @@ func (u *Unpackerr) checkRadarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

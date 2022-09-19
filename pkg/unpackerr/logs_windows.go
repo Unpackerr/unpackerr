@@ -19,6 +19,6 @@ func redirectStderr(file *os.File) {
 	stderr := syscall.STD_ERROR_HANDLE //nolint:nosnakecase
 
 	const noIdeaWhatThisIs = 2
-
+	//nolint:staticcheck // I have no idea how to do this with syscallN. :( but we need to...
 	syscall.Syscall(setHandle.Addr(), noIdeaWhatThisIs, uintptr(stderr), file.Fd(), 0)
 }

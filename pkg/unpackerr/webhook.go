@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"runtime"
 	"strings"
@@ -121,7 +120,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 		return
 	}
 
-	b := body.String() // nolint: ifshort
+	b := body.String() //nolint:ifshort
 
 	if reply, err := hook.Send(&body); err != nil {
 		u.Debugf("Webhook Payload: %s", b)
@@ -151,7 +150,7 @@ func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 }
 
 func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -166,7 +165,7 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 
 	// The error is mostly ignored because we don't care about the body.
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	reply, _ := ioutil.ReadAll(res.Body)
+	reply, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
 		return nil, fmt.Errorf("%w (%s): %s", ErrInvalidStatus, res.Status, reply)
@@ -211,7 +210,7 @@ func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 			u.Webhook[i].client = &http.Client{
 				Timeout: u.Webhook[i].Timeout.Duration,
 				Transport: &http.Transport{TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: u.Webhook[i].IgnoreSSL, // nolint: gosec
+					InsecureSkipVerify: u.Webhook[i].IgnoreSSL, //nolint:gosec
 				}},
 			}
 		}

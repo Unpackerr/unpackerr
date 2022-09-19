@@ -399,7 +399,7 @@ func (u *Unpackerr) checkFolderStats() {
 	}
 }
 
-// nolint:wsl
+//nolint:wsl
 func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
 	var webhook bool
 

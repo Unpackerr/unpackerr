@@ -2,7 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -101,7 +101,7 @@ func New() *Unpackerr {
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
 		},
-		Logger: &Logger{Logger: log.New(ioutil.Discard, "", 0)},
+		Logger: &Logger{Logger: log.New(io.Discard, "", 0)},
 	}
 }
 

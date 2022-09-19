@@ -37,8 +37,8 @@ func (u *Unpackerr) validateRadarr() error {
 		}
 
 		if len(u.Radarr[i].APIKey) != apiKeyLength {
-			u.Printf("Radarr (%s): ignored, invalid API key: %s", u.Radarr[i].URL, u.Radarr[i].APIKey)
-			continue
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Radarr, u.Radarr[i].URL, ErrInvalidKey, len(u.Radarr[i].APIKey))
 		}
 
 		if u.Radarr[i].Timeout.Duration == 0 {

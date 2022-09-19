@@ -119,7 +119,8 @@ func (u *Unpackerr) getPasswordFromPath(s string) string {
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 // This runs at a short interval to check for extraction state changes, and shuold return quickly.
-// nolint:cyclop,wsl
+//
+//nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
@@ -181,7 +182,7 @@ func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string,
 	for _, path := range paths {
 		path = filepath.Join(path, title)
 
-		switch _, err := os.Stat(path); err { // nolint: errorlint
+		switch _, err := os.Stat(path); err { //nolint:errorlint
 		default:
 			errs = append(errs, err)
 		case nil:

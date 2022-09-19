@@ -3,8 +3,8 @@ package unpackerr
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -246,6 +246,7 @@ const WebhookTemplateSlack = `
 `
 
 // Template returns a template specific to this webhook.
+//
 //nolint:wrapcheck
 func (w *WebhookConfig) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
@@ -285,7 +286,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
 		return template.Parse(WebhookTemplateNotifiarr)
 	case w.TmplPath != "":
-		s, err := ioutil.ReadFile(w.TmplPath)
+		s, err := os.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}

@@ -37,7 +37,8 @@ func (u *Unpackerr) validateSonarr() error {
 		}
 
 		if len(u.Sonarr[i].APIKey) != apiKeyLength {
-			u.Printf("Sonarr (%s): ignored, invalid API key: %s", u.Sonarr[i].URL, u.Sonarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Sonarr, u.Sonarr[i].URL, ErrInvalidKey, len(u.Sonarr[i].APIKey))
 		}
 
 		if u.Sonarr[i].Timeout.Duration == 0 {

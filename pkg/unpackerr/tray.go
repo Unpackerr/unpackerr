@@ -105,7 +105,7 @@ func (u *Unpackerr) watchDebugChannels() {
 
 func (u *Unpackerr) watchGuiChannels() {
 	for {
-		// nolint:errcheck
+		//nolint:errcheck
 		select {
 		case <-u.menu["conf"].Clicked():
 			// does nothing on purpose

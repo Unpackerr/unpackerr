@@ -3,7 +3,6 @@ package unpackerr
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -201,7 +200,7 @@ func (u *Unpackerr) setupLogging() {
 	case !u.Config.Quiet && u.Config.LogFile == "":
 		writer = os.Stdout
 	case u.Config.LogFile == "":
-		writer = ioutil.Discard // default is "nothing"
+		writer = io.Discard // default is "nothing"
 	default:
 		u.rotatorr = rotatorr.NewMust(rotate)
 		writer = u.rotatorr

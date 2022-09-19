@@ -1,7 +1,8 @@
+//nolint:nosnakecase
 package ui
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,7 +14,7 @@ import (
 // SystrayIcon is the icon in the system tray or task bar.
 const SystrayIcon = "files/windows.ico"
 
-var hasGUI = os.Getenv("USEGUI") != "false" // nolint:gochecknoglobals
+var hasGUI = os.Getenv("USEGUI") != "false" //nolint:gochecknoglobals
 
 func HasGUI() bool {
 	return hasGUI
@@ -42,8 +43,8 @@ func ShowConsoleWindow() {
 // StartCmd starts a command.
 func StartCmd(c string, v ...string) error {
 	cmd := exec.Command(c, v...)
-	cmd.Stdout = ioutil.Discard
-	cmd.Stderr = ioutil.Discard
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	return cmd.Start() //nolint:wrapcheck

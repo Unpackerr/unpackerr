@@ -79,7 +79,7 @@ type workThread struct {
 
 func (u *Unpackerr) watchWorkThread() {
 	workers := u.Parallel
-	if workers > 4 { // nolint:gomnd // 4 == the four starr apps.
+	if workers > 4 { //nolint:gomnd // 4 == the four starr apps.
 		workers = 4
 	}
 

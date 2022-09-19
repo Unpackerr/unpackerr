@@ -37,7 +37,8 @@ func (u *Unpackerr) validateLidarr() error {
 		}
 
 		if len(u.Lidarr[i].APIKey) != apiKeyLength {
-			u.Printf("Lidarr (%s): ignored, invalid API key: %s", u.Lidarr[i].URL, u.Lidarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Lidarr, u.Lidarr[i].URL, ErrInvalidKey, len(u.Lidarr[i].APIKey))
 		}
 
 		if u.Lidarr[i].Timeout.Duration == 0 {

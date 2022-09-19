@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -213,7 +212,7 @@ func (u *Unpackerr) setPasswords() error {
 			continue
 		}
 
-		fileContent, err := ioutil.ReadFile(strings.TrimPrefix(pass, filePrefix))
+		fileContent, err := os.ReadFile(strings.TrimPrefix(pass, filePrefix))
 		if err != nil {
 			return fmt.Errorf("reading password file: %w", err)
 		}

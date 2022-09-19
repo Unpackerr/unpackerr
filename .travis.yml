@@ -4,12 +4,12 @@ jobs:
   - os: osx
     osx_image: xcode13.2
     language: go
-    go: 1.18.x
+    go: 1.19.x
   - os: linux
     dist: bionic
     services: docker
     language: go
-    go: 1.18.x
+    go: 1.19.x
 git:
   depth: false
 addons:
@@ -26,7 +26,7 @@ addons:
     - gnupg
     - upx
 install:
-  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then rvm install 2.6.0; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then rvm 2.6.0 do gem install --no-document fpm -v 1.11.0; fi
 before_script:

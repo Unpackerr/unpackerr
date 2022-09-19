@@ -37,8 +37,8 @@ func (u *Unpackerr) validateRadarr() error {
 		}
 
 		if len(u.Radarr[i].APIKey) != apiKeyLength {
-			u.Printf("Radarr (%s): ignored, invalid API key: %s", u.Radarr[i].URL, u.Radarr[i].APIKey)
-			continue
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Radarr, u.Radarr[i].URL, ErrInvalidKey, len(u.Radarr[i].APIKey))
 		}
 
 		if u.Radarr[i].Timeout.Duration == 0 {
@@ -161,6 +161,10 @@ func (u *Unpackerr) checkRadarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

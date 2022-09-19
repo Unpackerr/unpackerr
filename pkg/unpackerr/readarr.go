@@ -37,7 +37,8 @@ func (u *Unpackerr) validateReadarr() error {
 		}
 
 		if len(u.Readarr[i].APIKey) != apiKeyLength {
-			u.Printf("Readarr (%s): ignored, invalid API key: %s", u.Readarr[i].URL, u.Readarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Readarr, u.Readarr[i].URL, ErrInvalidKey, len(u.Readarr[i].APIKey))
 		}
 
 		if u.Readarr[i].Timeout.Duration == 0 {

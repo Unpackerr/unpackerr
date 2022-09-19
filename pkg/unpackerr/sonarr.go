@@ -37,7 +37,8 @@ func (u *Unpackerr) validateSonarr() error {
 		}
 
 		if len(u.Sonarr[i].APIKey) != apiKeyLength {
-			u.Printf("Sonarr (%s): ignored, invalid API key: %s", u.Sonarr[i].URL, u.Sonarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Sonarr, u.Sonarr[i].URL, ErrInvalidKey, len(u.Sonarr[i].APIKey))
 		}
 
 		if u.Sonarr[i].Timeout.Duration == 0 {
@@ -161,6 +162,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

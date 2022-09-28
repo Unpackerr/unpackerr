@@ -16,7 +16,7 @@ services:
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
     #user: 1000:1000
-    # What you see below are defaults. You only need to include things you change.
+    # What you see below are defaults for this compose. You only need to modify things specific to your environment.
     environment:
       - TZ=${TZ}
       # General config

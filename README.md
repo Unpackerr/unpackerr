@@ -46,11 +46,13 @@ Use the methods below to install using Docker.
 #### Docker Config File
 
 -   Copy the [example config file](https://github.com/davidnewhall/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
--   Then grab the image from docker hub and run it using an overlay for the config file.
+-   Then grab the image from docker hub and run it using an overlay for the config file's directory.
+-   The config file must be at `/config/unpackerr.conf`. 
+-   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
 
 ```shell
 docker pull golift/unpackerr
-docker run -d -v /mnt/HostDownloads:/downloads -v /your/config/unpackerr.conf:/etc/unpackerr/unpackerr.conf golift/unpackerr
+docker run -d -v /mnt/HostDownloads:/downloads -v /folder/with/config/file:/config golift/unpackerr
 docker logs <container id from docker run>
 ```
 #### Docker Compose

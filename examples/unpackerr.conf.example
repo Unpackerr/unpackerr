@@ -24,8 +24,7 @@ log_queues = "1m"
 # The alternative is to use syslog to log the output of the application to a file.
 # Default is no log file; this is unset. log_files=0 turns off auto-rotation.
 # Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
-# Windows paths must use two backslashes: "C:\\Some\\Path\\Unpacker.log" (true everywhere).
-#log_file = "/downloads/unpackerr.log"
+#log_file = '/downloads/unpackerr.log'
 log_files = 10
 log_file_mb = 10
 
@@ -62,7 +61,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:8989"
 #  api_key = "0123456789abcdef0123456789abcdef"
 ## File system path where downloaded Sonarr items are located.
-#  paths = ["/downloads"]
+#  paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
@@ -76,7 +75,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:7878"
 #  api_key = "0123456789abcdef0123456789abcdef"
 ## File system path where downloaded Radarr items are located.
-#  paths = ["/downloads"]
+#  paths = ['/downloads']
 ## Default protocols is torrents. Alternative: "torrent,usenet"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
@@ -90,7 +89,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:8686"
 #  api_key = "0123456789abcdef0123456789abcdef"
 ## File system path where downloaded Lidarr items are located.
-#  paths = ["/downloads"]
+#  paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
@@ -104,7 +103,7 @@ dir_mode = "0755"
 #  url = "http://127.0.0.1:8787"
 #  api_key = "0123456789abcdef0123456789abc"
 ## File system path where downloaded Readarr items are located.
-#  paths = ["/downloads"]
+#  paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 #  protocols = "torrent"
 ## How long to wait for a reply from the backend.
@@ -126,8 +125,7 @@ dir_mode = "0755"
 ## folder will be decompressed. This has nothing to do with Starr applications. ##
 ##################################################################################
 #[[folder]]
-## Windows paths must use two backslashes: "C:\\Some\\Folder\\To\\Watch"
-#  path = "/some/folder/to/watch"
+#  path = '/some/folder/to/watch'
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
 #  extract_path = ""
 ## Delete extracted or original files this long after extraction. Set to 0 to disable all deletes. Uses Go Duration.
@@ -173,7 +171,7 @@ dir_mode = "0755"
 # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
 ###### Don't forget to uncomment [[cmdhook]] and url at a minimum !!!!
 #[[cmdhook]]
-#  command = "/my/cool/app" # Path to command or script.
+#  command = '/my/cool/app' # Path to command or script.
 #  shell   = false # Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
 #  name    = ""    # Provide an optional name for logging.
 #  silent  = false # Hides command output from logs.

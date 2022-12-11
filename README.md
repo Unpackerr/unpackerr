@@ -291,7 +291,7 @@ sudo systemctl restart unpackerr
 Example of the above in shell form:
 
 ```shell
-wget -qO- https://golift.io/unpackerr/raw/master/scripts/install.sh | sudo bash
+wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo bash
 vi /usr/local/etc/unpackerr/unpackerr.conf
 service unpackerr start
 ```

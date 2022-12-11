@@ -14,5 +14,6 @@ linters:
     - varnamelen
     - tagliatelle
     - cyclop
+    - gocritic
 run:
   timeout: 5m

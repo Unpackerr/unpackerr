@@ -27,6 +27,7 @@ type FolderConfig struct {
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	ExtractPath string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
+	ExtractISOs bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 }
 
@@ -67,9 +68,9 @@ func (u *Unpackerr) logFolders() {
 		}
 
 		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
-			"log file: %v, move back:%v, event buffer:%d)",
+			"log file: %v, move back:%v, isos:%v, event buffer:%d)",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
-			!folder.DisableLog, folder.MoveBack, u.Buffer)
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Buffer)
 	} else {
 		u.Print(" => Folder Config:", count, "paths,", "event buffer:", u.Buffer)
 
@@ -77,8 +78,8 @@ func (u *Unpackerr) logFolders() {
 			if epath = ""; folder.ExtractPath != "" {
 				epath = ", extract to: " + folder.ExtractPath
 			}
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v)",
-				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack)
+			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v, isos:%v)",
+				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
 	}
 }
@@ -224,12 +225,17 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, true)
 	u.updateHistory(FolderString + ": " + name)
 
+	var exclude []string
+	if !folder.cnfg.ExtractISOs {
+		exclude = append(exclude, ".iso")
+	}
+
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Password:   u.getPasswordFromPath(name),
 		Passwords:  u.Passwords,
 		Name:       name,
-		SearchPath: name,
+		Filter:     xtractr.Filter{Path: name, ExcludeSuffix: exclude},
 		TempFolder: !folder.cnfg.MoveBack,
 		ExtractTo:  folder.cnfg.ExtractPath,
 		DeleteOrig: false,

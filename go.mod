@@ -17,7 +17,7 @@ require (
 	golift.io/rotatorr v0.0.0-20220126065426-d6b5acaac41c
 	golift.io/starr v0.14.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.2.0
+	golift.io/xtractr v0.2.1-0.20221211095200-461e062a93d1
 )
 
 require (
@@ -39,6 +39,7 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/kdomanski/iso9660 v0.3.3 // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect

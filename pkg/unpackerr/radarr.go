@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
@@ -13,11 +12,7 @@ import (
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	starrConfig
 	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -141,6 +136,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 					App:         Radarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"downloadId": q.DownloadID,

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
@@ -13,11 +12,7 @@ import (
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
 	starr.Config
-	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig       bool           `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay      cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	starrConfig
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -141,6 +136,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 					App:         Readarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,

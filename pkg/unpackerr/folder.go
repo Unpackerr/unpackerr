@@ -269,22 +269,30 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			folder.rars = append(folder.rars, v...)
 		}
 	default: // this runs in a go routine
-		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, written: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
-			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
-
-		folder.step = EXTRACTED
-		folder.list = resp.NewFiles
-
 		for _, v := range resp.Archives {
 			folder.rars = append(folder.rars, v...)
 		}
+
+		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, written: %dMiB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.rars),
+			mapLen(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+
+		folder.step = EXTRACTED
+		folder.list = resp.NewFiles
 	}
 
 	folder.last = time.Now()
 
 	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.step}, true)
+}
+
+func mapLen(in map[string][]string) (out int) {
+	for _, v := range in {
+		out += len(v)
+	}
+
+	return out
 }
 
 // watchFSNotify reads file system events from a channel and processes them.

@@ -55,6 +55,8 @@ dir_mode = "0755"
 ## The following sections can be repeated if you have more than one Sonarr,   ##
 ## Radarr or Lidarr, Readarr, Folder, Webhook, or Command Hook.               ##
 ## You MUST uncomment the [[header]] and api_key at a minimum for Starr apps. ##
+##                ALL LINES BEGINNING WITH A HASH # ARE IGNORED               ##
+##            REMOVE THE HASH # FROM CONFIG LINES YOU WANT TO CHANGE          ##
 ################################################################################
 
 #[[sonarr]]
@@ -128,7 +130,8 @@ dir_mode = "0755"
 #  path = '/some/folder/to/watch'
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
 #  extract_path = ""
-## Delete extracted or original files this long after extraction. Set to 0 to disable all deletes. Uses Go Duration.
+## Delete extracted or original files this long after extraction.
+## The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
 #  delete_after = "10m"
 ## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
 #  delete_files = false

@@ -243,6 +243,7 @@ func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 	return false
 }
 
+// added for https://github.com/davidnewhall/unpackerr/issues/235
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
 	files, _ := u.Xtractr.GetFileList(dirPath)
 	for _, file := range files {

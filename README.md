@@ -13,12 +13,18 @@ your client downloads them. I just didn't care for any of them, so I wrote my ow
 wanted a small single-binary with reasonable logging that can extract downloaded
 archives and clean up the mess after they've been imported.
 
-This application can also run standalone and extract files found in a "watch" folder.
+Not a starr app user, and just need to extract files? We do that too.
+This application can run standalone and extract files found in a "watch" folder.
 In other words, you can configure this application to watch your download folder, and
 it will happily extract everything you download. This has nothing to do with the four 
 Starr apps mentioned in the previous paragraph. This Folder-watch feature may be used
 with or without Starr apps.
 
+## What's it extract?
+
+Pretty much everything. It also extracts recursively, meaning deep within folders, and archives within archives.
+**Tars, Rars, Zips, 7-Zips, Gzips, Tarred gzips and bzips; encrypted rars and 7zips. And ISO disc images.**
+Need something else? Ask. Does it do too much? Let me know what knobs you need. [Open a request!](https://github.com/davidnewhall/unpackerr/issues/new)
 
 ## Installation
 

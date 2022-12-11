@@ -318,7 +318,7 @@ You can also use a GUI app on a Mac instead of CLI via Homebrew:
 -   Run it. It starts in the menu bar as an icon.
 -   Click the menu bar icon and select `Config` -> `Edit`.
 -   Edit the config to suit your system and save.
--   Click the menu bar icon again and select `Config` -> `Reload`.
+-   Click the menu bar icon again and select `Quit`. Then open the app again.
 -   View the logs by clicking the menu bar icon and `Logs` -> `View`.
 -   You can add it to login items to run it automatically when you login.
 
@@ -330,7 +330,7 @@ The `.app` and the Homebrew version are the same application, but one runs in GU
 -   Run the `unpackerr.amd64.exe` binary. This starts the app in the system tray.
 -   Click the systray icon and select `Config` -> `Edit`.
 -   Edit the config to suit your system and save.
--   Click the systray icon again and select `Config` -> `Reload`.
+-   Click the systray icon again and select `Quit`. Then open the app again.
 -   View the logs by clicking the systray icon and `Logs` -> `View`.
 -   Make a shortcut to the application in your Startup menu to run it when you login.
 

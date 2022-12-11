@@ -19,8 +19,8 @@ func main() {
 	}()
 
 	if err := unpackerr.Start(); err != nil {
-		//nolint:gocritic // defer will not run, that's ok!
-		_, _ = ui.Error("Unpackerr Error", err.Error())
+		//nolint:exitAfterDefer,gocritic,nolintlint // defer will not run, that's ok!
+		_, _ = ui.Error("Unpackerr Error", err.Error()) //nolint:gocritic
 		log.Fatalln("[ERROR]", err)
 	}
 }

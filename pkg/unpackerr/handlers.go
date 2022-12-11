@@ -78,7 +78,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		return
 	}
 
-	files := xtractr.FindCompressedFiles(item.Path)
+	files := xtractr.FindCompressedFiles(xtractr.Filter{Path: item.Path})
 	if len(files) == 0 {
 		_, err := os.Stat(item.Path)
 		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
@@ -93,7 +93,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		Password:   u.getPasswordFromPath(item.Path),
 		Passwords:  u.Passwords,
 		Name:       name,
-		SearchPath: item.Path,
+		Filter:     xtractr.Filter{Path: item.Path},
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,

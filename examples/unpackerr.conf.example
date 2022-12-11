@@ -141,7 +141,8 @@ dir_mode = "0755"
 #  disable_log = false
 ## Move extracted files into original folder? If false, files go into an _unpackerred folder.
 #  move_back = false
-
+## Set this to true if you want this app to extract ISO files with .iso extension.
+# extract_isos = false
 
 ################
 ### Webhooks ###

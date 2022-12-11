@@ -232,7 +232,7 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.logFolders()
 	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
-	u.Printf(" => RAR Passwords: %d", len(u.Config.Passwords))
+	u.Printf(" => Passwords: %d (rar/7z)", len(u.Config.Passwords))
 	u.Printf(" => Interval: %v", u.Config.Interval)
 	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)

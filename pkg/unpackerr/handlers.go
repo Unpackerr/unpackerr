@@ -246,7 +246,7 @@ func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
 	files, _ := u.Xtractr.GetFileList(dirPath)
 	for _, file := range files {
-		if strings.HasPrefix(file, ".tmp") {
+		if strings.HasSuffix(file, ".tmp") {
 			return file
 		}
 	}

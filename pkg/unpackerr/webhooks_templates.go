@@ -234,7 +234,7 @@ const WebhookTemplateSlack = `
           "text": "*Elapsed*\n{{.Data.Elapsed}}"
         }{{end}}{{end -}}
       ]
-    }{{if and (.Data .Data.Error)}},{
+    }{{if and .Data .Data.Error}},{
       "type": "section",
       "text": {
         "type": "mrkdwn",

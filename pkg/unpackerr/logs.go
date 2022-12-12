@@ -229,6 +229,7 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.logRadarr()
 	u.logLidarr()
 	u.logReadarr()
+	u.logWhisparr()
 	u.logFolders()
 	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)

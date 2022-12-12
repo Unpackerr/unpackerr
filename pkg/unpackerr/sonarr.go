@@ -61,13 +61,6 @@ func (u *Unpackerr) validateSonarr() error {
 			u.Sonarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Sonarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Sonarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Sonarr[i].URL {
-			u.Printf("[WARN] Sonarr URL fixed: %s -> %s (continuing)", u.Sonarr[i].URL, r)
-			u.Sonarr[i].URL = r
-		}
-
 		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
 		tmp = append(tmp, u.Sonarr[i])
 	}

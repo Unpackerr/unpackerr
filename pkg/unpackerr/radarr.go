@@ -61,13 +61,6 @@ func (u *Unpackerr) validateRadarr() error {
 			u.Radarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Radarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Radarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Radarr[i].URL {
-			u.Printf("[WARN] Radarr URL fixed: %s -> %s (continuing)", u.Radarr[i].URL, r)
-			u.Radarr[i].URL = r
-		}
-
 		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
 		tmp = append(tmp, u.Radarr[i])
 	}

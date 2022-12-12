@@ -61,13 +61,6 @@ func (u *Unpackerr) validateReadarr() error {
 			u.Readarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Readarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Readarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Readarr[i].URL {
-			u.Printf("[WARN] Readarr URL fixed: %s -> %s (continuing)", u.Readarr[i].URL, r)
-			u.Readarr[i].URL = r
-		}
-
 		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
 		tmp = append(tmp, u.Readarr[i])
 	}

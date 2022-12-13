@@ -31,6 +31,7 @@ const (
 	Radarr       = "Radarr"
 	Lidarr       = "Lidarr"
 	Readarr      = "Readarr"
+	Whisparr     = "Whisparr"
 	FolderString = "Folder"
 )
 
@@ -63,6 +64,7 @@ type Config struct {
 	Passwords   []string         `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr" xml:"whisparr" yaml:"whisparr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
@@ -100,7 +102,13 @@ func (u *Unpackerr) retrieveAppQueues() {
 	var wg sync.WaitGroup
 
 	// Run each method in a go routine as a waitgroup.
-	for _, app := range []func(){u.getLidarrQueue, u.getRadarrQueue, u.getReadarrQueue, u.getSonarrQueue} {
+	for _, app := range []func(){
+		u.getLidarrQueue,
+		u.getRadarrQueue,
+		u.getReadarrQueue,
+		u.getSonarrQueue,
+		u.getWhisparrQueue,
+	} {
 		wg.Add(1)
 		u.workChan <- &workThread{[]func(){app, wg.Done}}
 	}
@@ -111,6 +119,7 @@ func (u *Unpackerr) retrieveAppQueues() {
 	u.checkRadarrQueue()
 	u.checkReadarrQueue()
 	u.checkSonarrQueue()
+	u.checkWhisparrQueue()
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.
@@ -121,6 +130,7 @@ func (u *Unpackerr) validateApps() error {
 		u.validateRadarr,
 		u.validateReadarr,
 		u.validateSonarr,
+		u.validateWhisparr,
 		u.validateWebhook,
 	} {
 		if err := validate(); err != nil {
@@ -141,6 +151,8 @@ func (u *Unpackerr) haveQitem(name, app string) bool {
 		return u.haveReadarrQitem(name)
 	case Sonarr:
 		return u.haveSonarrQitem(name)
+	case Whisparr:
+		return u.haveWhisparrQitem(name)
 	default:
 		return false
 	}

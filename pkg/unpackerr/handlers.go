@@ -6,12 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
 
 // Extract holds data for files being extracted.
 type Extract struct {
+	Syncthing   bool
 	Retries     uint
 	Path        string
 	App         string
@@ -21,6 +23,16 @@ type Extract struct {
 	Status      ExtractStatus
 	IDs         map[string]interface{}
 	Resp        *xtractr.Response
+}
+
+// Shared config items for all starr apps.
+type StarrConfig struct {
+	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths       []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols   string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig  bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Syncthing   bool          `json:"syncthing" toml:"syncthing" xml:"syncthing" yaml:"syncthing"`
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -85,6 +97,13 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 			item.App, name, item.Path, err)
 
 		return
+	}
+
+	if x.Syncthing {
+		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
+			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.App, name, tmpFile)
+			return
+		}
 	}
 
 	item.Status = QUEUED
@@ -222,4 +241,16 @@ func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 	}
 
 	return false
+}
+
+// added for https://github.com/davidnewhall/unpackerr/issues/235
+func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
+	files, _ := u.Xtractr.GetFileList(dirPath)
+	for _, file := range files {
+		if strings.HasSuffix(file, ".tmp") {
+			return file
+		}
+	}
+
+	return ""
 }

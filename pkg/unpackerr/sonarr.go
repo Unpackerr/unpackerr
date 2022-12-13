@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
 )
@@ -13,11 +12,7 @@ import (
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -80,18 +75,18 @@ func (u *Unpackerr) validateSonarr() error {
 func (u *Unpackerr) logSonarr() {
 	if c := len(u.Sonarr); c == 1 {
 		u.Printf(" => Sonarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
-			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].DeleteOrig,
-			u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
+			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
 		u.Print(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -141,6 +136,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 					App:         Sonarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,

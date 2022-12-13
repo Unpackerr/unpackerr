@@ -110,6 +110,7 @@ sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 sonarr.timeout|`UN_SONARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 sonarr.delete_orig|`UN_SONARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 sonarr.delete_delay|`UN_SONARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1s` to disable|
+sonarr.syncthing|`UN_SONARR_0_SYNCTHING`|`false` / Setting this to true makes unpackerr wait for syncthing to finish|
 
 ##### Radarr
 
@@ -122,6 +123,7 @@ radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 radarr.timeout|`UN_RADARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 radarr.delete_orig|`UN_RADARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 radarr.delete_delay|`UN_RADARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1s` to disable|
+radarr.syncthing|`UN_RADARR_0_SYNCTHING`|`false` / Setting this to true makes unpackerr wait for syncthing to finish|
 
 ##### Lidarr
 
@@ -134,6 +136,7 @@ lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `t
 lidarr.timeout|`UN_LIDARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 lidarr.delete_orig|`UN_LIDARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 lidarr.delete_delay|`UN_LIDARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1s` to disable|
+lidarr.syncthing|`UN_LIDARR_0_SYNCTHING`|`false` / Setting this to true makes unpackerr wait for syncthing to finish|
 
 ##### Readarr
 
@@ -146,6 +149,7 @@ readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: 
 readarr.timeout|`UN_READARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 readarr.delete_orig|`UN_READARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
 readarr.delete_delay|`UN_READARR_0_DELETE_DELAY`|`5m` / Extracts are deleted this long after import, `-1s` to disable|
+readarr.syncthing|`UN_READARR_0_SYNCTHING`|`false` / Setting this to true makes unpackerr wait for syncthing to finish|
 
 ##### Folder
 

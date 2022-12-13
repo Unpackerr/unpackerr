@@ -26,7 +26,7 @@ type Extract struct {
 }
 
 // Shared config items for all starr apps.
-type starrConfig struct {
+type StarrConfig struct {
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 	Paths       []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols   string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`

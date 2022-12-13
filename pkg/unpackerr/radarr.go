@@ -12,7 +12,7 @@ import (
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
 	starr.Config
-	starrConfig
+	StarrConfig
 	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -75,18 +75,18 @@ func (u *Unpackerr) validateRadarr() error {
 func (u *Unpackerr) logRadarr() {
 	if c := len(u.Radarr); c == 1 {
 		u.Printf(" => Radarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
-			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].DeleteOrig,
-			u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
+			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
 	} else {
 		u.Print(" => Radarr Config:", c, "servers")
 
 		for _, f := range u.Radarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }

@@ -12,7 +12,7 @@ import (
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
 	starr.Config
-	starrConfig
+	StarrConfig
 	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -75,18 +75,18 @@ func (u *Unpackerr) validateSonarr() error {
 func (u *Unpackerr) logSonarr() {
 	if c := len(u.Sonarr); c == 1 {
 		u.Printf(" => Sonarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
-			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].DeleteOrig,
-			u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
+			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
 		u.Print(" => Sonarr Config:", c, "servers")
 
 		for _, f := range u.Sonarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }

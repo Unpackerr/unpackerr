@@ -73,18 +73,18 @@ func (u *Unpackerr) validateWhisparr() error {
 func (u *Unpackerr) logWhisparr() {
 	if count := len(u.Whisparr); count == 1 {
 		u.Printf(" => Whisparr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Whisparr[0].URL, u.Whisparr[0].APIKey != "", u.Whisparr[0].Timeout,
-			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Whisparr[0].DeleteOrig,
-			u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
+			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Whisparr[0].DeleteOrig, u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
 	} else if count != 0 {
 		u.Print(" => Whisparr Config:", count, "servers")
 
 		for _, f := range u.Whisparr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }

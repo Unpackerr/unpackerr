@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/lidarr"
 )
@@ -13,11 +12,7 @@ import (
 // LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -73,18 +68,18 @@ func (u *Unpackerr) validateLidarr() error {
 func (u *Unpackerr) logLidarr() {
 	if c := len(u.Lidarr); c == 1 {
 		u.Printf(" => Lidarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
-			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].DeleteOrig,
-			u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
+			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
 	} else {
 		u.Print(" => Lidarr Config:", c, "servers")
 
 		for _, f := range u.Lidarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -134,6 +129,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 					App:         Lidarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,

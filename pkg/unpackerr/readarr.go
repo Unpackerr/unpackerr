@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
@@ -13,11 +12,7 @@ import (
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
 	starr.Config
-	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig       bool           `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay      cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -73,18 +68,18 @@ func (u *Unpackerr) validateReadarr() error {
 func (u *Unpackerr) logReadarr() {
 	if c := len(u.Readarr); c == 1 {
 		u.Printf(" => Readarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Readarr[0].URL, u.Readarr[0].APIKey != "", u.Readarr[0].Timeout,
-			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].DeleteOrig,
-			u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
+			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
 		u.Print(" => Readarr Config:", c, "servers")
 
 		for _, f := range u.Readarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -134,6 +129,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 					App:         Readarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,

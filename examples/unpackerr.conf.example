@@ -72,6 +72,8 @@ dir_mode = "0755"
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
 
 #[[radarr]]
 #  url = "http://127.0.0.1:7878"
@@ -86,6 +88,8 @@ dir_mode = "0755"
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
 
 #[[lidarr]]
 #  url = "http://127.0.0.1:8686"
@@ -100,6 +104,8 @@ dir_mode = "0755"
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
 
 #[[readarr]]
 #  url = "http://127.0.0.1:8787"
@@ -114,6 +120,8 @@ dir_mode = "0755"
 ## General recommendation is: do not enable this for torrent use.
 ## Setting this to true deletes the entire original download folder after import.
 #  delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
 
 
 ##################################################################################
@@ -143,6 +151,7 @@ dir_mode = "0755"
 #  move_back = false
 ## Set this to true if you want this app to extract ISO files with .iso extension.
 # extract_isos = false
+
 
 ################
 ### Webhooks ###

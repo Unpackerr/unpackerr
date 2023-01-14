@@ -152,7 +152,6 @@ func Start() (err error) {
 	}
 
 	go u.watchDeleteChannel()
-	go u.Run()
 	u.watchWorkThread()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 

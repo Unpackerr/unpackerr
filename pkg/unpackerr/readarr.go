@@ -1,7 +1,9 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -54,6 +56,13 @@ func (u *Unpackerr) validateReadarr() error {
 
 		if u.Readarr[i].Protocols == "" {
 			u.Readarr[i].Protocols = defaultProtocol
+		}
+
+		u.Readarr[i].Config.Client = &http.Client{
+			Timeout: u.Readarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Readarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)

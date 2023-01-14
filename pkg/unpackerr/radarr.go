@@ -1,7 +1,9 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -54,6 +56,13 @@ func (u *Unpackerr) validateRadarr() error {
 
 		if u.Radarr[i].Protocols == "" {
 			u.Radarr[i].Protocols = defaultProtocol
+		}
+
+		u.Radarr[i].Config.Client = &http.Client{
+			Timeout: u.Radarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Radarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)

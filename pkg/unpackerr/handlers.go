@@ -33,6 +33,8 @@ type StarrConfig struct {
 	DeleteOrig  bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
 	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Syncthing   bool          `json:"syncthing" toml:"syncthing" xml:"syncthing" yaml:"syncthing"`
+	ValidSSL    bool          `json:"valid_ssl" toml:"valid_ssl" xml:"valid_ssl" yaml:"valid_ssl"`
+	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.

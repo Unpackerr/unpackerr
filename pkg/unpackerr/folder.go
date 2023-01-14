@@ -99,7 +99,7 @@ func (u *Unpackerr) PollFolders() {
 
 	u.Folders, flist = u.checkFolders()
 
-	if u.folders, err = u.newFolderWatcher(); err != nil {
+	if err = u.newFolderWatcher(); err != nil {
 		u.Print("[ERROR] Watching Folders:", err)
 		return
 	}
@@ -126,18 +126,34 @@ func (u *Unpackerr) PollFolders() {
 
 // newFolderWatcher returns a new folder watcher.
 // You must call folders.FSNotify.Close() when you're done with it.
-func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
-	w := watcher.New()
-	w.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
-	w.IgnoreHiddenFiles(true)
+func (u *Unpackerr) newFolderWatcher() error {
+	u.folders = &Folders{
+		Interval: u.Folder.Interval.Duration,
+		Config:   u.Folders,
+		Folders:  make(map[string]*Folder),
+		Events:   make(chan *eventData, u.Config.Buffer),
+		Updates:  make(chan *xtractr.Response, updateChanBuf),
+		Debugf:   u.Debugf,
+		Printf:   u.Printf,
+	}
+
+	if len(u.Folders) == 0 {
+		return nil // do not initialize watcher
+	}
+
+	u.folders.Watcher = watcher.New()
+	u.folders.Watcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
+	u.folders.Watcher.IgnoreHiddenFiles(true)
 
 	fsn, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("fsnotify.NewWatcher: %w", err)
+		return fmt.Errorf("fsnotify.NewWatcher: %w", err)
 	}
 
+	u.folders.FSNotify = fsn
+
 	for _, folder := range u.Folders {
-		if err := w.Add(folder.Path); err != nil {
+		if err := u.folders.Watcher.Add(folder.Path); err != nil {
 			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", folder.Path, err)
 		}
 
@@ -146,17 +162,7 @@ func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
 		}
 	}
 
-	return &Folders{
-		Interval: u.Folder.Interval.Duration,
-		Config:   u.Folders,
-		Folders:  make(map[string]*Folder),
-		Events:   make(chan *eventData, u.Config.Buffer),
-		Updates:  make(chan *xtractr.Response, updateChanBuf),
-		Debugf:   u.Debugf,
-		Printf:   u.Printf,
-		FSNotify: fsn,
-		Watcher:  w,
-	}, nil
+	return nil
 }
 
 // Add uses either fsnotify or watcher.

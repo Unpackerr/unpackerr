@@ -1,7 +1,9 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -54,6 +56,13 @@ func (u *Unpackerr) validateSonarr() error {
 
 		if u.Sonarr[i].Protocols == "" {
 			u.Sonarr[i].Protocols = defaultProtocol
+		}
+
+		u.Sonarr[i].Config.Client = &http.Client{
+			Timeout: u.Sonarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Sonarr[i].ValidSSL},
+			},
 		}
 
 		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)

@@ -21,6 +21,8 @@ import (
 // startTray Run()s readyTray to bring up the web server and the GUI app.
 func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
+		go u.Run()
+
 		signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 
@@ -53,6 +55,7 @@ func (u *Unpackerr) readyTray() {
 
 	go u.watchKillerChannels()
 	go u.watchDebugChannels()
+	go u.Run()
 
 	u.watchGuiChannels()
 }

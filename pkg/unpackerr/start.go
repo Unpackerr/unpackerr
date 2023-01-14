@@ -126,7 +126,8 @@ func Start() (err error) {
 	// We cannot log anything until setupLogging() runs.
 	// We cannot run setupLogging until we read the above config.
 	u.setupLogging()
-	u.Printf("Unpackerr v%s Starting! (PID: %v) %v", version.Version, os.Getpid(), version.Started)
+	u.Printf("Unpackerr v%s Starting! PID: %v, UID: %d, GID: %d, Now: %v",
+		version.Version, os.Getpid(), os.Getuid(), os.Getgid(), version.Started.Round(time.Second))
 
 	if err := u.validateApps(); err != nil {
 		return err
@@ -151,7 +152,6 @@ func Start() (err error) {
 	}
 
 	go u.watchDeleteChannel()
-	go u.Run()
 	u.watchWorkThread()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 

@@ -61,7 +61,7 @@ func (u *Unpackerr) validateLidarr() error {
 		u.Lidarr[i].Config.Client = &http.Client{
 			Timeout: u.Lidarr[i].Timeout.Duration,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Lidarr[i].ValidSSL},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Lidarr[i].ValidSSL}, //nolint:gosec
 			},
 		}
 

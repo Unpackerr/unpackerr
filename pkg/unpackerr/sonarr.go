@@ -61,7 +61,7 @@ func (u *Unpackerr) validateSonarr() error {
 		u.Sonarr[i].Config.Client = &http.Client{
 			Timeout: u.Sonarr[i].Timeout.Duration,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Sonarr[i].ValidSSL},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Sonarr[i].ValidSSL}, //nolint:gosec
 			},
 		}
 

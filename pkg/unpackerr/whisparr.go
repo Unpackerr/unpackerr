@@ -65,7 +65,7 @@ func (u *Unpackerr) validateWhisparr() error {
 		u.Whisparr[i].Config.Client = &http.Client{
 			Timeout: u.Whisparr[i].Timeout.Duration,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Whisparr[i].ValidSSL},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Whisparr[i].ValidSSL}, //nolint:gosec
 			},
 		}
 

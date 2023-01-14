@@ -61,7 +61,7 @@ func (u *Unpackerr) validateReadarr() error {
 		u.Readarr[i].Config.Client = &http.Client{
 			Timeout: u.Readarr[i].Timeout.Duration,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Readarr[i].ValidSSL},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Readarr[i].ValidSSL}, //nolint:gosec
 			},
 		}
 

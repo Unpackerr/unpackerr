@@ -61,7 +61,7 @@ func (u *Unpackerr) validateRadarr() error {
 		u.Radarr[i].Config.Client = &http.Client{
 			Timeout: u.Radarr[i].Timeout.Duration,
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Radarr[i].ValidSSL},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Radarr[i].ValidSSL}, //nolint:gosec
 			},
 		}
 

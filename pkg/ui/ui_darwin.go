@@ -28,7 +28,7 @@ func StartCmd(c string, v ...string) error {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 
-	return cmd.Run()
+	return cmd.Run() //nolint:wrapcheck
 }
 
 // OpenCmd opens anything.

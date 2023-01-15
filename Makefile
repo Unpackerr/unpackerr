@@ -220,7 +220,7 @@ unpackerr-$(RPMVERSION)-$(ITERATION).armhf.rpm: package_build_linux_armhf_rpm ch
 debarmhf: unpackerr_$(VERSION)-$(ITERATION)_armhf.deb
 unpackerr_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf_deb check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'deb' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t deb $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
+	fpm -s dir -t deb $(PACKAGE_ARGS) -a armhf -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
 freebsd_pkg: unpackerr-$(VERSION)_$(ITERATION).amd64.txz

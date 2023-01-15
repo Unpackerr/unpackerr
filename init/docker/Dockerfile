@@ -9,6 +9,7 @@ WORKDIR /src
 COPY main.go settings.sh go.mod go.sum ./
 RUN go mod download
 COPY pkg pkg
+COPY examples examples
 RUN go generate ./...
 
 RUN apt update && apt install -y tzdata openssl

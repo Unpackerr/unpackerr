@@ -75,31 +75,31 @@ jobs:
           name: release
           path: release
 
-  # deploy-unstable-unstable:
-  #   # description: "Uploads pre-built binaries to unstable.golift.io."
-  #   if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-  #   strategy:
-  #     matrix:
-  #       files: [release, dmg-release]
-  #   needs:
-  #     - release-test
-  #     - macapp-test
-  #   name: Deploy Unstable.app
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: "Download files: ${{ matrix.files }}"
-  #       uses: actions/download-artifact@v2
-  #       with:
-  #         name: ${{ matrix.files }}
-  #     - name: Upload files to unstable.golift.io
-  #       run: >-
-  #         for file in *.{zip,dmg,gz}; do
-  #           [ -f "$file" ] || continue;
-  #           echo "Uploading: ${file}";
-  #           curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php" -F "file=@${file}";
-  #           versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
-  #           curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php" -F "file=${versionfile}";
-  #         done
+  deploy-unstable-unstable:
+    # description: "Uploads pre-built binaries to unstable.golift.io."
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
+    strategy:
+      matrix:
+        files: [release, dmg-release]
+    needs:
+      - release-test
+      - macapp-test
+    name: Deploy Unstable.app
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download files: ${{ matrix.files }}"
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.files }}
+      - name: Upload files to unstable.golift.io
+        run: >-
+          for file in *.{zip,dmg,gz}; do
+            [ -f "$file" ] || continue;
+            echo "Uploading: ${file}";
+            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
+            versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
+            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
+          done
 
   deploy-unstable-packagecloud:
     # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"

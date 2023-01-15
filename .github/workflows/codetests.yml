@@ -39,7 +39,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.48
+          version: v1.50
 
   golangci-linux:
     # description: "Runs golangci-lint on linux against linux and windows."
@@ -60,7 +60,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.48
+          version: v1.50
 
   homebrew-test:
     # description: "Installs dependencis on macOS and runs `make install` to mimic a homebrew install."
@@ -76,5 +76,4 @@ jobs:
       - name: make-install
         run: |
           TMP=$(mktemp -d)
-          go install github.com/davidnewhall/md2roff@v0.0.1
           make install VERSION=0.0.1 ITERATION=240 PREFIX=$TMP ETC=$TMP/etc

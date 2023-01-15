@@ -43,7 +43,7 @@ func (status ExtractStatus) Desc() string {
 	}
 
 	return []string{
-		// The order must not be be faulty.
+		// The order must not be faulty.
 		"Waiting, pre-Queue",
 		"Queued",
 		"Extracting",
@@ -67,7 +67,7 @@ func (status *ExtractStatus) UnmarshalENV(tag, envval string) error {
 		return nil
 	}
 
-	i, err := strconv.ParseUint(envval, 10, 8) //nolint:gomnd
+	i, err := strconv.ParseUint(envval, 10, 8)
 	if err != nil {
 		return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
 	}
@@ -84,7 +84,7 @@ func (status ExtractStatus) String() string {
 	}
 
 	return []string{
-		// The order must not be be faulty.
+		// The order must not be faulty.
 		"waiting",
 		"queued",
 		"extracting",

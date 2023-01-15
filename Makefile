@@ -3,7 +3,7 @@
 # See more: https://github.com/golift/application-builder
 
 # Suck in our application information.
-IGNORED:=$(shell bash -c "source settings.sh ; env | grep -v BASH_FUNC | sed 's/=/:=/;s/^/export /' > .metadata.make")
+IGNORED:=$(shell bash -c "source settings.sh ; env | grep -v BASH_FUNC | sed 's/=/:=/;s/^/export /' > /tmp/.metadata.make")
 
 BUILD_FLAGS=-tags osusergo,netgo
 GOFLAGS=-trimpath -mod=readonly -modcacherw

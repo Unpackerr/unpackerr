@@ -1,0 +1,64 @@
+pkgname=unpackerr
+pkgver={{VERSION}}
+pkgrel={{Iter}}
+pkgdesc='{{Desc}}'
+arch=('x86_64' 'arm' 'armv6h' 'armv7h' 'aarch64' 'i686' 'pentium4')
+url='https://golift.io/unpackerr'
+license=('MIT')
+makedepends=('go' 'make')
+source=("unpackerr-${pkgver}.tar.gz::{{SOURCE_PATH}}")
+sha256sums=('{{SHA256}}')
+configfile='unpackerr.conf'
+backup=("etc/${pkgname}/${configfile}")
+install="${pkgname}.aur.install"
+
+build() {
+  cd "$pkgname-$pkgver"
+  export EXTRA_LDFLAGS=-linkmode=external
+  export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+  make man VERSION="${pkgver}" ITERATION="${pkgrel}"
+  make "${pkgname}.service" VERSION="${pkgver}" ITERATION="${pkgrel}"
+
+  if [ "$CARCH" == "x86_64" ]; then
+    make linux VERSION="${pkgver}" ITERATION="${pkgrel}"
+    mv "$pkgname.amd64.linux" "$pkgname"
+  elif [ "$CARCH" == "arm" ] || [ "$CARCH" == "armv6h" ] || [ "$CARCH" == "armv7h" ]; then
+    make armhf VERSION="${pkgver}" ITERATION="${pkgrel}"
+    mv "$pkgname.armhf.linux" "$pkgname"
+  elif [ "$CARCH" == "aarch64" ]; then
+    make arm64 VERSION="${pkgver}" ITERATION="${pkgrel}"
+    mv "$pkgname.arm64.linux" "$pkgname"
+  elif [ "$CARCH" == "i686" ] || [ "$CARCH" == "pentium4" ]; then
+    make linux386 VERSION="${pkgver}" ITERATION="${pkgrel}"
+    mv "$pkgname.i386.linux" "$pkgname"
+  fi
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  go test ./...
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  # Binary.
+  install -Dm755 "${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+  # Directories.
+  install -dm0755 "${pkgdir}/share/doc/${pkgname}" \
+    "${pkgdir}/usr/share/licenses/${pkgname}" "${pkgdir}/etc/${pkgname}"
+  # Man file.
+  install -Dm644 "${pkgname}.1.gz" "${pkgdir}/share/man/man1/${pkgname}.1.gz"
+  # Config file, and example config file.
+  install -m644 "examples/${configfile}.example" "${pkgdir}/etc/$pkgname/${configfile}.example"
+  install -m644 "examples/${configfile}.example" "${pkgdir}/etc/${pkgname}/${configfile}"
+  # Extra documentation.
+  install -m644 *.html examples/* "${pkgdir}/share/doc/${pkgname}/"
+  # License.
+  install -m644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  # User and group.
+  echo 'u unpackerr - "unpackerr file extracter" -' > sysusers.conf
+  install -Dm0644 "sysusers.conf" "${pkgdir}/usr/lib/sysusers.d/unpackerr.conf"
+  rm sysusers.conf
+  # Systemd Service Unit.
+  install -Dm644 "${pkgname}.service" "${pkgdir}/usr/lib/systemd/system/${pkgname}.service"
+}

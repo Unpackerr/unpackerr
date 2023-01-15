@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# This file is designed to run as build hook for Automated Builds on Docker.com.
+# This always run local to the Dockerfile folder, so the path is ../..
+pushd ../..
+source settings.sh
+
+docker buildx inspect
+
+if ! (docker buildx inspect | grep -Eq 'docker-container'); then
+  echo "Creating docker builder instance"
+  docker buildx create --use
+fi
+
+read -r -d '' BUILD_ARGS << EOF
+--build-arg "BUILD_DATE=${DATE}" \
+--build-arg "BUILD_FLAGS=${BUILD_FLAGS}" \
+--build-arg "COMMIT=${COMMIT}" \
+--build-arg "BRANCH=${BRANCH}" \
+--build-arg "VERSION=${VERSION}" \
+--build-arg "ITERATION=${ITERATION}" \
+--build-arg "LICENSE=${LICENSE}" \
+--build-arg "DESC=${DESC}" \
+--build-arg "VENDOR=${VENDOR}" \
+--build-arg "AUTHOR=${MAINT}" \
+--build-arg "SOURCE_URL=${SOURCE_URL}" \
+--file ${DOCKERFILE_PATH} .
+EOF
+
+echo "Build Args: ${BUILD_ARGS}"
+eval "docker buildx build --load --tag current:amd64 --platform linux/amd64 $BUILD_ARGS"
+eval "docker buildx build --load --tag current:arm64 --platform linux/arm64/v8 $BUILD_ARGS"
+eval "docker buildx build --load --tag current:arm --platform linux/arm $BUILD_ARGS"
+echo "Done Building."
+
+TAGS="$SOURCE_BRANCH"
+if [ "v$VERSION" = "$SOURCE_BRANCH" ]; then
+  TAGS="$VERSION"
+
+  echo $SOURCE_BRANCH | grep -q -- -
+  if [ "$?" = "1" ]; then
+    # tag does not contain a dash, so assume it's a prod tag.
+    TAGS="$TAGS latest unstable $(echo $VERSION | cut -d. -f1,2) $(echo $VERSION | cut -d. -f1)"
+  fi
+fi
+
+for tag in $TAGS; do
+  echo "Pushing tag: $DOCKER_REPO:$tag"
+  eval "docker buildx build --push --tag $DOCKER_REPO:$tag --platform linux/amd64,linux/arm64/v8,linux/arm $BUILD_ARGS"
+done

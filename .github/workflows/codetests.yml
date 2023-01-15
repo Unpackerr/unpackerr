@@ -1,0 +1,80 @@
+name: test-and-lint
+on: push
+permissions:
+  contents: read
+jobs:
+  gotest:
+    # description: "Runs `go test` against 3 operating systems."
+    strategy:
+      matrix:
+        os: [ubuntu, macos, windows]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 'stable'
+      - name: go-generate
+        run: go generate ./...
+      - name: go-test
+        run: |
+          go test ./pkg/...
+
+  golangci-darwin:
+    # description: "Runs golangci-lint on macos against freebsd and macos."
+    strategy:
+      matrix:
+        os: [freebsd, darwin]
+    name: golangci-lint
+    runs-on: macos-latest
+    env:
+      GOOS: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 'stable'
+      - name: go-generate
+        run: GOOS=darwin go generate ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.48
+
+  golangci-linux:
+    # description: "Runs golangci-lint on linux against linux and windows."
+    strategy:
+      matrix:
+        os: [linux, windows]
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    env:
+      GOOS: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 'stable'
+      - name: go-generate
+        run: GOOS=linux go generate ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.48
+
+  homebrew-test:
+    # description: "Installs dependencis on macOS and runs `make install` to mimic a homebrew install."
+    name: test-homebrew-install
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 'stable'
+      - name: go-generate
+        run: go generate ./...
+      - name: make-install
+        run: |
+          TMP=$(mktemp -d)
+          go install github.com/davidnewhall/md2roff@v0.0.1
+          make install VERSION=0.0.1 ITERATION=240 PREFIX=$TMP ETC=$TMP/etc

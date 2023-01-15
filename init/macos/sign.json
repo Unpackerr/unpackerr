@@ -1,0 +1,6 @@
+{
+    "source": ["Unpackerr.app"],
+    "bundle_id": "io.golift.unpackerr",
+    "sign": { "application_identity" : "1AE9653F18114B23927AF7FA6624EF74F95A4544" }
+}
+

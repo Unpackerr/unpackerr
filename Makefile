@@ -178,65 +178,65 @@ Unpackerr.app: unpackerr.universal.macos
 rpm: unpackerr-$(RPMVERSION)-$(ITERATION).x86_64.rpm
 unpackerr-$(RPMVERSION)-$(ITERATION).x86_64.rpm: package_build_linux_rpm check_fpm
 	@echo "Building 'rpm' package for unpackerr version '$(RPMVERSION)-$(ITERATION)'."
-	fpm -s dir -t rpm $(PACKAGE_ARGS) -a x86_64 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign unpackerr-$(RPMVERSION)-$(ITERATION).x86_64.rpm
+	fpm -s dir -t rpm $(PACKAGE_ARGS) -a x86_64 -v $(RPMVERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $@
 
 deb: unpackerr_$(VERSION)-$(ITERATION)_amd64.deb
 unpackerr_$(VERSION)-$(ITERATION)_amd64.deb: package_build_linux_deb check_fpm
 	@echo "Building 'deb' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t deb $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin unpackerr_$(VERSION)-$(ITERATION)_amd64.deb
+	fpm -s dir -t deb $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
 rpm386: unpackerr-$(RPMVERSION)-$(ITERATION).i386.rpm
 unpackerr-$(RPMVERSION)-$(ITERATION).i386.rpm: package_build_linux_386_rpm check_fpm
 	@echo "Building 32-bit 'rpm' package for unpackerr version '$(RPMVERSION)-$(ITERATION)'."
-	fpm -s dir -t rpm $(PACKAGE_ARGS) -a i386 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign unpackerr-$(RPMVERSION)-$(ITERATION).i386.rpm
+	fpm -s dir -t rpm $(PACKAGE_ARGS) -a i386 -v $(RPMVERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $@
 
 deb386: unpackerr_$(VERSION)-$(ITERATION)_i386.deb
 unpackerr_$(VERSION)-$(ITERATION)_i386.deb: package_build_linux_386_deb check_fpm
 	@echo "Building 32-bit 'deb' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t deb $(PACKAGE_ARGS) -a i386 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin unpackerr_$(VERSION)-$(ITERATION)_i386.deb
+	fpm -s dir -t deb $(PACKAGE_ARGS) -a i386 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
-rpmarm: unpackerr-$(RPMVERSION)-$(ITERATION).arm64.rpm
-unpackerr-$(RPMVERSION)-$(ITERATION).arm64.rpm: package_build_linux_arm64_rpm check_fpm
+rpmarm: unpackerr-$(RPMVERSION)-$(ITERATION).aarch64.rpm
+unpackerr-$(RPMVERSION)-$(ITERATION).aarch64.rpm: package_build_linux_arm64_rpm check_fpm
 	@echo "Building 64-bit ARM8 'rpm' package for unpackerr version '$(RPMVERSION)-$(ITERATION)'."
-	fpm -s dir -t rpm $(PACKAGE_ARGS) -a arm64 -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign unpackerr-$(RPMVERSION)-$(ITERATION).arm64.rpm
+	fpm -s dir -t rpm $(PACKAGE_ARGS) -a arm64 -v $(RPMVERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $@
 
 debarm: unpackerr_$(VERSION)-$(ITERATION)_arm64.deb
 unpackerr_$(VERSION)-$(ITERATION)_arm64.deb: package_build_linux_arm64_deb check_fpm
 	@echo "Building 64-bit ARM8 'deb' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t deb $(PACKAGE_ARGS) -a arm64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin unpackerr_$(VERSION)-$(ITERATION)_arm64.deb
+	fpm -s dir -t deb $(PACKAGE_ARGS) -a arm64 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
 rpmarmhf: unpackerr-$(RPMVERSION)-$(ITERATION).armhf.rpm
 unpackerr-$(RPMVERSION)-$(ITERATION).armhf.rpm: package_build_linux_armhf_rpm check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'rpm' package for unpackerr version '$(RPMVERSION)-$(ITERATION)'."
-	fpm -s dir -t rpm $(PACKAGE_ARGS) -a armhf -v $(RPMVERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign unpackerr-$(RPMVERSION)-$(ITERATION).armhf.rpm
+	fpm -s dir -t rpm $(PACKAGE_ARGS) -a armhf -v $(RPMVERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
+	[ "$(SIGNING_KEY)" = "" ] || rpmsign --key-id=$(SIGNING_KEY) --resign $@
 
 debarmhf: unpackerr_$(VERSION)-$(ITERATION)_armhf.deb
 unpackerr_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf_deb check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'deb' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
-	[ "$(SIGNING_KEY)" == "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin unpackerr_$(VERSION)-$(ITERATION)_armhf.deb
+	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
 freebsd_pkg: unpackerr-$(VERSION)_$(ITERATION).amd64.txz
 unpackerr-$(VERSION)_$(ITERATION).amd64.txz: package_build_freebsd check_fpm
 	@echo "Building 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -p unpackerr-$(VERSION)_$(ITERATION).amd64.txz -C $< $(EXTRA_FPM_FLAGS)
+	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 
 freebsd386_pkg: unpackerr-$(VERSION)_$(ITERATION).i386.txz
 unpackerr-$(VERSION)_$(ITERATION).i386.txz: package_build_freebsd_386 check_fpm
 	@echo "Building 32-bit 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a 386 -v $(VERSION) -p unpackerr-$(VERSION)_$(ITERATION).i386.txz -C $< $(EXTRA_FPM_FLAGS)
+	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a 386 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 
 freebsdarm_pkg: unpackerr-$(VERSION)_$(ITERATION).armhf.txz
 unpackerr-$(VERSION)_$(ITERATION).armhf.txz: package_build_freebsd_arm check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
-	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p unpackerr-$(VERSION)_$(ITERATION).armhf.txz -C $< $(EXTRA_FPM_FLAGS)
+	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 
 # Build an environment that can be packaged for linux.
 package_build_linux_rpm: readme man linux

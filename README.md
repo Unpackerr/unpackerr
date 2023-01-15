@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/unpackerr-logo-text.png">
+<img style="max-width:840px;" src="https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/unpackerr-logo-text.png">
 
 ## About
 
@@ -35,23 +35,22 @@ Need something else? Ask. Does it do too much? Let me know what knobs you need. 
 
 ### Docker
 
-This project used to build automatically in [Docker Cloud](https://hub.docker.com/r/golift/unpackerr)
-and create [ready-to-use multi-architecture images](https://hub.docker.com/r/golift/unpackerr/tags).
-Then Docker said I have to pay some ridiculous amount of money to do that, so now I just build
-the images locally and push them when there's a new version.
-The `latest` tag is always a tagged release in GitHub. Recommend using that.
+This project [builds automatically](https://github.com/Unpackerr/unpackerr/blob/main/init/docker/hooks/build)
+in [Docker Cloud](https://hub.docker.com/r/golift/unpackerr) and creates
+[ready-to-use multi-architecture images](https://hub.docker.com/r/golift/unpackerr/tags) images.
+The `latest` tag is always a [tagged release on GitHub](https://github.com/Unpackerr/unpackerr/releases).
 
 Use the methods below to install using Docker.
 
 #### unRAID (Docker)
 
 -   Unpackerr is available in the
-    [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/master/templates/unpackerr.xml)
+    [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/main/templates/unpackerr.xml)
     on unRAID.
 
 #### Docker Config File
 
--   Copy the [example config file](https://github.com/Unpackerr/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
+-   Copy the [example config file](https://github.com/Unpackerr/unpackerr/blob/main/examples/unpackerr.conf.example) from this repo.
 -   Then grab the image from docker hub and run it using an overlay for the config file's directory.
 -   The config file must be at `/config/unpackerr.conf`. 
 -   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
@@ -63,9 +62,9 @@ docker logs <container id from docker run>
 ```
 #### Docker Compose
 
--   Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/master/examples/docker-compose.yml) from this repo.
--   Edit the docker-compose.yml file with your environment variables and save
-
+-   Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/main/examples/docker-compose.yml) from this repo.
+-   Edit the docker-compose.yml file with your environment variables and save.
+-   Recommend removing variables you are not using; the defaults are shown below.
 ```shell
 docker-compose up -d
 ```
@@ -265,13 +264,9 @@ docker logs <container id from docker run>
  The container provided by golift is from scratch so it has nothing more than a binary
  and a config file (with our defaults).
 
--   **[@madcatsu](https://github.com/madcatsu) maintains an
-    [Alpine Docker Container](https://hub.docker.com/r/madcatsu/unpackerr-alpine-daemon)
-    for Unpackerr.** ([repo](https://gitlab.com/madcatsu/docker-unpackerr-alpine-daemon))
-
 -   **[@hotio](https://github.com/hotio) maintains a
     [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
-    for Unpackerr.** ([repo](https://github.com/hotio/docker-unpackerr))
+    for Unpackerr.** ([repo](https://github.com/hotio/unpackerr))
 
 ### Linux Install
 
@@ -376,10 +371,10 @@ Still having problems?
 
 Unpackerr will decompress archives of these types:
 
--   `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`
--   Multi-file archives are only supported with RAR format.
--   Password protected archived are only supported with RAR format.
--   Archives are detected by the file extension.
+-   `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`, `iso`
+-   Multi-file archives are supported with RAR and 7ZIP archives.
+-   Password protected archived are supported with RAR and 7ZIP archives.
+-   Archives are detected by the file extension. ISO is disabled by default.
 
 ## Logic
 
@@ -400,4 +395,4 @@ Yes, please. Just make a pull request and lets chat about it in the PR or on Dis
 
 ## License
 
-[MIT](LICENSE) - Copyright (c) 2018-2022 David Newhall II
+[MIT](https://github.com/Unpackerr/unpackerr/blob/main/LICENSE)

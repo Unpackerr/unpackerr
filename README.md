@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/unpackerr-logo-text.png">
+<img src="https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/unpackerr-logo-text.png">
 
 ## About
 
@@ -24,7 +24,7 @@ with or without Starr apps.
 
 Pretty much everything. It also extracts recursively, meaning deep within folders, and archives within archives.
 **Tars, Rars, Zips, 7-Zips, Gzips, Tarred gzips and bzips; encrypted rars and 7zips. And ISO disc images.**
-Need something else? Ask. Does it do too much? Let me know what knobs you need. [Open a request!](https://github.com/davidnewhall/unpackerr/issues/new)
+Need something else? Ask. Does it do too much? Let me know what knobs you need. [Open a request!](https://github.com/Unpackerr/unpackerr/issues/new)
 
 ## Installation
 
@@ -51,7 +51,7 @@ Use the methods below to install using Docker.
 
 #### Docker Config File
 
--   Copy the [example config file](https://github.com/davidnewhall/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
+-   Copy the [example config file](https://github.com/Unpackerr/unpackerr/blob/master/examples/unpackerr.conf.example) from this repo.
 -   Then grab the image from docker hub and run it using an overlay for the config file's directory.
 -   The config file must be at `/config/unpackerr.conf`. 
 -   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
@@ -63,7 +63,7 @@ docker logs <container id from docker run>
 ```
 #### Docker Compose
 
--   Copy the [example docker-compose.yml](https://github.com/davidnewhall/unpackerr/blob/master/examples/docker-compose.yml) from this repo.
+-   Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/master/examples/docker-compose.yml) from this repo.
 -   Edit the docker-compose.yml file with your environment variables and save
 
 ```shell
@@ -200,7 +200,7 @@ UN_DATA_ARCHIVES_1=folder/subfolder_unpackerred/Funjetting.r00
 UN_DATA_ARCHIVES_0=folder/subfolder_unpackerred/Funjetting.rar
 UN_DATA_FILES_1=folder/subfolder/Funjetting.r00
 UN_DATA_BYTES=2407624
-PWD=/Users/david/go/src/github.com/davidnewhall/unpackerr
+PWD=/Users/david/go/src/github.com/Unpackerr/unpackerr
 UN_DATA_FILES_0=folder/subfolder/Funjetting.mp3
 UN_OS=darwin
 UN_DATA_FILES_3=folder/subfolder/_unpackerred.subfolder.txt
@@ -296,16 +296,8 @@ sudo systemctl restart unpackerr
 
 ### FreeBSD Install
 
--   Download a package from the [Releases](https://github.com/davidnewhall/unpackerr/releases) page.
+-   Download a package from the [Releases](https://github.com/Unpackerr/unpackerr/releases) page.
 -   Install it, edit config, start it.
-
-Example of the above in shell form:
-
-```shell
-wget -qO- https://raw.githubusercontent.com/davidnewhall/unpackerr/master/scripts/install.sh | sudo bash
-vi /usr/local/etc/unpackerr/unpackerr.conf
-service unpackerr start
-```
 
 On FreeBSD the app runs as `nobody`. That's not very good and will probably change in the future.
 
@@ -324,7 +316,7 @@ brew services start unpackerr
 
 You can also use a GUI app on a Mac instead of CLI via Homebrew:
 
--   Download a `.dmg` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases).
+-   Download a `.dmg` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases).
 -   Copy the `Unpackerr.app` to `/Applications`.
 -   Run it. It starts in the menu bar as an icon.
 -   Click the menu bar icon and select `Config` -> `Edit`.
@@ -337,7 +329,7 @@ The `.app` and the Homebrew version are the same application, but one runs in GU
 
 ### Windows Install
 
--   Extract a `.exe.zip` file from [the Releases page](https://github.com/davidnewhall/unpackerr/releases) into a folder like `C:\Program Files\unpackerr\`.
+-   Extract a `.exe.zip` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases) into a folder like `C:\Program Files\unpackerr\`.
 -   Run the `unpackerr.amd64.exe` binary. This starts the app in the system tray.
 -   Click the systray icon and select `Config` -> `Edit`.
 -   Edit the config to suit your system and save.
@@ -355,7 +347,6 @@ documentation support. This project succeeds because of them. Thank you!
 <a title="PackageCloud" alt="PackageCloud" href="https://packagecloud.io"><img src="https://docs.golift.io/integrations/packagecloud.png"/></a>
 <a title="GitHub" alt="GitHub" href="https://GitHub.com"><img src="https://docs.golift.io/integrations/octocat.png"/></a>
 <a title="Docker Cloud" alt="Docker" href="https://cloud.docker.com"><img src="https://docs.golift.io/integrations/docker.png"/></a>
-<a title="Travis-CI" alt="Travis-CI" href="https://Travis-CI.com"><img src="https://docs.golift.io/integrations/travis-ci.png"/></a>
 <a title="Homebrew" alt="Homebrew" href="https://brew.sh"><img src="https://docs.golift.io/integrations/homebrew.png"/></a>
 <a title="Go Lift" alt="Go Lift" href="https://golift.io"><img src="https://docs.golift.io/integrations/golift.png"/></a>
 </p>
@@ -379,7 +370,7 @@ If Unpackerr prints information about transfers you do not see in your Starr app
 and write to your download location.
 
 Still having problems?
-[Let me know!](https://github.com/davidnewhall/unpackerr/issues/new)
+[Let me know!](https://github.com/Unpackerr/unpackerr/issues/new)
 
 ## Archive Support
 

@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/davidnewhall/unpackerr/pkg/ui"
-	"github.com/davidnewhall/unpackerr/pkg/unpackerr"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/unpackerr"
 )
 
 // Keep it simple.

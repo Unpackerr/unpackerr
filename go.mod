@@ -1,4 +1,4 @@
-module github.com/davidnewhall/unpackerr
+module github.com/Unpackerr/unpackerr
 
 go 1.19
 

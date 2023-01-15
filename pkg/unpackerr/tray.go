@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davidnewhall/unpackerr/pkg/bindata"
-	"github.com/davidnewhall/unpackerr/pkg/ui"
-	"github.com/davidnewhall/unpackerr/pkg/update"
+	"github.com/Unpackerr/unpackerr/pkg/bindata"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/update"
 	"github.com/getlantern/systray"
 	"github.com/hako/durafmt"
 	"golift.io/version"
@@ -122,7 +122,7 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["disc"].Clicked():
 			ui.OpenURL("https://golift.io/discord")
 		case <-u.menu["gh"].Clicked():
-			ui.OpenURL("https://github.com/davidnewhall/unpackerr/")
+			ui.OpenURL("https://github.com/Unpackerr/unpackerr/")
 		case <-u.menu["logs"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["logs_view"].Clicked():
@@ -246,7 +246,7 @@ func (u *Unpackerr) rotateLogs() {
 func (u *Unpackerr) checkForUpdate() {
 	u.Print("User Requested: Update Check")
 
-	switch update, err := update.Check("davidnewhall/unpackerr", version.Version); {
+	switch update, err := update.Check("Unpackerr/unpackerr", version.Version); {
 	case err != nil:
 		u.Printf("[ERROR] Update Check: %v", err)
 		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: "+err.Error())

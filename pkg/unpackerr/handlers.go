@@ -203,7 +203,7 @@ func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string,
 	for _, path := range paths {
 		path = filepath.Join(path, title)
 
-		switch _, err := os.Stat(path); err { //nolint:errorlint
+		switch _, err := os.Stat(path); err {
 		default:
 			errs = append(errs, err)
 		case nil:

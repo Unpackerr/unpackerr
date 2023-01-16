@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/davidnewhall/unpackerr/pkg/bindata"
-	"github.com/davidnewhall/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/bindata"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"

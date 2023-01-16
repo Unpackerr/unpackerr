@@ -75,7 +75,7 @@ const WebhookTemplateNotifiarr = `{
 const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
-  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc -}}
+  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc -}}
     </b>\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
@@ -117,14 +117,14 @@ const WebhookTemplateGotify = `{
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
 const WebhookTemplateDiscord = `{
   "username": "{{nickname}}",
-  "avatar_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+  "avatar_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
   "embeds": [{
     "title": {{encode (index .IDs "title")}},
     "timestamp": "{{timestamp .Time}}",
     "author": {
      "name": "Unpackerr: {{.Event.Desc}}",
-     "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
-     "url": "https://github.com/davidnewhall/unpackerr/releases"
+     "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
+     "url": "https://github.com/Unpackerr/unpackerr/releases"
     },
     "color": {{ if (eq 1 .Event)}}1752220
             {{- else if (eq 2 .Event)}}16384255
@@ -175,7 +175,7 @@ const WebhookTemplateSlack = `
 {
   "username": "{{nickname}}",
   {{if channel}}"channel": "{{channel}}",{{end}}
-  "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+  "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
   "blocks": [
     {
       "type": "header",

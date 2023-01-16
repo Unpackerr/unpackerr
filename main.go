@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/davidnewhall/unpackerr/pkg/ui"
-	"github.com/davidnewhall/unpackerr/pkg/unpackerr"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/unpackerr"
 )
 
 // Keep it simple.
@@ -19,8 +19,7 @@ func main() {
 	}()
 
 	if err := unpackerr.Start(); err != nil {
-		//nolint:exitAfterDefer,gocritic,nolintlint // defer will not run, that's ok!
-		_, _ = ui.Error("Unpackerr Error", err.Error()) //nolint:gocritic
-		log.Fatalln("[ERROR]", err)
+		_, _ = ui.Error("Unpackerr Error", err.Error())
+		log.Fatalln("[ERROR]", err) //nolint:gocritic
 	}
 }

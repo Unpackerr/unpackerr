@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/davidnewhall/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/rotatorr"

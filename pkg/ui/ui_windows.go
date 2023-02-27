@@ -62,7 +62,7 @@ func OpenURL(url string) error {
 
 // OpenLog opens Log Files.
 func OpenLog(logFile string) error {
-	return OpenCmd("PowerShell", "Get-Content", "-Tail", "1000", "-Wait", "-Encoding", "utf8", "-Path", logFile)
+	return OpenCmd("PowerShell", "Get-Content", "-Tail", "1000", "-Wait", "-Encoding", "utf8", "-Path", "'"+logFile+"'")
 }
 
 // OpenFile open Config Files.

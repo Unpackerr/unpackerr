@@ -49,7 +49,7 @@ Use the methods below to install using Docker.
     on unRAID.
 -   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
     - This path likely best to be the same as your download client.
-    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 #### Docker Config File
 
@@ -59,7 +59,7 @@ Use the methods below to install using Docker.
 -   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
 -   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
     - This path likely best to be the same as your download client.
-    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 ```shell
 docker pull golift/unpackerr
@@ -74,7 +74,7 @@ docker logs <container id from docker run>
 -   Recommend removing variables you are not using; the defaults are shown below.
 -   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
     - This path likely best to be the same as your download client.
-    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 ```shell
 docker-compose up -d

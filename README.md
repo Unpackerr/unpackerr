@@ -376,7 +376,7 @@ documentation support. This project succeeds because of them. Thank you!
   Ex 1.
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
-  - Unpackerr: `/mnt/user/data/:/data/downloads`
+  - Unpackerr: `/mnt/user/data/downloads:/data/downloads`
 - [Find help on Discord](https://golift.io/discord).
 
 Log files:

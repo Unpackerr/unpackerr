@@ -47,6 +47,9 @@ Use the methods below to install using Docker.
 -   Unpackerr is available in the
     [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/main/templates/unpackerr.xml)
     on unRAID.
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
 
 #### Docker Config File
 
@@ -54,17 +57,25 @@ Use the methods below to install using Docker.
 -   Then grab the image from docker hub and run it using an overlay for the config file's directory.
 -   The config file must be at `/config/unpackerr.conf`. 
 -   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
 
 ```shell
 docker pull golift/unpackerr
 docker run -d -v /mnt/HostDownloads:/downloads -v /folder/with/config/file:/config golift/unpackerr
 docker logs <container id from docker run>
 ```
+
 #### Docker Compose
 
 -   Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/main/examples/docker-compose.yml) from this repo.
 -   Edit the docker-compose.yml file with your environment variables and save.
 -   Recommend removing variables you are not using; the defaults are shown below.
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpacker shall get the same mount
+
 ```shell
 docker-compose up -d
 ```
@@ -75,7 +86,7 @@ docker-compose up -d
     with environment variables.
 -   Any variable not provided takes the default.
 -   Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
--   You may provide multiple sonarr, radarr or lidarr instances using
+-   You may provide multiple Sonarr, Radarr or Lidarr instances using
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 ##### Global Settings
@@ -104,7 +115,7 @@ extractions and cause extra disk IO. You may also specify a password file by pre
 |---|---|---|
 sonarr.url|`UN_SONARR_0_URL`|No Default. Something like: `http://localhost:8989`|
 sonarr.api_key|`UN_SONARR_0_API_KEY`|No Default. Provide URL and API key if you use Sonarr|
-sonarr.paths|`UN_SONARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Sonarr|
+sonarr.paths|`UN_SONARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Sonarr. Used as fallback if the path Sonarr reports does not exist or is not accessible.|
 sonarr.protocols|`UN_SONARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 sonarr.timeout|`UN_SONARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 sonarr.delete_orig|`UN_SONARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
@@ -117,7 +128,7 @@ sonarr.syncthing|`UN_SONARR_0_SYNCTHING`|`false` / Setting this to true makes un
 |---|---|---|
 radarr.url|`UN_RADARR_0_URL`|No Default. Something like: `http://localhost:7878`|
 radarr.api_key|`UN_RADARR_0_API_KEY`|No Default. Provide URL and API key if you use Radarr|
-radarr.paths|`UN_RADARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Radarr|
+radarr.paths|`UN_RADARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Radarr. Used as fallback if the path Radarr reports does not exist or is not accessible|
 radarr.protocols|`UN_RADARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 radarr.timeout|`UN_RADARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 radarr.delete_orig|`UN_RADARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
@@ -130,7 +141,7 @@ radarr.syncthing|`UN_RADARR_0_SYNCTHING`|`false` / Setting this to true makes un
 |---|---|---|
 lidarr.url|`UN_LIDARR_0_URL`|No Default. Something like: `http://localhost:8686`|
 lidarr.api_key|`UN_LIDARR_0_API_KEY`|No Default. Provide URL and API key if you use Lidarr|
-lidarr.paths|`UN_LIDARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Lidarr|
+lidarr.paths|`UN_LIDARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Lidarr. Used as fallback if the path Lidarr reports does not exist or is not accessible|
 lidarr.protocols|`UN_LIDARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 lidarr.timeout|`UN_LIDARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 lidarr.delete_orig|`UN_LIDARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
@@ -143,7 +154,7 @@ lidarr.syncthing|`UN_LIDARR_0_SYNCTHING`|`false` / Setting this to true makes un
 |---|---|---|
 readarr.url|`UN_READARR_0_URL`|No Default. Something like: `http://localhost:8787`|
 readarr.api_key|`UN_READARR_0_API_KEY`|No Default. Provide URL and API key if you use Readarr|
-readarr.paths|`UN_READARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Readarr|
+readarr.paths|`UN_READARR_0_PATHS_0`|`/downloads` List of paths where content is downloaded for Readarr. Used as fallback if the path Readarr reports does not exist or is not accessible|
 readarr.protocols|`UN_READARR_0_PROTOCOLS`|`torrent` Protocols to process. Alt: `torrent,usenet`|
 readarr.timeout|`UN_READARR_0_TIMEOUT`|`10s` / How long to wait for the app to respond|
 readarr.delete_orig|`UN_READARR_0_DELETE_ORIG`|`false` / Delete archives after import? Recommend not setting this to true|
@@ -153,7 +164,7 @@ readarr.syncthing|`UN_READARR_0_SYNCTHING`|`false` / Setting this to true makes 
 ##### Folder
 
 Folders are a way to watch a folder for things to extract. You can use this to
-monitor your download client's "move to" path if you're not using it with an *arr app.
+monitor your download client's "move to" path if you're not using it with an Starr app.
 
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
@@ -187,7 +198,7 @@ All extraction data is input to the command using environment variables, see exa
 Extracted files variables names begin with `UN_DATA_FILES_`.
 Try `/usr/bin/env` as an example command to see what variables are available.
 
-```
+```none
 UN_DATA_OUTPUT=folder/subfolder_unpackerred
 UN_PATH=folder/subfolder
 UN_DATA_START=2021-10-04T23:04:27.849216-07:00
@@ -348,8 +359,25 @@ documentation support. This project succeeds because of them. Thank you!
 
 ## Troubleshooting
 
-Make sure your Downloads location matches on all your applications!
-[Find help on Discord](https://golift.io/discord).
+- Make sure your Downloads location matches on all your applications!
+- Most issues can be resolved by ensuring the user and group Unpackerr runs as has Read and Write permissions to the path trying to be extracted.
+- Most Docker (and Unraid) issues can be resolved by ensuring your paths align between containers
+  - See [TRaSH's Guides](https://trash-guides.info/Hardlinks/Hardlinks-and-Instant-Moves/) and the [Servarr Team's Docker Guide](https://wiki.servarr.com/docker-guide) for details on Docker/Unraid path practices
+- Common Bad Path Examples that will not work
+  Ex 1.
+  - Sonarr: `/mnt/user/data:/data`
+  - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
+  - Unpackerr: `/mnt/user/data/:/downloads`
+  Ex 2.
+  - Sonarr: `/mnt/user/data:/data`
+  - Qbittorrent: `/mnt/user/data/downloads:/downloads`
+  - Unpackerr: `/mnt/user/data/:/downloads`
+- Common Good Path Examples
+  Ex 1.
+  - Sonarr: `/mnt/user/data:/data`
+  - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
+  - Unpackerr: `/mnt/user/data/:/data/downloads`
+- [Find help on Discord](https://golift.io/discord).
 
 Log files:
 

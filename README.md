@@ -364,15 +364,18 @@ documentation support. This project succeeds because of them. Thank you!
 - Most Docker (and Unraid) issues can be resolved by ensuring your paths align between containers
   - See [TRaSH's Guides](https://trash-guides.info/Hardlinks/Hardlinks-and-Instant-Moves/) and the [Servarr Team's Docker Guide](https://wiki.servarr.com/docker-guide) for details on Docker/Unraid path practices
 - Common Bad Path Examples that will not work
+
   Ex 1.
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
+
   Ex 2.
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
 - Common Good Path Examples
+
   Ex 1.
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`

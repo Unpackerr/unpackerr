@@ -28,7 +28,7 @@ Need something else? Ask. Does it do too much? Let me know what knobs you need. 
 
 ## Installation
 
-- **Note**: Requires access to your download location.
+-   **Note**: Requires access to your download location.
     Make sure you set the `path` variables correctly in the configuration.
     Even if they're set incorrectly this app makes a best effort attempt to
     locate your downloads.
@@ -44,22 +44,22 @@ Use the methods below to install using Docker.
 
 #### unRAID (Docker)
 
-- Unpackerr is available in the
+-   Unpackerr is available in the
     [Community Applications](https://github.com/selfhosters/unRAID-CA-templates/blob/main/templates/unpackerr.xml)
     on unRAID.
-- Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
-  - This path likely best to be the same as your download client.
-  - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 #### Docker Config File
 
-- Copy the [example config file](https://github.com/Unpackerr/unpackerr/blob/main/examples/unpackerr.conf.example) from this repo.
-- Then grab the image from docker hub and run it using an overlay for the config file's directory.
-- The config file must be at `/config/unpackerr.conf`.
-- Recommend bind-mounting `/config` as an app-data directory. Example Follows.
-- Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
-  - This path likely best to be the same as your download client.
-  - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
+-   Copy the [example config file](https://github.com/Unpackerr/unpackerr/blob/main/examples/unpackerr.conf.example) from this repo.
+-   Then grab the image from docker hub and run it using an overlay for the config file's directory.
+-   The config file must be at `/config/unpackerr.conf`. 
+-   Recommend bind-mounting `/config` as an app-data directory. Example Follows.
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 ```shell
 docker pull golift/unpackerr
@@ -69,12 +69,12 @@ docker logs <container id from docker run>
 
 #### Docker Compose
 
-- Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/main/examples/docker-compose.yml) from this repo.
-- Edit the docker-compose.yml file with your environment variables and save.
-- Recommend removing variables you are not using; the defaults are shown below.
-- Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
-  - This path likely best to be the same as your download client.
-  - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
+-   Copy the [example docker-compose.yml](https://github.com/Unpackerr/unpackerr/blob/main/examples/docker-compose.yml) from this repo.
+-   Edit the docker-compose.yml file with your environment variables and save.
+-   Recommend removing variables you are not using; the defaults are shown below.
+-   Note that your mount `/mnt/HostDownloads:/downloads` **MUST** align with the Starr's paths for Unpackerr to work.
+    - This path likely best to be the same as your download client.
+    - E.g. if Qbit is given `/mnt/user/data/downloads:/data/downloads` then Unpackerr shall get the same mount
 
 ```shell
 docker-compose up -d
@@ -82,11 +82,11 @@ docker-compose up -d
 
 #### Docker Env Variables
 
-- Instead of a config file, you may configure the docker container
+-   Instead of a config file, you may configure the docker container
     with environment variables.
-- Any variable not provided takes the default.
-- Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
-- You may provide multiple Sonarr, Radarr or Lidarr instances using
+-   Any variable not provided takes the default.
+-   Must provide URL and API key for Sonarr or Radarr or Lidarr or any combination.
+-   You may provide multiple Sonarr, Radarr or Lidarr instances using
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 ##### Global Settings
@@ -270,13 +270,13 @@ docker run -d -v /mnt/HostDownloads:/downloads -e "UN_SONARR_0_URL=http://localh
 docker logs <container id from docker run>
 ```
 
-#### More Dockers
+#### More Dockers!
 
  If you want a container that has a bit more to it, you can try a third party option.
  The container provided by golift is from scratch so it has nothing more than a binary
  and a config file (with our defaults).
 
-- **[@hotio](https://github.com/hotio) maintains a
+-   **[@hotio](https://github.com/hotio) maintains a
     [Custom Docker Container](https://hub.docker.com/r/hotio/unpackerr)
     for Unpackerr.** ([repo](https://github.com/hotio/unpackerr))
 
@@ -291,30 +291,30 @@ user, for example, to the `debian-transmission` group.
 
 Run this to install the golift repo and unpackerr:
 
-```bash
+```shell
 curl -s https://golift.io/repo.sh | sudo bash -s - unpackerr
 ```
 
 After install, edit the config and start the service:
 
-```bash
+```shell
 sudo nano /etc/unpackerr/unpackerr.conf
 sudo systemctl restart unpackerr
 ```
 
 ### FreeBSD Install
 
-- Download a package from the [Releases](https://github.com/Unpackerr/unpackerr/releases) page.
-- Install it, edit config, start it.
+-   Download a package from the [Releases](https://github.com/Unpackerr/unpackerr/releases) page.
+-   Install it, edit config, start it.
 
 On FreeBSD the app runs as `nobody`. That's not very good and will probably change in the future.
 
 ### macOS Install
 
-- Use homebrew.
-- Edit config file at `/usr/local/etc/unpackerr/unpackerr.conf`
-- Start it.
-- Like this:
+-   Use homebrew.
+-   Edit config file at `/usr/local/etc/unpackerr/unpackerr.conf`
+-   Start it.
+-   Like this:
 
 ```shell
 brew install golift/mugs/unpackerr
@@ -324,26 +324,26 @@ brew services start unpackerr
 
 You can also use a GUI app on a Mac instead of CLI via Homebrew:
 
-- Download a `.dmg` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases).
-- Copy the `Unpackerr.app` to `/Applications`.
-- Run it. It starts in the menu bar as an icon.
-- Click the menu bar icon and select `Config` -> `Edit`.
-- Edit the config to suit your system and save.
-- Click the menu bar icon again and select `Quit`. Then open the app again.
-- View the logs by clicking the menu bar icon and `Logs` -> `View`.
-- You can add it to login items to run it automatically when you login.
+-   Download a `.dmg` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases).
+-   Copy the `Unpackerr.app` to `/Applications`.
+-   Run it. It starts in the menu bar as an icon.
+-   Click the menu bar icon and select `Config` -> `Edit`.
+-   Edit the config to suit your system and save.
+-   Click the menu bar icon again and select `Quit`. Then open the app again.
+-   View the logs by clicking the menu bar icon and `Logs` -> `View`.
+-   You can add it to login items to run it automatically when you login.
 
 The `.app` and the Homebrew version are the same application, but one runs in GUI mode and one does not.
 
 ### Windows Install
 
-- Extract a `.exe.zip` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases) into a folder like `C:\Program Files\unpackerr\`.
-- Run the `unpackerr.amd64.exe` binary. This starts the app in the system tray.
-- Click the systray icon and select `Config` -> `Edit`.
-- Edit the config to suit your system and save.
-- Click the systray icon again and select `Quit`. Then open the app again.
-- View the logs by clicking the systray icon and `Logs` -> `View`.
-- Make a shortcut to the application in your Startup menu to run it when you login.
+-   Extract a `.exe.zip` file from [the Releases page](https://github.com/Unpackerr/unpackerr/releases) into a folder like `C:\Program Files\unpackerr\`.
+-   Run the `unpackerr.amd64.exe` binary. This starts the app in the system tray.
+-   Click the systray icon and select `Config` -> `Edit`.
+-   Edit the config to suit your system and save.
+-   Click the systray icon again and select `Quit`. Then open the app again.
+-   View the logs by clicking the systray icon and `Logs` -> `View`.
+-   Make a shortcut to the application in your Startup menu to run it when you login.
 
 ## Integrations
 
@@ -368,17 +368,20 @@ documentation support. This project succeeds because of them. Thank you!
 - Common Bad Path Examples that will not work
 
   Ex 1.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
 
   Ex 2.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
 - Common Good Path Examples
 
   Ex 1.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
   - Unpackerr: `/mnt/user/data/downloads:/data/downloads`
@@ -386,15 +389,15 @@ documentation support. This project succeeds because of them. Thank you!
 
 Log files:
 
-- Linux: `/var/log/messages` or `/var/log/syslog` (w/ default syslog)
-- FreeBSD: `/var/log/syslog` (w/ default syslog)
-- macOS: `/usr/local/var/log/unpackerr.log` or `~/.unpackerr/unpackerr.log`
-- Windows: `~/.unpackerr/unpackerr.log`
+-   Linux: `/var/log/messages` or `/var/log/syslog` (w/ default syslog)
+-   FreeBSD: `/var/log/syslog` (w/ default syslog)
+-   macOS: `/usr/local/var/log/unpackerr.log` or `~/.unpackerr/unpackerr.log`
+-   Windows: `~/.unpackerr/unpackerr.log`
 
 If transfers are in a Warning or Error state they will not be extracted.
 If Unpackerr prints information about transfers you do not see in your Starr app.
 
-**Permissions** tend to mess things up too, so make sure the user unpackerr runs as can read
+**Permissions** tend to mess things up too, so make sure the user unpackerr runs as can read 
 and write to your download location.
 
 Still having problems?
@@ -404,10 +407,10 @@ Still having problems?
 
 Unpackerr will decompress archives of these types:
 
-- `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`, `iso`
-- Multi-file archives are supported with RAR and 7ZIP archives.
-- Password protected archived are supported with RAR and 7ZIP archives.
-- Archives are detected by the file extension. ISO is disabled by default.
+-   `rar`, `tar`, `tgz`, `gz`, `zip`, `7z`, `bz2`, `tbz2`, `iso`
+-   Multi-file archives are supported with RAR and 7ZIP archives.
+-   Password protected archived are supported with RAR and 7ZIP archives.
+-   Archives are detected by the file extension. ISO is disabled by default.
 
 ## Logic
 

@@ -14,7 +14,7 @@ if [ -n "$APPLE_SIGNING_KEY" ]; then
 
   echo "==> Importing certificate into ${KEYCHAIN}"
   echo "${APPLE_SIGNING_KEY}" | base64 -d | \
-    security import /dev/stdin -P "${AC_PASSWORD}" -f pkcs12 -k $KEYCHAIN -T /usr/bin/codesign
+    security import /dev/stdin -P "" -f pkcs12 -k $KEYCHAIN -T /usr/bin/codesign
 
   echo "==> Unlocking keychain ${KEYCHAIN}"
   security unlock-keychain -p secret $KEYCHAIN

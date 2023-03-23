@@ -114,7 +114,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		Password:   u.getPasswordFromPath(item.Path),
 		Passwords:  u.Passwords,
 		Name:       name,
-		Filter:     xtractr.Filter{Path: item.Path},
+		Filter:     xtractr.Filter{Path: item.Path, ExcludeSuffix: []string{".iso"}},
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,

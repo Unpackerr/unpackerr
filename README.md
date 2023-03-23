@@ -2,10 +2,10 @@
 
 ## About
 
-This application runs as a daemon on your download host. 
-It checks for completed downloads and extracts them so 
-[Lidarr](http://lidarr.audio), 
-[Radarr](http://radarr.video), 
+This application runs as a daemon on your download host.
+It checks for completed downloads and extracts them so
+[Lidarr](http://lidarr.audio),
+[Radarr](http://radarr.video),
 [Readarr](http://readarr.com), and
 [Sonarr](http://sonarr.tv) may import them.
 There are a handful of options out there for extracting and deleting files after
@@ -16,7 +16,7 @@ archives and clean up the mess after they've been imported.
 Not a starr app user, and just need to extract files? We do that too.
 This application can run standalone and extract files found in a "watch" folder.
 In other words, you can configure this application to watch your download folder, and
-it will happily extract everything you download. This has nothing to do with the four 
+it will happily extract everything you download. This has nothing to do with the four
 Starr apps mentioned in the previous paragraph. This Folder-watch feature may be used
 with or without Starr apps.
 
@@ -90,6 +90,7 @@ docker-compose up -d
     `UN_SONARR_1_URL`, `UN_SONARR_2_URL`, etc.
 
 ##### Global Settings
+
 |Config Name|Variable Name|Default / Note|
 |---|---|---|
 debug|`UN_DEBUG`|`false` / Turns on more logs|
@@ -289,13 +290,14 @@ user or group read and write access to your archives. That may mean adding the `
 user, for example, to the `debian-transmission` group.
 
 Run this to install the golift repo and unpackerr:
-```
+
+```shell
 curl -s https://golift.io/repo.sh | sudo bash -s - unpackerr
 ```
 
 After install, edit the config and start the service:
 
-```
+```shell
 sudo nano /etc/unpackerr/unpackerr.conf
 sudo systemctl restart unpackerr
 ```
@@ -364,16 +366,22 @@ documentation support. This project succeeds because of them. Thank you!
 - Most Docker (and Unraid) issues can be resolved by ensuring your paths align between containers
   - See [TRaSH's Guides](https://trash-guides.info/Hardlinks/Hardlinks-and-Instant-Moves/) and the [Servarr Team's Docker Guide](https://wiki.servarr.com/docker-guide) for details on Docker/Unraid path practices
 - Common Bad Path Examples that will not work
+
   Ex 1.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
+
   Ex 2.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/downloads`
   - Unpackerr: `/mnt/user/data/:/downloads`
 - Common Good Path Examples
+
   Ex 1.
+
   - Sonarr: `/mnt/user/data:/data`
   - Qbittorrent: `/mnt/user/data/downloads:/data/downloads`
   - Unpackerr: `/mnt/user/data/downloads:/data/downloads`

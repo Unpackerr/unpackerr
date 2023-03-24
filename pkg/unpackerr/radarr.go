@@ -79,7 +79,7 @@ func (u *Unpackerr) logRadarr() {
 		u.Printf(" => Radarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
 			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
-			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Syncthing,
 			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
 	} else {
 		u.Print(" => Radarr Config:", c, "servers")

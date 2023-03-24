@@ -280,7 +280,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		}},
 	}},
 	"files": {nil, map[string]*bintree{
-		"macos.png": {filesMacosPng, map[string]*bintree{}},
+		"macos.png":   {filesMacosPng, map[string]*bintree{}},
 		"windows.ico": {filesWindowsIco, map[string]*bintree{}},
 	}},
 }}

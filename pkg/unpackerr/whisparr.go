@@ -84,7 +84,7 @@ func (u *Unpackerr) logWhisparr() {
 		u.Printf(" => Whisparr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
 			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Whisparr[0].URL, u.Whisparr[0].APIKey != "", u.Whisparr[0].Timeout,
-			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Whisparr[0].Syncthing,
 			u.Whisparr[0].DeleteOrig, u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
 	} else if count != 0 {
 		u.Print(" => Whisparr Config:", count, "servers")

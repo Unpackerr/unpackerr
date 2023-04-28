@@ -26,7 +26,6 @@ require (
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
-	github.com/connesc/cipherio v0.2.1 // indirect
 	github.com/getlantern/context v0.0.0-20220418194847-3d5e7a086201 // indirect
 	github.com/getlantern/errors v1.0.3 // indirect
 	github.com/getlantern/golog v0.0.0-20230206140254-6d0a2e0f79af // indirect

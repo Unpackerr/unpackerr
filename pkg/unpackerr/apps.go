@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -168,7 +167,7 @@ func (slice *StringSlice) UnmarshalENV(tag, envval string) error {
 	if envval == "" {
 		return nil
 	}
-	log.Println(tag, envval)
+
 	envval = strings.Trim(envval, `["',] `)
 	vals := strings.Split(envval, ",")
 	*slice = make(StringSlice, len(vals))

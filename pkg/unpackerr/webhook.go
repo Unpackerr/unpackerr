@@ -77,10 +77,10 @@ func (statuses *ExtractStatuses) UnmarshalENV(tag, envval string) error {
 }
 
 func (statuses ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
-	var vals []string
+	vals := make([]string, len(statuses))
 
-	for _, status := range statuses {
-		vals = append(vals, status.String())
+	for idx, status := range statuses {
+		vals[idx] = status.String()
 	}
 
 	return map[string]string{tag: strings.Join(vals, ",")}, nil

@@ -34,8 +34,10 @@ type WebhookPayload struct {
 // XtractPayload is a rewrite of xtractr.Response.
 type XtractPayload struct {
 	Error    string        `json:"error,omitempty"`    // error only during extractfailed
-	Archives []string      `json:"archives,omitempty"` // list of all archive files extracted
-	Files    []string      `json:"files,omitempty"`    // list of all files extracted
+	Archive  []string      `json:"archive,omitempty"`  // list of all archive files extracted
+	Archives StringSlice   `json:"archives,omitempty"` // list of all archive files extracted
+	Files    StringSlice   `json:"files,omitempty"`    // list of all files extracted
+	File     []string      `json:"file,omitempty"`     // list of all files extracted
 	Start    time.Time     `json:"start,omitempty"`    // start time of extraction
 	Output   string        `json:"output,omitempty"`   // temporary items folder
 	Bytes    int64         `json:"bytes,omitempty"`    // Bytes written

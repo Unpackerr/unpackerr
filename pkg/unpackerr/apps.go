@@ -163,7 +163,7 @@ func (u *Unpackerr) haveQitem(name, app string) bool {
 type StringSlice []string
 
 // UnmarshalENV turns environment variables into a string slice.
-func (slice *StringSlice) UnmarshalENV(tag, envval string) error {
+func (slice *StringSlice) UnmarshalENV(_, envval string) error {
 	if envval == "" {
 		return nil
 	}

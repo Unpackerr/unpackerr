@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
@@ -61,7 +62,7 @@ type Config struct {
 	RetryDelay  cnfg.Duration    `json:"retryDelay" toml:"retry_delay" xml:"retry_delay" yaml:"retryDelay"`
 	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
 	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
-	Passwords   []string         `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
+	Passwords   StringSlice      `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr" xml:"whisparr" yaml:"whisparr,omitempty"`
@@ -156,4 +157,28 @@ func (u *Unpackerr) haveQitem(name, app string) bool {
 	default:
 		return false
 	}
+}
+
+// StringSlice allows a special environment variable unmarshaller for a lost of strings.
+type StringSlice []string
+
+// UnmarshalENV turns environment variables into a string slice.
+func (slice *StringSlice) UnmarshalENV(_, envval string) error {
+	if envval == "" {
+		return nil
+	}
+
+	envval = strings.Trim(envval, `["',] `)
+	vals := strings.Split(envval, ",")
+	*slice = make(StringSlice, len(vals))
+
+	for idx, val := range vals {
+		(*slice)[idx] = strings.TrimSpace(val)
+	}
+
+	return nil
+}
+
+func (slice StringSlice) MarshalENV(tag string) (map[string]string, error) {
+	return map[string]string{tag: strings.Join(slice, ",")}, nil
 }

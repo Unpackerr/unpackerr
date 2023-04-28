@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"strconv"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -59,22 +58,6 @@ func (status ExtractStatus) Desc() string {
 // MarshalText turns a status into a word, for a json identifier.
 func (status ExtractStatus) MarshalText() ([]byte, error) {
 	return []byte(status.String()), nil
-}
-
-// UnmarshalENV turns environment variables into extraction statuses.
-func (status *ExtractStatus) UnmarshalENV(tag, envval string) error {
-	if envval == "" {
-		return nil
-	}
-
-	i, err := strconv.ParseUint(envval, 10, 8)
-	if err != nil {
-		return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
-	}
-
-	*status = ExtractStatus(i)
-
-	return nil
 }
 
 // String turns a status into a short string.

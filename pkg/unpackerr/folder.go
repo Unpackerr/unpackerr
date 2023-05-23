@@ -13,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/radovskyb/watcher"
 	"golift.io/cnfg"
+	"golift.io/starr"
 	"golift.io/xtractr"
 )
 
@@ -275,7 +276,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 		folder.step = EXTRACTING
 	case resp.Error != nil:
-		u.updateMetrics(resp, folder.cnfg.Path)
+		u.updateMetrics(resp, starr.App(folder.cnfg.Path))
 
 		u.Errorf("[Folder] Extraction failed: %s: %v", resp.X.Name, resp.Error)
 
@@ -289,7 +290,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			folder.rars = append(folder.rars, v...)
 		}
 
-		u.updateMetrics(resp, folder.cnfg.Path)
+		u.updateMetrics(resp, starr.App(folder.cnfg.Path))
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.rars),

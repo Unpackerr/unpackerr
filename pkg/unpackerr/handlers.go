@@ -16,7 +16,7 @@ type Extract struct {
 	Syncthing   bool
 	Retries     uint
 	Path        string
-	App         string
+	App         starr.App
 	Updated     time.Time
 	DeleteDelay time.Duration
 	DeleteOrig  bool
@@ -122,7 +122,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
-	u.updateHistory(item.App + ": " + item.Path)
+	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
 func (u *Unpackerr) getPasswordFromPath(s string) string {
@@ -199,7 +199,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app starr.App, title string, paths []string) string {
 	var errs []error
 
 	for _, path := range paths {

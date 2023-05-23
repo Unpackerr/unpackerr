@@ -1,8 +1,12 @@
 package unpackerr
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golift.io/starr"
+	"golift.io/version"
 	"golift.io/xtractr"
 )
 
@@ -11,6 +15,9 @@ type Metrics struct {
 	FilesExtracted *prometheus.CounterVec
 	ArchivesRead   *prometheus.CounterVec
 	BytesWritten   *prometheus.CounterVec
+	Uptime         prometheus.CounterFunc
+	AppQueues      *prometheus.GaugeVec
+	AppRequests    *prometheus.HistogramVec
 }
 
 type MetricsCollector struct {
@@ -47,15 +54,24 @@ func (c *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(len(c.hookChan)), "chan_hooks")
 }
 
-func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app string) {
+func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app starr.App) {
 	if u.metrics == nil {
 		return
 	}
 
-	u.metrics.ExtractTime.WithLabelValues(app).Observe(resp.Elapsed.Seconds())
-	u.metrics.FilesExtracted.WithLabelValues(app).Add(float64(len(resp.NewFiles)))
-	u.metrics.BytesWritten.WithLabelValues(app).Add(float64(resp.Size))
-	u.metrics.ArchivesRead.WithLabelValues(app).Add(float64(mapLen(resp.Archives) + mapLen(resp.Extras)))
+	u.metrics.ExtractTime.WithLabelValues(string(app)).Observe(resp.Elapsed.Seconds())
+	u.metrics.FilesExtracted.WithLabelValues(string(app)).Add(float64(len(resp.NewFiles)))
+	u.metrics.BytesWritten.WithLabelValues(string(app)).Add(float64(resp.Size))
+	u.metrics.ArchivesRead.WithLabelValues(string(app)).Add(float64(mapLen(resp.Archives) + mapLen(resp.Extras)))
+}
+
+func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, url string) {
+	if u.metrics == nil {
+		return
+	}
+
+	u.metrics.AppRequests.WithLabelValues(string(app), url).Observe(time.Since(start).Seconds())
+	u.metrics.AppQueues.WithLabelValues(string(app), url).Set(float64(size))
 }
 
 func (u *Unpackerr) setupMetrics() {
@@ -83,6 +99,19 @@ func (u *Unpackerr) setupMetrics() {
 			Name: "unpackerr_archives_read_total",
 			Help: "The total number of archive files read",
 		}, []string{"app"}),
+		Uptime: promauto.NewCounterFunc(prometheus.CounterOpts{
+			Name: "unpackerr_uptime_seconds_total",
+			Help: "Seconds Unpackerr has been running",
+		}, func() float64 { return time.Since(version.Started).Seconds() }),
+		AppQueues: promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "unpackerr_app_queue_size",
+			Help: "The total number of items queued in a Starr app",
+		}, []string{"app", "url"}),
+		AppRequests: promauto.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "unpackerr_app_queue_fetch_time_seconds",
+			Help:    "The duration of queue fetch API requests to Starr apps",
+			Buckets: []float64{0.005, 0.025, .1, .5, 1, 3, 10},
+		}, []string{"app", "url"}),
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
@@ -98,19 +99,20 @@ func (u *Unpackerr) getSonarrQueue() {
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
 			u.Debugf("Sonarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
+
+		start := time.Now()
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
 			u.Errorf("Sonarr (%s): %v", server.URL, err)
-
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Sonarr, server.URL)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -128,18 +130,18 @@ func (u *Unpackerr) checkSonarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Sonarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Sonarr,
+					App:         starr.Sonarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"downloadId": q.DownloadID,
@@ -151,7 +153,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
-					Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
+					starr.Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
 			}
 		}
 	}

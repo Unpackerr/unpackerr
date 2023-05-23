@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 )
 
 // WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
 type WebhookPayload struct {
 	Path   string                 `json:"path"`                // Path for the extracted item.
-	App    string                 `json:"app"`                 // Application Triggering Event
+	App    starr.App              `json:"app"`                 // Application Triggering Event
 	IDs    map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
 	Event  ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
 	Time   time.Time              `json:"time"`                // Time of this event.

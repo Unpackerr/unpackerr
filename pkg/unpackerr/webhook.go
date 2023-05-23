@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 	"golift.io/version"
 )
 
@@ -308,9 +309,9 @@ func logEvents(events []ExtractStatus) (s string) {
 }
 
 // Excluded returns true if an app is in the Exclude slice.
-func (w *WebhookConfig) Excluded(app string) bool {
+func (w *WebhookConfig) Excluded(app starr.App) bool {
 	for _, a := range w.Exclude {
-		if strings.EqualFold(a, app) {
+		if strings.EqualFold(a, string(app)) {
 			return true
 		}
 	}

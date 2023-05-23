@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/starr/lidarr"
@@ -98,19 +99,20 @@ func (u *Unpackerr) getLidarrQueue() {
 	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debugf("Lidarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
+
+		start := time.Now()
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
 			u.Errorf("Lidarr (%s): %v", server.URL, err)
-
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Lidarr, server.URL)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -128,18 +130,18 @@ func (u *Unpackerr) checkLidarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Lidarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Lidarr,
+					App:         starr.Lidarr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Lidarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"artistId":   q.ArtistID,
@@ -151,7 +153,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

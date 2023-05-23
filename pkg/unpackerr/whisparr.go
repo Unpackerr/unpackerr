@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/starr/radarr"
@@ -103,19 +104,20 @@ func (u *Unpackerr) getWhisparrQueue() {
 	for _, server := range u.Whisparr {
 		if server.APIKey == "" {
 			u.Debugf("Whisparr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
+
+		start := time.Now()
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
 			u.Printf("Whisparr (%s): %v", server.URL, err)
-
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",
@@ -134,17 +136,17 @@ func (u *Unpackerr) checkWhisparrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Whisparr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Whisparr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Whisparr,
+					App:         starr.Whisparr,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Whisparr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Whisparr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"downloadId": q.DownloadID,
 						"title":      q.Title,
@@ -155,7 +157,7 @@ func (u *Unpackerr) checkWhisparrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Whisparr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Whisparr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 )
 
 /* This file contains all the unique bits for each app. When adding a new app,
@@ -28,11 +29,6 @@ const (
 
 // These are the names used to identify each app.
 const (
-	Sonarr       = "Sonarr"
-	Radarr       = "Radarr"
-	Lidarr       = "Lidarr"
-	Readarr      = "Readarr"
-	Whisparr     = "Whisparr"
 	FolderString = "Folder"
 )
 
@@ -143,17 +139,17 @@ func (u *Unpackerr) validateApps() error {
 	return nil
 }
 
-func (u *Unpackerr) haveQitem(name, app string) bool {
+func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	switch app {
-	case Lidarr:
+	case starr.Lidarr:
 		return u.haveLidarrQitem(name)
-	case Radarr:
+	case starr.Radarr:
 		return u.haveRadarrQitem(name)
-	case Readarr:
+	case starr.Readarr:
 		return u.haveReadarrQitem(name)
-	case Sonarr:
+	case starr.Sonarr:
 		return u.haveSonarrQitem(name)
-	case Whisparr:
+	case starr.Whisparr:
 		return u.haveWhisparrQitem(name)
 	default:
 		return false

@@ -7,25 +7,22 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const webserverTimeout = 10 * time.Second
-
 type WebServer struct {
-	Metrics    bool     `toml:"metrics" json:"metrics" xml:"metrics" yaml:"metrics"`
-	LogFiles   int      `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
-	LogFileMb  int      `json:"logFileMb" toml:"log_file_mb" xml:"log_file_mb" yaml:"logFileMb"`
-	ListenAddr string   `toml:"listen_addr" json:"listenAddr" xml:"listen_addr" yaml:"listenAddr"`
-	LogFile    string   `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
-	SSLCrtFile string   `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
-	SSLKeyFile string   `json:"sslKeyFile" toml:"ssl_key_file" xml:"ssl_key_file" yaml:"sslKeyFile"`
-	URLBase    string   `json:"urlbase" toml:"urlbase" xml:"urlbase" yaml:"urlbase"`
-	Upstreams  []string `json:"upstreams" toml:"upstreams" xml:"upstreams" yaml:"upstreams"`
+	Metrics    bool        `toml:"metrics" json:"metrics" xml:"metrics" yaml:"metrics"`
+	LogFiles   int         `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
+	LogFileMb  int         `json:"logFileMb" toml:"log_file_mb" xml:"log_file_mb" yaml:"logFileMb"`
+	ListenAddr string      `toml:"listen_addr" json:"listenAddr" xml:"listen_addr" yaml:"listenAddr"`
+	LogFile    string      `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
+	SSLCrtFile string      `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
+	SSLKeyFile string      `json:"sslKeyFile" toml:"ssl_key_file" xml:"ssl_key_file" yaml:"sslKeyFile"`
+	URLBase    string      `json:"urlbase" toml:"urlbase" xml:"urlbase" yaml:"urlbase"`
+	Upstreams  StringSlice `json:"upstreams" toml:"upstreams" xml:"upstreams" yaml:"upstreams"`
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server
@@ -79,10 +76,10 @@ func (u *Unpackerr) startWebServer() {
 	u.Webserver.server = &http.Server{
 		Addr:              addr,
 		Handler:           smx,
-		ReadTimeout:       webserverTimeout,
-		ReadHeaderTimeout: webserverTimeout,
-		WriteTimeout:      webserverTimeout,
-		IdleTimeout:       webserverTimeout,
+		ReadTimeout:       0,
+		ReadHeaderTimeout: defaultTimeout,
+		WriteTimeout:      0,
+		IdleTimeout:       defaultTimeout,
 		ErrorLog:          u.Logger.Error,
 	}
 

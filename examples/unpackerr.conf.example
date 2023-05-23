@@ -52,7 +52,7 @@ file_mode = "0644"
 dir_mode = "0755"
 
 [webserver]
-## The web server currently only supports metrics, so enable this if you wish to use it.
+## The web server currently only supports metrics; set this to true if you wish to use it.
   metrics = false
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
   listen_addr = "0.0.0.0:5656"

@@ -138,6 +138,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Sonarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,

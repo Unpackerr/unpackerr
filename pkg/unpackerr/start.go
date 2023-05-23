@@ -27,7 +27,7 @@ const (
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 	defaultDeleteDelay = 5 * time.Minute
-	defaultHistory     = 10             // items keps in history.
+	defaultHistory     = 10             // items kept in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
@@ -45,7 +45,7 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics  *Metrics
+	metrics  *metrics
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response

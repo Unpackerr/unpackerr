@@ -144,6 +144,7 @@ func (u *Unpackerr) checkWhisparrQueue() {
 
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Whisparr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.StatusMessages, starr.Whisparr, q.Title, server.Paths),

@@ -365,8 +365,6 @@ golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d h1:LydDVem7g3k4w8mNdoLYCIG
 golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d/go.mod h1:K+Dg62wTc+z8b3iE8brS7rrDSRevWBQzSPNu8HnE+JI=
 golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624 h1:gPe9Rl6e6Lbp5pbanmn2ADlQEBFVoKgGbmPJJtURCbk=
 golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624/go.mod h1:mXltnLJV69BHLXCexH3uulsIUBCzq8v69Bh77FMXYBo=
-golift.io/starr v0.14.1-0.20230105161307-212936057ff2 h1:U4c05hn3ruhuTSF1YlfUz87WqbBqTuOzVCzX0RoZxYI=
-golift.io/starr v0.14.1-0.20230105161307-212936057ff2/go.mod h1:nxaRArgcVRjXO74QjTtu0y9/b/OYSQl1nyq0Tz8LDFQ=
 golift.io/starr v0.14.1-0.20230519072620-7ed4f9cf36d2 h1:idrmdxuoZu1Sx5dqRyyQoUjH1MdJGSGo+bsHcxE/NhA=
 golift.io/starr v0.14.1-0.20230519072620-7ed4f9cf36d2/go.mod h1:C8jb7qynUVJMrCOjYzBhfaudeX03f2eXhcnk56XTcCo=
 golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=

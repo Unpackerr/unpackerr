@@ -138,6 +138,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Lidarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,

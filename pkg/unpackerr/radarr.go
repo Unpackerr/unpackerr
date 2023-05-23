@@ -138,6 +138,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Radarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,

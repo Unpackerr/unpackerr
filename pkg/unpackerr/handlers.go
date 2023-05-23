@@ -17,6 +17,7 @@ type Extract struct {
 	Retries     uint
 	Path        string
 	App         starr.App
+	URL         string
 	Updated     time.Time
 	DeleteDelay time.Duration
 	DeleteOrig  bool
@@ -187,12 +188,12 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
-		u.updateMetrics(resp, u.Map[resp.X.Name].App)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
-		u.updateMetrics(resp, u.Map[resp.X.Name].App)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
 	}
 }

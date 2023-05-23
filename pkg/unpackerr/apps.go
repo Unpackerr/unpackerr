@@ -156,7 +156,7 @@ func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	}
 }
 
-// StringSlice allows a special environment variable unmarshaller for a lost of strings.
+// StringSlice allows a special environment variable unmarshaller for a lot of strings.
 type StringSlice []string
 
 // UnmarshalENV turns environment variables into a string slice.

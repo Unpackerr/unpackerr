@@ -15,7 +15,7 @@ func (u *Unpackerr) startTray() {
 	u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 }
 
-func (u *Unpackerr) updateTray(_, _, _, _, _, _, _, _, _, _, _, _ uint) {
+func (u *Unpackerr) updateTray(_ *Stats, _ uint) {
 	// there is no tray.
 }
 

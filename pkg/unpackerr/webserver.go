@@ -41,7 +41,18 @@ func (u *Unpackerr) logWebserver() {
 		return
 	}
 
-	u.Printf("=> Starting webserver. Listen address: %v", u.Webserver.ListenAddr)
+	addr := u.Webserver.ListenAddr
+	if !strings.Contains(addr, ":") {
+		addr = "0.0.0.0:" + addr
+	}
+
+	ssl := ""
+	if u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "" {
+		ssl = "s"
+	}
+
+	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams)",
+		ssl, addr, u.Webserver.URLBase, len(u.Webserver.Upstreams))
 }
 
 func (u *Unpackerr) startWebServer() {
@@ -79,11 +90,18 @@ func (u *Unpackerr) startWebServer() {
 }
 
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.router.GET("/", Index)
+	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
 
-	if u.Webserver.Metrics {
-		u.setupMetrics()
-		u.Webserver.router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
+	if !u.Webserver.Metrics {
+		return
+	}
+
+	u.setupMetrics()
+	u.Webserver.router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
+
+	if u.Webserver.URLBase != "/" {
+		// Metrics get served from both paths.
+		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), promhttp.Handler())
 	}
 }
 

@@ -51,6 +51,26 @@ parallel = 1
 file_mode = "0644"
 dir_mode = "0755"
 
+[webserver]
+## The web server currently only supports metrics, so enable this if you wish to use it.
+  metrics = false
+## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
+  listen_addr = "0.0.0.0:5656"
+## Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
+  log_file = ""
+## This app automatically rotates logs. Set these to the size and number to keep.
+  log_files = 10
+  log_file_mb = 10
+## Set both of these to valid file paths to enable HTTPS/TLS.
+  ssl_cert_file = ""
+  ssl_key_file = ""
+## Base URL from which to serve content.
+  urlbase = "/"
+## Upstreams should be set to the IP or CIDR of your trusted upstream proxy.
+## Setting this correctly allows X-Forwarded-For to be used in logs.
+## In the future it may control auth proxy trust. Must be a list of strings.
+  upstreams = [ ] # example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+
 ##-Notes-#######-READ THIS!!!-##################################################
 ## The following sections can be repeated if you have more than one Sonarr,   ##
 ## Radarr or Lidarr, Readarr, Folder, Webhook, or Command Hook.               ##

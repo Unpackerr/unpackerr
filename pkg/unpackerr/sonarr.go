@@ -25,7 +25,7 @@ func (u *Unpackerr) validateSonarr() error {
 
 	for i := range u.Sonarr {
 		if u.Sonarr[i].URL == "" {
-			u.Printf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -82,7 +82,7 @@ func (u *Unpackerr) logSonarr() {
 			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
 			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
-		u.Print(" => Sonarr Config:", c, "servers")
+		u.Printf(" => Sonarr Config: %d servers", c)
 
 		for _, f := range u.Sonarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -104,7 +104,7 @@ func (u *Unpackerr) getSonarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
+			u.Errorf("Sonarr (%s): %v", server.URL, err)
 
 			return
 		}

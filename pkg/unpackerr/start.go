@@ -58,8 +58,10 @@ type Unpackerr struct {
 
 // Logger provides a struct we can pass into other packages.
 type Logger struct {
-	debug  bool
-	Logger *log.Logger
+	HTTP  *log.Logger
+	Info  *log.Logger
+	Error *log.Logger
+	Debug *log.Logger
 }
 
 // Flags are our CLI input flags.
@@ -101,7 +103,12 @@ func New() *Unpackerr {
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
 		},
-		Logger: &Logger{Logger: log.New(io.Discard, "", 0)},
+		Logger: &Logger{
+			HTTP:  log.New(io.Discard, "", 0),
+			Info:  log.New(io.Discard, "[INFO] ", log.LstdFlags),
+			Error: log.New(io.Discard, "[ERROR] ", log.LstdFlags),
+			Debug: log.New(io.Discard, "[DEBUG] ", log.Lshortfile|log.Lmicroseconds|log.Ldate),
+		},
 	}
 }
 

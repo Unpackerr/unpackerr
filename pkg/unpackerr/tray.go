@@ -44,7 +44,7 @@ func (u *Unpackerr) readyTray() {
 	if err == nil {
 		systray.SetTemplateIcon(b, b)
 	} else {
-		u.Printf("[ERROR] Reading Icon: %v", err)
+		u.Errorf("Reading Icon: %v", err)
 		systray.SetTitle("DNC")
 	}
 
@@ -239,16 +239,16 @@ func (u *Unpackerr) rotateLogs() {
 	u.Printf("User Requested: Rotate Log File!")
 
 	if _, err := u.rotatorr.Rotate(); err != nil {
-		u.Printf("[ERROR] Rotating Log Files: %v", err)
+		u.Errorf("Rotating Log Files: %v", err)
 	}
 }
 
 func (u *Unpackerr) checkForUpdate() {
-	u.Print("User Requested: Update Check")
+	u.Printf("User Requested: Update Check")
 
 	switch update, err := update.Check("Unpackerr/unpackerr", version.Version); {
 	case err != nil:
-		u.Printf("[ERROR] Update Check: %v", err)
+		u.Errorf("Update Check: %v", err)
 		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: "+err.Error())
 	case update.Outdate:
 		yes, _ := ui.Question("Unpackerr", "An Update is available! Download?\n\n"+

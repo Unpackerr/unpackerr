@@ -29,7 +29,7 @@ func (u *Unpackerr) validateWhisparr() error {
 
 	for i := range u.Whisparr {
 		if u.Whisparr[i].URL == "" {
-			u.Printf("Missing Whisparr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Whisparr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -87,7 +87,7 @@ func (u *Unpackerr) logWhisparr() {
 			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Whisparr[0].Syncthing,
 			u.Whisparr[0].DeleteOrig, u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
 	} else if count != 0 {
-		u.Print(" => Whisparr Config:", count, "servers")
+		u.Printf(" => Whisparr Config: %d servers", count)
 
 		for _, f := range u.Whisparr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -109,7 +109,7 @@ func (u *Unpackerr) getWhisparrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Whisparr (%s): %v", server.URL, err)
+			u.Printf("Whisparr (%s): %v", server.URL, err)
 
 			return
 		}

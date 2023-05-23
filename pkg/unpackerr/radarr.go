@@ -25,7 +25,7 @@ func (u *Unpackerr) validateRadarr() error {
 
 	for i := range u.Radarr {
 		if u.Radarr[i].URL == "" {
-			u.Printf("Missing Radarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Radarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -82,7 +82,7 @@ func (u *Unpackerr) logRadarr() {
 			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Syncthing,
 			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
 	} else {
-		u.Print(" => Radarr Config:", c, "servers")
+		u.Printf(" => Radarr Config: %d servers", c)
 
 		for _, f := range u.Radarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -104,7 +104,7 @@ func (u *Unpackerr) getRadarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
+			u.Errorf("Radarr (%s): %v", server.URL, err)
 
 			return
 		}

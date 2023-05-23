@@ -8,6 +8,8 @@ require (
 	github.com/getlantern/systray v1.2.1
 	github.com/gonutz/w32 v1.0.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
+	github.com/julienschmidt/httprouter v1.3.0
+	github.com/lestrrat-go/apache-logformat/v2 v2.0.6
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
@@ -41,9 +43,11 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/kdomanski/iso9660 v0.3.3 // indirect
 	github.com/klauspost/compress v1.16.3 // indirect
+	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect

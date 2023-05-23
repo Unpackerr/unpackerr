@@ -25,7 +25,7 @@ func (u *Unpackerr) validateLidarr() error {
 
 	for i := range u.Lidarr {
 		if u.Lidarr[i].URL == "" {
-			u.Printf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -82,7 +82,7 @@ func (u *Unpackerr) logLidarr() {
 			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Syncthing,
 			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
 	} else {
-		u.Print(" => Lidarr Config:", c, "servers")
+		u.Printf(" => Lidarr Config: %d servers", c)
 
 		for _, f := range u.Lidarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -104,7 +104,7 @@ func (u *Unpackerr) getLidarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
+			u.Errorf("Lidarr (%s): %v", server.URL, err)
 
 			return
 		}

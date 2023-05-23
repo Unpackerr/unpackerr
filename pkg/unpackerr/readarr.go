@@ -25,7 +25,7 @@ func (u *Unpackerr) validateReadarr() error {
 
 	for i := range u.Readarr {
 		if u.Readarr[i].URL == "" {
-			u.Printf("Missing Readarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Readarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -82,7 +82,7 @@ func (u *Unpackerr) logReadarr() {
 			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Syncthing,
 			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
-		u.Print(" => Readarr Config:", c, "servers")
+		u.Printf(" => Readarr Config: %d servers", c)
 
 		for _, f := range u.Readarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -104,7 +104,7 @@ func (u *Unpackerr) getReadarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
+			u.Errorf("Readarr (%s): %v", server.URL, err)
 
 			return
 		}

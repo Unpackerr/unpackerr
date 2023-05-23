@@ -39,6 +39,7 @@ type Folders struct {
 	Events   chan *eventData
 	Updates  chan *xtractr.Response
 	Printf   func(msg string, v ...interface{})
+	Errorf   func(msg string, v ...interface{})
 	Debugf   func(msg string, v ...interface{})
 	FSNotify *fsnotify.Watcher
 	Watcher  *watcher.Watcher
@@ -72,7 +73,7 @@ func (u *Unpackerr) logFolders() {
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Buffer)
 	} else {
-		u.Print(" => Folder Config:", count, "paths,", "event buffer:", u.Buffer)
+		u.Printf(" => Folder Config: %d paths, event buffer: %d ", count, u.Buffer)
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
@@ -100,7 +101,7 @@ func (u *Unpackerr) PollFolders() {
 	u.Folders, flist = u.checkFolders()
 
 	if err = u.newFolderWatcher(); err != nil {
-		u.Print("[ERROR] Watching Folders:", err)
+		u.Errorf("Watching Folders: %s", err)
 		return
 	}
 	// do not close either watcher.
@@ -110,7 +111,7 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
-	u.Print("[Folder] Watching (fsnotify):", strings.Join(flist, ", "))
+	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
 	if u.Folder.Interval.Duration == 0 {
 		return
@@ -118,7 +119,7 @@ func (u *Unpackerr) PollFolders() {
 
 	go func() {
 		if err := u.folders.Watcher.Start(u.Folder.Interval.Duration); err != nil {
-			u.Print("[ERROR] Folder poller stopped:", err)
+			u.Errorf("Folder poller stopped: %v", err)
 		}
 	}()
 	u.Printf("[Folder] Polling @ %v: %s", u.Folder.Interval, strings.Join(flist, ", "))
@@ -134,6 +135,7 @@ func (u *Unpackerr) newFolderWatcher() error {
 		Events:   make(chan *eventData, u.Config.Buffer),
 		Updates:  make(chan *xtractr.Response, updateChanBuf),
 		Debugf:   u.Debugf,
+		Errorf:   u.Errorf,
 		Printf:   u.Printf,
 	}
 
@@ -154,11 +156,11 @@ func (u *Unpackerr) newFolderWatcher() error {
 
 	for _, folder := range u.Folders {
 		if err := u.folders.Watcher.Add(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (cannot poll): %v", folder.Path, err)
 		}
 
 		if err := fsn.Add(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
 		}
 	}
 
@@ -201,16 +203,16 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	for _, folder := range u.Folders {
 		path, err := filepath.Abs(folder.Path)
 		if err != nil {
-			u.Printf("[ERROR] Folder '%s' (bad path): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (bad path): %v", folder.Path, err)
 			continue
 		}
 
 		folder.Path = path // rewrite it. might not be safe.
 		if stat, err := os.Stat(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
 			continue
 		} else if !stat.IsDir() {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): not a folder", folder.Path)
+			u.Errorf("Folder '%s' (cannot watch): not a folder", folder.Path)
 			continue
 		}
 
@@ -250,7 +252,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		LogFile:    !folder.cnfg.DisableLog,
 	})
 	if err != nil {
-		u.Print("[ERROR]", err)
+		u.Errorf("[ERROR] %v", err)
 
 		return
 	}
@@ -273,7 +275,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 		folder.step = EXTRACTING
 	case resp.Error != nil:
-		u.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.Errorf("[Folder] Extraction failed: %s: %v", resp.X.Name, resp.Error)
 
 		folder.step = EXTRACTFAILED
 
@@ -312,9 +314,9 @@ func (f *Folders) watchFSNotify() {
 	for {
 		select {
 		case err := <-f.Watcher.Error:
-			f.Printf("[ERROR] watcher: %v", err)
+			f.Errorf("watcher: %v", err)
 		case err := <-f.FSNotify.Errors:
-			f.Printf("[ERROR] fsnotify: %v", err)
+			f.Errorf("fsnotify: %v", err)
 		case event, ok := <-f.FSNotify.Events:
 			if !ok {
 				return
@@ -378,7 +380,7 @@ func (f *Folders) processEvent(event *eventData) {
 
 	if err := f.Add(dirPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			f.Printf("[ERROR] Folder: Tracking New Item: %v: %v", dirPath, err)
+			f.Errorf("Folder: Tracking New Item: %v: %v", dirPath, err)
 		}
 
 		return

@@ -37,7 +37,7 @@ func (w *WebServer) Enabled() bool {
 
 func (u *Unpackerr) logWebserver() {
 	if !u.Webserver.Enabled() {
-		u.Printf("=> Webserver Disabled.")
+		u.Printf(" => Webserver Disabled")
 		return
 	}
 

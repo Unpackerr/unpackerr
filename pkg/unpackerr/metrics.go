@@ -47,23 +47,15 @@ func (c *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(len(c.hookChan)), "chan_hooks")
 }
 
-func (u *Unpackerr) updateMetrics(resp *xtractr.Response) {
+func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app string) {
 	if u.metrics == nil {
 		return
 	}
 
-	app := u.Map[resp.X.Name].App
 	u.metrics.ExtractTime.WithLabelValues(app).Observe(resp.Elapsed.Seconds())
 	u.metrics.FilesExtracted.WithLabelValues(app).Add(float64(len(resp.NewFiles)))
 	u.metrics.BytesWritten.WithLabelValues(app).Add(float64(resp.Size))
-
-	for _, list := range resp.Archives {
-		u.metrics.ArchivesRead.WithLabelValues(app).Add(float64(len(list)))
-	}
-
-	for _, list := range resp.Extras {
-		u.metrics.ArchivesRead.WithLabelValues(app).Add(float64(len(list)))
-	}
+	u.metrics.ArchivesRead.WithLabelValues(app).Add(float64(mapLen(resp.Archives) + mapLen(resp.Extras)))
 }
 
 func (u *Unpackerr) setupMetrics() {

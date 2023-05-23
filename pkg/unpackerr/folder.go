@@ -275,6 +275,8 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 		folder.step = EXTRACTING
 	case resp.Error != nil:
+		u.updateMetrics(resp, folder.cnfg.Path)
+
 		u.Errorf("[Folder] Extraction failed: %s: %v", resp.X.Name, resp.Error)
 
 		folder.step = EXTRACTFAILED
@@ -287,6 +289,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			folder.rars = append(folder.rars, v...)
 		}
 
+		u.updateMetrics(resp, folder.cnfg.Path)
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.rars),

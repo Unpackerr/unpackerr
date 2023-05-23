@@ -45,6 +45,7 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
+	metrics  *Metrics
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
@@ -102,6 +103,13 @@ func New() *Unpackerr {
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
+			Webserver: &WebServer{
+				Metrics:    false,
+				LogFiles:   defaultLogFiles,
+				LogFileMb:  defaultLogFileMb,
+				ListenAddr: "0.0.0.0:5656",
+				URLBase:    "/",
+			},
 		},
 		Logger: &Logger{
 			HTTP:  log.New(io.Discard, "", 0),
@@ -159,6 +167,7 @@ func Start() (err error) {
 	}
 
 	go u.watchDeleteChannel()
+	u.startWebServer()
 	u.watchWorkThread()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 

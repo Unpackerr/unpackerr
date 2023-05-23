@@ -123,45 +123,15 @@ func (l *Logger) Errorf(msg string, v ...interface{}) {
 
 // logCurrentQueue prints the number of things happening.
 func (u *Unpackerr) logCurrentQueue() {
-	var (
-		waiting          uint
-		queued           uint
-		extracting       uint
-		failed           uint
-		extracted        uint
-		imported         uint
-		deleted          uint
-		hookOK, hookFail = u.WebhookCounts()
-		cmdOK, cmdFail   = u.CmdhookCounts()
-	)
-
-	for name := range u.Map {
-		switch u.Map[name].Status {
-		case WAITING:
-			waiting++
-		case QUEUED:
-			queued++
-		case EXTRACTING:
-			extracting++
-		case DELETEFAILED, EXTRACTFAILED:
-			failed++
-		case EXTRACTED:
-			extracted++
-		case DELETED, DELETING:
-			deleted++
-		case IMPORTED:
-			imported++
-		}
-	}
+	s := u.stats()
 
 	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
+		" [%d failed] [%d deleted]", s.Waiting, s.Queued, s.Extracting, s.Extracted, s.Imported, s.Failed, s.Deleted)
 	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks]"+
 		" [%d|%d cmdhooks] [stacks; event:%d, hook:%d, del:%d]",
-		u.Retries, u.Finished, hookOK, hookFail, cmdOK, cmdFail,
+		u.Retries, u.Finished, s.HookOK, s.HookFail, s.CmdOK, s.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan))
-	u.updateTray(u.Retries, u.Finished, waiting, queued, extracting, failed, extracted, imported, deleted,
-		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
+	u.updateTray(s, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 
 // setupLogging splits log write into a file and/or stdout.
@@ -203,8 +173,7 @@ func (u *Unpackerr) setupLogging() {
 }
 
 func (u *Unpackerr) updateLogOutput(writer io.Writer) {
-
-	if u.Webserver.LogFile != "" {
+	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
 	} else {
 		u.Logger.HTTP.SetOutput(writer)

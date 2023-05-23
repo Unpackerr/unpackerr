@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"runtime/debug"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/Unpackerr/unpackerr/pkg/unpackerr"
@@ -14,7 +15,7 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			ui.ShowConsoleWindow()
-			log.Printf("[PANIC] %v", r)
+			log.Printf("[PANIC] %v\n%s", r, string(debug.Stack()))
 		}
 	}()
 

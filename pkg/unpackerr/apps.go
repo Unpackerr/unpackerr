@@ -62,7 +62,7 @@ type Config struct {
 	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
 	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
 	Passwords   []string         `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
-	Webserver   *ServerConfig    `json:"webserver" toml:"webserver" xml:"webserver" yaml:"webserver"`
+	Webserver   *WebServer       `json:"webserver" toml:"webserver" xml:"webserver" yaml:"webserver"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr" xml:"whisparr" yaml:"whisparr,omitempty"`

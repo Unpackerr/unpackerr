@@ -177,7 +177,7 @@ func (u *Unpackerr) checkExtractDone() {
 	}
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
+// handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
@@ -187,10 +187,12 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
+		u.updateMetrics(resp)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+		u.updateMetrics(resp)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
 	}
 }

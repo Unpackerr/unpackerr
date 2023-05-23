@@ -28,7 +28,7 @@ type Extract struct {
 // Shared config items for all starr apps.
 type StarrConfig struct {
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths       []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Paths       StringSlice   `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
 	Protocols   string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
 	DeleteOrig  bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
 	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`

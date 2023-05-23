@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,8 +29,8 @@ type WebhookConfig struct {
 	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
 	IgnoreSSL  bool            `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
-	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	Events     ExtractStatuses `json:"events" toml:"events" xml:"events" yaml:"events"`
+	Exclude    StringSlice     `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
 	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname,omitempty" yaml:"nickname"`
 	Token      string          `json:"token" toml:"token" xml:"token,omitempty" yaml:"token"`
 	Channel    string          `json:"channel" toml:"channel" xml:"channel,omitempty" yaml:"channel"`
@@ -49,6 +50,41 @@ var (
 	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 	ErrWebhookNoURL  = fmt.Errorf("webhook without a URL configured; fix it")
 )
+
+// ExtractStatuses allows us to create a custom environment variable unmarshaller.
+type ExtractStatuses []ExtractStatus
+
+// UnmarshalENV turns environment variables into extraction statuses.
+func (statuses *ExtractStatuses) UnmarshalENV(tag, envval string) error {
+	if envval == "" {
+		return nil
+	}
+
+	envval = strings.Trim(envval, `["',] `)
+	vals := strings.Split(envval, ",")
+	*statuses = make(ExtractStatuses, len(vals))
+
+	for idx, val := range vals {
+		intVal, err := strconv.ParseUint(strings.TrimSpace(val), 10, 8)
+		if err != nil {
+			return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
+		}
+
+		(*statuses)[idx] = ExtractStatus(intVal)
+	}
+
+	return nil
+}
+
+func (statuses ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
+	vals := make([]string, len(statuses))
+
+	for idx, status := range statuses {
+		vals[idx] = status.String()
+	}
+
+	return map[string]string{tag: strings.Join(vals, ",")}, nil
+}
 
 // runAllHooks sends webhooks and executes command hooks.
 func (u *Unpackerr) runAllHooks(i *Extract) {
@@ -76,6 +112,7 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 	if i.Status <= EXTRACTED && i.Resp != nil {
 		payload.Data = &XtractPayload{
 			Files:   i.Resp.NewFiles,
+			File:    i.Resp.NewFiles,
 			Start:   i.Resp.Started,
 			Output:  i.Resp.Output,
 			Bytes:   i.Resp.Size,
@@ -85,10 +122,12 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 
 		for _, v := range i.Resp.Archives {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
+			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
 		for _, v := range i.Resp.Extras {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
+			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
 		if i.Resp.Error != nil {
@@ -234,8 +273,20 @@ func (u *Unpackerr) logWebhook() {
 			ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
 		}
 
-		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v, channel: %s, nickname: %s",
-			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events), f.Channel, f.Nickname)
+		if f.Channel != "" {
+			ex += fmt.Sprintf(", channel: %s", f.Channel)
+		}
+
+		if f.Nickname != "" {
+			ex += fmt.Sprintf(", nickname: %s", f.Nickname)
+		}
+
+		if len(f.Exclude) > 0 {
+			ex += fmt.Sprintf(", exclude: %q", strings.Join(f.Exclude, "; "))
+		}
+
+		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",
+			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
 	}
 }
 

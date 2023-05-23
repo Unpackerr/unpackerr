@@ -56,11 +56,11 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.licenses="${LICENSE}" \
       org.opencontainers.image.version="${VERSION}-${ITERATION}"
 
-COPY --from=builder /tmp/image /image
+COPY --from=builder /tmp/image /unpackerr
 # Make sure we have an ssl cert chain and timezone data.
 COPY --from=builder /etc/ssl /etc/ssl
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 ENV TZ=UTC
 
-ENTRYPOINT [ "/image" ]
+ENTRYPOINT [ "/unpackerr" ]

@@ -111,13 +111,13 @@ func (u *Unpackerr) getWhisparrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("Whisparr (%s): %v", server.URL, err)
+			u.saveQueueMetrics(0, start, starr.Whisparr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL)
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",

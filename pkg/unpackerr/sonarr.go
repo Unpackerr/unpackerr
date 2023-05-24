@@ -106,13 +106,13 @@ func (u *Unpackerr) getSonarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Errorf("Sonarr (%s): %v", server.URL, err)
+			u.saveQueueMetrics(0, start, starr.Sonarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Sonarr, server.URL)
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))

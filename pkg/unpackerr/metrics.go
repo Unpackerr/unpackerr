@@ -12,6 +12,8 @@ import (
 
 // metrics holds the non-custom Prometheus collector metrics for the app.
 type metrics struct {
+	AppQueueErr    *prometheus.CounterVec
+	AppQueueGet    *prometheus.CounterVec
 	AppQueues      *prometheus.GaugeVec
 	AppRequests    *prometheus.GaugeVec
 	ArchivesRead   *prometheus.CounterVec
@@ -72,11 +74,20 @@ func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app starr.App, url str
 }
 
 // saveQueueMetrics observes metrics for each starr app queue request.
-func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, url string) {
+func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, url string, err error) {
+	if err != nil {
+		u.Errorf("%s (%s): %v", app, url, err)
+	}
+
 	if u.metrics == nil {
 		return
 	}
 
+	if err != nil {
+		u.metrics.AppQueueErr.WithLabelValues(string(app), url).Inc()
+	}
+
+	u.metrics.AppQueueGet.WithLabelValues(string(app), url).Inc()
 	u.metrics.AppQueues.WithLabelValues(string(app), url).Set(float64(size))
 	u.metrics.AppRequests.WithLabelValues(string(app), url).Set(time.Since(start).Seconds())
 }
@@ -91,6 +102,14 @@ func (u *Unpackerr) setupMetrics() {
 	})
 
 	u.metrics = &metrics{
+		AppQueueErr: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "unpackerr_app_queue_fetch_errors_total",
+			Help: "Total times the starr activity queue fetch returned an error",
+		}, []string{"app", "url"}),
+		AppQueueGet: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "unpackerr_app_queue_fetch_total",
+			Help: "Total times the starr activity queue was fetched",
+		}, []string{"app", "url"}),
 		AppQueues: promauto.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "unpackerr_app_queue_size",
 			Help: "The total number of items queued in a Starr app",

@@ -106,13 +106,13 @@ func (u *Unpackerr) getReadarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Errorf("Readarr (%s): %v", server.URL, err)
+			u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL)
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))

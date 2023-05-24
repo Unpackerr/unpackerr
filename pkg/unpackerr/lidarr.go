@@ -106,13 +106,13 @@ func (u *Unpackerr) getLidarrQueue() {
 
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Errorf("Lidarr (%s): %v", server.URL, err)
+			u.saveQueueMetrics(0, start, starr.Lidarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Lidarr, server.URL)
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Lidarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))

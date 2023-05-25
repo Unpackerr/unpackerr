@@ -7,6 +7,7 @@ require (
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
 	github.com/getlantern/systray v1.2.2
 	github.com/gonutz/w32 v1.0.0
+	github.com/gonutz/w32/v2 v2.9.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lestrrat-go/apache-logformat/v2 v2.0.6

@@ -90,6 +90,16 @@ services:
       - UN_CMDHOOK_0_SHELL=false
       - UN_CMDHOOK_0_EXCLUDE_0=
       - UN_CMDHOOK_0_EVENTS_0=0
+      # Web Server Config
+      - UN_WEBSERVER_METRICS=false
+      - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
+      - UN_WEBSERVER_LOG_FILE=
+      - UN_WEBSERVER_LOG_FILES=10
+      - UN_WEBSERVER_LOG_FILE_MB=10
+      - UN_WEBSERVER_SSL_CERT_FILE=
+      - UN_WEBSERVER_SSL_KEY_FILE=
+      - UN_WEBSERVER_URLBASE=/
+      - UN_WEBSERVER_UPSTREAMS=
 
     security_opt:
       - no-new-privileges:true

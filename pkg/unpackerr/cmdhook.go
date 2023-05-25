@@ -52,7 +52,7 @@ func (u *Unpackerr) runCmdhookWithLog(hook *WebhookConfig, payload *WebhookPaylo
 
 	switch {
 	case err != nil:
-		u.Printf("[ERROR] Command Hook (%s) %s: %v: %s", payload.Event, hook.Name, err, out.String())
+		u.Errorf("Command Hook (%s) %s: %v: %s", payload.Event, hook.Name, err, out.String())
 		hook.fails++
 	case hook.Silent || out == nil:
 		u.Printf("[Cmdhook] Queue: %d/%d. Ran command %s", len(u.hookChan), cap(u.hookChan), hook.Name)
@@ -121,7 +121,7 @@ func (u *Unpackerr) logCmdhook() {
 	if len(u.Cmdhook) == 1 {
 		pfx = " => Command Hook Config: 1 cmd"
 	} else {
-		u.Print(" => Command Hook Configs:", len(u.Cmdhook), "cmds")
+		u.Printf(" => Command Hook Configs: %d commands", len(u.Cmdhook))
 		pfx = " =>    Command"
 	}
 

@@ -16,7 +16,8 @@ type Extract struct {
 	Syncthing   bool
 	Retries     uint
 	Path        string
-	App         string
+	App         starr.App
+	URL         string
 	Updated     time.Time
 	DeleteDelay time.Duration
 	DeleteOrig  bool
@@ -122,7 +123,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
-	u.updateHistory(item.App + ": " + item.Path)
+	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
 func (u *Unpackerr) getPasswordFromPath(s string) string {
@@ -177,7 +178,7 @@ func (u *Unpackerr) checkExtractDone() {
 	}
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
+// handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
@@ -187,17 +188,19 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
 	}
 }
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app starr.App, title string, paths []string) string {
 	var errs []error
 
 	for _, path := range paths {

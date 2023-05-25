@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 )
 
 /* This file contains all the unique bits for each app. When adding a new app,
@@ -28,11 +29,6 @@ const (
 
 // These are the names used to identify each app.
 const (
-	Sonarr       = "Sonarr"
-	Radarr       = "Radarr"
-	Lidarr       = "Lidarr"
-	Readarr      = "Readarr"
-	Whisparr     = "Whisparr"
 	FolderString = "Folder"
 )
 
@@ -63,6 +59,7 @@ type Config struct {
 	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
 	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
 	Passwords   StringSlice      `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
+	Webserver   *WebServer       `json:"webserver" toml:"webserver" xml:"webserver" yaml:"webserver"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
 	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr" xml:"whisparr" yaml:"whisparr,omitempty"`
@@ -142,24 +139,24 @@ func (u *Unpackerr) validateApps() error {
 	return nil
 }
 
-func (u *Unpackerr) haveQitem(name, app string) bool {
+func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	switch app {
-	case Lidarr:
+	case starr.Lidarr:
 		return u.haveLidarrQitem(name)
-	case Radarr:
+	case starr.Radarr:
 		return u.haveRadarrQitem(name)
-	case Readarr:
+	case starr.Readarr:
 		return u.haveReadarrQitem(name)
-	case Sonarr:
+	case starr.Sonarr:
 		return u.haveSonarrQitem(name)
-	case Whisparr:
+	case starr.Whisparr:
 		return u.haveWhisparrQitem(name)
 	default:
 		return false
 	}
 }
 
-// StringSlice allows a special environment variable unmarshaller for a lost of strings.
+// StringSlice allows a special environment variable unmarshaller for a lot of strings.
 type StringSlice []string
 
 // UnmarshalENV turns environment variables into a string slice.

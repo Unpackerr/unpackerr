@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/starr/readarr"
@@ -25,7 +26,7 @@ func (u *Unpackerr) validateReadarr() error {
 
 	for i := range u.Readarr {
 		if u.Readarr[i].URL == "" {
-			u.Printf("Missing Readarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Readarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -82,7 +83,7 @@ func (u *Unpackerr) logReadarr() {
 			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Syncthing,
 			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
-		u.Print(" => Readarr Config:", c, "servers")
+		u.Printf(" => Readarr Config: %d servers", c)
 
 		for _, f := range u.Readarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -98,19 +99,20 @@ func (u *Unpackerr) getReadarrQueue() {
 	for _, server := range u.Readarr {
 		if server.APIKey == "" {
 			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -128,18 +130,19 @@ func (u *Unpackerr) checkReadarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Readarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Readarr,
+					App:         starr.Readarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Readarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"authorId":   q.AuthorID,
@@ -151,7 +154,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 	"golift.io/version"
 )
 
@@ -152,10 +153,10 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 	var body bytes.Buffer
 
 	if tmpl, err := hook.Template(); err != nil {
-		u.Printf("[ERROR] Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Errorf("Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
 		return
 	} else if err = tmpl.Execute(&body, payload); err != nil {
-		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Errorf("Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 
 	if reply, err := hook.Send(&body); err != nil {
 		u.Debugf("Webhook Payload: %s", b)
-		u.Printf("[ERROR] Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
+		u.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
 		u.Debugf("Webhook Response: %s", string(reply))
 	} else if !hook.Silent {
 		u.Debugf("Webhook Payload: %s", b)
@@ -264,7 +265,7 @@ func (u *Unpackerr) logWebhook() {
 	if len(u.Webhook) == 1 {
 		pfx = " => Webhook Config: 1 URL"
 	} else {
-		u.Print(" => Webhook Configs:", len(u.Webhook), "URLs")
+		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
 		pfx = " =>    URL"
 	}
 
@@ -308,9 +309,9 @@ func logEvents(events []ExtractStatus) (s string) {
 }
 
 // Excluded returns true if an app is in the Exclude slice.
-func (w *WebhookConfig) Excluded(app string) bool {
+func (w *WebhookConfig) Excluded(app starr.App) bool {
 	for _, a := range w.Exclude {
-		if strings.EqualFold(a, app) {
+		if strings.EqualFold(a, string(app)) {
 			return true
 		}
 	}

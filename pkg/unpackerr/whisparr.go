@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/starr/radarr"
@@ -29,7 +30,7 @@ func (u *Unpackerr) validateWhisparr() error {
 
 	for i := range u.Whisparr {
 		if u.Whisparr[i].URL == "" {
-			u.Printf("Missing Whisparr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Whisparr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -87,7 +88,7 @@ func (u *Unpackerr) logWhisparr() {
 			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Whisparr[0].Syncthing,
 			u.Whisparr[0].DeleteOrig, u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
 	} else if count != 0 {
-		u.Print(" => Whisparr Config:", count, "servers")
+		u.Printf(" => Whisparr Config: %d servers", count)
 
 		for _, f := range u.Whisparr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
@@ -103,19 +104,20 @@ func (u *Unpackerr) getWhisparrQueue() {
 	for _, server := range u.Whisparr {
 		if server.APIKey == "" {
 			u.Debugf("Whisparr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Whisparr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Whisparr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",
@@ -134,17 +136,18 @@ func (u *Unpackerr) checkWhisparrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Whisparr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Whisparr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Whisparr,
+					App:         starr.Whisparr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Whisparr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Whisparr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"downloadId": q.DownloadID,
 						"title":      q.Title,
@@ -155,7 +158,7 @@ func (u *Unpackerr) checkWhisparrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Whisparr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Whisparr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

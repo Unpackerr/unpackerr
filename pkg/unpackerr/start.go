@@ -27,7 +27,7 @@ const (
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 	defaultDeleteDelay = 5 * time.Minute
-	defaultHistory     = 10             // items keps in history.
+	defaultHistory     = 10             // items kept in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
@@ -45,6 +45,7 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
+	metrics  *metrics
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
@@ -58,8 +59,10 @@ type Unpackerr struct {
 
 // Logger provides a struct we can pass into other packages.
 type Logger struct {
-	debug  bool
-	Logger *log.Logger
+	HTTP  *log.Logger
+	Info  *log.Logger
+	Error *log.Logger
+	Debug *log.Logger
 }
 
 // Flags are our CLI input flags.
@@ -100,8 +103,20 @@ func New() *Unpackerr {
 			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
 			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
 			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
+			Webserver: &WebServer{
+				Metrics:    false,
+				LogFiles:   defaultLogFiles,
+				LogFileMb:  defaultLogFileMb,
+				ListenAddr: "0.0.0.0:5656",
+				URLBase:    "/",
+			},
 		},
-		Logger: &Logger{Logger: log.New(io.Discard, "", 0)},
+		Logger: &Logger{
+			HTTP:  log.New(io.Discard, "", 0),
+			Info:  log.New(io.Discard, "[INFO] ", log.LstdFlags),
+			Error: log.New(io.Discard, "[ERROR] ", log.LstdFlags),
+			Debug: log.New(io.Discard, "[DEBUG] ", log.Lshortfile|log.Lmicroseconds|log.Ldate),
+		},
 	}
 }
 
@@ -152,6 +167,7 @@ func Start() (err error) {
 	}
 
 	go u.watchDeleteChannel()
+	u.startWebServer()
 	u.watchWorkThread()
 	u.startTray() // runs tray or waits for exit depending on hasGUI.
 

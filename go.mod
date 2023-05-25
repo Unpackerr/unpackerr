@@ -13,7 +13,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/prometheus/client_golang v1.15.1
 	github.com/radovskyb/watcher v1.0.7
-	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
+	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	golang.org/x/mod v0.10.0
 	golift.io/cnfg v0.2.2
 	golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d

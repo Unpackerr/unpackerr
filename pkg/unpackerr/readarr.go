@@ -1,11 +1,13 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
@@ -13,11 +15,7 @@ import (
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
 	starr.Config
-	Path             string         `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths            []string       `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols        string         `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig       bool           `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay      cnfg.Duration  `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -28,7 +26,7 @@ func (u *Unpackerr) validateReadarr() error {
 
 	for i := range u.Readarr {
 		if u.Readarr[i].URL == "" {
-			u.Printf("Missing Readarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Readarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -37,7 +35,8 @@ func (u *Unpackerr) validateReadarr() error {
 		}
 
 		if len(u.Readarr[i].APIKey) != apiKeyLength {
-			u.Printf("Readarr (%s): ignored, invalid API key: %s", u.Readarr[i].URL, u.Readarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Readarr, u.Readarr[i].URL, ErrInvalidKey, len(u.Readarr[i].APIKey))
 		}
 
 		if u.Readarr[i].Timeout.Duration == 0 {
@@ -60,11 +59,11 @@ func (u *Unpackerr) validateReadarr() error {
 			u.Readarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Readarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Readarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Readarr[i].URL {
-			u.Printf("[WARN] Readarr URL fixed: %s -> %s (continuing)", u.Readarr[i].URL, r)
-			u.Readarr[i].URL = r
+		u.Readarr[i].Config.Client = &http.Client{
+			Timeout: u.Readarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Readarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
@@ -79,18 +78,18 @@ func (u *Unpackerr) validateReadarr() error {
 func (u *Unpackerr) logReadarr() {
 	if c := len(u.Readarr); c == 1 {
 		u.Printf(" => Readarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Readarr[0].URL, u.Readarr[0].APIKey != "", u.Readarr[0].Timeout,
-			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].DeleteOrig,
-			u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
+			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Syncthing,
+			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
-		u.Print(" => Readarr Config:", c, "servers")
+		u.Printf(" => Readarr Config: %d servers", c)
 
 		for _, f := range u.Readarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -100,19 +99,20 @@ func (u *Unpackerr) getReadarrQueue() {
 	for _, server := range u.Readarr {
 		if server.APIKey == "" {
 			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Printf("[ERROR] Readarr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -130,17 +130,19 @@ func (u *Unpackerr) checkReadarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Readarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Readarr,
+					App:         starr.Readarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Readarr, q.Title, server.Paths),
+					Syncthing:   server.Syncthing,
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Readarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"authorId":   q.AuthorID,
@@ -152,7 +154,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

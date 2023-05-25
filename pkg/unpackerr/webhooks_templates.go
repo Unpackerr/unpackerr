@@ -3,19 +3,20 @@ package unpackerr
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 )
 
 // WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
 type WebhookPayload struct {
 	Path   string                 `json:"path"`                // Path for the extracted item.
-	App    string                 `json:"app"`                 // Application Triggering Event
+	App    starr.App              `json:"app"`                 // Application Triggering Event
 	IDs    map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
 	Event  ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
 	Time   time.Time              `json:"time"`                // Time of this event.
@@ -34,8 +35,10 @@ type WebhookPayload struct {
 // XtractPayload is a rewrite of xtractr.Response.
 type XtractPayload struct {
 	Error    string        `json:"error,omitempty"`    // error only during extractfailed
-	Archives []string      `json:"archives,omitempty"` // list of all archive files extracted
-	Files    []string      `json:"files,omitempty"`    // list of all files extracted
+	Archive  []string      `json:"archive,omitempty"`  // list of all archive files extracted
+	Archives StringSlice   `json:"archives,omitempty"` // list of all archive files extracted
+	Files    StringSlice   `json:"files,omitempty"`    // list of all files extracted
+	File     []string      `json:"file,omitempty"`     // list of all files extracted
 	Start    time.Time     `json:"start,omitempty"`    // start time of extraction
 	Output   string        `json:"output,omitempty"`   // temporary items folder
 	Bytes    int64         `json:"bytes,omitempty"`    // Bytes written
@@ -75,8 +78,8 @@ const WebhookTemplateNotifiarr = `{
 const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
-  "text": "<b><a href=\"https://github.com/davidnewhall/unpackerr/releases\">Unpackerr<a>: {{.Event.Desc -}}
-    </b>\n<b>Title</b>: {{rawencode (index .IDs "title") -}}
+  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.Event.Desc -}}
+    \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
   {{- if .Data }}\n
@@ -117,14 +120,14 @@ const WebhookTemplateGotify = `{
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
 const WebhookTemplateDiscord = `{
   "username": "{{nickname}}",
-  "avatar_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+  "avatar_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
   "embeds": [{
     "title": {{encode (index .IDs "title")}},
     "timestamp": "{{timestamp .Time}}",
     "author": {
      "name": "Unpackerr: {{.Event.Desc}}",
-     "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
-     "url": "https://github.com/davidnewhall/unpackerr/releases"
+     "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
+     "url": "https://github.com/Unpackerr/unpackerr/releases"
     },
     "color": {{ if (eq 1 .Event)}}1752220
             {{- else if (eq 2 .Event)}}16384255
@@ -175,7 +178,7 @@ const WebhookTemplateSlack = `
 {
   "username": "{{nickname}}",
   {{if channel}}"channel": "{{channel}}",{{end}}
-  "icon_url": "https://raw.githubusercontent.com/wiki/davidnewhall/unpackerr/images/logo.png",
+  "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
   "blocks": [
     {
       "type": "header",
@@ -234,7 +237,7 @@ const WebhookTemplateSlack = `
           "text": "*Elapsed*\n{{.Data.Elapsed}}"
         }{{end}}{{end -}}
       ]
-    }{{if and (.Data .Data.Error)}},{
+    }{{if and .Data .Data.Error}},{
       "type": "section",
       "text": {
         "type": "mrkdwn",
@@ -246,6 +249,7 @@ const WebhookTemplateSlack = `
 `
 
 // Template returns a template specific to this webhook.
+//
 //nolint:wrapcheck
 func (w *WebhookConfig) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
@@ -285,7 +289,7 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
 		return template.Parse(WebhookTemplateNotifiarr)
 	case w.TmplPath != "":
-		s, err := ioutil.ReadFile(w.TmplPath)
+		s, err := os.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}

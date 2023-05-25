@@ -3,41 +3,48 @@
 # https://github.com/golift/application-builder
 #
 
-ARG BUILD_DATE=0
-ARG COMMIT=0
-ARG VERSION=unknown
-ARG BINARY=application-builder
+FROM golang:1-bullseye as builder
 
-FROM golang:latest as builder
-ARG TARGETOS
-ARG BINARY
-ARG TARGETARCH
+WORKDIR /src
+COPY main.go settings.sh go.mod go.sum ./
+RUN go mod download
+COPY pkg pkg
+COPY examples examples
+RUN go generate ./...
 
-RUN mkdir -p $GOPATH/pkg/mod $GOPATH/bin $GOPATH/src /${BINARY}
-COPY . /${BINARY}
-WORKDIR /${BINARY}
+RUN apt update && apt install -y tzdata openssl
 
-RUN apt update && \
-    apt install -y tzdata && \
-    CGO_ENABLED=0 make ${BINARY}.${TARGETARCH}.${TARGETOS}
-
-FROM scratch
 ARG TARGETOS
 ARG BUILD_DATE
-ARG COMMIT
-ARG TARGETARCH
+ARG BRANCH
 ARG VERSION
+ARG ITERATION
+ARG COMMIT
+
+RUN GOFLAGS="-trimpath -mod=readonly -modcacherw" \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /tmp/image -tags osusergo,netgo \
+    -ldflags "-w -s -X \"golift.io/version.Branch=${BRANCH} (${COMMIT})\" \
+    -X \"golift.io/version.BuildDate=${BUILD_DATE}\" \
+    -X \"golift.io/version.BuildUser=docker\" \
+    -X \"golift.io/version.Revision=${ITERATION}\" \
+    -X \"golift.io/version.Version=${VERSION}\""
+
+FROM scratch
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG BUILD_DATE
+ARG COMMIT
+ARG VERSION
+ARG ITERATION
 ARG LICENSE=MIT
-ARG BINARY
 ARG SOURCE_URL=http://github.com/golift/application-builder
 ARG DESC=application-builder
 ARG VENDOR=golift
 ARG AUTHOR=golift
-ARG CONFIG_FILE=config.conf
-
 # Build-time metadata as defined at https://github.com/opencontainers/image-spec/blob/master/annotations.md
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.title="${BINARY}" \
+      org.opencontainers.image.title="Unpackerr" \
       org.opencontainers.image.documentation="${SOURCE_URL}/wiki/Docker" \
       org.opencontainers.image.description="${DESC}" \
       org.opencontainers.image.url="${SOURCE_URL}" \
@@ -47,15 +54,13 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.authors="${AUTHOR}" \
       org.opencontainers.image.architecture="${TARGETOS} ${TARGETARCH}" \
       org.opencontainers.image.licenses="${LICENSE}" \
-      org.opencontainers.image.version="${VERSION}"
+      org.opencontainers.image.version="${VERSION}-${ITERATION}"
 
-COPY --from=builder /${BINARY}/${BINARY}.${TARGETARCH}.${TARGETOS} /image
-# COPY --from=builder /${BINARY}/examples/${CONFIG_FILE}.example /etc/${BINARY}/${CONFIG_FILE}
-
+COPY --from=builder /tmp/image /unpackerr
 # Make sure we have an ssl cert chain and timezone data.
 COPY --from=builder /etc/ssl /etc/ssl
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 ENV TZ=UTC
 
-ENTRYPOINT [ "/image" ]
+ENTRYPOINT [ "/unpackerr" ]

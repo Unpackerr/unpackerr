@@ -3,11 +3,9 @@ package unpackerr
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
-	"strconv"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -44,7 +42,7 @@ func (status ExtractStatus) Desc() string {
 	}
 
 	return []string{
-		// The order must not be be faulty.
+		// The order must not be faulty.
 		"Waiting, pre-Queue",
 		"Queued",
 		"Extracting",
@@ -62,22 +60,6 @@ func (status ExtractStatus) MarshalText() ([]byte, error) {
 	return []byte(status.String()), nil
 }
 
-// UnmarshalENV turns environment variables into extraction statuses.
-func (status *ExtractStatus) UnmarshalENV(tag, envval string) error {
-	if envval == "" {
-		return nil
-	}
-
-	i, err := strconv.ParseUint(envval, 10, 8) //nolint:gomnd
-	if err != nil {
-		return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
-	}
-
-	*status = ExtractStatus(i)
-
-	return nil
-}
-
 // String turns a status into a short string.
 func (status ExtractStatus) String() string {
 	if status > DELETED {
@@ -85,7 +67,7 @@ func (status ExtractStatus) String() string {
 	}
 
 	return []string{
-		// The order must not be be faulty.
+		// The order must not be faulty.
 		"waiting",
 		"queued",
 		"extracting",
@@ -100,17 +82,7 @@ func (status ExtractStatus) String() string {
 
 // Debugf writes Debug log lines... to stdout and/or a file.
 func (l *Logger) Debugf(msg string, v ...interface{}) {
-	if l.debug {
-		err := l.Logger.Output(callDepth, "[DEBUG] "+fmt.Sprintf(msg, v...))
-		if err != nil {
-			fmt.Println("Logger Error:", err) //nolint:forbidigo
-		}
-	}
-}
-
-// Print writes log lines... to stdout and/or a file.
-func (l *Logger) Print(v ...interface{}) {
-	err := l.Logger.Output(callDepth, fmt.Sprintln(v...))
+	err := l.Debug.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo
 	}
@@ -118,7 +90,15 @@ func (l *Logger) Print(v ...interface{}) {
 
 // Printf writes log lines... to stdout and/or a file.
 func (l *Logger) Printf(msg string, v ...interface{}) {
-	err := l.Logger.Output(callDepth, fmt.Sprintf(msg, v...))
+	err := l.Info.Output(callDepth, fmt.Sprintf(msg, v...))
+	if err != nil {
+		fmt.Println("Logger Error:", err) //nolint:forbidigo
+	}
+}
+
+// Errorf writes log errors... to stdout and/or a file.
+func (l *Logger) Errorf(msg string, v ...interface{}) {
+	err := l.Error.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo
 	}
@@ -126,53 +106,22 @@ func (l *Logger) Printf(msg string, v ...interface{}) {
 
 // logCurrentQueue prints the number of things happening.
 func (u *Unpackerr) logCurrentQueue() {
-	var (
-		waiting          uint
-		queued           uint
-		extracting       uint
-		failed           uint
-		extracted        uint
-		imported         uint
-		deleted          uint
-		hookOK, hookFail = u.WebhookCounts()
-		cmdOK, cmdFail   = u.CmdhookCounts()
-	)
-
-	for name := range u.Map {
-		switch u.Map[name].Status {
-		case WAITING:
-			waiting++
-		case QUEUED:
-			queued++
-		case EXTRACTING:
-			extracting++
-		case DELETEFAILED, EXTRACTFAILED:
-			failed++
-		case EXTRACTED:
-			extracted++
-		case DELETED, DELETING:
-			deleted++
-		case IMPORTED:
-			imported++
-		}
-	}
+	s := u.stats()
 
 	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted]", waiting, queued, extracting, extracted, imported, failed, deleted)
+		" [%d failed] [%d deleted]", s.Waiting, s.Queued, s.Extracting, s.Extracted, s.Imported, s.Failed, s.Deleted)
 	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks]"+
 		" [%d|%d cmdhooks] [stacks; event:%d, hook:%d, del:%d]",
-		u.Retries, u.Finished, hookOK, hookFail, cmdOK, cmdFail,
+		u.Retries, u.Finished, s.HookOK, s.HookFail, s.CmdOK, s.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan))
-	u.updateTray(u.Retries, u.Finished, waiting, queued, extracting, failed, extracted, imported, deleted,
-		hookOK, hookFail, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
+	u.updateTray(s, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 
 // setupLogging splits log write into a file and/or stdout.
 func (u *Unpackerr) setupLogging() {
-	u.Logger.debug = u.Config.Debug
-
-	if u.Logger.Logger.SetFlags(log.LstdFlags); u.Config.Debug {
-		u.Logger.Logger.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+	if u.Config.Debug {
+		u.Logger.Info.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+		u.Logger.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
 	logFile, err := homedir.Expand(u.Config.LogFile)
@@ -180,9 +129,8 @@ func (u *Unpackerr) setupLogging() {
 		logFile = u.Config.LogFile
 	}
 
-	u.Config.LogFile = logFile
 	rotate := &rotatorr.Config{
-		Filepath: u.Config.LogFile,                     // log file name.
+		Filepath: logFile,                              // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte, // megabytes
 		Rotatorr: &timerotator.Layout{
 			FileCount:  u.Config.LogFiles,
@@ -191,25 +139,62 @@ func (u *Unpackerr) setupLogging() {
 		DirMode: logsDirMode,
 	}
 
-	var writer io.Writer
-
-	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && u.Config.LogFile != "":
+	if logFile != "" {
 		u.rotatorr = rotatorr.NewMust(rotate)
-		writer = io.MultiWriter(u.rotatorr, os.Stdout)
-		log.SetOutput(writer)
-	case !u.Config.Quiet && u.Config.LogFile == "":
-		writer = os.Stdout
-	case u.Config.LogFile == "":
-		writer = ioutil.Discard // default is "nothing"
-	default:
-		u.rotatorr = rotatorr.NewMust(rotate)
-		writer = u.rotatorr
-		log.SetOutput(writer)
 	}
 
-	u.Logger.Logger.SetOutput(writer)
+	switch { // only use MultiWriter if we have > 1 writer.
+	case !u.Config.Quiet && logFile != "":
+		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout))
+	case !u.Config.Quiet && logFile == "":
+		u.updateLogOutput(os.Stdout)
+	case logFile == "":
+		u.updateLogOutput(io.Discard) // default is "nothing"
+	default:
+		u.updateLogOutput(u.rotatorr)
+	}
+}
+
+func (u *Unpackerr) updateLogOutput(writer io.Writer) {
+	if u.Webserver != nil && u.Webserver.LogFile != "" {
+		u.setupHTTPLogging()
+	} else {
+		u.Logger.HTTP.SetOutput(writer)
+	}
+
+	if u.Config.Debug {
+		u.Logger.Debug.SetOutput(writer)
+	}
+
+	log.SetOutput(writer) // catch out-of-scope garbage
+	u.Logger.Info.SetOutput(writer)
+	u.Logger.Error.SetOutput(writer)
 	u.postLogRotate("", "")
+}
+
+func (u *Unpackerr) setupHTTPLogging() {
+	logFile, err := homedir.Expand(u.Webserver.LogFile)
+	if err != nil {
+		logFile = u.Webserver.LogFile
+	}
+
+	rotate := &rotatorr.Config{
+		Filepath: logFile,                                 // log file name.
+		FileSize: int64(u.Webserver.LogFileMb) * megabyte, // megabytes
+		Rotatorr: &timerotator.Layout{FileCount: u.Webserver.LogFiles},
+		DirMode:  logsDirMode,
+	}
+
+	switch { // only use MultiWriter if we have > 1 writer.
+	case !u.Config.Quiet && logFile != "":
+		u.Logger.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+	case !u.Config.Quiet && logFile == "":
+		u.Logger.HTTP.SetOutput(os.Stdout)
+	case u.Config.Quiet && logFile == "":
+		u.Logger.HTTP.SetOutput(io.Discard)
+	default: // u.Config.Quiet && logFile != ""
+		u.Logger.HTTP.SetOutput(rotatorr.NewMust(rotate))
+	}
 }
 
 func (u *Unpackerr) postLogRotate(_, newFile string) {
@@ -225,15 +210,16 @@ func (u *Unpackerr) postLogRotate(_, newFile string) {
 // logStartupInfo prints info about our startup config.
 func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf("==> %s <==", helpLink)
-	u.Print("==> Startup Settings <==")
+	u.Printf("==> Startup Settings <==")
 	u.logSonarr()
 	u.logRadarr()
 	u.logLidarr()
 	u.logReadarr()
+	u.logWhisparr()
 	u.logFolders()
 	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
-	u.Printf(" => RAR Passwords: %d", len(u.Config.Passwords))
+	u.Printf(" => Passwords: %d (rar/7z)", len(u.Config.Passwords))
 	u.Printf(" => Interval: %v", u.Config.Interval)
 	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
@@ -255,4 +241,5 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 
 	u.logWebhook()
 	u.logCmdhook()
+	u.logWebserver()
 }

@@ -4,7 +4,7 @@ package ui
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os/exec"
 	"runtime"
 )
@@ -26,8 +26,8 @@ func ShowConsoleWindow() {}
 // StartCmd starts a command.
 func StartCmd(c string, v ...string) error {
 	cmd := exec.Command(c, v...)
-	cmd.Stdout = ioutil.Discard
-	cmd.Stderr = ioutil.Discard
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
 
 	return cmd.Start() //nolint:wrapcheck
 }
@@ -36,21 +36,21 @@ func StartCmd(c string, v ...string) error {
 var ErrUnsupported = fmt.Errorf("unsupported OS")
 
 // OpenCmd opens anything.
-func OpenCmd(cmd ...string) error {
+func OpenCmd(_ ...string) error {
 	return fmt.Errorf("%w: %s", ErrUnsupported, runtime.GOOS)
 }
 
 // OpenURL opens URL Links.
-func OpenURL(url string) error {
+func OpenURL(_ string) error {
 	return fmt.Errorf("%w: %s", ErrUnsupported, runtime.GOOS)
 }
 
 // OpenLog opens Log Files.
-func OpenLog(logFile string) error {
+func OpenLog(_ string) error {
 	return fmt.Errorf("%w: %s", ErrUnsupported, runtime.GOOS)
 }
 
 // OpenFile open Config Files.
-func OpenFile(filePath string) error {
+func OpenFile(_ string) error {
 	return fmt.Errorf("%w: %s", ErrUnsupported, runtime.GOOS)
 }

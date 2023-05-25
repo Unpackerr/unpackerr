@@ -6,14 +6,15 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 	"golift.io/version"
 )
 
@@ -29,8 +30,8 @@ type WebhookConfig struct {
 	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
 	IgnoreSSL  bool            `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
 	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Events     []ExtractStatus `json:"events" toml:"events" xml:"events" yaml:"events"`
-	Exclude    []string        `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
+	Events     ExtractStatuses `json:"events" toml:"events" xml:"events" yaml:"events"`
+	Exclude    StringSlice     `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
 	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname,omitempty" yaml:"nickname"`
 	Token      string          `json:"token" toml:"token" xml:"token,omitempty" yaml:"token"`
 	Channel    string          `json:"channel" toml:"channel" xml:"channel,omitempty" yaml:"channel"`
@@ -50,6 +51,41 @@ var (
 	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
 	ErrWebhookNoURL  = fmt.Errorf("webhook without a URL configured; fix it")
 )
+
+// ExtractStatuses allows us to create a custom environment variable unmarshaller.
+type ExtractStatuses []ExtractStatus
+
+// UnmarshalENV turns environment variables into extraction statuses.
+func (statuses *ExtractStatuses) UnmarshalENV(tag, envval string) error {
+	if envval == "" {
+		return nil
+	}
+
+	envval = strings.Trim(envval, `["',] `)
+	vals := strings.Split(envval, ",")
+	*statuses = make(ExtractStatuses, len(vals))
+
+	for idx, val := range vals {
+		intVal, err := strconv.ParseUint(strings.TrimSpace(val), 10, 8)
+		if err != nil {
+			return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
+		}
+
+		(*statuses)[idx] = ExtractStatus(intVal)
+	}
+
+	return nil
+}
+
+func (statuses ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
+	vals := make([]string, len(statuses))
+
+	for idx, status := range statuses {
+		vals[idx] = status.String()
+	}
+
+	return map[string]string{tag: strings.Join(vals, ",")}, nil
+}
 
 // runAllHooks sends webhooks and executes command hooks.
 func (u *Unpackerr) runAllHooks(i *Extract) {
@@ -77,6 +113,7 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 	if i.Status <= EXTRACTED && i.Resp != nil {
 		payload.Data = &XtractPayload{
 			Files:   i.Resp.NewFiles,
+			File:    i.Resp.NewFiles,
 			Start:   i.Resp.Started,
 			Output:  i.Resp.Output,
 			Bytes:   i.Resp.Size,
@@ -86,10 +123,12 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 
 		for _, v := range i.Resp.Archives {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
+			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
 		for _, v := range i.Resp.Extras {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
+			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
 		if i.Resp.Error != nil {
@@ -114,18 +153,18 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 	var body bytes.Buffer
 
 	if tmpl, err := hook.Template(); err != nil {
-		u.Printf("[ERROR] Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Errorf("Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
 		return
 	} else if err = tmpl.Execute(&body, payload); err != nil {
-		u.Printf("[ERROR] Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
+		u.Errorf("Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
 		return
 	}
 
-	b := body.String() // nolint: ifshort
+	b := body.String() //nolint:ifshort
 
 	if reply, err := hook.Send(&body); err != nil {
 		u.Debugf("Webhook Payload: %s", b)
-		u.Printf("[ERROR] Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
+		u.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
 		u.Debugf("Webhook Response: %s", string(reply))
 	} else if !hook.Silent {
 		u.Debugf("Webhook Payload: %s", b)
@@ -151,7 +190,7 @@ func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 }
 
 func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -166,7 +205,7 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 
 	// The error is mostly ignored because we don't care about the body.
 	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	reply, _ := ioutil.ReadAll(res.Body)
+	reply, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
 		return nil, fmt.Errorf("%w (%s): %s", ErrInvalidStatus, res.Status, reply)
@@ -211,7 +250,7 @@ func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 			u.Webhook[i].client = &http.Client{
 				Timeout: u.Webhook[i].Timeout.Duration,
 				Transport: &http.Transport{TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: u.Webhook[i].IgnoreSSL, // nolint: gosec
+					InsecureSkipVerify: u.Webhook[i].IgnoreSSL, //nolint:gosec
 				}},
 			}
 		}
@@ -226,7 +265,7 @@ func (u *Unpackerr) logWebhook() {
 	if len(u.Webhook) == 1 {
 		pfx = " => Webhook Config: 1 URL"
 	} else {
-		u.Print(" => Webhook Configs:", len(u.Webhook), "URLs")
+		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
 		pfx = " =>    URL"
 	}
 
@@ -235,8 +274,20 @@ func (u *Unpackerr) logWebhook() {
 			ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
 		}
 
-		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %v, channel: %s, nickname: %s",
-			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events), f.Channel, f.Nickname)
+		if f.Channel != "" {
+			ex += fmt.Sprintf(", channel: %s", f.Channel)
+		}
+
+		if f.Nickname != "" {
+			ex += fmt.Sprintf(", nickname: %s", f.Nickname)
+		}
+
+		if len(f.Exclude) > 0 {
+			ex += fmt.Sprintf(", exclude: %q", strings.Join(f.Exclude, "; "))
+		}
+
+		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",
+			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
 	}
 }
 
@@ -258,9 +309,9 @@ func logEvents(events []ExtractStatus) (s string) {
 }
 
 // Excluded returns true if an app is in the Exclude slice.
-func (w *WebhookConfig) Excluded(app string) bool {
+func (w *WebhookConfig) Excluded(app starr.App) bool {
 	for _, a := range w.Exclude {
-		if strings.EqualFold(a, app) {
+		if strings.EqualFold(a, string(app)) {
 			return true
 		}
 	}

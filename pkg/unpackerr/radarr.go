@@ -1,11 +1,13 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
@@ -13,11 +15,7 @@ import (
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -28,7 +26,7 @@ func (u *Unpackerr) validateRadarr() error {
 
 	for i := range u.Radarr {
 		if u.Radarr[i].URL == "" {
-			u.Printf("Missing Radarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Radarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -37,8 +35,8 @@ func (u *Unpackerr) validateRadarr() error {
 		}
 
 		if len(u.Radarr[i].APIKey) != apiKeyLength {
-			u.Printf("Radarr (%s): ignored, invalid API key: %s", u.Radarr[i].URL, u.Radarr[i].APIKey)
-			continue
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Radarr, u.Radarr[i].URL, ErrInvalidKey, len(u.Radarr[i].APIKey))
 		}
 
 		if u.Radarr[i].Timeout.Duration == 0 {
@@ -61,11 +59,11 @@ func (u *Unpackerr) validateRadarr() error {
 			u.Radarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Radarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Radarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Radarr[i].URL {
-			u.Printf("[WARN] Radarr URL fixed: %s -> %s (continuing)", u.Radarr[i].URL, r)
-			u.Radarr[i].URL = r
+		u.Radarr[i].Config.Client = &http.Client{
+			Timeout: u.Radarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Radarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
@@ -80,18 +78,18 @@ func (u *Unpackerr) validateRadarr() error {
 func (u *Unpackerr) logRadarr() {
 	if c := len(u.Radarr); c == 1 {
 		u.Printf(" => Radarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
-			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].DeleteOrig,
-			u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
+			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Syncthing,
+			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
 	} else {
-		u.Print(" => Radarr Config:", c, "servers")
+		u.Printf(" => Radarr Config: %d servers", c)
 
 		for _, f := range u.Radarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -101,19 +99,20 @@ func (u *Unpackerr) getRadarrQueue() {
 	for _, server := range u.Radarr {
 		if server.APIKey == "" {
 			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Radarr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -131,17 +130,19 @@ func (u *Unpackerr) checkRadarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Radarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Radarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Radarr,
+					App:         starr.Radarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Radarr, q.Title, server.Paths),
+					Syncthing:   server.Syncthing,
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Radarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"downloadId": q.DownloadID,
 						"title":      q.Title,
@@ -152,7 +153,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Radarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Radarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}
@@ -161,6 +162,10 @@ func (u *Unpackerr) checkRadarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveRadarrQitem(name string) bool {
 	for _, server := range u.Radarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

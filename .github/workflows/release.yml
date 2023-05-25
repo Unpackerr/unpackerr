@@ -1,0 +1,196 @@
+name: build-and-release
+on:
+  push:
+    branches:
+      - unstable
+      - main
+    tags:
+      - v*
+  pull_request:
+    branches:
+    - main
+    - unstable
+    - development
+permissions:
+  contents: read
+jobs:
+  macapp-test:
+    # description: "Builds and signs a macOS app then packages it in a notarized DMG."
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
+    name: Make macOS DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # we need the whole thing so we can count commits.
+          fetch-depth: '0'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: go-generate
+        run: go generate ./...
+      - name: make-signdmg
+        env:
+          APPLE_SIGNING_KEY: ${{ secrets.APPLE_SIGNING_KEY }}
+          AC_USERNAME: ${{ secrets.AC_USERNAME }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+        id: release
+        run: |
+          brew install mitchellh/gon/gon jq
+          make signdmg
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dmg-release
+          path: release
+
+  release-test:
+    # description: "Builds all the application client binaries and packages for a release."
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable' || github.ref == 'refs/heads/main'
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    name: Make Release Assets
+    runs-on: ubuntu-latest
+    env:
+      GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # we need the whole thing so we can count commits.
+          fetch-depth: '0'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - name: make-release
+        id: release
+        run: |
+          sudo apt install -y rpm fakeroot zip debsigs gnupg jq 
+          sudo gem install --no-document fpm
+          echo "${GPG_SIGNING_KEY}" | gpg --import -
+          make release
+          source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: release
+
+  deploy-unstable-unstable:
+    # description: "Uploads pre-built binaries to unstable.golift.io."
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
+    strategy:
+      matrix:
+        files: [release, dmg-release]
+    needs:
+      - release-test
+      - macapp-test
+    name: Deploy Unstable.app
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download files: ${{ matrix.files }}"
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.files }}
+      - name: Upload files to unstable.golift.io
+        run: >-
+          for file in *.{zip,dmg,gz}; do
+            [ -f "$file" ] || continue;
+            echo "Uploading: ${file}";
+            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
+            versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
+            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
+          done
+
+  deploy-unstable-packagecloud:
+    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
+    if: github.ref == 'refs/heads/unstable'
+    needs: release-test
+    name: Deploy Unstable PackageCloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release files
+        uses: actions/download-artifact@v3
+        with:
+          name: release
+      - uses: golift/upload-packagecloud@v1
+        with:
+          userrepo: golift/unstable
+          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          packages: .
+          rpmdists: el/6
+          debdists: ubuntu/focal
+
+  deploy-packagecloud:
+    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release-test
+    name: Deploy Release PackageCloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release files
+        uses: actions/download-artifact@v3
+        with:
+          name: release
+      - uses: golift/upload-packagecloud@v1
+        with:
+          userrepo: golift/pkgs
+          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          packages: .
+          rpmdists: el/6
+          debdists: ubuntu/focal
+
+  deploy-github-release:
+    # description: uploads all the built release assets to the GitHub Release.
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    needs: [release-test, macapp-test]
+    strategy:
+      matrix:
+        files: [release, dmg-release]
+    name: Deploy GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download ${{ matrix.files }} Files
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.files }}
+      - name: Publish ${{ matrix.files }} artifacts to github
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.rpm
+            *.deb
+            *.txz
+            *.zip
+            *.dmg
+            *.gz
+            *.txt
+
+  archlinux-aur:
+    # description: creates and uploads and aur file to the golift/aur repo for arch linux.
+    needs: deploy-github-release
+    name: Deploy ArchLinux AUR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Deploy Arch AUR
+        run: bash init/archlinux/aur-deploy.sh
+        env:
+          DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+
+  homebrew-formula:
+    # description: creates and uploads a homebrew formula file to the golift/homebrew-mugs repo.
+    needs: deploy-github-release
+    name: Deploy Homebrew Formula
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Deploy Homebrew Formula
+        run: bash init/homebrew/formula-deploy.sh
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_DEPLOY_KEY }}

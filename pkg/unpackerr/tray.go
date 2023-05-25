@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davidnewhall/unpackerr/pkg/bindata"
-	"github.com/davidnewhall/unpackerr/pkg/ui"
-	"github.com/davidnewhall/unpackerr/pkg/update"
+	"github.com/Unpackerr/unpackerr/pkg/bindata"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/update"
 	"github.com/getlantern/systray"
 	"github.com/hako/durafmt"
 	"golift.io/version"
@@ -21,6 +21,8 @@ import (
 // startTray Run()s readyTray to bring up the web server and the GUI app.
 func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
+		go u.Run()
+
 		signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
 
@@ -42,7 +44,7 @@ func (u *Unpackerr) readyTray() {
 	if err == nil {
 		systray.SetTemplateIcon(b, b)
 	} else {
-		u.Printf("[ERROR] Reading Icon: %v", err)
+		u.Errorf("Reading Icon: %v", err)
 		systray.SetTitle("DNC")
 	}
 
@@ -53,6 +55,7 @@ func (u *Unpackerr) readyTray() {
 
 	go u.watchKillerChannels()
 	go u.watchDebugChannels()
+	go u.Run()
 
 	u.watchGuiChannels()
 }
@@ -105,7 +108,7 @@ func (u *Unpackerr) watchDebugChannels() {
 
 func (u *Unpackerr) watchGuiChannels() {
 	for {
-		// nolint:errcheck
+		//nolint:errcheck
 		select {
 		case <-u.menu["conf"].Clicked():
 			// does nothing on purpose
@@ -119,7 +122,7 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["disc"].Clicked():
 			ui.OpenURL("https://golift.io/discord")
 		case <-u.menu["gh"].Clicked():
-			ui.OpenURL("https://github.com/davidnewhall/unpackerr/")
+			ui.OpenURL("https://github.com/Unpackerr/unpackerr/")
 		case <-u.menu["logs"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["logs_view"].Clicked():
@@ -183,38 +186,23 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_stacks"].Disable()
 }
 
-func (u *Unpackerr) updateTray(
-	retries,
-	finished,
-	waiting,
-	queued,
-	extracting,
-	failed,
-	extracted,
-	imported,
-	deleted,
-	hookOK,
-	hookFail,
-	stacks uint,
-) {
+func (u *Unpackerr) updateTray(s *Stats, stacks uint) {
 	if !ui.HasGUI() {
 		return
 	}
 
-	const baseTen = 10
-
-	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(waiting), baseTen))
-	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(queued), baseTen))
-	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(extracting), baseTen))
-	u.menu["stats_failed"].SetTitle("Failed: " + strconv.FormatUint(uint64(failed), baseTen))
-	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(extracted), baseTen))
-	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(imported), baseTen))
-	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(deleted), baseTen))
-	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(finished), baseTen))
-	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(retries), baseTen))
-	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(hookOK), baseTen))
-	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(hookFail), baseTen))
-	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), baseTen))
+	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(s.Waiting), 10))
+	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(s.Queued), 10))
+	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(s.Extracting), 10))
+	u.menu["stats_failed"].SetTitle("Failed: " + strconv.FormatUint(uint64(s.Failed), 10))
+	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(s.Extracted), 10))
+	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(s.Imported), 10))
+	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(s.Deleted), 10))
+	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(u.Finished), 10))
+	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(u.Retries), 10))
+	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(s.HookOK), 10))
+	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(s.HookFail), 10))
+	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), 10))
 }
 
 func (u *Unpackerr) watchKillerChannels() {
@@ -236,16 +224,16 @@ func (u *Unpackerr) rotateLogs() {
 	u.Printf("User Requested: Rotate Log File!")
 
 	if _, err := u.rotatorr.Rotate(); err != nil {
-		u.Printf("[ERROR] Rotating Log Files: %v", err)
+		u.Errorf("Rotating Log Files: %v", err)
 	}
 }
 
 func (u *Unpackerr) checkForUpdate() {
-	u.Print("User Requested: Update Check")
+	u.Printf("User Requested: Update Check")
 
-	switch update, err := update.Check("davidnewhall/unpackerr", version.Version); {
+	switch update, err := update.Check("Unpackerr/unpackerr", version.Version); {
 	case err != nil:
-		u.Printf("[ERROR] Update Check: %v", err)
+		u.Errorf("Update Check: %v", err)
 		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: "+err.Error())
 	case update.Outdate:
 		yes, _ := ui.Question("Unpackerr", "An Update is available! Download?\n\n"+

@@ -27,6 +27,7 @@ type FolderConfig struct {
 	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
 	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	ExtractPath string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
+	ExtractISOs bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
 	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 }
 
@@ -38,6 +39,7 @@ type Folders struct {
 	Events   chan *eventData
 	Updates  chan *xtractr.Response
 	Printf   func(msg string, v ...interface{})
+	Errorf   func(msg string, v ...interface{})
 	Debugf   func(msg string, v ...interface{})
 	FSNotify *fsnotify.Watcher
 	Watcher  *watcher.Watcher
@@ -67,18 +69,18 @@ func (u *Unpackerr) logFolders() {
 		}
 
 		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
-			"log file: %v, move back:%v, event buffer:%d)",
+			"log file: %v, move back:%v, isos:%v, event buffer:%d)",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
-			!folder.DisableLog, folder.MoveBack, u.Buffer)
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Buffer)
 	} else {
-		u.Print(" => Folder Config:", count, "paths,", "event buffer:", u.Buffer)
+		u.Printf(" => Folder Config: %d paths, event buffer: %d ", count, u.Buffer)
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
 				epath = ", extract to: " + folder.ExtractPath
 			}
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v)",
-				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack)
+			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v, isos:%v)",
+				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
 	}
 }
@@ -98,8 +100,8 @@ func (u *Unpackerr) PollFolders() {
 
 	u.Folders, flist = u.checkFolders()
 
-	if u.folders, err = u.newFolderWatcher(); err != nil {
-		u.Print("[ERROR] Watching Folders:", err)
+	if err = u.newFolderWatcher(); err != nil {
+		u.Errorf("Watching Folders: %s", err)
 		return
 	}
 	// do not close either watcher.
@@ -109,7 +111,7 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
-	u.Print("[Folder] Watching (fsnotify):", strings.Join(flist, ", "))
+	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
 	if u.Folder.Interval.Duration == 0 {
 		return
@@ -117,7 +119,7 @@ func (u *Unpackerr) PollFolders() {
 
 	go func() {
 		if err := u.folders.Watcher.Start(u.Folder.Interval.Duration); err != nil {
-			u.Print("[ERROR] Folder poller stopped:", err)
+			u.Errorf("Folder poller stopped: %v", err)
 		}
 	}()
 	u.Printf("[Folder] Polling @ %v: %s", u.Folder.Interval, strings.Join(flist, ", "))
@@ -125,37 +127,44 @@ func (u *Unpackerr) PollFolders() {
 
 // newFolderWatcher returns a new folder watcher.
 // You must call folders.FSNotify.Close() when you're done with it.
-func (u *Unpackerr) newFolderWatcher() (*Folders, error) {
-	w := watcher.New()
-	w.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
-	w.IgnoreHiddenFiles(true)
-
-	fsn, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, fmt.Errorf("fsnotify.NewWatcher: %w", err)
-	}
-
-	for _, folder := range u.Folders {
-		if err := w.Add(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot poll): %v", folder.Path, err)
-		}
-
-		if err := fsn.Add(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
-		}
-	}
-
-	return &Folders{
+func (u *Unpackerr) newFolderWatcher() error {
+	u.folders = &Folders{
 		Interval: u.Folder.Interval.Duration,
 		Config:   u.Folders,
 		Folders:  make(map[string]*Folder),
 		Events:   make(chan *eventData, u.Config.Buffer),
 		Updates:  make(chan *xtractr.Response, updateChanBuf),
 		Debugf:   u.Debugf,
+		Errorf:   u.Errorf,
 		Printf:   u.Printf,
-		FSNotify: fsn,
-		Watcher:  w,
-	}, nil
+	}
+
+	if len(u.Folders) == 0 {
+		return nil // do not initialize watcher
+	}
+
+	u.folders.Watcher = watcher.New()
+	u.folders.Watcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
+	u.folders.Watcher.IgnoreHiddenFiles(true)
+
+	fsn, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("fsnotify.NewWatcher: %w", err)
+	}
+
+	u.folders.FSNotify = fsn
+
+	for _, folder := range u.Folders {
+		if err := u.folders.Watcher.Add(folder.Path); err != nil {
+			u.Errorf("Folder '%s' (cannot poll): %v", folder.Path, err)
+		}
+
+		if err := fsn.Add(folder.Path); err != nil {
+			u.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
+		}
+	}
+
+	return nil
 }
 
 // Add uses either fsnotify or watcher.
@@ -194,16 +203,16 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	for _, folder := range u.Folders {
 		path, err := filepath.Abs(folder.Path)
 		if err != nil {
-			u.Printf("[ERROR] Folder '%s' (bad path): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (bad path): %v", folder.Path, err)
 			continue
 		}
 
 		folder.Path = path // rewrite it. might not be safe.
 		if stat, err := os.Stat(folder.Path); err != nil {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): %v", folder.Path, err)
+			u.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
 			continue
 		} else if !stat.IsDir() {
-			u.Printf("[ERROR] Folder '%s' (cannot watch): not a folder", folder.Path)
+			u.Errorf("Folder '%s' (cannot watch): not a folder", folder.Path)
 			continue
 		}
 
@@ -224,12 +233,17 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, true)
 	u.updateHistory(FolderString + ": " + name)
 
+	var exclude []string
+	if !folder.cnfg.ExtractISOs {
+		exclude = append(exclude, ".iso")
+	}
+
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Password:   u.getPasswordFromPath(name),
 		Passwords:  u.Passwords,
 		Name:       name,
-		SearchPath: name,
+		Filter:     xtractr.Filter{Path: name, ExcludeSuffix: exclude},
 		TempFolder: !folder.cnfg.MoveBack,
 		ExtractTo:  folder.cnfg.ExtractPath,
 		DeleteOrig: false,
@@ -238,7 +252,7 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 		LogFile:    !folder.cnfg.DisableLog,
 	})
 	if err != nil {
-		u.Print("[ERROR]", err)
+		u.Errorf("[ERROR] %v", err)
 
 		return
 	}
@@ -261,25 +275,26 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 		folder.step = EXTRACTING
 	case resp.Error != nil:
-		u.Printf("[Folder] Extraction Error: %s: %v", resp.X.Name, resp.Error)
-
 		folder.step = EXTRACTFAILED
+		u.Errorf("[Folder] %s: %s: %v", folder.step.String(), resp.X.Name, resp.Error)
+		u.updateMetrics(resp, FolderString, folder.cnfg.Path)
 
 		for _, v := range resp.Archives {
 			folder.rars = append(folder.rars, v...)
 		}
 	default: // this runs in a go routine
-		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, written: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(resp.Archives),
-			len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
-
-		folder.step = EXTRACTED
-		folder.list = resp.NewFiles
-
 		for _, v := range resp.Archives {
 			folder.rars = append(folder.rars, v...)
 		}
+
+		u.updateMetrics(resp, FolderString, folder.cnfg.Path)
+		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, written: %dMiB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.rars),
+			mapLen(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+
+		folder.step = EXTRACTED
+		folder.list = resp.NewFiles
 	}
 
 	folder.last = time.Now()
@@ -287,14 +302,22 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.step}, true)
 }
 
+func mapLen(in map[string][]string) (out int) {
+	for _, v := range in {
+		out += len(v)
+	}
+
+	return out
+}
+
 // watchFSNotify reads file system events from a channel and processes them.
 func (f *Folders) watchFSNotify() {
 	for {
 		select {
 		case err := <-f.Watcher.Error:
-			f.Printf("[ERROR] watcher: %v", err)
+			f.Errorf("watcher: %v", err)
 		case err := <-f.FSNotify.Errors:
-			f.Printf("[ERROR] fsnotify: %v", err)
+			f.Errorf("fsnotify: %v", err)
 		case event, ok := <-f.FSNotify.Events:
 			if !ok {
 				return
@@ -358,7 +381,7 @@ func (f *Folders) processEvent(event *eventData) {
 
 	if err := f.Add(dirPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			f.Printf("[ERROR] Folder: Tracking New Item: %v: %v", dirPath, err)
+			f.Errorf("Folder: Tracking New Item: %v: %v", dirPath, err)
 		}
 
 		return
@@ -399,7 +422,7 @@ func (u *Unpackerr) checkFolderStats() {
 	}
 }
 
-// nolint:wsl
+//nolint:wsl
 func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
 	var webhook bool
 

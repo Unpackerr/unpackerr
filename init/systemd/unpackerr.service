@@ -1,0 +1,24 @@
+# Systemd service unit for unpackerr.
+
+[Unit]
+Description=unpackerr - archive extraction daemon
+After=network.target
+Requires=network.target
+
+[Service]
+ExecStart=/usr/bin/unpackerr $DAEMON_OPTS
+EnvironmentFile=-/etc/default/unpackerr
+EnvironmentFile=-/etc/sysconfig/unpackerr
+Restart=always
+RestartSec=10
+SyslogIdentifier=unpackerr
+Type=simple
+WorkingDirectory=/tmp
+
+# These should be set correctly for your environment.
+UMask=0002
+User=unpackerr
+Group=unpackerr
+
+[Install]
+WantedBy=multi-user.target

@@ -1,11 +1,13 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
 )
@@ -13,11 +15,7 @@ import (
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -28,7 +26,7 @@ func (u *Unpackerr) validateSonarr() error {
 
 	for i := range u.Sonarr {
 		if u.Sonarr[i].URL == "" {
-			u.Printf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -37,7 +35,8 @@ func (u *Unpackerr) validateSonarr() error {
 		}
 
 		if len(u.Sonarr[i].APIKey) != apiKeyLength {
-			u.Printf("Sonarr (%s): ignored, invalid API key: %s", u.Sonarr[i].URL, u.Sonarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Sonarr, u.Sonarr[i].URL, ErrInvalidKey, len(u.Sonarr[i].APIKey))
 		}
 
 		if u.Sonarr[i].Timeout.Duration == 0 {
@@ -60,11 +59,11 @@ func (u *Unpackerr) validateSonarr() error {
 			u.Sonarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Sonarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Sonarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Sonarr[i].URL {
-			u.Printf("[WARN] Sonarr URL fixed: %s -> %s (continuing)", u.Sonarr[i].URL, r)
-			u.Sonarr[i].URL = r
+		u.Sonarr[i].Config.Client = &http.Client{
+			Timeout: u.Sonarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Sonarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
@@ -79,18 +78,18 @@ func (u *Unpackerr) validateSonarr() error {
 func (u *Unpackerr) logSonarr() {
 	if c := len(u.Sonarr); c == 1 {
 		u.Printf(" => Sonarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
-			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].DeleteOrig,
-			u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
+			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
+			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
-		u.Print(" => Sonarr Config:", c, "servers")
+		u.Printf(" => Sonarr Config: %d servers", c)
 
 		for _, f := range u.Sonarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -100,19 +99,20 @@ func (u *Unpackerr) getSonarrQueue() {
 	for _, server := range u.Sonarr {
 		if server.APIKey == "" {
 			u.Debugf("Sonarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
 		if err != nil {
-			u.Printf("[ERROR] Sonarr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Sonarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -130,17 +130,19 @@ func (u *Unpackerr) checkSonarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import: %v", Sonarr, server.URL, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Sonarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Sonarr,
+					App:         starr.Sonarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Sonarr, q.Title, server.Paths),
+					Syncthing:   server.Syncthing,
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"downloadId": q.DownloadID,
@@ -152,7 +154,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
-					Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
+					starr.Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
 			}
 		}
 	}
@@ -161,6 +163,10 @@ func (u *Unpackerr) checkSonarrQueue() {
 // checks if the application currently has an item in its queue.
 func (u *Unpackerr) haveSonarrQitem(name string) bool {
 	for _, server := range u.Sonarr {
+		if server.Queue == nil {
+			continue
+		}
+
 		for _, q := range server.Queue.Records {
 			if q.Title == name {
 				return true

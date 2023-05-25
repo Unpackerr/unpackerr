@@ -6,21 +6,36 @@ import (
 	"strings"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
 
 // Extract holds data for files being extracted.
 type Extract struct {
+	Syncthing   bool
 	Retries     uint
 	Path        string
-	App         string
+	App         starr.App
+	URL         string
 	Updated     time.Time
 	DeleteDelay time.Duration
 	DeleteOrig  bool
 	Status      ExtractStatus
 	IDs         map[string]interface{}
 	Resp        *xtractr.Response
+}
+
+// Shared config items for all starr apps.
+type StarrConfig struct {
+	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Paths       StringSlice   `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols   string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
+	DeleteOrig  bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	Syncthing   bool          `json:"syncthing" toml:"syncthing" xml:"syncthing" yaml:"syncthing"`
+	ValidSSL    bool          `json:"valid_ssl" toml:"valid_ssl" xml:"valid_ssl" yaml:"valid_ssl"`
+	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -78,7 +93,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		return
 	}
 
-	files := xtractr.FindCompressedFiles(item.Path)
+	files := xtractr.FindCompressedFiles(xtractr.Filter{Path: item.Path})
 	if len(files) == 0 {
 		_, err := os.Stat(item.Path)
 		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
@@ -87,13 +102,20 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		return
 	}
 
+	if x.Syncthing {
+		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
+			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.App, name, tmpFile)
+			return
+		}
+	}
+
 	item.Status = QUEUED
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:   u.getPasswordFromPath(item.Path),
 		Passwords:  u.Passwords,
 		Name:       name,
-		SearchPath: item.Path,
+		Filter:     xtractr.Filter{Path: item.Path, ExcludeSuffix: []string{".iso"}},
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,
@@ -101,7 +123,7 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
 		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
-	u.updateHistory(item.App + ": " + item.Path)
+	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
 func (u *Unpackerr) getPasswordFromPath(s string) string {
@@ -119,7 +141,8 @@ func (u *Unpackerr) getPasswordFromPath(s string) string {
 // checkExtractDone checks if an extracted item imported items needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 // This runs at a short interval to check for extraction state changes, and shuold return quickly.
-// nolint:cyclop,wsl
+//
+//nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone() {
 	for name, data := range u.Map {
 		switch elapsed := time.Since(data.Updated); {
@@ -155,7 +178,7 @@ func (u *Unpackerr) checkExtractDone() {
 	}
 }
 
-// handleXtractrCallback handles callbacks from the xtractr library for sonarr/radarr/lidarr.
+// handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
@@ -165,23 +188,25 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case resp.Error != nil:
 		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+		u.updateMetrics(resp, u.Map[resp.X.Name].App, u.Map[resp.X.Name].URL)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
 	}
 }
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app starr.App, title string, paths []string) string {
 	var errs []error
 
 	for _, path := range paths {
 		path = filepath.Join(path, title)
 
-		switch _, err := os.Stat(path); err { // nolint: errorlint
+		switch _, err := os.Stat(path); err {
 		default:
 			errs = append(errs, err)
 		case nil:
@@ -221,4 +246,16 @@ func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 	}
 
 	return false
+}
+
+// added for https://github.com/davidnewhall/unpackerr/issues/235
+func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
+	files, _ := u.Xtractr.GetFileList(dirPath)
+	for _, file := range files {
+		if strings.HasSuffix(file, ".tmp") {
+			return file
+		}
+	}
+
+	return ""
 }

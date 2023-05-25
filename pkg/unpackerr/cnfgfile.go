@@ -2,15 +2,14 @@ package unpackerr
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/davidnewhall/unpackerr/pkg/bindata"
-	"github.com/davidnewhall/unpackerr/pkg/ui"
+	"github.com/Unpackerr/unpackerr/pkg/bindata"
+	"github.com/Unpackerr/unpackerr/pkg/ui"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -213,7 +212,7 @@ func (u *Unpackerr) setPasswords() error {
 			continue
 		}
 
-		fileContent, err := ioutil.ReadFile(strings.TrimPrefix(pass, filePrefix))
+		fileContent, err := os.ReadFile(strings.TrimPrefix(pass, filePrefix))
 		if err != nil {
 			return fmt.Errorf("reading password file: %w", err)
 		}

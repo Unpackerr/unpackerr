@@ -2,7 +2,7 @@ package ui
 
 // MenuItem is an interface to allow exposing menu items to operating systems
 // that do not have a menu or a GUI.
-type MenuItem interface {
+type MenuItem interface { //nolint:interfacebloat
 	Check()
 	Checked() bool
 	Disable()

@@ -1,11 +1,13 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
-	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/lidarr"
 )
@@ -13,11 +15,7 @@ import (
 // LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
 	starr.Config
-	Path           string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths          []string      `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols      string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig     bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
-	DeleteDelay    cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
+	StarrConfig
 	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -28,7 +26,7 @@ func (u *Unpackerr) validateLidarr() error {
 
 	for i := range u.Lidarr {
 		if u.Lidarr[i].URL == "" {
-			u.Printf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
+			u.Errorf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
 			continue
 		}
 
@@ -37,7 +35,8 @@ func (u *Unpackerr) validateLidarr() error {
 		}
 
 		if len(u.Lidarr[i].APIKey) != apiKeyLength {
-			u.Printf("Lidarr (%s): ignored, invalid API key: %s", u.Lidarr[i].URL, u.Lidarr[i].APIKey)
+			return fmt.Errorf("%s (%s) %w, your key length: %d",
+				starr.Lidarr, u.Lidarr[i].URL, ErrInvalidKey, len(u.Lidarr[i].APIKey))
 		}
 
 		if u.Lidarr[i].Timeout.Duration == 0 {
@@ -60,11 +59,11 @@ func (u *Unpackerr) validateLidarr() error {
 			u.Lidarr[i].Protocols = defaultProtocol
 		}
 
-		if r, err := u.Lidarr[i].GetURL(); err != nil {
-			u.Printf("[ERROR] Checking Lidarr Path: %v", err)
-		} else if r = strings.TrimRight(r, "/"); r != u.Lidarr[i].URL {
-			u.Printf("[WARN] Lidarr URL fixed: %s -> %s (continuing)", u.Lidarr[i].URL, r)
-			u.Lidarr[i].URL = r
+		u.Lidarr[i].Config.Client = &http.Client{
+			Timeout: u.Lidarr[i].Timeout.Duration,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Lidarr[i].ValidSSL}, //nolint:gosec
+			},
 		}
 
 		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
@@ -79,18 +78,18 @@ func (u *Unpackerr) validateLidarr() error {
 func (u *Unpackerr) logLidarr() {
 	if c := len(u.Lidarr); c == 1 {
 		u.Printf(" => Lidarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"delete_orig: %v, delete_delay: %v, paths:%q",
+			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
-			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].DeleteOrig,
-			u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
+			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Syncthing,
+			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
 	} else {
-		u.Print(" => Lidarr Config:", c, "servers")
+		u.Printf(" => Lidarr Config: %d servers", c)
 
 		for _, f := range u.Lidarr {
 			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"delete_orig: %v, delete_delay: %v, paths:%q",
+				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}
 	}
 }
@@ -100,19 +99,20 @@ func (u *Unpackerr) getLidarrQueue() {
 	for _, server := range u.Lidarr {
 		if server.APIKey == "" {
 			u.Debugf("Lidarr (%s): skipped, no API key", server.URL)
-
 			continue
 		}
 
+		start := time.Now()
+
 		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
 		if err != nil {
-			u.Printf("[ERROR] Lidarr (%s): %v", server.URL, err)
-
+			u.saveQueueMetrics(0, start, starr.Lidarr, server.URL, err)
 			return
 		}
 
 		// Only update if there was not an error fetching.
 		server.Queue = queue
+		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Lidarr, server.URL, nil)
 
 		if !u.Activity || queue.TotalRecords > 0 {
 			u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -130,17 +130,19 @@ func (u *Unpackerr) checkLidarrQueue() {
 		for _, q := range server.Queue.Records {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", Lidarr, server.URL, q.Protocol, q.Title)
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				// This shoehorns the Lidarr OutputPath into a StatusMessage that getDownloadPath can parse.
 				q.StatusMessages = append(q.StatusMessages,
 					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
 
 				u.handleCompletedDownload(q.Title, &Extract{
-					App:         Lidarr,
+					App:         starr.Lidarr,
+					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, Lidarr, q.Title, server.Paths),
+					Syncthing:   server.Syncthing,
+					Path:        u.getDownloadPath(q.StatusMessages, starr.Lidarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"artistId":   q.ArtistID,
@@ -152,7 +154,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
 			}
 		}
 	}

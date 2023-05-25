@@ -1,13 +1,25 @@
 linters:
   enable-all: true
   disable:
+    # deprecated
     - maligned
     - scopelint
     - interfacer
     - golint
+    - exhaustivestruct
+    - nosnakecase
+    - structcheck
+    - deadcode
+    - varcheck
+    - ifshort
+    # unneeded (broken because of generics)
+    - rowserrcheck
+    - wastedassign
+    - sqlclosecheck
+    - contextcheck
+    # unused
     - exhaustruct
     - exhaustive
-    - exhaustivestruct
     - dupl
     - nlreturn
     - nonamedreturns
@@ -15,4 +27,5 @@ linters:
     - tagliatelle
     - cyclop
 run:
-  timeout: 5m
+  timeout: 3m
+

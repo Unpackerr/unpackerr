@@ -2,9 +2,11 @@ package unpackerr
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"golift.io/cnfg"
+	"golift.io/starr"
 )
 
 /* This file contains all the unique bits for each app. When adding a new app,
@@ -27,10 +29,6 @@ const (
 
 // These are the names used to identify each app.
 const (
-	Sonarr       = "Sonarr"
-	Radarr       = "Radarr"
-	Lidarr       = "Lidarr"
-	Readarr      = "Readarr"
 	FolderString = "Folder"
 )
 
@@ -60,9 +58,11 @@ type Config struct {
 	RetryDelay  cnfg.Duration    `json:"retryDelay" toml:"retry_delay" xml:"retry_delay" yaml:"retryDelay"`
 	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
 	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
-	Passwords   []string         `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
+	Passwords   StringSlice      `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
+	Webserver   *WebServer       `json:"webserver" toml:"webserver" xml:"webserver" yaml:"webserver"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
 	Radarr      []*RadarrConfig  `json:"radarr,omitempty" toml:"radarr" xml:"radarr" yaml:"radarr,omitempty"`
+	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr" xml:"whisparr" yaml:"whisparr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr" xml:"readarr" yaml:"readarr,omitempty"`
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty" toml:"sonarr" xml:"sonarr" yaml:"sonarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
@@ -79,7 +79,7 @@ type workThread struct {
 
 func (u *Unpackerr) watchWorkThread() {
 	workers := u.Parallel
-	if workers > 4 { // nolint:gomnd // 4 == the four starr apps.
+	if workers > 4 { //nolint:gomnd // 4 == the four starr apps.
 		workers = 4
 	}
 
@@ -100,7 +100,13 @@ func (u *Unpackerr) retrieveAppQueues() {
 	var wg sync.WaitGroup
 
 	// Run each method in a go routine as a waitgroup.
-	for _, app := range []func(){u.getLidarrQueue, u.getRadarrQueue, u.getReadarrQueue, u.getSonarrQueue} {
+	for _, app := range []func(){
+		u.getLidarrQueue,
+		u.getRadarrQueue,
+		u.getReadarrQueue,
+		u.getSonarrQueue,
+		u.getWhisparrQueue,
+	} {
 		wg.Add(1)
 		u.workChan <- &workThread{[]func(){app, wg.Done}}
 	}
@@ -111,6 +117,7 @@ func (u *Unpackerr) retrieveAppQueues() {
 	u.checkRadarrQueue()
 	u.checkReadarrQueue()
 	u.checkSonarrQueue()
+	u.checkWhisparrQueue()
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.
@@ -121,6 +128,7 @@ func (u *Unpackerr) validateApps() error {
 		u.validateRadarr,
 		u.validateReadarr,
 		u.validateSonarr,
+		u.validateWhisparr,
 		u.validateWebhook,
 	} {
 		if err := validate(); err != nil {
@@ -131,17 +139,43 @@ func (u *Unpackerr) validateApps() error {
 	return nil
 }
 
-func (u *Unpackerr) haveQitem(name, app string) bool {
+func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	switch app {
-	case Lidarr:
+	case starr.Lidarr:
 		return u.haveLidarrQitem(name)
-	case Radarr:
+	case starr.Radarr:
 		return u.haveRadarrQitem(name)
-	case Readarr:
+	case starr.Readarr:
 		return u.haveReadarrQitem(name)
-	case Sonarr:
+	case starr.Sonarr:
 		return u.haveSonarrQitem(name)
+	case starr.Whisparr:
+		return u.haveWhisparrQitem(name)
 	default:
 		return false
 	}
+}
+
+// StringSlice allows a special environment variable unmarshaller for a lot of strings.
+type StringSlice []string
+
+// UnmarshalENV turns environment variables into a string slice.
+func (slice *StringSlice) UnmarshalENV(_, envval string) error {
+	if envval == "" {
+		return nil
+	}
+
+	envval = strings.Trim(envval, `["',] `)
+	vals := strings.Split(envval, ",")
+	*slice = make(StringSlice, len(vals))
+
+	for idx, val := range vals {
+		(*slice)[idx] = strings.TrimSpace(val)
+	}
+
+	return nil
+}
+
+func (slice StringSlice) MarshalENV(tag string) (map[string]string, error) {
+	return map[string]string{tag: strings.Join(slice, ",")}, nil
 }

@@ -25,7 +25,9 @@ const (
 func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	var f, msg string
 
+	// Load up the default file path and a list of alternate paths.
 	def, cfl := configFileLocactions()
+	// Search for one, starting with the default.
 	for _, f = range append([]string{u.Flags.ConfigFile}, cfl...) {
 		d, err := homedir.Expand(f)
 		if err == nil {
@@ -33,12 +35,13 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		}
 
 		if _, err := os.Stat(f); err == nil {
-			break
+			break // found one, bail out.
 		} // else { u.Print("rip:", err) }
 
 		f = ""
 	}
 
+	// it's possible to get here with or without a file found.
 	msg = msgNoConfigFile
 
 	if f != "" {
@@ -93,6 +96,7 @@ func configFileLocactions() (string, []string) {
 	case "android", "dragonfly", "linux", "nacl", "plan9", "solaris":
 		fallthrough
 	default:
+		// Adding a default here, or to freebsd changes the behavior of createConfigFile, so don't.
 		return "", []string{
 			"/etc/unpackerr/unpackerr.conf",
 			"/config/unpackerr.conf",
@@ -161,8 +165,16 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 	return fm, dm
 }
 
+// createConfigFile attempts to avoid creating a config file on linux or freebsd.
+// It used to avoid it when running on macos from homebrew, but not anymore.
 func (u *Unpackerr) createConfigFile(file string) (string, error) {
-	if !ui.HasGUI() {
+	if isRunningInDocker() {
+		if stat, err := os.Stat("/config"); err == nil && stat.IsDir() {
+			file = "/config/unpackerr.conf"
+		}
+	}
+
+	if file == "" {
 		return "", nil
 	}
 

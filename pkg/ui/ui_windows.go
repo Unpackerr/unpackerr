@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-
-	"github.com/gonutz/w32"
 )
 
 // SystrayIcon is the icon in the system tray or task bar.
@@ -18,26 +16,6 @@ var hasGUI = os.Getenv("USEGUI") != "false" //nolint:gochecknoglobals
 
 func HasGUI() bool {
 	return hasGUI
-}
-
-// HideConsoleWindow hides the windows console window.
-func HideConsoleWindow() {
-	if console := w32.GetConsoleWindow(); console != 0 {
-		_, consoleProcID := w32.GetWindowThreadProcessId(console)
-		if w32.GetCurrentProcessId() == consoleProcID {
-			w32.ShowWindowAsync(console, w32.SW_HIDE)
-		}
-	}
-}
-
-// ShowConsoleWindow does nothing on OSes besides Windows.
-func ShowConsoleWindow() {
-	if console := w32.GetConsoleWindow(); console != 0 {
-		_, consoleProcID := w32.GetWindowThreadProcessId(console)
-		if w32.GetCurrentProcessId() == consoleProcID {
-			w32.ShowWindowAsync(console, w32.SW_SHOW)
-		}
-	}
 }
 
 // StartCmd starts a command.

@@ -10,11 +10,8 @@ import (
 
 // Keep it simple.
 func main() {
-	ui.HideConsoleWindow()
-
 	defer func() {
 		if r := recover(); r != nil {
-			ui.ShowConsoleWindow()
 			log.Printf("[PANIC] %v\n%s", r, string(debug.Stack()))
 		}
 	}()

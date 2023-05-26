@@ -36,6 +36,7 @@ documentation support. This project succeeds because of them. Thank you!
 [![Docker Cloud](https://docs.golift.io/integrations/docker.png "Docker Cloud")](https://cloud.docker.com)
 [![Homebrew](https://docs.golift.io/integrations/homebrew.png "Homebrew")](https://brew.sh)
 [![Go Lift](https://docs.golift.io/integrations/golift.png "Go Lift")](https://golift.io)
+[![CloudFlare](https://docs.golift.io/integrations/cloudflare.png "CloudFlare")](https://cloudflare.com)
 
 ## Contributing
 

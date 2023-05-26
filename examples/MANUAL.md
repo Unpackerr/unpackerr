@@ -64,4 +64,4 @@ AUTHOR
 
 LOCATION
 ---
-*   [github.com/Unpackerr/unpackerr](https://github.com/Unpackerr/unpackerr)
+*   [unpackerr.zip](https://unpackerr.zip)

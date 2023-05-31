@@ -18,6 +18,8 @@ dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.2.1 h1:9F2/+DoOYIOksmaJFPw1tGFy1eDnIJXg+UHjuD8lTak=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
+github.com/BurntSushi/toml v1.3.0 h1:Ws8e5YmnrGEHzZEzg0YvK/7COGYtTC5PbaH9oSSbgfA=
+github.com/BurntSushi/toml v1.3.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
@@ -361,6 +363,8 @@ golift.io/cnfg v0.2.2 h1:m60kGVZQLuzAx939fLX8wSEKk2fpZdX6+HOjdYuUfCw=
 golift.io/cnfg v0.2.2/go.mod h1:XXOjkKsn3GJonpWRKKkU3k98AWgvkM28W90IdV4rRkc=
 golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d h1:LydDVem7g3k4w8mNdoLYCIGJ4JyVQcGMbZZXwyRkjj8=
 golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d/go.mod h1:K+Dg62wTc+z8b3iE8brS7rrDSRevWBQzSPNu8HnE+JI=
+golift.io/cnfgfile v0.0.0-20230531075023-f880041cc0a0 h1:u14MTHfTGx7kLX2b3wFbaESrIm3YqL//HM92XA6wzH4=
+golift.io/cnfgfile v0.0.0-20230531075023-f880041cc0a0/go.mod h1:dVC3N+72/nHNlBv3cwXb4FQTxMAor+JlNClAldwACkY=
 golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624 h1:gPe9Rl6e6Lbp5pbanmn2ADlQEBFVoKgGbmPJJtURCbk=
 golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624/go.mod h1:mXltnLJV69BHLXCexH3uulsIUBCzq8v69Bh77FMXYBo=
 golift.io/starr v0.14.1-0.20230519072620-7ed4f9cf36d2 h1:idrmdxuoZu1Sx5dqRyyQoUjH1MdJGSGo+bsHcxE/NhA=

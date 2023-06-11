@@ -17,6 +17,8 @@ services:
     user: ${PUID}:${PGID}
     #user: 1000:1000
     # What you see below are defaults for this compose. You only need to modify things specific to your environment.
+    # Remove apps and feature configs you do not use or need. 
+    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
     environment:
       - TZ=${TZ}
       # General config

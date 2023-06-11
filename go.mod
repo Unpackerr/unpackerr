@@ -15,7 +15,7 @@ require (
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	golang.org/x/mod v0.10.0
 	golift.io/cnfg v0.2.2
-	golift.io/cnfgfile v0.0.0-20230519070633-a07e5db66d2d
+	golift.io/cnfgfile v0.0.0-20230531075023-f880041cc0a0
 	golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624
 	golift.io/starr v0.14.1-0.20230519072620-7ed4f9cf36d2
 	golift.io/version v0.0.2
@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/BurntSushi/toml v1.3.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect

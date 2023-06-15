@@ -196,7 +196,7 @@ dir_mode = "0755"
 # events = [0]   # list of event ids to include, 0 == all.
 ## Advanced Optional Webhook Configuration
 # nickname      = ""    # Used in Discord and Slack templates as bot name, in Telegram as chat_id.
-# channel       = ""    # Also passed into templates. Used in Slack templates for destination channel.
+# channel       = ""    # Also passed into templates. Used in Slack templates for destination channel. Used in Telegram templates for message_thread_id.
 # exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
 # template_path = ""    # Override internal webhook template for discord.com or other hooks.
 # template      = ""    # Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack

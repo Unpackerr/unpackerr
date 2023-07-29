@@ -145,17 +145,17 @@ func (u *Unpackerr) setupLogging() {
 
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && logFile != "":
-		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout))
+		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, os.Stderr))
 	case !u.Config.Quiet && logFile == "":
-		u.updateLogOutput(os.Stdout)
+		u.updateLogOutput(os.Stdout, os.Stderr)
 	case logFile == "":
-		u.updateLogOutput(io.Discard) // default is "nothing"
+		u.updateLogOutput(io.Discard, io.Discard) // default is "nothing"
 	default:
-		u.updateLogOutput(u.rotatorr)
+		u.updateLogOutput(u.rotatorr, u.rotatorr)
 	}
 }
 
-func (u *Unpackerr) updateLogOutput(writer io.Writer) {
+func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
 	} else {
@@ -166,9 +166,9 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer) {
 		u.Logger.Debug.SetOutput(writer)
 	}
 
-	log.SetOutput(writer) // catch out-of-scope garbage
+	log.SetOutput(errors) // catch out-of-scope garbage
 	u.Logger.Info.SetOutput(writer)
-	u.Logger.Error.SetOutput(writer)
+	u.Logger.Error.SetOutput(errors)
 	u.postLogRotate("", "")
 }
 

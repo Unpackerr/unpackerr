@@ -268,15 +268,17 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	case !ok:
 		// It doesn't exist? weird. delete it and bail out.
 		delete(u.Map, resp.X.Name)
-
 		return
 	case !resp.Done:
 		u.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-
-		folder.step = EXTRACTING
+		folder.step = EXTRACTING //nolint:wsl
+	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
+		// Ignore "no compressed files" errors for folders.
+		delete(u.Map, resp.X.Name)
+		u.Printf("[Folder] Nothing Extracted: %s: %v", resp.X.Name, resp.Error)
 	case resp.Error != nil:
 		folder.step = EXTRACTFAILED
-		u.Errorf("[Folder] %s: %s: %v", folder.step.String(), resp.X.Name, resp.Error)
+		u.Errorf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)
 		u.updateMetrics(resp, FolderString, folder.cnfg.Path)
 
 		for _, v := range resp.Archives {

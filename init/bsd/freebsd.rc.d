@@ -1,31 +1,31 @@
 #!/bin/sh
 #
-# FreeBSD rc.d startup script for {{BINARY}}.
+# FreeBSD rc.d startup script for unpackerr.
 #
-# PROVIDE: {{BINARY}}
+# PROVIDE: unpackerr
 # REQUIRE: networking syslog
 # KEYWORD:
 
 . /etc/rc.subr
 
-name="{{BINARYU}}"
-real_name="{{BINARY}}"
-rcvar="{{BINARYU}}_enable"
-{{BINARYU}}_command="/usr/local/bin/${real_name}"
-{{BINARYU}}_user="{{BINARY}}"
-{{BINARYU}}_config="/usr/local/etc/${real_name}/{{CONFIG_FILE}}"
+name="unpackerr"
+real_name="unpackerr"
+rcvar="unpackerr_enable"
+unpackerr_command="/usr/local/bin/${real_name}"
+unpackerr_user="unpackerr"
+unpackerr_config="/usr/local/etc/${real_name}/unpackerr.conf"
 pidfile="/var/run/${real_name}/pid"
 
-# This runs `daemon` as the `{{BINARYU}}_user` user.
+# This runs `daemon` as the `unpackerr_user` user.
 command="/usr/sbin/daemon"
-command_args="-P ${pidfile} -r -t ${real_name} -T ${real_name} -l daemon ${{{BINARYU}}_command} -c ${{{BINARYU}}_config}"
+command_args="-P ${pidfile} -r -t ${real_name} -T ${real_name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
 
 load_rc_config ${name}
-: ${{{BINARYU}}_enable:=no}
+: ${unpackerr_enable:=no}
 
 # Make a place for the pid file.
 mkdir -p $(dirname ${pidfile})
-chown -R ${{BINARYU}}_user $(dirname ${pidfile})
+chown -R $unpackerr_user $(dirname ${pidfile})
 
 # Suck in optional exported override variables.
 # ie. add something like the following to this file: export UP_POLLER_DEBUG=true

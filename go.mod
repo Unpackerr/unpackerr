@@ -17,7 +17,7 @@ require (
 	golift.io/cnfg v0.2.2
 	golift.io/cnfgfile v0.0.0-20230531075023-f880041cc0a0
 	golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624
-	golift.io/starr v0.14.1-0.20230613054822-4e6dc508fbfd
+	golift.io/starr v0.14.1-0.20230815071719-2470ad3944ad
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.2.2
 )
@@ -62,9 +62,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

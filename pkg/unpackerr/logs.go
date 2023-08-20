@@ -143,11 +143,16 @@ func (u *Unpackerr) setupLogging() {
 		u.rotatorr = rotatorr.NewMust(rotate)
 	}
 
+	stderr := os.Stdout
+	if u.ErrorStdErr {
+		stderr = os.Stderr
+	}
+
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Config.Quiet && logFile != "":
-		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, os.Stderr))
+		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, stderr))
 	case !u.Config.Quiet && logFile == "":
-		u.updateLogOutput(os.Stdout, os.Stderr)
+		u.updateLogOutput(os.Stdout, stderr)
 	case logFile == "":
 		u.updateLogOutput(io.Discard, io.Discard) // default is "nothing"
 	default:

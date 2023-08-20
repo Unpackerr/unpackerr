@@ -44,6 +44,7 @@ type Config struct {
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
 	Activity    bool             `json:"activity" toml:"activity" xml:"activity" yaml:"activity"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	ErrorStdErr bool             `json:"errorStderr" toml:"error_stderr" xml:"error_stderr" yaml:"errorStderr"`
 	LogFile     string           `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
 	LogFiles    int              `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
 	LogFileMb   int              `json:"logFileMb" toml:"log_file_mb" xml:"log_file_mb" yaml:"logFileMb"`

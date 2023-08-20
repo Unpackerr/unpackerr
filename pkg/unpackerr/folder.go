@@ -20,15 +20,18 @@ import (
 const defaultPollInterval = time.Second
 
 // FolderConfig defines the input data for a watched folder.
+//
+//nolint:lll
 type FolderConfig struct {
-	DeleteOrig  bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
-	DeleteFiles bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
-	DisableLog  bool          `json:"disable_log" toml:"disable_log" xml:"disable_log" yaml:"disable_log"`
-	MoveBack    bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
-	DeleteAfter cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
-	ExtractPath string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
-	ExtractISOs bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
-	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	DeleteOrig       bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
+	DeleteFiles      bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
+	DisableLog       bool          `json:"disable_log" toml:"disable_log" xml:"disable_log" yaml:"disable_log"`
+	MoveBack         bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
+	DeleteAfter      cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
+	ExtractPath      string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
+	ExtractISOs      bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
+	DisableRecursion bool          `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recusion" yaml:"disableRecursion"`
+	Path             string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -240,16 +243,17 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
-		Password:   u.getPasswordFromPath(name),
-		Passwords:  u.Passwords,
-		Name:       name,
-		Filter:     xtractr.Filter{Path: name, ExcludeSuffix: exclude},
-		TempFolder: !folder.cnfg.MoveBack,
-		ExtractTo:  folder.cnfg.ExtractPath,
-		DeleteOrig: false,
-		CBChannel:  u.folders.Updates,
-		CBFunction: nil,
-		LogFile:    !folder.cnfg.DisableLog,
+		Password:         u.getPasswordFromPath(name),
+		Passwords:        u.Passwords,
+		Name:             name,
+		Filter:           xtractr.Filter{Path: name, ExcludeSuffix: exclude},
+		TempFolder:       !folder.cnfg.MoveBack,
+		ExtractTo:        folder.cnfg.ExtractPath,
+		DeleteOrig:       false,
+		CBChannel:        u.folders.Updates,
+		CBFunction:       nil,
+		LogFile:          !folder.cnfg.DisableLog,
+		DisableRecursion: folder.cnfg.DisableRecursion,
 	})
 	if err != nil {
 		u.Errorf("[ERROR] %v", err)

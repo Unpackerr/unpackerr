@@ -173,6 +173,8 @@ dir_mode = "0755"
 ## Delete extracted or original files this long after extraction.
 ## The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
 # delete_after = "10m"
+## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+# disable_recursion = false
 ## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
 # delete_files = false
 ## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.

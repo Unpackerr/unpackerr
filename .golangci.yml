@@ -26,6 +26,8 @@ linters:
     - varnamelen
     - tagliatelle
     - cyclop
+    - tagalign
+    - depguard
 run:
   timeout: 3m
 

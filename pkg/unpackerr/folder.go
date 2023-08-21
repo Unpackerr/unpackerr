@@ -30,7 +30,7 @@ type FolderConfig struct {
 	DeleteAfter      cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
 	ExtractPath      string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
 	ExtractISOs      bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
-	DisableRecursion bool          `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recusion" yaml:"disableRecursion"`
+	DisableRecursion bool          `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
 	Path             string        `json:"path" toml:"path" xml:"path" yaml:"path"`
 }
 

@@ -200,9 +200,10 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app starr.App, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title string, paths []string) string {
 	var errs []error
 
+	// Try all the user provided paths.
 	for _, path := range paths {
 		path = filepath.Join(path, title)
 
@@ -214,25 +215,15 @@ func (u *Unpackerr) getDownloadPath(s []*starr.StatusMessage, app starr.App, tit
 		}
 	}
 
+	// Print the errors for each user-provided path.
 	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
 
-	// The following code tries to find the path in the queued item's error message.
-	for _, m := range s {
-		if m.Title != title {
-			continue
-		}
-
-		for _, msg := range m.Messages {
-			if strings.HasPrefix(msg, prefixPathMsg) && strings.HasSuffix(msg, title) {
-				path := strings.TrimSpace(strings.TrimPrefix(msg, prefixPathMsg))
-				u.Debugf("%s: Configured paths do not exist; trying path found in status message: %s", app, path)
-
-				return path
-			}
-		}
+	if outputPath != "" {
+		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", app, outputPath)
+		return outputPath
 	}
 
-	u.Debugf("%s: Configured paths do not exist; could not find alternative path in error message for %s", app, title)
+	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", app, title)
 
 	return filepath.Join(paths[0], title) // useless, but return something. :(
 }

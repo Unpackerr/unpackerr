@@ -365,8 +365,6 @@ golift.io/starr v0.14.1-0.20230613054822-4e6dc508fbfd h1:9DDcrXcalbvJUsZr+kQ/Tbq
 golift.io/starr v0.14.1-0.20230613054822-4e6dc508fbfd/go.mod h1:X8QsZWpnP686bCJmK96U1uGlO+KESVGmHhLcO6oRQ2A=
 golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=
 golift.io/version v0.0.2/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
-golift.io/xtractr v0.2.3-0.20230820180719-f4e5bd827e35 h1:scYpoa2XQ7IMmgv30h8QDSlrgVmuBQxwhHkOSUEIr54=
-golift.io/xtractr v0.2.3-0.20230820180719-f4e5bd827e35/go.mod h1:nKvdcaQY6hfeKIB+dm3Yqts5E78z4Ow1wa9nV5Iq/lg=
 golift.io/xtractr v0.2.3-0.20230820182931-81659c42a6cf h1:2z82JjE3ozAv6AII5T7qqNETjpCDHS5CpH0rnmf+hsE=
 golift.io/xtractr v0.2.3-0.20230820182931-81659c42a6cf/go.mod h1:nKvdcaQY6hfeKIB+dm3Yqts5E78z4Ow1wa9nV5Iq/lg=
 google.golang.org/api v0.4.0/go.mod h1:8k5glujaEP+g9n7WNsDg8QP6cUVNI86fCNMcbazEtwE=

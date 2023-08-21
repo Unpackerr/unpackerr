@@ -132,17 +132,13 @@ func (u *Unpackerr) checkReadarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				// This shoehorns the Readar OutputPath into a StatusMessage that getDownloadPath can parse.
-				q.StatusMessages = append(q.StatusMessages,
-					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Readarr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.StatusMessages, starr.Readarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.OutputPath, starr.Readarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"authorId":   q.AuthorID,

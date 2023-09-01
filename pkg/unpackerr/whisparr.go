@@ -138,16 +138,12 @@ func (u *Unpackerr) checkWhisparrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				// This shoehorns the Whisparr OutputPath into a StatusMessage that getDownloadPath can parse.
-				q.StatusMessages = append(q.StatusMessages,
-					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Whisparr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.StatusMessages, starr.Whisparr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.OutputPath, starr.Whisparr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"downloadId": q.DownloadID,
 						"title":      q.Title,

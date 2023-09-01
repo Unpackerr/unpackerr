@@ -7,9 +7,13 @@
 # Recommend trying this so you know what it looks like. I personally leave it on.
 debug = false
 
-# Disable writing messages to stdout. This silences the app. You should set a log
+# Disable writing messages to stdout/stderr. This silences the app. Set a log
 # file below if you set this to true. Recommended when starting with systemctl.
 quiet = false
+
+# Send error output to stderr instead of stdout by setting error_stderr to true.
+# Recommend leaving this at false. Ignored if quiet (above) is true.
+error_stderr = false
 
 # Setting activity to true will silence all app queue log lines with only zeros.
 # Set this to true when you want less log spam.
@@ -169,6 +173,8 @@ dir_mode = "0755"
 ## Delete extracted or original files this long after extraction.
 ## The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
 # delete_after = "10m"
+## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+# disable_recursion = false
 ## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
 # delete_files = false
 ## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.

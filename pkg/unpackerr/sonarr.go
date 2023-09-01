@@ -132,17 +132,13 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				// This shoehorns the Sonarr OutputPath into a StatusMessage that getDownloadPath can parse.
-				q.StatusMessages = append(q.StatusMessages,
-					&starr.StatusMessage{Title: q.Title, Messages: []string{prefixPathMsg + q.OutputPath}})
-
 				u.handleCompletedDownload(q.Title, &Extract{
 					App:         starr.Sonarr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.StatusMessages, starr.Sonarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(q.OutputPath, starr.Sonarr, q.Title, server.Paths),
 					IDs: map[string]interface{}{
 						"title":      q.Title,
 						"downloadId": q.DownloadID,

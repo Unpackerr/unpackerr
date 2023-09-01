@@ -22,9 +22,7 @@ const DefaultQueuePageSize = 2000
 
 const (
 	defaultProtocol = "torrent"
-	// prefixPathMsg is used to locate/parse a download's path from a text string in StatusMessages.
-	prefixPathMsg = "No files found are eligible for import in "
-	apiKeyLength  = 32
+	apiKeyLength    = 32
 )
 
 // These are the names used to identify each app.
@@ -35,7 +33,7 @@ const (
 // Application validation errors.
 var (
 	ErrInvalidURL = fmt.Errorf("provided application URL is invalid")
-	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be 32 characters")
+	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be %d characters", apiKeyLength)
 )
 
 // Config defines the configuration data used to start the application.
@@ -44,6 +42,7 @@ type Config struct {
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
 	Activity    bool             `json:"activity" toml:"activity" xml:"activity" yaml:"activity"`
 	Parallel    uint             `json:"parallel" toml:"parallel" xml:"parallel" yaml:"parallel"`
+	ErrorStdErr bool             `json:"errorStderr" toml:"error_stderr" xml:"error_stderr" yaml:"errorStderr"`
 	LogFile     string           `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
 	LogFiles    int              `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
 	LogFileMb   int              `json:"logFileMb" toml:"log_file_mb" xml:"log_file_mb" yaml:"logFileMb"`

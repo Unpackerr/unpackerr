@@ -19,7 +19,7 @@ require (
 	golift.io/rotatorr v0.0.0-20230520191821-3b26224a1624
 	golift.io/starr v1.0.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.2.2
+	golift.io/xtractr v0.2.3-0.20230820182931-81659c42a6cf
 )
 
 require (
@@ -43,7 +43,7 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/kdomanski/iso9660 v0.3.5 // indirect
+	github.com/kdomanski/iso9660 v0.4.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -58,9 +58,8 @@ require (
 	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
+	go.uber.org/zap v1.25.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect

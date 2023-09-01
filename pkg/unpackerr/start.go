@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -50,11 +51,16 @@ type Unpackerr struct {
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
 	hookChan chan *hookQueueItem
-	delChan  chan []string
+	delChan  chan *fileDeleteReq
 	workChan chan *workThread
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
+}
+
+type fileDeleteReq struct {
+	Paths            []string
+	PurgeEmptyParent bool
 }
 
 // Logger provides a struct we can pass into other packages.
@@ -87,7 +93,7 @@ func New() *Unpackerr {
 	return &Unpackerr{
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
-		delChan:  make(chan []string, updateChanBuf),
+		delChan:  make(chan *fileDeleteReq, updateChanBuf),
 		sigChan:  make(chan os.Signal),
 		workChan: make(chan *workThread, 1),
 		History:  &History{Map: make(map[string]*Extract)},
@@ -176,10 +182,33 @@ func Start() (err error) {
 
 func (u *Unpackerr) watchDeleteChannel() {
 	for f := range u.delChan {
-		if len(f) > 0 && f[0] != "" {
-			u.DeleteFiles(f...)
+		if len(f.Paths) > 0 && f.Paths[0] != "" {
+			u.DeleteFiles(f.Paths...)
+
+			if !f.PurgeEmptyParent {
+				continue
+			}
+
+			for _, path := range f.Paths {
+				if p := filepath.Dir(path); dirIsEmpty(p) {
+					u.Printf("Purging empty folder: %s", p)
+					u.DeleteFiles(p)
+				}
+			}
 		}
 	}
+}
+
+func dirIsEmpty(name string) bool {
+	f, err := os.Open(name)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+
+	return err == io.EOF //nolint:errorlint // this is still correct.
 }
 
 func (u *Unpackerr) watchCmdAndWebhooks() {

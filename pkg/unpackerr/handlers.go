@@ -165,11 +165,11 @@ func (u *Unpackerr) checkExtractDone() {
 			var webhook bool
 
 			if data.DeleteOrig {
-				u.delChan <- []string{data.Path}
+				u.delChan <- &fileDeleteReq{Paths: []string{data.Path}}
 				webhook = true
 			} else if data.Resp != nil && len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
 				// In a routine so it can run slowly and not block.
-				u.delChan <- data.Resp.NewFiles
+				u.delChan <- &fileDeleteReq{Paths: data.Resp.NewFiles, PurgeEmptyParent: true}
 				webhook = true
 			}
 

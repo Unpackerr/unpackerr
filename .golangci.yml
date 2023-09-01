@@ -28,6 +28,7 @@ linters:
     - cyclop
     - tagalign
     - depguard
+    - testpackage
 run:
   timeout: 3m
 

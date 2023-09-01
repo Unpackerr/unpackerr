@@ -208,7 +208,7 @@ func dirIsEmpty(name string) bool {
 
 	_, err = f.Readdirnames(1)
 
-	return err == io.EOF
+	return err == io.EOF //nolint:errorlint // this is still correct.
 }
 
 func (u *Unpackerr) watchCmdAndWebhooks() {

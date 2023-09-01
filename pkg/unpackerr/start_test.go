@@ -22,10 +22,9 @@ func TestDirIsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Got an error making temp file: %v", err)
 	}
-	f.Close()
+	defer f.Close()
 
 	if dirIsEmpty(emptyDir) {
 		t.Fatal("dirIsEmpty should return false when the folder has a file in it")
 	}
-
 }

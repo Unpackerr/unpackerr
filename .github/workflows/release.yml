@@ -20,7 +20,7 @@ jobs:
     name: Make macOS DMG
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
@@ -54,7 +54,7 @@ jobs:
     env:
       GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
@@ -173,7 +173,7 @@ jobs:
     name: Deploy ArchLinux AUR
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           fetch-depth: '0'
       - name: Deploy Arch AUR
@@ -187,7 +187,7 @@ jobs:
     name: Deploy Homebrew Formula
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           fetch-depth: '0'
       - name: Deploy Homebrew Formula

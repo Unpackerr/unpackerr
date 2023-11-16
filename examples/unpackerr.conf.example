@@ -216,7 +216,7 @@ dir_mode = "0755"
 #####################
 # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
 # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
-###### Don't forget to uncomment [[cmdhook]] and url at a minimum !!!!
+###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
 #[[cmdhook]]
 # command = '/my/cool/app' # Path to command or script.
 # shell   = false # Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).

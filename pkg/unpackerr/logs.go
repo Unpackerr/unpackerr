@@ -33,11 +33,12 @@ const (
 	DELETING
 	DELETEFAILED // unused
 	DELETED
+	EXTRACTEDNOTHING
 )
 
 // Desc makes ExtractStatus human readable.
 func (status ExtractStatus) Desc() string {
-	if status > DELETED {
+	if status > EXTRACTEDNOTHING {
 		return "Unknown"
 	}
 
@@ -52,6 +53,7 @@ func (status ExtractStatus) Desc() string {
 		"Deleting",
 		"Delete Failed",
 		"Deleted",
+		"extractednothing",
 	}[status]
 }
 
@@ -62,7 +64,7 @@ func (status ExtractStatus) MarshalText() ([]byte, error) {
 
 // String turns a status into a short string.
 func (status ExtractStatus) String() string {
-	if status > DELETED {
+	if status > EXTRACTEDNOTHING {
 		return "unknown"
 	}
 
@@ -77,6 +79,7 @@ func (status ExtractStatus) String() string {
 		"deleting",
 		"deletefailed",
 		"deleted",
+		"extractednothing",
 	}[status]
 }
 

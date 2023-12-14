@@ -39,7 +39,7 @@ jobs:
           brew install mitchellh/gon/gon jq
           make signdmg
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dmg-release
           path: release
@@ -70,7 +70,7 @@ jobs:
           make release
           source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: release

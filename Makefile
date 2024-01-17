@@ -348,23 +348,3 @@ pkg/bindata/bindata.go: pkg/bindata/files/*
 
 docker:
 	init/docker/makedocker.sh
-
-####################
-##### Homebrew #####
-####################
-
-# Used for Homebrew only. Other distros can create packages.
-install: man readme unpackerr 
-	@echo -  Done Building  -
-	@echo -  Local installation with the Makefile is only supported on macOS.
-	@echo -  Otherwise, build and install a package: make rpm -or- make deb
-	@[ "$(shell uname)" = "Darwin" ] || (echo "Unable to continue, not a Mac." && false)
-	@[ "$(PREFIX)" != "" ] || (echo "Unable to continue, PREFIX not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
-	@[ "$(ETC)" != "" ] || (echo "Unable to continue, ETC not set. Use: make install PREFIX=/usr/local ETC=/usr/local/etc" && false)
-	# Copying the binary, config file, unit file, and man page into the env.
-	/usr/bin/install -m 0755 -d $(PREFIX)/bin $(PREFIX)/share/man/man1 $(ETC)/unpackerr $(PREFIX)/share/doc/unpackerr $(PREFIX)/lib/unpackerr
-	/usr/bin/install -m 0755 -cp unpackerr $(PREFIX)/bin/unpackerr
-	/usr/bin/install -m 0644 -cp unpackerr.1.gz $(PREFIX)/share/man/man1
-	/usr/bin/install -m 0644 -cp examples/unpackerr.conf.example $(ETC)/unpackerr/
-	[ -f $(ETC)/unpackerr/unpackerr.conf ] || /usr/bin/install -m 0644 -cp  examples/unpackerr.conf.example $(ETC)/unpackerr/unpackerr.conf
-	/usr/bin/install -m 0644 -cp LICENSE *.html examples/* $(PREFIX)/share/doc/unpackerr/

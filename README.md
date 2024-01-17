@@ -34,7 +34,6 @@ documentation support. This project succeeds because of them. Thank you!
 [![packagecloud](https://docs.golift.io/integrations/packagecloud.png "PackageCloud.io")](https://packagecloud.io)
 [![GitHub](https://docs.golift.io/integrations/octocat.png "GitHub")](https://GitHub.com)
 [![Docker Cloud](https://docs.golift.io/integrations/docker.png "Docker Cloud")](https://cloud.docker.com)
-[![Homebrew](https://docs.golift.io/integrations/homebrew.png "Homebrew")](https://brew.sh)
 [![Go Lift](https://docs.golift.io/integrations/golift.png "Go Lift")](https://golift.io)
 [![CloudFlare](https://docs.golift.io/integrations/cloudflare.png "CloudFlare")](https://cloudflare.com)
 
@@ -44,4 +43,4 @@ Yes, please. Just make a pull request and lets chat about it in the PR or on Dis
 
 ## License
 
-[MIT](https://github.com/Unpackerr/unpackerr/blob/main/LICENSE)
+[MIT](https://unpackerr.zip/docs/unpackerr/license)

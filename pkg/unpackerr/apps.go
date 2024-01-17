@@ -178,3 +178,17 @@ func (slice *StringSlice) UnmarshalENV(_, envval string) error {
 func (slice StringSlice) MarshalENV(tag string) (map[string]string, error) {
 	return map[string]string{tag: strings.Join(slice, ",")}, nil
 }
+
+func buildStatusReason(status string, messages []*starr.StatusMessage) (output string) {
+	for i := range messages {
+		for _, msg := range messages[i].Messages {
+			if output != "" {
+				output += "; "
+			}
+
+			output += msg
+		}
+	}
+
+	return status + ": " + output
+}

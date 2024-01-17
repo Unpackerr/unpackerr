@@ -10,8 +10,8 @@ jobs:
         os: [ubuntu, macos, windows]
     runs-on: ${{ matrix.os }}-latest
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 'stable'
       - name: go-generate
@@ -30,8 +30,8 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 'stable'
       - name: go-generate
@@ -51,8 +51,8 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 'stable'
       - name: go-generate
@@ -61,19 +61,3 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: 'v1.54'
-
-  homebrew-test:
-    # description: "Installs dependencis on macOS and runs `make install` to mimic a homebrew install."
-    name: test-homebrew-install
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-      - uses: actions/setup-go@v4
-        with:
-          go-version: 'stable'
-      - name: go-generate
-        run: go generate ./...
-      - name: make-install
-        run: |
-          TMP=$(mktemp -d)
-          make install VERSION=0.0.1 ITERATION=240 PREFIX=$TMP ETC=$TMP/etc

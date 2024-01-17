@@ -144,6 +144,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 						"downloadId": q.DownloadID,
 						"seriesId":   q.SeriesID,
 						"episodeId":  q.EpisodeID,
+						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
 				})
 

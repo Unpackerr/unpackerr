@@ -144,6 +144,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 						"authorId":   q.AuthorID,
 						"bookId":     q.BookID,
 						"downloadId": q.DownloadID,
+						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
 				})
 

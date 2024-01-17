@@ -218,7 +218,7 @@ jobs:
 
       - name: Set docker build-args
         run: >-
-          source ../../settings.sh;
+          source ./settings.sh;
           for i in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
             eval echo "${i}=\$${i}" >> $GITHUB_ENV;
           done

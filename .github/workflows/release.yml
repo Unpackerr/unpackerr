@@ -64,7 +64,7 @@ jobs:
       - name: make-release
         id: release
         run: |
-          sudo apt install -y rpm fakeroot zip debsigs gnupg jq 
+          sudo apt install -y rpm fakeroot zip debsigs gnupg jq
           sudo gem install --no-document fpm
           echo "${GPG_SIGNING_KEY}" | gpg --import -
           make release
@@ -216,6 +216,13 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
 
+      - name: Set docker build-args
+        run: >-
+          source ../../settings.sh;
+          for i in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
+            eval echo "${i}=\$${i}" >> $GITHUB_ENV;
+          done
+
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
@@ -223,8 +230,20 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: init/docker/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            COMMIT=${{ env.COMMIT }}
+            VERSION=${{ env.VERSION }}
+            ITERATION=${{ env.ITERATION }}
+            LICENSE=${{ env.LICENSE }}
+            DESC=${{ env.DESC }}
+            VENDOR=${{ env.VENDOR }}
+            AUTHOR=${{ env.AUTHOR }}
+            SOURCE_URL=${{ env.SOURCE_URL }}
+

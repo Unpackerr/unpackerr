@@ -220,7 +220,7 @@ jobs:
         run: >-
           git fetch --force --tags;
           source ./settings.sh;
-          for item in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
+          for item in DATE COMMIT VERSION ITERATION BRANCH LICENSE DESC VENDOR MAINT SOURCE_URL; do
             eval echo "settings.sh build-arg: ${item}=\$${item}";
             eval echo "${item}=\$${item}" >> $GITHUB_ENV;
           done
@@ -239,13 +239,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            BUILD_DATE=${{ env.BUILD_DATE }}
+            BUILD_DATE=${{ env.DATE }}
             COMMIT=${{ env.COMMIT }}
             VERSION=${{ env.VERSION }}
             ITERATION=${{ env.ITERATION }}
+            BRANCH=${{ env.BRANCH }}
             LICENSE=${{ env.LICENSE }}
             DESC=${{ env.DESC }}
             VENDOR=${{ env.VENDOR }}
-            AUTHOR=${{ env.AUTHOR }}
+            AUTHOR=${{ env.MAINT }}
             SOURCE_URL=${{ env.SOURCE_URL }}
-

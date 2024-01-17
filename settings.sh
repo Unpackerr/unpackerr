@@ -8,7 +8,7 @@ VENDOR="Go Lift <code@golift.io>"
 export MAINT DESC LICENSE SOURCE_URL VENDOR
 
 DATE="$(date -u +%Y-%m-%dT%H:%M:00Z)"
-VERSION=$(git describe --abbrev=0 --tags $(git rev-list --tags --max-count=1) | tr -d v)
+VERSION=$(git tag --sort version:refname | tail -n1 | tr -d v)
 [ "$VERSION" != "" ] || VERSION=development
 # This produces a 0 in some environments (like Homebrew), but it's only used for packages.
 ITERATION=$(git rev-list --count --all || echo 0)
@@ -20,8 +20,9 @@ export DATE VERSION ITERATION COMMIT BRANCH
 ### Optional ###
 
 # Import this signing key only if it's in the keyring.
-gpg --list-keys 2>/dev/null | grep -q B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C
-[ "$?" != "0" ] || export SIGNING_KEY=B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C
+if gpg --list-keys 2>/dev/null | grep -q B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C; then
+    export SIGNING_KEY=B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C
+fi
 
 # Make sure Docker builds work locally.
 # These do not affect automated builds, just allow the docker build scripts to run from a local clone.

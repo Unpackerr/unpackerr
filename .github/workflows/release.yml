@@ -36,7 +36,7 @@ jobs:
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         id: release
         run: |
-          brew install mitchellh/gon/gon jq
+          brew install mitchellh/gon/gon
           make signdmg
       - name: upload artifacts
         uses: actions/upload-artifact@v4
@@ -64,7 +64,7 @@ jobs:
       - name: make-release
         id: release
         run: |
-          sudo apt install -y rpm fakeroot zip debsigs gnupg jq 
+          sudo apt install -y rpm fakeroot zip debsigs gnupg jq
           sudo gem install --no-document fpm
           echo "${GPG_SIGNING_KEY}" | gpg --import -
           make release
@@ -180,3 +180,71 @@ jobs:
         run: bash init/archlinux/aur-deploy.sh
         env:
           DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+
+  docker-ghcr-build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - name: Set docker build-args
+        run: >-
+          git fetch --force --tags;
+          source ./settings.sh;
+          for item in DATE COMMIT VERSION ITERATION BRANCH LICENSE DESC VENDOR MAINT SOURCE_URL; do
+            eval echo "settings.sh build-arg: ${item}=\$${item}";
+            eval echo "${item}=\$${item}" >> $GITHUB_ENV;
+          done
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: init/docker/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ env.DATE }}
+            COMMIT=${{ env.COMMIT }}
+            VERSION=${{ env.VERSION }}
+            ITERATION=${{ env.ITERATION }}
+            BRANCH=${{ env.BRANCH }}
+            LICENSE=${{ env.LICENSE }}
+            DESC=${{ env.DESC }}
+            VENDOR=${{ env.VENDOR }}
+            AUTHOR=${{ env.MAINT }}
+            SOURCE_URL=${{ env.SOURCE_URL }}

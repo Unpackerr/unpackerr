@@ -143,6 +143,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 						"downloadId": q.DownloadID,
 						"title":      q.Title,
 						"movieId":    q.MovieID,
+						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
 				})
 

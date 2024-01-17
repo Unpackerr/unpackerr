@@ -95,9 +95,13 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 
 	files := xtractr.FindCompressedFiles(xtractr.Filter{Path: item.Path})
 	if len(files) == 0 {
-		_, err := os.Stat(item.Path)
-		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
-			item.App, name, item.Path, err)
+		if _, err := os.Stat(item.Path); err != nil {
+			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
+				item.App, name, item.Path, err)
+		} else {
+			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (%s Activity Queue status: %v)",
+				item.App, name, item.Path, item.App, item.IDs["reason"])
+		}
 
 		return
 	}

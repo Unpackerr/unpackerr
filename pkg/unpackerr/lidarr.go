@@ -144,6 +144,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 						"artistId":   q.ArtistID,
 						"albumId":    q.AlbumID,
 						"downloadId": q.DownloadID,
+						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
 				})
 

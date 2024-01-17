@@ -27,7 +27,7 @@ OPTIONS
     -p, --prefix <env prefix>
         This argument allows changing the environment variable prefix.
         This application parses environment variables into config data.
-        The default prefix is UN, making env variables like UN_SONARR_URL.
+        The default prefix is UN, making env variables like UN_SONARR_0_URL.
 
     -w, --webhook <1,2,3,4,5,6,7,8>
         This sends a webhook of the type specified then exits. This is only

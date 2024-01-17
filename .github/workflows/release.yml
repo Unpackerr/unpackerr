@@ -36,7 +36,7 @@ jobs:
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         id: release
         run: |
-          brew install mitchellh/gon/gon jq
+          brew install mitchellh/gon/gon
           make signdmg
       - name: upload artifacts
         uses: actions/upload-artifact@v4

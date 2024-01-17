@@ -218,9 +218,10 @@ jobs:
 
       - name: Set docker build-args
         run: >-
+          git fetch --force --tags;
           source ./settings.sh;
           for item in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
-            eval echo "NEW ENV: ${item}=\$${item}";
+            eval echo "settings.sh build-arg: ${item}=\$${item}";
             eval echo "${item}=\$${item}" >> $GITHUB_ENV;
           done
 

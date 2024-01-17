@@ -219,8 +219,9 @@ jobs:
       - name: Set docker build-args
         run: >-
           source ./settings.sh;
-          for i in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
-            eval echo "${i}=\$${i}" >> $GITHUB_ENV;
+          for item in BUILD_DATE COMMIT VERSION VERSION ITERATION LICENSE DESC VENDOR AUTHOR SOURCE_URL; do
+            eval echo "NEW ENV: ${item}=\$${item}";
+            eval echo "${item}=\$${item}" >> $GITHUB_ENV;
           done
 
       # Build and push Docker image with Buildx (don't push on PR)

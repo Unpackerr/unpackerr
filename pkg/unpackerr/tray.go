@@ -18,9 +18,11 @@ import (
 	"golift.io/version"
 )
 
-// Safety constant.
-const hist = "hist_"
-const histNone = "hist_none"
+// Safety constants.
+const (
+	hist     = "hist_"
+	histNone = "hist_none"
+)
 
 // startTray Run()s readyTray to bring up the web server and the GUI app.
 func (u *Unpackerr) startTray() {

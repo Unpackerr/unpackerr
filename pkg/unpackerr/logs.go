@@ -53,7 +53,7 @@ func (status ExtractStatus) Desc() string {
 		"Deleting",
 		"Delete Failed",
 		"Deleted",
-		"extractednothing",
+		"Nothing Extracted",
 	}[status]
 }
 

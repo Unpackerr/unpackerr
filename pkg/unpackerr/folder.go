@@ -277,8 +277,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		u.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		folder.step = EXTRACTING //nolint:wsl
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
-		// Ignore "no compressed files" errors for folders.
-		delete(u.Map, resp.X.Name)
+		folder.step = EXTRACTEDNOTHING
 		u.Printf("[Folder] Nothing Extracted: %s: %v", resp.X.Name, resp.Error)
 	case resp.Error != nil:
 		folder.step = EXTRACTFAILED
@@ -410,6 +409,10 @@ func (u *Unpackerr) checkFolderStats() {
 		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
 			u.extractFolder(name, folder)
+		case EXTRACTEDNOTHING == folder.step:
+			// Ignore "no compressed files" errors for folders.
+			delete(u.Map, name)
+			delete(u.folders.Folders, name)
 		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || folder.retr < u.MaxRetries):
 			u.Retries++

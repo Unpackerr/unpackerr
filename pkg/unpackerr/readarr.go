@@ -77,8 +77,7 @@ func (u *Unpackerr) validateReadarr() error {
 
 func (u *Unpackerr) logReadarr() {
 	if c := len(u.Readarr); c == 1 {
-		u.Printf(" => Readarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
+		u.Printf(" => Readarr Config: 1 server: "+starrLogLine,
 			u.Readarr[0].URL, u.Readarr[0].APIKey != "", u.Readarr[0].Timeout,
 			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Syncthing,
 			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
@@ -86,8 +85,7 @@ func (u *Unpackerr) logReadarr() {
 		u.Printf(" => Readarr Config: %d servers", c)
 
 		for _, f := range u.Readarr {
-			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
+			u.Printf(starrLogPfx+starrLogLine,
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
 				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}

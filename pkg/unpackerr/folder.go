@@ -279,7 +279,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		folder.step = EXTRACTING //nolint:wsl
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
 		folder.step = EXTRACTEDNOTHING
-		u.Printf("[Folder] Nothing Extracted: %s: %v", resp.X.Name, resp.Error)
+		u.Printf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)
 	case resp.Error != nil:
 		folder.step = EXTRACTFAILED
 		u.Errorf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)

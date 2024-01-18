@@ -1,6 +1,9 @@
 # Change this line.
 /unpackerr
 
+# JetBrains IDEs: GoLand, IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
+.idea/*
+
 # The rest is probably fine.
 /init/macos/*.app/Contents/MacOS/*
 /rsrc*.syso

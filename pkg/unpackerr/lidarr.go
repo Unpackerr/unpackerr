@@ -77,8 +77,7 @@ func (u *Unpackerr) validateLidarr() error {
 
 func (u *Unpackerr) logLidarr() {
 	if c := len(u.Lidarr); c == 1 {
-		u.Printf(" => Lidarr Config: 1 server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-			"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
+		u.Printf(" => Lidarr Config: 1 server: "+starrLogLine,
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
 			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Syncthing,
 			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
@@ -86,8 +85,7 @@ func (u *Unpackerr) logLidarr() {
 		u.Printf(" => Lidarr Config: %d servers", c)
 
 		for _, f := range u.Lidarr {
-			u.Printf(" =>    Server: %s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, "+
-				"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q",
+			u.Printf(starrLogPfx+starrLogLine,
 				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
 				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
 		}

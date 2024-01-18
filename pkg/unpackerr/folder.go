@@ -62,6 +62,7 @@ type eventData struct {
 	cnfg *FolderConfig
 	name string
 	file string
+	op   string
 }
 
 func (u *Unpackerr) logFolders() {
@@ -278,7 +279,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		folder.step = EXTRACTING //nolint:wsl
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
 		folder.step = EXTRACTEDNOTHING
-		u.Printf("[Folder] Nothing Extracted: %s: %v", resp.X.Name, resp.Error)
+		u.Printf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)
 	case resp.Error != nil:
 		folder.step = EXTRACTFAILED
 		u.Errorf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)
@@ -328,18 +329,18 @@ func (f *Folders) watchFSNotify() {
 				return
 			}
 
-			f.handleFileEvent(event.Name)
+			f.handleFileEvent(event.Name, "f "+event.Op.String())
 		case event, ok := <-f.Watcher.Event:
 			if !ok {
 				return
 			}
 
-			f.handleFileEvent(event.Name())
+			f.handleFileEvent(event.Name(), "w "+event.Op.String())
 		}
 	}
 }
 
-func (f *Folders) handleFileEvent(name string) {
+func (f *Folders) handleFileEvent(name, operation string) {
 	if strings.HasSuffix(name, suffix) {
 		return
 	}
@@ -352,9 +353,9 @@ func (f *Folders) handleFileEvent(name string) {
 		if !strings.HasPrefix(name, cnfg.Path) || name == cnfg.Path {
 			continue // Not the configured folder for the event we just got.
 		} else if p := filepath.Dir(name); p == cnfg.Path {
-			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name}
+			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
 		} else {
-			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name}
+			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name, op: operation}
 		}
 	}
 }
@@ -362,7 +363,7 @@ func (f *Folders) handleFileEvent(name string) {
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData) {
 	dirPath := filepath.Join(event.cnfg.Path, event.name)
-	if stat, err := os.Stat(dirPath); err != nil {
+	if _, err := os.Stat(dirPath); err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[dirPath]; ok {
 			f.Debugf("Folder: Removing Tracked Item: %v", dirPath)
@@ -370,11 +371,8 @@ func (f *Folders) processEvent(event *eventData) {
 			f.Remove(dirPath)
 		}
 
-		f.Debugf("Folder: Ignored File Event '%v' (unreadable): %v", event.file, err)
+		f.Debugf("Folder: Ignored File Event (%s) '%s' (unreadable): %v", event.op, event.file, err)
 
-		return
-	} else if !stat.IsDir() {
-		f.Debugf("Folder: Ignoring Item '%v' (not a folder)", dirPath)
 		return
 	}
 
@@ -386,13 +384,13 @@ func (f *Folders) processEvent(event *eventData) {
 
 	if err := f.Add(dirPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			f.Errorf("Folder: Tracking New Item: %v: %v", dirPath, err)
+			f.Errorf("Folder: Tracking New Item: %v (event: %s): %v ", dirPath, event.op, err)
 		}
 
 		return
 	}
 
-	f.Printf("[Folder] Tracking New Item: %v", dirPath)
+	f.Printf("[Folder] Tracking New Item: %v (event: %s)", dirPath, event.op)
 
 	f.Folders[dirPath] = &Folder{
 		last: time.Now(),

@@ -18,6 +18,10 @@ import (
 	"golift.io/version"
 )
 
+// Safety constant.
+const hist = "hist_"
+const histNone = "hist_none"
+
 // startTray Run()s readyTray to bring up the web server and the GUI app.
 func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
@@ -139,18 +143,18 @@ func (u *Unpackerr) watchGuiChannels() {
 func (u *Unpackerr) makeHistoryChannels() {
 	history := systray.AddMenuItem("History", fmt.Sprintf("display last %d items queued", u.KeepHistory))
 	u.menu["history"] = ui.WrapMenu(history)
-	u.menu["hist_none"] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", "nothing has been queued yet"))
-	u.menu["hist_none"].Disable()
+	u.menu[histNone] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", "nothing has been queued yet"))
+	u.menu[histNone].Disable()
 
 	if u.KeepHistory == 0 {
-		u.menu["hist_none"].SetTitle("-- history disabled --")
-		u.menu["hist_none"].SetTooltip("history is disabled in the config")
+		u.menu[histNone].SetTitle("-- history disabled --")
+		u.menu[histNone].SetTooltip("history is disabled in the config")
 	}
 
 	for i := 0; i < int(u.KeepHistory); i++ {
-		u.menu["hist_"+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
-		u.menu["hist_"+strconv.Itoa(i)].Disable()
-		u.menu["hist_"+strconv.Itoa(i)].Hide()
+		u.menu[hist+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
+		u.menu[hist+strconv.Itoa(i)].Disable()
+		u.menu[hist+strconv.Itoa(i)].Hide()
 	}
 }
 
@@ -258,7 +262,7 @@ func (u *Unpackerr) updateHistory(item string) {
 	}
 
 	if ui.HasGUI() && item != "" {
-		u.menu["hist_none"].Hide()
+		u.menu[histNone].Hide()
 	}
 
 	// u.History.Items is a slice with a set (identical) length and capacity.
@@ -274,10 +278,10 @@ func (u *Unpackerr) updateHistory(item string) {
 		}
 
 		if u.History.Items[i] != "" {
-			u.menu["hist_"+strconv.Itoa(i)].SetTitle(u.History.Items[i])
-			u.menu["hist_"+strconv.Itoa(i)].Show()
+			u.menu[hist+strconv.Itoa(i)].SetTitle(u.History.Items[i])
+			u.menu[hist+strconv.Itoa(i)].Show()
 		} else {
-			u.menu["hist_"+strconv.Itoa(i)].Hide()
+			u.menu[hist+strconv.Itoa(i)].Hide()
 		}
 	}
 }

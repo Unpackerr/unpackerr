@@ -14,9 +14,12 @@ import (
 
 // satisfy gomnd.
 const (
-	callDepth   = 2 // log the line that called us.
-	megabyte    = 1024 * 1024
-	logsDirMode = 0o755
+	callDepth    = 2 // log the line that called us.
+	megabyte     = 1024 * 1024
+	logsDirMode  = 0o755
+	starrLogPfx  = " =>    Server: "
+	starrLogLine = "%s, apikey:%v, timeout:%v, verify ssl:%v, protos:%s, " +
+		"syncthing: %v, delete_orig: %v, delete_delay: %v, paths:%q"
 )
 
 // ExtractStatus is our enum for an extract's status.
@@ -53,7 +56,7 @@ func (status ExtractStatus) Desc() string {
 		"Deleting",
 		"Delete Failed",
 		"Deleted",
-		"extractednothing",
+		"Nothing Extracted",
 	}[status]
 }
 

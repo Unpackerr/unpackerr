@@ -183,6 +183,7 @@ jobs:
 
   docker-ghcr-build-push:
     if: github.ref != 'refs/heads/main'
+    name: Deploy GHCR Container
     runs-on: ubuntu-latest
     permissions:
       contents: read

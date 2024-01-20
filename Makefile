@@ -39,7 +39,7 @@ define PACKAGE_ARGS
 endef
 
 
-VERSION_LDFLAGS:= -X \"$golift.io/version.Branch=$(BRANCH) ($(COMMIT))\" \
+VERSION_LDFLAGS:= -X \"golift.io/version.Branch=$(BRANCH) ($(COMMIT))\" \
 	-X \"golift.io/version.BuildDate=$(DATE)\" \
 	-X \"golift.io/version.BuildUser=$(shell whoami)\" \
 	-X \"golift.io/version.Revision=$(ITERATION)\" \

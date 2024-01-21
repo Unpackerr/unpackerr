@@ -20,13 +20,13 @@ jobs:
     name: Make macOS DMG
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@v4
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.20'
+          go-version: stable
       - name: go-generate
         run: go generate ./...
       - name: make-signdmg
@@ -54,13 +54,13 @@ jobs:
     env:
       GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@v4
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.20'
+          go-version: stable
       - name: make-release
         id: release
         run: |
@@ -173,7 +173,7 @@ jobs:
     name: Deploy ArchLinux AUR
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
       - name: Deploy Arch AUR
@@ -222,6 +222,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
 
       - name: Set docker build-args
         run: >-

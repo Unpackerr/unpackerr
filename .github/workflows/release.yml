@@ -226,6 +226,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=ref,enable=true,event=branch
 
       - name: Set docker build-args
         run: >-

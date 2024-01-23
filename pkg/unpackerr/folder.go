@@ -353,13 +353,15 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		// eventData.name: "new_folder"
 		if !strings.HasPrefix(name, cnfg.Path) || name == cnfg.Path {
 			continue // Not the configured folder for the event we just got.
-		} else if p := filepath.Dir(name); p == cnfg.Path {
+		}
+
+		if p := filepath.Dir(name); p == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
-			return
 		} else {
 			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name, op: operation}
-			return
 		}
+
+		return
 	}
 
 	f.Debugf("Folder: Ignored event from non-configured path: %v", name)

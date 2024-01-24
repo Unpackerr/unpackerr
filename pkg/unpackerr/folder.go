@@ -5,6 +5,7 @@ package unpackerr
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -318,6 +319,8 @@ func mapLen(in map[string][]string) (out int) {
 
 // watchFSNotify reads file system events from a channel and processes them.
 func (f *Folders) watchFSNotify() {
+	defer log.Println("Folder watcher routine exited. No longer watching any folders.")
+
 	for {
 		select {
 		case err := <-f.Watcher.Error:
@@ -330,12 +333,10 @@ func (f *Folders) watchFSNotify() {
 			}
 
 			f.handleFileEvent(event.Name, "f "+event.Op.String())
-		case event, ok := <-f.Watcher.Event:
-			if !ok {
-				return
-			}
-
-			f.handleFileEvent(event.Name(), "w "+event.Op.String())
+		case event := <-f.Watcher.Event:
+			f.handleFileEvent(event.Path, "w "+event.Op.String())
+		case <-f.Watcher.Closed:
+			return
 		}
 	}
 }
@@ -352,12 +353,18 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		// eventData.name: "new_folder"
 		if !strings.HasPrefix(name, cnfg.Path) || name == cnfg.Path {
 			continue // Not the configured folder for the event we just got.
-		} else if p := filepath.Dir(name); p == cnfg.Path {
+		}
+
+		if p := filepath.Dir(name); p == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
 		} else {
 			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name, op: operation}
 		}
+
+		return
 	}
+
+	f.Debugf("Folder: Ignored event from non-configured path: %v", name)
 }
 
 // processEvent processes the event that was received.

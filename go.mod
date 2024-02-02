@@ -19,7 +19,7 @@ require (
 	golift.io/rotatorr v0.0.0-20230911015553-cd2abbd726c7
 	golift.io/starr v1.0.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.2.3-0.20240118083145-be8544c18974
+	golift.io/xtractr v0.2.3-0.20240202194230-2edf9aff9619
 )
 
 require (
@@ -29,6 +29,8 @@ require (
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.5 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
+	github.com/cavaliergopher/cpio v1.0.1 // indirect
+	github.com/cavaliergopher/rpm v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/getlantern/context v0.0.0-20220418194847-3d5e7a086201 // indirect
 	github.com/getlantern/errors v1.0.3 // indirect
@@ -43,15 +45,18 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/kdomanski/iso9660 v0.4.0 // indirect
-	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/klauspost/compress v1.17.5 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
+	github.com/peterebden/ar v0.0.0-20230524111245-4f7c7b065694 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.46.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
+	github.com/sshaman1101/dcompress v0.0.0-20200109162717-50436a6332de // indirect
+	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	go.opentelemetry.io/otel v1.22.0 // indirect
 	go.opentelemetry.io/otel/metric v1.22.0 // indirect
@@ -59,6 +64,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

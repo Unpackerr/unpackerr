@@ -3,14 +3,11 @@ on:
   push:
     branches:
       - unstable
-      - main
     tags:
       - v*
   pull_request:
     branches:
     - main
-    - unstable
-    - development
 permissions:
   contents: read
 jobs:

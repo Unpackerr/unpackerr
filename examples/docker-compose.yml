@@ -1,6 +1,6 @@
 ### Unpackerr docker-compose.yml Example
 ### See this URL for variable descriptions and options:
-### https://github.com/Unpackerr/unpackerr#docker-env-variables
+### https://unpackerr.zip/docs/install/configuration
 ##################################################################
 version: "3.7"
 services:

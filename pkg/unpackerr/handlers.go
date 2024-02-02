@@ -116,10 +116,15 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	item.Status = QUEUED
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
-		Password:   u.getPasswordFromPath(item.Path),
-		Passwords:  u.Passwords,
-		Name:       name,
-		Filter:     xtractr.Filter{Path: item.Path, ExcludeSuffix: []string{".iso"}},
+		Password:  u.getPasswordFromPath(item.Path),
+		Passwords: u.Passwords,
+		Name:      name,
+		Filter: xtractr.Filter{
+			Path: item.Path,
+			ExcludeSuffix: xtractr.AllExcept(
+				".rar", ".r00", ".zip", ".7z", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2",
+			),
+		},
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,

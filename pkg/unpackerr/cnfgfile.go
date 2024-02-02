@@ -144,14 +144,8 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.Interval.Duration = minimumInterval
 	}
 
-	if u.Config.Debug && u.LogFiles == defaultLogFiles {
-		u.LogFiles *= 2 // Double default if debug is turned on.
-	}
-
-	if u.LogFileMb == 0 {
-		if u.LogFileMb = defaultLogFileMb; u.Config.Debug {
-			u.LogFileMb *= 2 // Double default if debug is turned on.
-		}
+	if u.ErrorStdErr && runtime.GOOS == windows {
+		u.ErrorStdErr = false // no stderr on windows
 	}
 
 	if ui.HasGUI() && u.LogFile == "" {

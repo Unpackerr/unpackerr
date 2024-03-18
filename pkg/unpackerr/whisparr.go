@@ -34,6 +34,11 @@ func (u *Unpackerr) validateWhisparr() error {
 			continue
 		}
 
+		if u.Whisparr[i].APIKey == "" {
+			u.Errorf("Missing Whisparr API Key in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Whisparr[i].URL, "http://") && !strings.HasPrefix(u.Whisparr[i].URL, "https://") {
 			return fmt.Errorf("%w: (whisparr) %s", ErrInvalidURL, u.Whisparr[i].URL)
 		}

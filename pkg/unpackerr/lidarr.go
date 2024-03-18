@@ -30,6 +30,11 @@ func (u *Unpackerr) validateLidarr() error {
 			continue
 		}
 
+		if u.Lidarr[i].APIKey == "" {
+			u.Errorf("Missing Lidarr API Key in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Lidarr[i].URL, "http://") && !strings.HasPrefix(u.Lidarr[i].URL, "https://") {
 			return fmt.Errorf("%w: (lidarr) %s", ErrInvalidURL, u.Lidarr[i].URL)
 		}

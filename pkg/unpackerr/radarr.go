@@ -30,6 +30,11 @@ func (u *Unpackerr) validateRadarr() error {
 			continue
 		}
 
+		if u.Radarr[i].APIKey == "" {
+			u.Errorf("Missing Radarr API Key in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Radarr[i].URL, "http://") && !strings.HasPrefix(u.Radarr[i].URL, "https://") {
 			return fmt.Errorf("%w: (radarr) %s", ErrInvalidURL, u.Radarr[i].URL)
 		}

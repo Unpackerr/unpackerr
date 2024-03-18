@@ -30,6 +30,11 @@ func (u *Unpackerr) validateReadarr() error {
 			continue
 		}
 
+		if u.Readarr[i].APIKey == "" {
+			u.Errorf("Missing Readarr API Key in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Readarr[i].URL, "http://") && !strings.HasPrefix(u.Readarr[i].URL, "https://") {
 			return fmt.Errorf("%w: (readarr) %s", ErrInvalidURL, u.Readarr[i].URL)
 		}

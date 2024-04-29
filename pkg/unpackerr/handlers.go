@@ -194,7 +194,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, true)
 	case resp.Error != nil:
-		u.Printf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
+		u.Errorf("Extraction Error: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
@@ -222,7 +222,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	}
 
 	// Print the errors for each user-provided path.
-	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
+	u.Errorf("%s: Errors encountered looking for %s path: %q", app, title, errs)
 
 	if outputPath != "" {
 		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", app, outputPath)

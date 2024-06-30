@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,8 +126,13 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		CBChannel:  u.updates,
 	})
 
-	u.Printf("[%s] Extraction Queued: %s, extractable files: %d, delete orig: %v, items in queue: %d",
-		item.App, item.Path, len(files), item.DeleteOrig, queueSize)
+	count := fmt.Sprintln("1 archive:", files.Random()[0])
+	if fileCount := files.Count(); fileCount > 1 {
+		count = fmt.Sprintf("%v archives in %d folders", fileCount, len(files))
+	}
+
+	u.Printf("[%s] Extraction Queued: %s, %s, delete orig: %v, queue size: %d",
+		item.App, item.Path, count, item.DeleteOrig, queueSize)
 	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 

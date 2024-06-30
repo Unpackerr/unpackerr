@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -147,8 +148,10 @@ func Start() (err error) {
 	// We cannot log anything until setupLogging() runs.
 	// We cannot run setupLogging until we read the above config.
 	u.setupLogging()
-	u.Printf("Unpackerr v%s Starting! PID: %v, UID: %d, GID: %d, Now: %v",
-		version.Version, os.Getpid(), os.Getuid(), os.Getgid(), version.Started.Round(time.Second))
+	u.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Now: %v",
+		version.Version, version.Revision, os.Getpid(),
+		os.Getuid(), os.Getgid(), version.Started.Round(time.Second))
+	u.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
 
 	if err := u.validateApps(); err != nil {
 		return err

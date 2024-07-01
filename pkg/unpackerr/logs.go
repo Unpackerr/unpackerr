@@ -130,14 +130,13 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Info.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 		u.Logger.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
-
-	logFile, err := homedir.Expand(u.Config.LogFile)
-	if err != nil {
-		logFile = u.Config.LogFile
+	log.Println(u.Config.LogFile)
+	if logFile, err := homedir.Expand(u.Config.LogFile); err == nil {
+		u.Config.LogFile = logFile
 	}
 
 	rotate := &rotatorr.Config{
-		Filepath: logFile,                              // log file name.
+		Filepath: u.Config.LogFile,                     // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte, // megabytes
 		Rotatorr: &timerotator.Layout{
 			FileCount:  u.Config.LogFiles,
@@ -146,7 +145,7 @@ func (u *Unpackerr) setupLogging() {
 		DirMode: logsDirMode,
 	}
 
-	if logFile != "" {
+	if u.Config.LogFile != "" {
 		u.rotatorr = rotatorr.NewMust(rotate)
 	}
 
@@ -156,11 +155,11 @@ func (u *Unpackerr) setupLogging() {
 	}
 
 	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && logFile != "":
+	case !u.Config.Quiet && u.Config.LogFile != "":
 		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, stderr))
-	case !u.Config.Quiet && logFile == "":
+	case !u.Config.Quiet && u.Config.LogFile == "":
 		u.updateLogOutput(os.Stdout, stderr)
-	case logFile == "":
+	case u.Config.LogFile == "":
 		u.updateLogOutput(io.Discard, io.Discard) // default is "nothing"
 	default:
 		u.updateLogOutput(u.rotatorr, u.rotatorr)
@@ -185,26 +184,25 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 }
 
 func (u *Unpackerr) setupHTTPLogging() {
-	logFile, err := homedir.Expand(u.Webserver.LogFile)
-	if err != nil {
-		logFile = u.Webserver.LogFile
+	if logFile, err := homedir.Expand(u.Webserver.LogFile); err == nil {
+		u.Webserver.LogFile = logFile
 	}
 
 	rotate := &rotatorr.Config{
-		Filepath: logFile,                                 // log file name.
+		Filepath: u.Webserver.LogFile,                     // log file name.
 		FileSize: int64(u.Webserver.LogFileMb) * megabyte, // megabytes
 		Rotatorr: &timerotator.Layout{FileCount: u.Webserver.LogFiles},
 		DirMode:  logsDirMode,
 	}
 
 	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && logFile != "":
+	case !u.Config.Quiet && u.Webserver.LogFile != "":
 		u.Logger.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
-	case !u.Config.Quiet && logFile == "":
+	case !u.Config.Quiet && u.Webserver.LogFile == "":
 		u.Logger.HTTP.SetOutput(os.Stdout)
-	case u.Config.Quiet && logFile == "":
+	case u.Config.Quiet && u.Webserver.LogFile == "":
 		u.Logger.HTTP.SetOutput(io.Discard)
-	default: // u.Config.Quiet && logFile != ""
+	default: // u.Config.Quiet && u.Webserver.LogFile != ""
 		u.Logger.HTTP.SetOutput(rotatorr.NewMust(rotate))
 	}
 }

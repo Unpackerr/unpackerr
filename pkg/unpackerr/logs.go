@@ -236,7 +236,7 @@ func (u *Unpackerr) logStartupInfo(msg string) {
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
 	u.Printf(" => Passwords: %d (rar/7z)", len(u.Config.Passwords))
 	u.Printf(" => Interval: %v", u.Config.Interval)
-	u.Printf(" => Start Delay: %v", u.Config.StartDelay)
+	u.Printf(" => Start/Delete Delay: %v/%v", u.Config.StartDelay, u.Config.DeleteDelay)
 	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
 	u.Printf(" => GUI / StdErr: %v / %v", ui.HasGUI(), u.ErrorStdErr)
 	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)

@@ -84,6 +84,7 @@ func (u *Unpackerr) logFolders() {
 			if epath = ""; folder.ExtractPath != "" {
 				epath = ", extract to: " + folder.ExtractPath
 			}
+
 			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v, isos:%v)",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}

@@ -3,6 +3,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -27,7 +28,7 @@ func StartCmd(c string, v ...string) error {
 }
 
 // ErrUnsupported is just an error.
-var ErrUnsupported = fmt.Errorf("unsupported OS")
+var ErrUnsupported = errors.New("unsupported OS")
 
 // OpenCmd opens anything.
 func OpenCmd(_ ...string) error {

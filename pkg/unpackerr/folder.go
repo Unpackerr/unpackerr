@@ -18,7 +18,10 @@ import (
 )
 
 // defaultPollInterval is used if Docker is detected.
-const defaultPollInterval = time.Second
+const (
+	defaultPollInterval = time.Second
+	minimumPollInterval = 5 * time.Millisecond
+)
 
 // FolderConfig defines the input data for a watched folder.
 //
@@ -119,7 +122,9 @@ func (u *Unpackerr) PollFolders() {
 	go u.folders.watchFSNotify()
 	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
-	if u.Folder.Interval.Duration == 0 {
+	// Setting an interval of any value less than a millisecond
+	// (except zero in docker) allows disabling the poller.
+	if u.Folder.Interval.Duration < minimumPollInterval {
 		return
 	}
 
@@ -175,7 +180,7 @@ func (u *Unpackerr) newFolderWatcher() error {
 
 // Add uses either fsnotify or watcher.
 func (f *Folders) Add(folder string) error {
-	if f.Interval != 0 {
+	if f.Interval >= minimumPollInterval {
 		if err := f.Watcher.Add(folder); err != nil {
 			return fmt.Errorf("watcher: %w", err)
 		}
@@ -366,6 +371,15 @@ func (f *Folders) handleFileEvent(name, operation string) {
 	}
 
 	f.Debugf("Folder: Ignored event from non-configured path: %v", name)
+}
+
+func (u *Unpackerr) processEvent(event *eventData) {
+	// Do not watch our own log file.
+	if event.file == u.Config.LogFile || event.file == u.Config.Webserver.LogFile {
+		return
+	}
+
+	u.folders.processEvent(event)
 }
 
 // processEvent processes the event that was received.

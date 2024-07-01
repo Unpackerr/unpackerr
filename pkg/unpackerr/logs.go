@@ -130,7 +130,7 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Info.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 		u.Logger.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
-	log.Println(u.Config.LogFile)
+
 	if logFile, err := homedir.Expand(u.Config.LogFile); err == nil {
 		u.Config.LogFile = logFile
 	}

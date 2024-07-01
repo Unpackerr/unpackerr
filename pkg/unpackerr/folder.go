@@ -234,10 +234,20 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 	return goodFolders, goodFlist
 }
 
-// extractFolder starts a folder's extraction after it hasn't been written to in a while.
-func (u *Unpackerr) extractFolder(name string, folder *Folder) {
+// extractTrackedItem starts an archive or folder's extraction after it hasn't been written to in a while.
+func (u *Unpackerr) extractTrackedItem(name string, folder *Folder) {
+	u.folders.Remove(name) // stop the fs watcher(s).
+
+	// Do not extract r00 file if rar file with same name exists.
+	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
+		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), name) {
+		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
+		delete(u.folders.Folders, name)
+
+		return
+	}
+
 	// update status.
-	u.folders.Remove(name)
 	u.folders.Folders[name].last = time.Now()
 	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
@@ -265,11 +275,29 @@ func (u *Unpackerr) extractFolder(name string, folder *Folder) {
 	})
 	if err != nil {
 		u.Errorf("[ERROR] %v", err)
-
 		return
 	}
 
 	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+}
+
+func getFileList(path string) []os.FileInfo {
+	dir, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer dir.Close()
+
+	if stat, err := dir.Stat(); err != nil || !stat.IsDir() {
+		return nil
+	}
+
+	fileList, err := dir.Readdir(-1)
+	if err != nil {
+		return nil
+	}
+
+	return fileList
 }
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
@@ -361,6 +389,7 @@ func (f *Folders) handleFileEvent(name, operation string) {
 			continue // Not the configured folder for the event we just got.
 		}
 
+		// processEvent (below) handles events sent to f.Events.
 		if p := filepath.Dir(name); p == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
 		} else {
@@ -385,7 +414,9 @@ func (u *Unpackerr) processEvent(event *eventData) {
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData) {
 	dirPath := filepath.Join(event.cnfg.Path, event.name)
-	if _, err := os.Stat(dirPath); err != nil {
+
+	stat, err := os.Stat(dirPath)
+	if err != nil {
 		// Item is unusable (probably deleted), remove it from history.
 		if _, ok := f.Folders[dirPath]; ok {
 			f.Debugf("Folder: Removing Tracked Item: %v", dirPath)
@@ -398,6 +429,15 @@ func (f *Folders) processEvent(event *eventData) {
 		return
 	}
 
+	if !stat.IsDir() && !xtractr.IsArchiveFile(event.name) {
+		f.Debugf("Folder: Ignored File Event (%s) '%s' (not archive or dir): %v", event.op, event.file, err)
+		return
+	}
+
+	f.saveEvent(event, dirPath)
+}
+
+func (f *Folders) saveEvent(event *eventData, dirPath string) {
 	if _, ok := f.Folders[dirPath]; ok {
 		// f.Debugf("Item Updated: %v", event.file)
 		f.Folders[dirPath].last = time.Now()
@@ -428,7 +468,7 @@ func (u *Unpackerr) checkFolderStats() {
 		switch elapsed := time.Since(folder.last); {
 		case WAITING == folder.step && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
-			u.extractFolder(name, folder)
+			u.extractTrackedItem(name, folder)
 		case EXTRACTEDNOTHING == folder.step:
 			// Ignore "no compressed files" errors for folders.
 			delete(u.Map, name)

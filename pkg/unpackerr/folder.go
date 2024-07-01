@@ -20,7 +20,7 @@ import (
 // defaultPollInterval is used if Docker is detected.
 const (
 	defaultPollInterval = time.Second
-	minimumPollInterval = time.Millisecond
+	minimumPollInterval = 5 * time.Millisecond
 )
 
 // FolderConfig defines the input data for a watched folder.

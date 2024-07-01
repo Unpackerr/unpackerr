@@ -273,7 +273,7 @@ func (u *Unpackerr) Run() {
 			u.folderXtractrCallback(resp)
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
-			u.folders.processEvent(event)
+			u.processEvent(event)
 		case <-logger.C:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue()

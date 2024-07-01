@@ -31,6 +31,7 @@ jobs:
           APPLE_SIGNING_KEY: ${{ secrets.APPLE_SIGNING_KEY }}
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+          AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
         id: release
         run: |
           brew install Bearer/tap/gon

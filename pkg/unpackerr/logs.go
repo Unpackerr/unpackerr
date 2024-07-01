@@ -6,11 +6,14 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/hako/durafmt"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
 	"golift.io/rotatorr/timerotator"
+	"golift.io/version"
 )
 
 // satisfy gomnd.
@@ -113,15 +116,17 @@ func (l *Logger) Errorf(msg string, v ...interface{}) {
 
 // logCurrentQueue prints the number of things happening.
 func (u *Unpackerr) logCurrentQueue() {
-	s := u.stats()
+	stats := u.stats()
+	u.Printf("[Unpackerr] Queue: %d waiting, %d queued, %d extracting, %d extracted, %d imported, %d failed, %d deleted",
+		stats.Waiting, stats.Queued, stats.Extracting, stats.Extracted, stats.Imported, stats.Failed, stats.Deleted)
 
-	u.Printf("[Unpackerr] Queue: [%d waiting] [%d queued] [%d extracting] [%d extracted] [%d imported]"+
-		" [%d failed] [%d deleted]", s.Waiting, s.Queued, s.Extracting, s.Extracted, s.Imported, s.Failed, s.Deleted)
-	u.Printf("[Unpackerr] Totals: [%d retries] [%d finished] [%d|%d webhooks]"+
-		" [%d|%d cmdhooks] [stacks; event:%d, hook:%d, del:%d]",
-		u.Retries, u.Finished, s.HookOK, s.HookFail, s.CmdOK, s.CmdFail,
-		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan))
-	u.updateTray(s, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
+	u.Printf("[Unpackerr] Totals: %d retries, %d finished, %d|%d webhooks,"+
+		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
+		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
+		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
+		durafmt.Parse(time.Since(version.Started)).LimitFirstN(3).Format(durafmtUnits)) //nolint:mnd
+
+	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 
 // setupLogging splits log write into a file and/or stdout.

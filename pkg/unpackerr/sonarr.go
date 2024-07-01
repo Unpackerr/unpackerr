@@ -135,7 +135,7 @@ func (u *Unpackerr) checkSonarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.handleCompletedDownload(q.Title, &Extract{
+				u.saveCompletedDownload(q.Title, &Extract{
 					App:         starr.Sonarr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,

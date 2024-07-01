@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/hako/durafmt"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/rotatorr"
@@ -40,6 +41,9 @@ const (
 	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
 	windows            = "windows"
 )
+
+//nolint:gochecknoglobals
+var durafmtUnits, _ = durafmt.DefaultUnitsCoder.Decode("year,week,day,hour,min,sec,ms:ms,µs:µs")
 
 // Unpackerr stores all the running data.
 type Unpackerr struct {
@@ -102,7 +106,7 @@ func New() *Unpackerr {
 		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory: defaultHistory,
-			LogQueues:   cnfg.Duration{Duration: time.Minute},
+			LogQueues:   cnfg.Duration{Duration: time.Minute + time.Second},
 			MaxRetries:  defaultMaxRetries,
 			LogFiles:    defaultLogFiles,
 			Timeout:     cnfg.Duration{Duration: defaultTimeout},

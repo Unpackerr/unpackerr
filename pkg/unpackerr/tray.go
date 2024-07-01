@@ -246,14 +246,14 @@ func (u *Unpackerr) checkForUpdate() {
 			"Your Version: "+update.Version+"\n"+
 			"New Version: "+update.Current+"\n"+
 			"Date: "+update.RelDate.Format("Jan 2, 2006")+" ("+
-			durafmt.Parse(time.Since(update.RelDate).Round(time.Hour)).String()+" ago)", false)
+			durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(4).Format(durafmtUnits)+" ago)", false)
 		if yes {
 			_ = ui.OpenURL(update.CurrURL)
 		}
 	default:
 		_, _ = ui.Info("Unpackerr", "You're up to date! Version: "+update.Version+"\n"+
 			"Updated: "+update.RelDate.Format("Jan 2, 2006")+" ("+
-			durafmt.Parse(time.Since(update.RelDate).Round(time.Hour)).String()+" ago)")
+			durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(4).Format(durafmtUnits)+" ago)")
 	}
 }
 

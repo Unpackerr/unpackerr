@@ -441,6 +441,8 @@ func (u *Unpackerr) checkFolderStats() {
 			folder.step = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
 				folder.cnfg.Path, folder.retr, u.MaxRetries, elapsed.Round(time.Second))
+		case EXTRACTFAILED == folder.step && folder.retr < u.MaxRetries:
+			// This empty block is to avoid deleting an item that needs more retries.
 		case folder.step > EXTRACTING && folder.cnfg.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, false)

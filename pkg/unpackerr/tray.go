@@ -237,23 +237,28 @@ func (u *Unpackerr) rotateLogs() {
 func (u *Unpackerr) checkForUpdate() {
 	u.Printf("User Requested: Update Check")
 
-	switch update, err := update.Check("Unpackerr/unpackerr", version.Version); {
-	case err != nil:
+	update, err := update.Check("Unpackerr/unpackerr", version.Version)
+	if err != nil {
 		u.Errorf("Update Check: %v", err)
 		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: "+err.Error())
-	case update.Outdate:
-		yes, _ := ui.Question("Unpackerr", "An Update is available! Download?\n\n"+
-			"Your Version: "+update.Version+"\n"+
-			"New Version: "+update.Current+"\n"+
-			"Date: "+update.RelDate.Format("Jan 2, 2006")+" ("+
-			durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(4).Format(durafmtUnits)+" ago)", false)
-		if yes {
-			_ = ui.OpenURL(update.CurrURL)
-		}
-	default:
-		_, _ = ui.Info("Unpackerr", "You're up to date! Version: "+update.Version+"\n"+
-			"Updated: "+update.RelDate.Format("Jan 2, 2006")+" ("+
-			durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(4).Format(durafmtUnits)+" ago)")
+
+		return
+	}
+
+	const limitUnit = 4
+	ago := durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(limitUnit).Format(durafmtUnits)
+
+	if !update.Outdate {
+		_, _ = ui.Info("Unpackerr", "You're up to date! Version: %s\nUpdated: %s (%s ago)",
+			update.Version, update.RelDate.Format("Jan 2, 2006"), ago)
+		return
+	}
+
+	yes, _ := ui.Question("Unpackerr", false,
+		"An Update is available! Download?\n\nYour Version: %s-%s\nNew Version: %s\nUpdated: %s (%s ago)",
+		version.Version, version.Revision, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
+	if yes {
+		_ = ui.OpenURL(update.CurrURL)
 	}
 }
 

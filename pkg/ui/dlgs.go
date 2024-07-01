@@ -3,6 +3,8 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/gen2brain/dlgs"
 )
 
@@ -16,21 +18,21 @@ func Warning(title, msg string) (bool, error) {
 }
 
 // Error wraps dlgs.Error.
-func Error(title, msg string) (bool, error) {
+func Error(title, msg string, v ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
 
-	return dlgs.Error(title, msg) //nolint:wrapcheck
+	return dlgs.Error(title, fmt.Sprintf(msg, v...)) //nolint:wrapcheck
 }
 
 // Info wraps dlgs.Info.
-func Info(title, msg string) (bool, error) {
+func Info(title, msg string, v ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
 
-	return dlgs.Info(title, msg) //nolint:wrapcheck
+	return dlgs.Info(title, fmt.Sprintf(msg, v...)) //nolint:wrapcheck
 }
 
 // Entry wraps dlgs.Entry.
@@ -43,10 +45,10 @@ func Entry(title, msg, val string) (string, bool, error) {
 }
 
 // Question wraps dlgs.Question.
-func Question(title, text string, defaultCancel bool) (bool, error) {
+func Question(title string, defaultCancel bool, text string, v ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
 
-	return dlgs.Question(title, text, defaultCancel) //nolint:wrapcheck
+	return dlgs.Question(title, fmt.Sprintf(text, v...), defaultCancel) //nolint:wrapcheck
 }

@@ -63,6 +63,10 @@ func (u *Unpackerr) runCmdhookWithLog(hook *WebhookConfig, payload *WebhookPaylo
 }
 
 func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*bytes.Buffer, error) {
+	if hook.Command == "" {
+		return nil, ErrCmdhookNoCmd
+	}
+
 	payload.Config = hook
 
 	env, err := cnfg.MarshalENV(payload, "UN")

@@ -175,6 +175,10 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 
 // Send marshals an interface{} into json and POSTs it to a URL.
 func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
+	if w.URL == "" {
+		return nil, ErrWebhookNoURL
+	}
+
 	w.Lock()
 	defer w.Unlock()
 

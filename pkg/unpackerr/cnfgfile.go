@@ -7,9 +7,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
+	"github.com/hako/durafmt"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -46,7 +48,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 
 	if f != "" {
 		u.Flags.ConfigFile, _ = filepath.Abs(f)
-		msg = msgConfigFound + u.Flags.ConfigFile
+		msg = msgConfigFound + u.Flags.ConfigFileWithAge()
 
 		if err := cnfgfile.Unmarshal(u.Config, u.Flags.ConfigFile); err != nil {
 			return 0, 0, msg, fmt.Errorf("config file: %w", err)
@@ -55,7 +57,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		msg = msgConfigFailed + err.Error()
 	} else if f != "" {
 		u.Flags.ConfigFile = f
-		msg = msgConfigCreate + u.Flags.ConfigFile
+		msg = msgConfigCreate + u.Flags.ConfigFileWithAge()
 	}
 
 	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
@@ -69,6 +71,17 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	fm, dm := u.validateConfig()
 
 	return fm, dm, msg, nil
+}
+
+func (f *Flags) ConfigFileWithAge() string {
+	stat, err := os.Stat(f.ConfigFile)
+	if err != nil {
+		return f.ConfigFile + ", unknown age"
+	}
+
+	age := durafmt.Parse(time.Since(stat.ModTime()))
+
+	return f.ConfigFile + ", age: " + age.LimitFirstN(2).String()
 }
 
 func configFileLocactions() (string, []string) {

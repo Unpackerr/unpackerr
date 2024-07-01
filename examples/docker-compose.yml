@@ -102,6 +102,3 @@ services:
       - UN_WEBSERVER_SSL_KEY_FILE=
       - UN_WEBSERVER_URLBASE=/
       - UN_WEBSERVER_UPSTREAMS=
-
-    security_opt:
-      - no-new-privileges:true

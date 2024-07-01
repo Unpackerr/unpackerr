@@ -30,6 +30,11 @@ func (u *Unpackerr) validateSonarr() error {
 			continue
 		}
 
+		if u.Sonarr[i].APIKey == "" {
+			u.Errorf("Missing Sonarr API Key in one of your configurations, skipped and ignored.")
+			continue
+		}
+
 		if !strings.HasPrefix(u.Sonarr[i].URL, "http://") && !strings.HasPrefix(u.Sonarr[i].URL, "https://") {
 			return fmt.Errorf("%w: (sonarr) %s", ErrInvalidURL, u.Sonarr[i].URL)
 		}

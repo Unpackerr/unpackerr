@@ -157,6 +157,14 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.Interval.Duration = minimumInterval
 	}
 
+	if u.StartDelay.Duration < minimumInterval {
+		u.StartDelay.Duration = minimumInterval
+	}
+
+	if u.LogQueues.Duration < minimumInterval {
+		u.LogQueues.Duration = minimumInterval
+	}
+
 	if u.ErrorStdErr && runtime.GOOS == windows {
 		u.ErrorStdErr = false // no stderr on windows
 	}

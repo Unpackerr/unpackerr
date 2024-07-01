@@ -77,16 +77,17 @@ func (u *Unpackerr) checkQueueChanges() {
 	}
 }
 
-// handleCompletedDownload checks if a sonarr/radarr/lidar completed item needs to be extracted.
-// This is called from the app methods.
-func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
-	item, ok := u.Map[name]
-	if !ok {
-		x.Updated = time.Now()
-		u.Map[name] = x
-		item = u.Map[name]
+// extractCompletedDownloads process each download and checks if it needs to be extracted.
+// This is called from the main go routine in start.go.
+func (u *Unpackerr) extractCompletedDownloads() {
+	for name, item := range u.Map {
+		u.extractCompletedDownload(name, item)
 	}
+}
 
+// extractCompletedDownload checks if a completed starr download needs to be extracted.
+// This is called by extractCompletedDownloads() via the main routine in start.go.
+func (u *Unpackerr) extractCompletedDownload(name string, item *Extract) {
 	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
@@ -107,13 +108,14 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		return
 	}
 
-	if x.Syncthing {
+	if item.Syncthing {
 		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
 			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.App, name, tmpFile)
 			return
 		}
 	}
 
+	// This updates the item in the map.
 	item.Status = QUEUED
 	item.Updated = time.Now()
 	queueSize, _ := u.Extract(&xtractr.Xtract{
@@ -131,6 +133,10 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 		CBChannel:  u.updates,
 	})
 
+	u.logQueuedDownload(queueSize, item, files)
+}
+
+func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
 	count := fmt.Sprintln("1 archive:", files.Random()[0])
 	if fileCount := files.Count(); fileCount > 1 {
 		count = fmt.Sprintf("%v archives in %d folders", fileCount, len(files))
@@ -139,6 +145,15 @@ func (u *Unpackerr) handleCompletedDownload(name string, x *Extract) {
 	u.Printf("[%s] Extraction Queued: %s, %s, delete orig: %v, queue size: %d",
 		item.App, item.Path, count, item.DeleteOrig, queueSize)
 	u.updateHistory(string(item.App) + ": " + item.Path)
+}
+
+// saveCompletedDownload stores a completed download in the internal unpackerr map.
+// This is called from the app methods.
+func (u *Unpackerr) saveCompletedDownload(name string, x *Extract) {
+	if _, ok := u.Map[name]; !ok {
+		x.Updated = time.Now()
+		u.Map[name] = x
+	}
 }
 
 func (u *Unpackerr) getPasswordFromPath(s string) string {

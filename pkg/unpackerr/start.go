@@ -248,6 +248,7 @@ func (u *Unpackerr) Run() {
 		poller  = time.NewTicker(u.Config.Interval.Duration)  // poll apps at configured interval.
 		cleaner = time.NewTicker(cleanerInterval)             // clean at a fast interval.
 		logger  = time.NewTicker(u.Config.LogQueues.Duration) // log queue states every minute.
+		xtractr = time.NewTicker(u.Config.StartDelay.Duration)
 	)
 
 	u.PollFolders()       // This initializes channel(s) used below.
@@ -256,15 +257,18 @@ func (u *Unpackerr) Run() {
 	// one go routine to rule them all.
 	for {
 		select {
-		case <-cleaner.C:
-			// Check for extraction state changes and act on them.
-			u.checkExtractDone()
-			u.checkFolderStats()
+		case <-xtractr.C:
+			// Check if any completed items have elapsed their start delay.
+			u.extractCompletedDownloads()
 		case <-poller.C:
 			// polling interval. pull queue data from all apps.
 			u.retrieveAppQueues()
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges()
+		case <-cleaner.C:
+			// Check for extraction state changes and act on them.
+			u.checkExtractDone()
+			u.checkFolderStats()
 		case resp := <-u.updates:
 			// xtractr callback for arr app download extraction.
 			u.handleXtractrCallback(resp)

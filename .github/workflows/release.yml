@@ -33,7 +33,7 @@ jobs:
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         id: release
         run: |
-          brew install mitchellh/gon/gon
+          brew install Bearer/tap/gon
           make signdmg
       - name: upload artifacts
         uses: actions/upload-artifact@v4
@@ -239,7 +239,7 @@ jobs:
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           platforms: |-
             linux/amd64

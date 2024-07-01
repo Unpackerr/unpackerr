@@ -245,7 +245,7 @@ func (u *Unpackerr) checkForUpdate() {
 		return
 	}
 
-	const limitUnit = 4
+	const limitUnit = 3
 	ago := durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(limitUnit).Format(durafmtUnits)
 
 	if !update.Outdate {

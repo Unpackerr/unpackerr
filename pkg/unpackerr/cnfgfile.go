@@ -79,9 +79,9 @@ func (f *Flags) ConfigFileWithAge() string {
 		return f.ConfigFile + ", unknown age"
 	}
 
-	age := durafmt.Parse(time.Since(stat.ModTime()))
+	age := durafmt.Parse(time.Since(stat.ModTime())).LimitFirstN(2) //nolint:mnd
 
-	return f.ConfigFile + ", age: " + age.LimitFirstN(2).String()
+	return f.ConfigFile + ", age: " + age.String()
 }
 
 func configFileLocactions() (string, []string) {

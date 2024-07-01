@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,7 +16,7 @@ import (
 
 // Errors produced by this file.
 var (
-	ErrCmdhookNoCmd = fmt.Errorf("cmdhook without a command configured; fix it")
+	ErrCmdhookNoCmd = errors.New("cmdhook without a command configured; fix it")
 )
 
 func (u *Unpackerr) validateCmdhook() error {
@@ -47,13 +48,12 @@ func (u *Unpackerr) runCmdhookWithLog(hook *WebhookConfig, payload *WebhookPaylo
 
 	hook.Lock() // we only lock for the integer increments.
 	defer hook.Unlock()
-
-	hook.posts++
+	hook.posts++ //nolint:wsl
 
 	switch {
 	case err != nil:
 		u.Errorf("Command Hook (%s) %s: %v: %s", payload.Event, hook.Name, err, out.String())
-		hook.fails++
+		hook.fails++ //nolint:wsl
 	case hook.Silent || out == nil:
 		u.Printf("[Cmdhook] Queue: %d/%d. Ran command %s", len(u.hookChan), cap(u.hookChan), hook.Name)
 	default:
@@ -122,7 +122,7 @@ func (u *Unpackerr) logCmdhook() {
 		pfx = " => Command Hook Config: 1 cmd"
 	} else {
 		u.Printf(" => Command Hook Configs: %d commands", len(u.Cmdhook))
-		pfx = " =>    Command"
+		pfx = " =>    Command" //nolint:wsl
 	}
 
 	for _, f := range u.Cmdhook {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,8 +49,8 @@ type hookQueueItem struct {
 
 // Errors produced by this file.
 var (
-	ErrInvalidStatus = fmt.Errorf("invalid HTTP status reply")
-	ErrWebhookNoURL  = fmt.Errorf("webhook without a URL configured; fix it")
+	ErrInvalidStatus = errors.New("invalid HTTP status reply")
+	ErrWebhookNoURL  = errors.New("webhook without a URL configured; fix it")
 )
 
 // ExtractStatuses allows us to create a custom environment variable unmarshaller.
@@ -176,6 +177,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	w.Lock()
 	defer w.Unlock()
+
 	w.posts++
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
@@ -195,7 +197,7 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	req.Header.Set("content-type", w.CType)
+	req.Header.Set("Content-Type", w.CType)
 
 	res, err := w.client.Do(req)
 	if err != nil {
@@ -266,24 +268,24 @@ func (u *Unpackerr) logWebhook() {
 		pfx = " => Webhook Config: 1 URL"
 	} else {
 		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
-		pfx = " =>    URL"
+		pfx = " =>    URL" //nolint:wsl
 	}
 
 	for _, f := range u.Webhook {
 		if ex = ""; f.TmplPath != "" {
-			ex = fmt.Sprintf(", template: %s, content_type: %s", f.TmplPath, f.CType)
+			ex = ", template: " + f.TmplPath + ", content_type: " + f.CType
 		}
 
 		if f.Channel != "" {
-			ex += fmt.Sprintf(", channel: %s", f.Channel)
+			ex += ", channel: " + f.Channel
 		}
 
 		if f.Nickname != "" {
-			ex += fmt.Sprintf(", nickname: %s", f.Nickname)
+			ex += ", nickname: " + f.Nickname
 		}
 
 		if len(f.Exclude) > 0 {
-			ex += fmt.Sprintf(", exclude: %q", strings.Join(f.Exclude, "; "))
+			ex += ", exclude: \"" + strings.Join(f.Exclude, "; ") + `"`
 		}
 
 		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",

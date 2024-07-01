@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -32,7 +33,7 @@ const (
 
 // Application validation errors.
 var (
-	ErrInvalidURL = fmt.Errorf("provided application URL is invalid")
+	ErrInvalidURL = errors.New("provided application URL is invalid")
 	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be %d characters", apiKeyLength)
 )
 
@@ -78,7 +79,7 @@ type workThread struct {
 
 func (u *Unpackerr) watchWorkThread() {
 	workers := u.Parallel
-	if workers > 4 { //nolint:gomnd // 4 == the four starr apps.
+	if workers > 4 { //nolint:mnd // 4 == the four starr apps.
 		workers = 4
 	}
 
@@ -122,16 +123,23 @@ func (u *Unpackerr) retrieveAppQueues() {
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
 	for _, validate := range []func() error{
-		u.validateCmdhook,
 		u.validateLidarr,
 		u.validateRadarr,
 		u.validateReadarr,
 		u.validateSonarr,
 		u.validateWhisparr,
-		u.validateWebhook,
 	} {
 		if err := validate(); err != nil {
 			return err
+		}
+	}
+
+	for _, validate := range []func() error{
+		u.validateCmdhook,
+		u.validateWebhook,
+	} {
+		if err := validate(); err != nil {
+			u.Errorf("Config Warning: %v", err)
 		}
 	}
 

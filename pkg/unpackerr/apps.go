@@ -38,6 +38,8 @@ var (
 )
 
 // Config defines the configuration data used to start the application.
+//
+//nolint:lll
 type Config struct {
 	Debug       bool             `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
@@ -80,12 +82,14 @@ type workThread struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
+	const maxWorkers = 5 // 5 starr apps.
+
 	workers := u.Parallel
-	if workers > 4 { //nolint:mnd // 4 == the four starr apps.
-		workers = 4
+	if workers > maxWorkers {
+		workers = maxWorkers
 	}
 
-	for i := uint(0); i < workers; i++ {
+	for range workers {
 		go func() {
 			for w := range u.workChan {
 				for _, f := range w.Funcs {
@@ -114,7 +118,7 @@ func (u *Unpackerr) retrieveAppQueues() {
 	}
 
 	wg.Wait()
-	// These are not thread safe because they call handleCompletedDownload.
+	// These are not thread safe because they call saveCompletedDownload.
 	u.checkLidarrQueue()
 	u.checkRadarrQueue()
 	u.checkReadarrQueue()

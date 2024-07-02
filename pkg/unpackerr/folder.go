@@ -310,8 +310,8 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		delete(u.Map, resp.X.Name)
 		return
 	case !resp.Done:
-		u.Printf("[Folder] Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		folder.step = EXTRACTING //nolint:wsl
+		folder.step = EXTRACTING
+		u.Printf("[Folder] Extraction Started: %s, retries: %d, items in queue: %d", resp.X.Name, folder.retr, resp.Queued)
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
 		folder.step = EXTRACTEDNOTHING
 		u.Printf("[Folder] %s: %s: %v", folder.step.Desc(), resp.X.Name, resp.Error)

@@ -237,19 +237,19 @@ func (u *Unpackerr) checkFolders() ([]*FolderConfig, []string) {
 // extractTrackedItem starts an archive or folder's extraction after it hasn't been written to in a while.
 func (u *Unpackerr) extractTrackedItem(name string, folder *Folder) {
 	u.folders.Remove(name) // stop the fs watcher(s).
+	// update status.
+	u.folders.Folders[name].last = time.Now()
+	u.folders.Folders[name].step = QUEUED
 
 	// Do not extract r00 file if rar file with same name exists.
 	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
-		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), name) {
+		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
 		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
-		delete(u.folders.Folders, name)
+		u.folders.Folders[name].step = EXTRACTEDNOTHING
 
 		return
 	}
 
-	// update status.
-	u.folders.Folders[name].last = time.Now()
-	u.folders.Folders[name].step = QUEUED
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
 	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, true)
 	u.updateHistory(FolderString + ": " + name)
@@ -475,9 +475,12 @@ func (u *Unpackerr) checkFolderStats() {
 			// The folder hasn't been written to in a while, extract it.
 			u.extractTrackedItem(name, folder)
 		case EXTRACTEDNOTHING == folder.step:
-			// Ignore "no compressed files" errors for folders.
-			delete(u.Map, name)
-			delete(u.folders.Folders, name)
+			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
+			if time.Since(folder.last) > u.StartDelay.Duration {
+				// Ignore "no compressed files" errors for folders.
+				delete(u.Map, name)
+				delete(u.folders.Folders, name)
+			}
 		case EXTRACTFAILED == folder.step && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || folder.retr < u.MaxRetries):
 			u.Retries++

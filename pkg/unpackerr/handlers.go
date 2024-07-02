@@ -78,7 +78,7 @@ func (u *Unpackerr) checkQueueChanges() {
 }
 
 // extractCompletedDownloads process each download and checks if it needs to be extracted.
-// This is called from the main go routine in start.go and it only process starr apps, not folders.
+// This is called from the main go routine in start.go and it only processes starr apps, not folders.
 func (u *Unpackerr) extractCompletedDownloads() {
 	for name, item := range u.Map {
 		if item.App != FolderString {

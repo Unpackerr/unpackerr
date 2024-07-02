@@ -147,10 +147,10 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.Parallel++
 	}
 
-	if u.Buffer == 0 {
-		u.Buffer = defaultFolderBuf
-	} else if u.Buffer < minimumFolderBuf {
-		u.Buffer = minimumFolderBuf
+	if u.Folder.Buffer == 0 {
+		u.Folder.Buffer = defaultFolderBuf
+	} else if u.Folder.Buffer < minimumFolderBuf {
+		u.Folder.Buffer = minimumFolderBuf
 	}
 
 	if u.Interval.Duration < minimumInterval {
@@ -256,4 +256,11 @@ func (u *Unpackerr) setPasswords() error {
 	u.Passwords = newPasswords
 
 	return nil
+}
+
+// only run this once.
+func isRunningInDocker() bool {
+	// docker creates a .dockerenv file at the root of the container.
+	_, err := os.Stat("/.dockerenv")
+	return err == nil
 }

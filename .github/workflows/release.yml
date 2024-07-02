@@ -23,7 +23,7 @@ jobs:
           fetch-depth: '0'
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: 'go.mod'
       - name: go-generate
         run: go generate ./...
       - name: make-signdmg
@@ -58,7 +58,7 @@ jobs:
           fetch-depth: '0'
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: 'go.mod'
       - name: make-release
         id: release
         run: |

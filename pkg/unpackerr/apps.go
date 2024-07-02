@@ -38,6 +38,8 @@ var (
 )
 
 // Config defines the configuration data used to start the application.
+//
+//nolint:lll
 type Config struct {
 	Debug       bool             `json:"debug" toml:"debug" xml:"debug" yaml:"debug"`
 	Quiet       bool             `json:"quiet" toml:"quiet" xml:"quiet" yaml:"quiet"`
@@ -56,8 +58,7 @@ type Config struct {
 	DeleteDelay cnfg.Duration    `json:"deleteDelay" toml:"delete_delay" xml:"delete_delay" yaml:"deleteDelay"`
 	StartDelay  cnfg.Duration    `json:"startDelay" toml:"start_delay" xml:"start_delay" yaml:"startDelay"`
 	RetryDelay  cnfg.Duration    `json:"retryDelay" toml:"retry_delay" xml:"retry_delay" yaml:"retryDelay"`
-	Buffer      uint             `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`                       //nolint:lll // undocumented.
-	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` //nolint:lll // undocumented.
+	KeepHistory uint             `json:"keepHistory" toml:"keep_history" xml:"keep_history" yaml:"keepHistory"` // undocumented.
 	Passwords   StringSlice      `json:"passwords" toml:"passwords" xml:"password" yaml:"passwords"`
 	Webserver   *WebServer       `json:"webserver" toml:"webserver" xml:"webserver" yaml:"webserver"`
 	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty" toml:"lidarr" xml:"lidarr" yaml:"lidarr,omitempty"`
@@ -68,9 +69,12 @@ type Config struct {
 	Folders     []*FolderConfig  `json:"folder,omitempty" toml:"folder" xml:"folder" yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty" toml:"webhook" xml:"webhook" yaml:"webhook,omitempty"`
 	Cmdhook     []*WebhookConfig `json:"cmdhook,omitempty" toml:"cmdhook" xml:"cmdhook" yaml:"cmdhook,omitempty"`
-	Folder      struct {
-		Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
-	} `json:"folders,omitempty" toml:"folders" xml:"folders" yaml:"folders,omitempty"` // undocumented.
+	Folder      FoldersConfig    `json:"folders,omitempty" toml:"folders" xml:"folders" yaml:"folders,omitempty"` // undocumented.
+}
+
+type FoldersConfig struct {
+	Buffer   uint          `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`         // undocumented.
+	Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
 }
 
 type workThread struct {
@@ -78,12 +82,14 @@ type workThread struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
+	const maxWorkers = 5 // 5 starr apps.
+
 	workers := u.Parallel
-	if workers > 4 { //nolint:mnd // 4 == the four starr apps.
-		workers = 4
+	if workers > maxWorkers {
+		workers = maxWorkers
 	}
 
-	for i := uint(0); i < workers; i++ {
+	for range workers {
 		go func() {
 			for w := range u.workChan {
 				for _, f := range w.Funcs {
@@ -112,7 +118,7 @@ func (u *Unpackerr) retrieveAppQueues() {
 	}
 
 	wg.Wait()
-	// These are not thread safe because they call handleCompletedDownload.
+	// These are not thread safe because they call saveCompletedDownload.
 	u.checkLidarrQueue()
 	u.checkRadarrQueue()
 	u.checkReadarrQueue()

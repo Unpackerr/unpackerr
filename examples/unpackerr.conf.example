@@ -179,8 +179,8 @@ dir_mode = "0755"
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abc"
-## Whisparr shares the same settings as the other starr apps. Copy them
-## under the [[whisparr]] header and without the leading hash # apply them.
+## Whisparr shares the same settings as the other starr apps. Copy them under the
+## uncommented [[whisparr]] header and without the leading hash # to apply them.
 
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #

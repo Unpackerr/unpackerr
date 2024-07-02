@@ -78,10 +78,12 @@ func (u *Unpackerr) checkQueueChanges() {
 }
 
 // extractCompletedDownloads process each download and checks if it needs to be extracted.
-// This is called from the main go routine in start.go.
+// This is called from the main go routine in start.go and it only processes starr apps, not folders.
 func (u *Unpackerr) extractCompletedDownloads() {
 	for name, item := range u.Map {
-		u.extractCompletedDownload(name, item)
+		if item.App != FolderString {
+			u.extractCompletedDownload(name, item)
+		}
 	}
 }
 
@@ -137,13 +139,13 @@ func (u *Unpackerr) extractCompletedDownload(name string, item *Extract) {
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
-	count := fmt.Sprintln("1 archive:", files.Random()[0])
+	count := fmt.Sprint("1 archive: ", files.Random()[0])
 	if fileCount := files.Count(); fileCount > 1 {
 		count = fmt.Sprintf("%v archives in %d folders", fileCount, len(files))
 	}
 
-	u.Printf("[%s] Extraction Queued: %s, %s, delete orig: %v, queue size: %d",
-		item.App, item.Path, count, item.DeleteOrig, queueSize)
+	u.Printf("[%s] Extraction Queued: %s, retries: %d, %s, delete orig: %v, queue size: %d",
+		item.App, item.Path, item.Retries, count, item.DeleteOrig, queueSize)
 	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
@@ -168,9 +170,9 @@ func (u *Unpackerr) getPasswordFromPath(s string) string {
 	return s[start+2 : end]
 }
 
-// checkExtractDone checks if an extracted item imported items needs to be deleted.
+// checkExtractDone checks if an extracted and imported item needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
-// This runs at a short interval to check for extraction state changes, and shuold return quickly.
+// This runs at a short interval to check for extraction state changes, and should return quickly.
 //
 //nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone() {

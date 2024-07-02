@@ -382,10 +382,15 @@ func (f *Folders) handleFileEvent(name, operation string) {
 
 	// Send this event to processEvent().
 	for _, cnfg := range f.Config {
+		// Do not handle events on the watched folder itself.
+		if name == cnfg.Path {
+			return
+		}
+
 		// cnfg.Path: "/Users/Documents/watched_folder"
 		// event.Name: "/Users/Documents/watched_folder/new_folder/file.rar"
 		// eventData.name: "new_folder"
-		if !strings.HasPrefix(name, cnfg.Path) || name == cnfg.Path {
+		if !strings.HasPrefix(name, cnfg.Path) {
 			continue // Not the configured folder for the event we just got.
 		}
 

@@ -1,7 +1,10 @@
+####################################################
 ##      Unpackerr Example Configuration File      ##
+####################################################
 ## The following values are application defaults. ##
 ## Environment Variables may override all values. ##
 ## More configuration help: https://unpackerr.zip ##
+## Generator: https://notifiarr.com/unpackerr.php ##
 ####################################################
 
 ## [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
@@ -36,7 +39,7 @@ log_queues = "1m"
 log_files = 10
 log_file_mb = 10
 
-## How often to poll sonarr and radarr.
+## How often to poll starr apps (sonarr, radarr, etc).
 ## Recommend 1m-5m. Uses Go Duration.
 interval = "2m"
 
@@ -77,17 +80,28 @@ dir_mode = "0755"
 ## Upstreams should be set to the IP or CIDR of your trusted upstream proxy.
 ## Setting this correctly allows X-Forwarded-For to be used in logs.
 ## In the future it may control auth proxy trust. Must be a list of strings.
-  upstreams = [ ] # example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+## example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+  upstreams = [ ]
 
-##-Notes-#######-READ THIS!!!-##################################################
-## The following sections can be repeated if you have more than one Sonarr,   ##
-## Radarr, Lidarr, Readarr, Whisparr, Folder, Webhook, or Command Hook.       ##
-## You MUST uncomment the [[header]] and api_key at a minimum for Starr apps. ##
-##           ALL LINES BEGINNING WITH A HASH # ARE IGNORED COMMENTS           ##
-##           REMOVE THE HASH # FROM CONFIG LINES YOU WANT TO CHANGE           ##
-################################################################################
+###############################################################################
+##-IMPORTANT-#######-READ THIS!!!-################ Seriously, read this. ######
+###############################################################################
+## The following sections can be repeated if you have more than one Sonarr,  ##
+## Radarr, Lidarr, Readarr, Whisparr, Folder, Webhook, and/or Command Hook.  ##
+## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
+## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
+## and api_key if they are in use. Comment them with a hash if they are not. ##
+## Uncomment the [[lidarr]] and/or [[readarr]] headers and values if in use. ##
+###############################################################################
+###############################################################################
+##           ALL LINES BEGINNING WITH A HASH # ARE IGNORED COMMENTS          ##
+##           REMOVE THE HASH # FROM CONFIG LINES YOU WANT TO CHANGE          ##
+###############################################################################
+###############################################################################
 
-#[[sonarr]]
+## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
+## uncommenting the api_key (remove the hash #) will produce a startup warning.
+[[sonarr]]
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## File system path where downloaded Sonarr items are located.
@@ -105,7 +119,9 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-#[[radarr]]
+## Leaving the [[radarr]] header uncommented (no leading hash #) without also
+## uncommenting the api_key (remove the hash #) will produce a startup warning.
+[[radarr]]
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## File system path where downloaded Radarr items are located.
@@ -163,7 +179,8 @@ dir_mode = "0755"
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abc"
-## Whisparr shares the same settings as the other starr apps.
+## Whisparr shares the same settings as the other starr apps. Copy them
+## under the [[whisparr]] header and without the leading hash # apply them.
 
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #

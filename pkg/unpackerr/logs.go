@@ -223,16 +223,21 @@ func (u *Unpackerr) postLogRotate(_, newFile string) {
 }
 
 // logStartupInfo prints info about our startup config.
-func (u *Unpackerr) logStartupInfo(msg string) {
+func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) {
 	u.Printf("==> %s <==", helpLink)
 	u.Printf("==> Startup Settings <==")
+	u.Printf(" => %s", msg)
+
+	for path, file := range externalFiles {
+		u.Printf(" => Extra Config File: %s => %s", file, path)
+	}
+
 	u.logSonarr()
 	u.logRadarr()
 	u.logLidarr()
 	u.logReadarr()
 	u.logWhisparr()
 	u.logFolders()
-	u.Printf(" => %s", msg)
 	u.Printf(" => Parallel: %d", u.Config.Parallel)
 	u.Printf(" => Passwords: %d (rar/7z)", len(u.Config.Passwords))
 	u.Printf(" => Interval: %v", u.Config.Interval)

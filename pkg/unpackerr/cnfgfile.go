@@ -68,10 +68,6 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, err
 	}
 
-	if err := cnfgfile.ReadConfigs(u.Config, &cnfgfile.Opts{Name: "Unpackerr"}); err != nil {
-		return 0, 0, msg, fmt.Errorf("using filepath: %w", err)
-	}
-
 	fm, dm := u.validateConfig()
 
 	return fm, dm, msg, nil

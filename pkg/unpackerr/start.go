@@ -13,6 +13,7 @@ import (
 	"github.com/hako/durafmt"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
+	"golift.io/cnfgfile"
 	"golift.io/rotatorr"
 	"golift.io/version"
 	"golift.io/xtractr"
@@ -157,11 +158,16 @@ func Start() (err error) {
 		os.Getuid(), os.Getgid(), version.Started.Round(time.Second))
 	u.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
 
+	output, err := cnfgfile.Parse(u.Config, &cnfgfile.Opts{Name: "Unpackerr"})
+	if err != nil {
+		return fmt.Errorf("using filepath: %w", err)
+	}
+
 	if err := u.validateApps(); err != nil {
 		return err
 	}
 
-	u.logStartupInfo(msg)
+	u.logStartupInfo(msg, output)
 
 	if u.Flags.webhook > 0 {
 		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))

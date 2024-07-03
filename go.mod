@@ -16,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/mod v0.18.0
 	golift.io/cnfg v0.2.3
-	golift.io/cnfgfile v0.0.0-20230531075023-f880041cc0a0
+	golift.io/cnfgfile v0.0.0-20240703053636-d038f2af4f34
 	golift.io/rotatorr v0.0.0-20230911015553-cd2abbd726c7
 	golift.io/starr v1.0.0
 	golift.io/version v0.0.2

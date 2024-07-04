@@ -13,7 +13,7 @@ require (
 	github.com/prometheus/client_golang v1.19.1
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
-	golang.org/x/mod v0.18.0
+	golang.org/x/mod v0.19.0
 	golift.io/cnfg v0.2.3
 	golift.io/cnfgfile v0.0.0-20240704052514-df2becf136db
 	golift.io/rotatorr v0.0.0-20230911015553-cd2abbd726c7

@@ -136,7 +136,7 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
+			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Map[q.Title] = &Extract{
 					App:         starr.Whisparr,
 					URL:         server.URL,

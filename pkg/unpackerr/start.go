@@ -208,8 +208,9 @@ func fileList(paths ...string) []string {
 
 func (u *Unpackerr) watchDeleteChannel() {
 	for f := range u.delChan {
+		u.Debugf("Deleting files: %s", strings.Join(fileList(f.Paths...), ", "))
+
 		if len(f.Paths) > 0 && f.Paths[0] != "" {
-			u.Debugf("Deleting files: %s", strings.Join(fileList(f.Paths...), ", "))
 			u.DeleteFiles(f.Paths...)
 
 			if !f.PurgeEmptyParent {
@@ -269,10 +270,10 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		poller  = time.NewTicker(u.Config.Interval.Duration)  // poll apps at configured interval.
-		cleaner = time.NewTicker(cleanerInterval)             // clean at a fast interval.
-		logger  = time.NewTicker(u.Config.LogQueues.Duration) // log queue states every minute.
-		xtractr = time.NewTicker(u.Config.StartDelay.Duration)
+		xtractr = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
+		poller  = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
+		cleaner = time.NewTicker(cleanerInterval)              // clean at a fast interval.
+		logger  = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
 	)
 
 	u.PollFolders()                 // This initializes channel(s) used below.
@@ -281,14 +282,14 @@ func (u *Unpackerr) Run() {
 	// One go routine to rule them all.
 	for {
 		select {
-		case now := <-xtractr.C:
-			// Check if any completed items have elapsed their start delay.
-			u.extractCompletedDownloads(now)
 		case now := <-poller.C:
 			// polling interval. pull queue data from all apps.
 			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges(now)
+		case now := <-xtractr.C:
+			// Check if any completed items have elapsed their start delay.
+			u.extractCompletedDownloads(now)
 		case now := <-cleaner.C:
 			// Check for extraction state changes and act on them.
 			u.checkExtractDone(now)

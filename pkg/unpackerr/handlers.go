@@ -46,7 +46,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 		case data.App == FolderString:
 			continue // folders are handled in folder.go.
 		case !u.haveQitem(name, data.App):
-			// This fires when an items becomes missing (imported) from the application queue.
+			// This fires when an items becomes missing (imported/deleted) from the application queue.
 			switch elapsed := now.Sub(data.Updated); {
 			case data.Status == WAITING:
 				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
@@ -72,7 +72,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			data.Updated = now
 		}
 
-		u.Debugf("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
+		u.Printf("[%s] Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
 			now.Sub(data.Updated).Round(time.Second))
 	}
 }
@@ -202,12 +202,12 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 
 // handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
-func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response, now time.Time) {
+func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	if item := u.Map[resp.X.Name]; resp.Done && item != nil {
 		u.updateMetrics(resp, item.App, item.URL)
 	}
 
-	switch {
+	switch now := resp.Started.Add(resp.Elapsed); {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
@@ -255,7 +255,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	return filepath.Join(paths[0], title) // useless, but return something. :(
 }
 
-// isComplete is run so many times in different places that is became a method.
+// isComplete is run so many times in different places that it became a method.
 func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
 		if strings.EqualFold(protocol, s) {
@@ -266,7 +266,7 @@ func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
 	return false
 }
 
-// added for https://github.com/davidnewhall/unpackerr/issues/235
+// added for https://github.com/Unpackerr/unpackerr/issues/235
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
 	files, _ := u.Xtractr.GetFileList(dirPath)
 	for _, file := range files {

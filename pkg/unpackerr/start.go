@@ -153,9 +153,9 @@ func Start() (err error) {
 	// We cannot log anything until setupLogging() runs.
 	// We cannot run setupLogging until we read the above config.
 	u.setupLogging()
-	u.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Now: %v",
+	u.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Umask: %d, Now: %v",
 		version.Version, version.Revision, os.Getpid(),
-		os.Getuid(), os.Getgid(), version.Started.Round(time.Second))
+		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	u.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
 
 	output, err := cnfgfile.Parse(u.Config, &cnfgfile.Opts{Name: "Unpackerr"})
@@ -270,39 +270,40 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		xtractr = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
 		poller  = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
 		cleaner = time.NewTicker(cleanerInterval)              // clean at a fast interval.
 		logger  = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
+		xtractr = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
+		now     = version.Started                              // Used for file system event time stamps.
 	)
 
-	u.PollFolders()                 // This initializes channel(s) used below.
-	u.retrieveAppQueues(time.Now()) // Get in-app queues on startup.
+	u.PollFolders()          // This initializes channel(s) used below.
+	u.retrieveAppQueues(now) // Get in-app queues on startup.
 
-	// One go routine to rule them all.
+	// This is the "main go routine" in start.go.
 	for {
 		select {
-		case now := <-poller.C:
+		case now = <-poller.C:
 			// polling interval. pull queue data from all apps.
 			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges(now)
-		case now := <-xtractr.C:
+		case now = <-xtractr.C:
 			// Check if any completed items have elapsed their start delay.
 			u.extractCompletedDownloads(now)
-		case now := <-cleaner.C:
+		case now = <-cleaner.C:
 			// Check for extraction state changes and act on them.
 			u.checkExtractDone(now)
 			u.checkFolderStats(now)
 		case resp := <-u.updates:
 			// xtractr callback for starr download extraction.
-			u.handleXtractrCallback(resp, time.Now())
+			u.handleXtractrCallback(resp)
 		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.
-			u.folderXtractrCallback(resp, time.Now())
+			u.folderXtractrCallback(resp)
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
-			u.processEvent(event, time.Now())
+			u.processEvent(event, now)
 		case now := <-logger.C:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)

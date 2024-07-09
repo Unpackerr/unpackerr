@@ -67,7 +67,7 @@ func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app starr.App, url str
 		return
 	}
 
-	u.metrics.ArchivesRead.WithLabelValues(string(app), url).Add(float64(mapLen(resp.Archives) + mapLen(resp.Extras)))
+	u.metrics.ArchivesRead.WithLabelValues(string(app), url).Add(float64(resp.Archives.Count() + resp.Extras.Count()))
 	u.metrics.BytesWritten.WithLabelValues(string(app), url).Add(float64(resp.Size))
 	u.metrics.ExtractTime.WithLabelValues(string(app), url).Observe(resp.Elapsed.Seconds())
 	u.metrics.FilesExtracted.WithLabelValues(string(app), url).Add(float64(len(resp.NewFiles)))

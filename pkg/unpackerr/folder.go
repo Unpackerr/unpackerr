@@ -64,7 +64,7 @@ type Folder struct {
 	config   *FolderConfig
 	files    []string
 	retries  uint
-	archives []string
+	archives xtractr.ArchiveList
 }
 
 type eventData struct {
@@ -305,7 +305,7 @@ func getFileList(path string) []os.FileInfo {
 }
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
-func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response, now time.Time) {
+func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	folder, ok := u.folders.Folders[resp.X.Name]
 
 	switch {
@@ -320,39 +320,24 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response, now time.Time)
 		folder.status = EXTRACTEDNOTHING
 		u.Printf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
 	case resp.Error != nil:
+		folder.archives = resp.Archives
 		folder.status = EXTRACTFAILED
 		u.Errorf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
 		u.updateMetrics(resp, FolderString, folder.config.Path)
-
-		for _, v := range resp.Archives {
-			folder.archives = append(folder.archives, v...)
-		}
 	default: // this runs in a go routine
-		for _, v := range resp.Archives {
-			folder.archives = append(folder.archives, v...)
-		}
-
 		u.updateMetrics(resp, FolderString, folder.config.Path)
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.archives),
-			mapLen(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
+			resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)
 
+		folder.archives = resp.Archives
 		folder.status = EXTRACTED
 		folder.files = resp.NewFiles
 	}
 
-	folder.updated = now
-
-	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, now, true)
-}
-
-func mapLen(in map[string][]string) (out int) {
-	for _, v := range in {
-		out += len(v)
-	}
-
-	return out
+	folder.updated = resp.Started.Add(resp.Elapsed)
+	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -526,7 +511,7 @@ func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folde
 		u.delChan <- &fileDeleteReq{Paths: []string{name}}
 		webhook = true
 	} else if folder.config.DeleteOrig && len(folder.archives) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.archives}
+		u.delChan <- &fileDeleteReq{Paths: folder.archives.List()}
 		webhook = true
 	}
 

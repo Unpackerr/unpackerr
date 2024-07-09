@@ -197,8 +197,7 @@ func fileList(paths ...string) []string {
 	files := []string{}
 
 	for _, path := range paths {
-		file, err := os.Open(path)
-		if err != nil {
+		if file, err := os.Open(path); err == nil {
 			names, _ := file.Readdirnames(0)
 			files = append(files, names...)
 		}

@@ -119,7 +119,7 @@ func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 	}
 }
 
-// checkSonarrQueue saves completed Sonarr-queued downloads to u.Map via saveCompletedDownload.
+// checkSonarrQueue saves completed Sonarr-queued downloads to u.Map.
 func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 	for _, server := range u.Sonarr {
 		if server.Queue == nil {
@@ -131,9 +131,11 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, now, &Extract{
+				u.Map[q.Title] = &Extract{
 					App:         starr.Sonarr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
@@ -145,7 +147,7 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 						"episodeId":  q.EpisodeID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

@@ -125,7 +125,7 @@ func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
 	}
 }
 
-// checkWhisparrQueue saves completed Whisparr-queued downloads to u.Map via saveCompletedDownload.
+// checkWhisparrQueue saves completed Whisparr-queued downloads to u.Map.
 func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 	for _, server := range u.Whisparr {
 		if server.Queue == nil {
@@ -137,9 +137,11 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, now, &Extract{
+				u.Map[q.Title] = &Extract{
 					App:         starr.Whisparr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.OutputPath, starr.Whisparr, q.Title, server.Paths),
@@ -149,7 +151,7 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 						"movieId":    q.MovieID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

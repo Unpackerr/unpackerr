@@ -119,7 +119,7 @@ func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
 	}
 }
 
-// checkRadarrQueue saves completed Radarr-queued downloads to u.Map via saveCompletedDownload.
+// checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
 func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 	for _, server := range u.Radarr {
 		if server.Queue == nil {
@@ -131,9 +131,11 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, now, &Extract{
+				u.Map[q.Title] = &Extract{ // Save the download to our map.
 					App:         starr.Radarr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
@@ -144,7 +146,7 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 						"movieId":    q.MovieID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

@@ -87,7 +87,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 	}
 }
 
-// extractCompletedDownload checks if a completed starr download needs to be extracted.
+// extractCompletedDownload checks if a completed starr download needs to be queued for extraction.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
 	if now.Sub(item.Updated)-u.Config.StartDelay.Duration < time.Second {
@@ -120,6 +120,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	// This updates the item in the map.
 	item.Status = QUEUED
 	item.Updated = now
+	// This queues the extraction. Which may start right away.
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:  u.getPasswordFromPath(item.Path),
 		Passwords: u.Passwords,
@@ -149,15 +150,6 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
-// saveCompletedDownload stores a completed download in the internal unpackerr map.
-// This is called from the app methods.
-func (u *Unpackerr) saveCompletedDownload(name string, now time.Time, x *Extract) {
-	if _, ok := u.Map[name]; !ok {
-		x.Updated = now
-		u.Map[name] = x
-	}
-}
-
 func (u *Unpackerr) getPasswordFromPath(s string) string {
 	start, end := strings.Index(s, "{{"), strings.Index(s, "}}")
 
@@ -176,36 +168,36 @@ func (u *Unpackerr) getPasswordFromPath(s string) string {
 //
 //nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone(now time.Time) {
-	for name, data := range u.Map {
-		switch elapsed := now.Sub(data.Updated); {
-		case data.Status == DELETED && elapsed >= data.DeleteDelay:
+	for name, item := range u.Map {
+		switch elapsed := now.Sub(item.Updated); {
+		case item.Status == DELETED && elapsed >= item.DeleteDelay:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
-			u.Printf("[%s] Finished, Removed History: %v", data.App, name)
-		case data.App == FolderString:
+			u.Printf("[%s] Finished, Removed History: %v", item.App, name)
+		case item.App == FolderString:
 			continue // folders are handled in folder.go.
-		case data.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
-			(u.MaxRetries == 0 || data.Retries < u.MaxRetries):
+		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
+			(u.MaxRetries == 0 || item.Retries < u.MaxRetries):
 			u.Retries++
-			data.Retries++
-			data.Status = WAITING
-			data.Updated = now
+			item.Retries++
+			item.Status = WAITING
+			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
-				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
-		case data.Status == IMPORTED && elapsed >= data.DeleteDelay:
+				item.App, elapsed.Round(time.Second), item.Retries, u.MaxRetries, name)
+		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 
-			if data.DeleteOrig {
-				u.delChan <- &fileDeleteReq{Paths: []string{data.Path}}
+			if item.DeleteOrig {
+				u.delChan <- &fileDeleteReq{Paths: []string{item.Path}}
 				webhook = true
-			} else if data.Resp != nil && len(data.Resp.NewFiles) > 0 && data.DeleteDelay >= 0 {
+			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
 				// In a routine so it can run slowly and not block.
-				u.delChan <- &fileDeleteReq{Paths: data.Resp.NewFiles, PurgeEmptyParent: true}
+				u.delChan <- &fileDeleteReq{Paths: item.Resp.NewFiles, PurgeEmptyParent: true}
 				webhook = true
 			}
 
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp}, now, webhook)
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
 		}
 	}
 }
@@ -225,9 +217,18 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response, now time.Time)
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:
+		files := ""
+
+		file, err := os.Open(resp.X.Path)
+		if err != nil {
+			names, _ := file.Readdirnames(0)
+			files = strings.Join(names, ", ")
+		}
+
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
-			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)
+		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 	}
 }

@@ -81,7 +81,7 @@ func (u *Unpackerr) checkQueueChanges() {
 // This is called from the main go routine in start.go and it only processes starr apps, not folders.
 func (u *Unpackerr) extractCompletedDownloads() {
 	for name, item := range u.Map {
-		if item.App != FolderString {
+		if item.App != FolderString && item.Status == QUEUED {
 			u.extractCompletedDownload(name, item)
 		}
 	}
@@ -90,7 +90,7 @@ func (u *Unpackerr) extractCompletedDownloads() {
 // extractCompletedDownload checks if a completed starr download needs to be extracted.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, item *Extract) {
-	if time.Since(item.Updated) < u.Config.StartDelay.Duration {
+	if time.Since(item.Updated)-u.Config.StartDelay.Duration < time.Second {
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name,
 			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
 

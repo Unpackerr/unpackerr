@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"golift.io/cnfg"
 	"golift.io/starr"
@@ -82,13 +83,7 @@ type workThread struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
-	const maxWorkers = 5 // 5 starr apps.
-
-	workers := u.Parallel
-	if workers > maxWorkers {
-		workers = maxWorkers
-	}
-
+	const workers = 5 // one for each app.
 	for range workers {
 		go func() {
 			for w := range u.workChan {
@@ -102,7 +97,7 @@ func (u *Unpackerr) watchWorkThread() {
 
 // retrieveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
 // Then calls the check methods to scan their queues for changes.
-func (u *Unpackerr) retrieveAppQueues() {
+func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	var wg sync.WaitGroup
 
 	// Run each method in a go routine as a waitgroup.
@@ -119,11 +114,11 @@ func (u *Unpackerr) retrieveAppQueues() {
 
 	wg.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
-	u.checkLidarrQueue()
-	u.checkRadarrQueue()
-	u.checkReadarrQueue()
-	u.checkSonarrQueue()
-	u.checkWhisparrQueue()
+	u.checkLidarrQueue(now)
+	u.checkRadarrQueue(now)
+	u.checkReadarrQueue(now)
+	u.checkSonarrQueue(now)
+	u.checkWhisparrQueue(now)
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

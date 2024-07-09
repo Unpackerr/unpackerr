@@ -123,8 +123,8 @@ func (u *Unpackerr) getReadarrQueue() {
 	}
 }
 
-// checkReadarQueue passes completed Readar-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkReadarrQueue() {
+// checkReadarQueue saves completed Readarr-queued downloads to u.Map via saveCompletedDownload.
+func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 	for _, server := range u.Readarr {
 		if server.Queue == nil {
 			continue
@@ -135,7 +135,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, &Extract{
+				u.saveCompletedDownload(q.Title, now, &Extract{
 					App:         starr.Readarr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,

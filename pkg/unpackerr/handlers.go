@@ -40,14 +40,14 @@ type StarrConfig struct {
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
-func (u *Unpackerr) checkQueueChanges() {
+func (u *Unpackerr) checkQueueChanges(now time.Time) {
 	for name, data := range u.Map {
 		switch {
 		case data.App == FolderString:
 			continue // folders are handled in folder.go.
 		case !u.haveQitem(name, data.App):
 			// This fires when an items becomes missing (imported) from the application queue.
-			switch elapsed := time.Since(data.Updated); {
+			switch elapsed := now.Sub(data.Updated); {
 			case data.Status == WAITING:
 				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
 				delete(u.Map, name)
@@ -58,7 +58,7 @@ func (u *Unpackerr) checkQueueChanges() {
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 					data.App, data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
-				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, true)
+				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
 				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, data.DeleteDelay)
 			}
 		case data.Status == IMPORTED:
@@ -69,30 +69,30 @@ func (u *Unpackerr) checkQueueChanges() {
 			// The item fell out of the app queue and came back. Reset it.
 			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.App, name)
 			data.Status = WAITING
-			data.Updated = time.Now()
+			data.Updated = now
 		}
 
 		u.Debugf("%s: Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
-			time.Since(data.Updated).Round(time.Second))
+			now.Sub(data.Updated).Round(time.Second))
 	}
 }
 
 // extractCompletedDownloads process each download and checks if it needs to be extracted.
 // This is called from the main go routine in start.go and it only processes starr apps, not folders.
-func (u *Unpackerr) extractCompletedDownloads() {
+func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 	for name, item := range u.Map {
 		if item.App != FolderString && item.Status == QUEUED {
-			u.extractCompletedDownload(name, item)
+			u.extractCompletedDownload(name, now, item)
 		}
 	}
 }
 
 // extractCompletedDownload checks if a completed starr download needs to be extracted.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
-func (u *Unpackerr) extractCompletedDownload(name string, item *Extract) {
-	if time.Since(item.Updated)-u.Config.StartDelay.Duration < time.Second {
+func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
+	if now.Sub(item.Updated)-u.Config.StartDelay.Duration < time.Second {
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name,
-			u.Config.StartDelay.Duration-time.Since(item.Updated).Round(time.Second))
+			u.Config.StartDelay.Duration-now.Sub(item.Updated).Round(time.Second))
 
 		return
 	}
@@ -119,7 +119,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, item *Extract) {
 
 	// This updates the item in the map.
 	item.Status = QUEUED
-	item.Updated = time.Now()
+	item.Updated = now
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:  u.getPasswordFromPath(item.Path),
 		Passwords: u.Passwords,
@@ -151,9 +151,9 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 
 // saveCompletedDownload stores a completed download in the internal unpackerr map.
 // This is called from the app methods.
-func (u *Unpackerr) saveCompletedDownload(name string, x *Extract) {
+func (u *Unpackerr) saveCompletedDownload(name string, now time.Time, x *Extract) {
 	if _, ok := u.Map[name]; !ok {
-		x.Updated = time.Now()
+		x.Updated = now
 		u.Map[name] = x
 	}
 }
@@ -175,9 +175,9 @@ func (u *Unpackerr) getPasswordFromPath(s string) string {
 // This runs at a short interval to check for extraction state changes, and should return quickly.
 //
 //nolint:cyclop,wsl
-func (u *Unpackerr) checkExtractDone() {
+func (u *Unpackerr) checkExtractDone(now time.Time) {
 	for name, data := range u.Map {
-		switch elapsed := time.Since(data.Updated); {
+		switch elapsed := now.Sub(data.Updated); {
 		case data.Status == DELETED && elapsed >= data.DeleteDelay:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
@@ -190,7 +190,7 @@ func (u *Unpackerr) checkExtractDone() {
 			u.Retries++
 			data.Retries++
 			data.Status = WAITING
-			data.Updated = time.Now()
+			data.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				data.App, elapsed.Round(time.Second), data.Retries, u.MaxRetries, name)
 		case data.Status == IMPORTED && elapsed >= data.DeleteDelay:
@@ -205,14 +205,14 @@ func (u *Unpackerr) checkExtractDone() {
 				webhook = true
 			}
 
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp}, webhook)
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: data.Resp}, now, webhook)
 		}
 	}
 }
 
 // handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
-func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
+func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response, now time.Time) {
 	if item := u.Map[resp.X.Name]; resp.Done && item != nil {
 		u.updateMetrics(resp, item.App, item.URL)
 	}
@@ -220,15 +220,15 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	switch {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
 	case resp.Error != nil:
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			len(resp.Archives), len(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 	}
 }
 

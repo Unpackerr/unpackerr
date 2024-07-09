@@ -124,7 +124,7 @@ func (u *Unpackerr) getLidarrQueue() {
 }
 
 // checkLidarrQueue passes completed Lidarr-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkLidarrQueue() {
+func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 	for _, server := range u.Lidarr {
 		if server.Queue == nil {
 			continue
@@ -135,7 +135,7 @@ func (u *Unpackerr) checkLidarrQueue() {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, q.Protocol, q.Title)
 			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, &Extract{
+				u.saveCompletedDownload(q.Title, now, &Extract{
 					App:         starr.Lidarr,
 					URL:         server.URL,
 					DeleteOrig:  server.DeleteOrig,

@@ -261,41 +261,41 @@ func (u *Unpackerr) Run() {
 		xtractr = time.NewTicker(u.Config.StartDelay.Duration)
 	)
 
-	u.PollFolders()       // This initializes channel(s) used below.
-	u.retrieveAppQueues() // Get in-app queues on startup.
+	u.PollFolders()                 // This initializes channel(s) used below.
+	u.retrieveAppQueues(time.Now()) // Get in-app queues on startup.
 
-	// one go routine to rule them all.
+	// One go routine to rule them all.
 	for {
 		select {
-		case <-xtractr.C:
+		case now := <-xtractr.C:
 			// Check if any completed items have elapsed their start delay.
-			u.extractCompletedDownloads()
-		case <-poller.C:
+			u.extractCompletedDownloads(now)
+		case now := <-poller.C:
 			// polling interval. pull queue data from all apps.
-			u.retrieveAppQueues()
+			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
-			u.checkQueueChanges()
-		case <-cleaner.C:
+			u.checkQueueChanges(now)
+		case now := <-cleaner.C:
 			// Check for extraction state changes and act on them.
-			u.checkExtractDone()
-			u.checkFolderStats()
+			u.checkExtractDone(now)
+			u.checkFolderStats(now)
 		case resp := <-u.updates:
-			// xtractr callback for arr app download extraction.
-			u.handleXtractrCallback(resp)
+			// xtractr callback for starr download extraction.
+			u.handleXtractrCallback(resp, time.Now())
 		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.
-			u.folderXtractrCallback(resp)
+			u.folderXtractrCallback(resp, time.Now())
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
-			u.processEvent(event)
-		case <-logger.C:
+			u.processEvent(event, time.Now())
+		case now := <-logger.C:
 			// Log/print current queue counts once in a while.
-			u.logCurrentQueue()
+			u.logCurrentQueue(now)
 		}
 	}
 }
 
-// custom percentage procedure for *arr apps.
+// Custom percentage procedure for starr apps.
 func percent(size, total float64) int {
 	const oneHundred = 100
 

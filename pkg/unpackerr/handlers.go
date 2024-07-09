@@ -217,13 +217,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response, now time.Time)
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:
-		files := ""
-
-		file, err := os.Open(resp.X.Path)
-		if err != nil {
-			names, _ := file.Readdirnames(0)
-			files = strings.Join(names, ", ")
-		}
+		files := fileList(resp.X.Path)
 
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),

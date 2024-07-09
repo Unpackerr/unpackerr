@@ -193,20 +193,24 @@ func Start() (err error) {
 	return nil
 }
 
+func fileList(paths ...string) []string {
+	files := []string{}
+
+	for _, path := range paths {
+		file, err := os.Open(path)
+		if err != nil {
+			names, _ := file.Readdirnames(0)
+			files = append(files, names...)
+		}
+	}
+
+	return files
+}
+
 func (u *Unpackerr) watchDeleteChannel() {
 	for f := range u.delChan {
 		if len(f.Paths) > 0 && f.Paths[0] != "" {
-			files := []string{}
-
-			for _, path := range f.Paths {
-				file, err := os.Open(path)
-				if err != nil {
-					names, _ := file.Readdirnames(0)
-					files = append(files, names...)
-				}
-			}
-
-			u.Debugf("Deleting files: %s", strings.Join(files, ", "))
+			u.Debugf("Deleting files: %s", strings.Join(fileList(f.Paths...), ", "))
 			u.DeleteFiles(f.Paths...)
 
 			if !f.PurgeEmptyParent {

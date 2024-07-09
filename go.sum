@@ -385,6 +385,8 @@ golift.io/xtractr v0.2.3-0.20240701231217-9baa707ddfd1 h1:zHuHMtUVpezHQxbRlFTP2H
 golift.io/xtractr v0.2.3-0.20240701231217-9baa707ddfd1/go.mod h1:ykPX5R7pubYwM30nD9ERBo9/6mvOzmRxulfa0Axw+AU=
 golift.io/xtractr v0.2.3-0.20240705214848-788bbcf7087a h1:bcRW4Ze2droo7tg14clsvRqtJHs27gi+LRyJzFFxllo=
 golift.io/xtractr v0.2.3-0.20240705214848-788bbcf7087a/go.mod h1:TrvZlQlpYaZC8kgu/vjvynnNW4rtRqKPbhKF74WoBGk=
+golift.io/xtractr v0.2.3-0.20240709182425-53cf1d6a3650 h1:Xb2OmZEFiE22how9s07JMMglL1ArN9M8jh9EmIwx24k=
+golift.io/xtractr v0.2.3-0.20240709182425-53cf1d6a3650/go.mod h1:TrvZlQlpYaZC8kgu/vjvynnNW4rtRqKPbhKF74WoBGk=
 google.golang.org/api v0.4.0/go.mod h1:8k5glujaEP+g9n7WNsDg8QP6cUVNI86fCNMcbazEtwE=
 google.golang.org/api v0.7.0/go.mod h1:WtwebWUNSVBH/HAw79HIFXZNqEvBhG+Ra+ax0hx3E3M=
 google.golang.org/api v0.8.0/go.mod h1:o4eAsZoiT+ibD93RtjEohWalFOjRDx6CVaqeizhEnKg=

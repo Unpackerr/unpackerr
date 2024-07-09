@@ -83,7 +83,8 @@ type workThread struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
-	const workers = 5 // one for each app.
+	// 1 worker for each app, so they poll quickly.
+	workers := len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr)
 	for range workers {
 		go func() {
 			for w := range u.workChan {
@@ -95,21 +96,30 @@ func (u *Unpackerr) watchWorkThread() {
 	}
 }
 
-// retrieveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
-// Then calls the check methods to scan their queues for changes.
+// retrieveAppQueues polls all the starr app queues. At the same time.
+// Then calls the check methods to scan their queue contents for changes.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
-	var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
+	wg.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
+	// Run each app's getQueue method in a go routine as a waitgroup.
+	for _, server := range u.Lidarr {
+		u.workChan <- &workThread{[]func(){func() { u.getLidarrQueue(server, now) }, wg.Done}}
+	}
 
-	// Run each method in a go routine as a waitgroup.
-	for _, app := range []func(){
-		u.getLidarrQueue,
-		u.getRadarrQueue,
-		u.getReadarrQueue,
-		u.getSonarrQueue,
-		u.getWhisparrQueue,
-	} {
-		wg.Add(1)
-		u.workChan <- &workThread{[]func(){app, wg.Done}}
+	for _, server := range u.Radarr {
+		u.workChan <- &workThread{[]func(){func() { u.getRadarrQueue(server, now) }, wg.Done}}
+	}
+
+	for _, server := range u.Readarr {
+		u.workChan <- &workThread{[]func(){func() { u.getReadarrQueue(server, now) }, wg.Done}}
+	}
+
+	for _, server := range u.Sonarr {
+		u.workChan <- &workThread{[]func(){func() { u.getSonarrQueue(server, now) }, wg.Done}}
+	}
+
+	for _, server := range u.Whisparr {
+		u.workChan <- &workThread{[]func(){func() { u.getWhisparrQueue(server, now) }, wg.Done}}
 	}
 
 	wg.Wait()

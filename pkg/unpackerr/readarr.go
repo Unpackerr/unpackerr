@@ -98,28 +98,24 @@ func (u *Unpackerr) logReadarr() {
 }
 
 // getReadarrQueue saves the Readarr Queue(s).
-func (u *Unpackerr) getReadarrQueue() {
-	for _, server := range u.Readarr {
-		if server.APIKey == "" {
-			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-			continue
-		}
+func (u *Unpackerr) getReadarrQueue(server *ReadarrConfig, start time.Time) {
+	if server.APIKey == "" {
+		u.Debugf("Readarr (%s): skipped, no API key", server.URL)
+		return
+	}
 
-		start := time.Now()
+	queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
+	if err != nil {
+		u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
+		return
+	}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
-		if err != nil {
-			u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
-			return
-		}
+	// Only update if there was not an error fetching.
+	server.Queue = queue
+	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
 
-		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
-
-		if !u.Activity || queue.TotalRecords > 0 {
-			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-		}
+	if !u.Activity || queue.TotalRecords > 0 {
+		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }
 

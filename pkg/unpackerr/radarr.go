@@ -98,28 +98,24 @@ func (u *Unpackerr) logRadarr() {
 }
 
 // getRadarrQueue saves the Radarr Queue(s).
-func (u *Unpackerr) getRadarrQueue() {
-	for _, server := range u.Radarr {
-		if server.APIKey == "" {
-			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
-			continue
-		}
+func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
+	if server.APIKey == "" {
+		u.Debugf("Radarr (%s): skipped, no API key", server.URL)
+		return
+	}
 
-		start := time.Now()
+	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
+		return
+	}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-		if err != nil {
-			u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
-			return
-		}
+	// Only update if there was not an error fetching.
+	server.Queue = queue
+	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
 
-		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
-
-		if !u.Activity || queue.TotalRecords > 0 {
-			u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-		}
+	if !u.Activity || queue.TotalRecords > 0 {
+		u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }
 

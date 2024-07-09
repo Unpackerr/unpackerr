@@ -58,7 +58,7 @@ type Unpackerr struct {
 	updates  chan *xtractr.Response
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
-	workChan chan *workThread
+	workChan chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -101,7 +101,7 @@ func New() *Unpackerr {
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan *fileDeleteReq, updateChanBuf),
 		sigChan:  make(chan os.Signal),
-		workChan: make(chan *workThread, 1),
+		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
 		menu:     make(map[string]ui.MenuItem),

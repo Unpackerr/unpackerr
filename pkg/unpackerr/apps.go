@@ -78,18 +78,13 @@ type FoldersConfig struct {
 	Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
 }
 
-type workThread struct {
-	Funcs []func()
-}
-
 func (u *Unpackerr) watchWorkThread() {
 	// 1 worker for each app, so they poll quickly.
-	workers := len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr)
-	for range workers {
+	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr) {
 		go func() {
-			for w := range u.workChan {
-				for _, f := range w.Funcs {
-					f()
+			for funcs := range u.workChan {
+				for _, fn := range funcs {
+					fn()
 				}
 			}
 		}()
@@ -103,23 +98,23 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	wg.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
 	// Run each app's getQueue method in a go routine as a waitgroup.
 	for _, server := range u.Lidarr {
-		u.workChan <- &workThread{[]func(){func() { u.getLidarrQueue(server, now) }, wg.Done}}
+		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wg.Done}
 	}
 
 	for _, server := range u.Radarr {
-		u.workChan <- &workThread{[]func(){func() { u.getRadarrQueue(server, now) }, wg.Done}}
+		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wg.Done}
 	}
 
 	for _, server := range u.Readarr {
-		u.workChan <- &workThread{[]func(){func() { u.getReadarrQueue(server, now) }, wg.Done}}
+		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wg.Done}
 	}
 
 	for _, server := range u.Sonarr {
-		u.workChan <- &workThread{[]func(){func() { u.getSonarrQueue(server, now) }, wg.Done}}
+		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wg.Done}
 	}
 
 	for _, server := range u.Whisparr {
-		u.workChan <- &workThread{[]func(){func() { u.getWhisparrQueue(server, now) }, wg.Done}}
+		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wg.Done}
 	}
 
 	wg.Wait()

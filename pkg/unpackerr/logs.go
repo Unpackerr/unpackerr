@@ -115,7 +115,7 @@ func (l *Logger) Errorf(msg string, v ...interface{}) {
 }
 
 // logCurrentQueue prints the number of things happening.
-func (u *Unpackerr) logCurrentQueue() {
+func (u *Unpackerr) logCurrentQueue(now time.Time) {
 	stats := u.stats()
 	u.Printf("[Unpackerr] Queue: %d waiting, %d queued, %d extracting, %d extracted, %d imported, %d failed, %d deleted",
 		stats.Waiting, stats.Queued, stats.Extracting, stats.Extracted, stats.Imported, stats.Failed, stats.Deleted)
@@ -124,7 +124,7 @@ func (u *Unpackerr) logCurrentQueue() {
 		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
 		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
-		durafmt.Parse(time.Since(version.Started)).LimitFirstN(3).Format(durafmtUnits)) //nolint:mnd
+		durafmt.Parse(now.Sub(version.Started)).LimitFirstN(3).Format(durafmtUnits)) //nolint:mnd
 
 	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }

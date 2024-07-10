@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"golift.io/cnfg"
 	"golift.io/starr"
@@ -77,53 +78,52 @@ type FoldersConfig struct {
 	Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
 }
 
-type workThread struct {
-	Funcs []func()
-}
-
 func (u *Unpackerr) watchWorkThread() {
-	const maxWorkers = 5 // 5 starr apps.
-
-	workers := u.Parallel
-	if workers > maxWorkers {
-		workers = maxWorkers
-	}
-
-	for range workers {
+	// 1 worker for each app, so they poll quickly.
+	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr) {
 		go func() {
-			for w := range u.workChan {
-				for _, f := range w.Funcs {
-					f()
+			for funcs := range u.workChan {
+				for _, fn := range funcs {
+					fn()
 				}
 			}
 		}()
 	}
 }
 
-// retrieveAppQueues polls Sonarr, Lidarr and Radarr. At the same time.
-// Then calls the check methods to scan their queues for changes.
-func (u *Unpackerr) retrieveAppQueues() {
-	var wg sync.WaitGroup
+// retrieveAppQueues polls all the starr app queues. At the same time.
+// Then calls the check methods to scan their queue contents for changes.
+func (u *Unpackerr) retrieveAppQueues(now time.Time) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
+	// Run each app's getQueue method in a go routine as a waitgroup.
+	for _, server := range u.Lidarr {
+		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wg.Done}
+	}
 
-	// Run each method in a go routine as a waitgroup.
-	for _, app := range []func(){
-		u.getLidarrQueue,
-		u.getRadarrQueue,
-		u.getReadarrQueue,
-		u.getSonarrQueue,
-		u.getWhisparrQueue,
-	} {
-		wg.Add(1)
-		u.workChan <- &workThread{[]func(){app, wg.Done}}
+	for _, server := range u.Radarr {
+		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wg.Done}
+	}
+
+	for _, server := range u.Readarr {
+		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wg.Done}
+	}
+
+	for _, server := range u.Sonarr {
+		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wg.Done}
+	}
+
+	for _, server := range u.Whisparr {
+		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wg.Done}
 	}
 
 	wg.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
-	u.checkLidarrQueue()
-	u.checkRadarrQueue()
-	u.checkReadarrQueue()
-	u.checkSonarrQueue()
-	u.checkWhisparrQueue()
+	u.checkLidarrQueue(now)
+	u.checkRadarrQueue(now)
+	u.checkReadarrQueue(now)
+	u.checkSonarrQueue(now)
+	u.checkWhisparrQueue(now)
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

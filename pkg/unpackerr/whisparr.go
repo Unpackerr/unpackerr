@@ -103,34 +103,30 @@ func (u *Unpackerr) logWhisparr() {
 }
 
 // getWhisparrQueue saves the Whisparr Queue(s).
-func (u *Unpackerr) getWhisparrQueue() {
-	for _, server := range u.Whisparr {
-		if server.APIKey == "" {
-			u.Debugf("Whisparr (%s): skipped, no API key", server.URL)
-			continue
-		}
+func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
+	if server.APIKey == "" {
+		u.Debugf("Whisparr (%s): skipped, no API key", server.URL)
+		return
+	}
 
-		start := time.Now()
+	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		u.saveQueueMetrics(0, start, starr.Whisparr, server.URL, err)
+		return
+	}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-		if err != nil {
-			u.saveQueueMetrics(0, start, starr.Whisparr, server.URL, err)
-			return
-		}
+	// Only update if there was not an error fetching.
+	server.Queue = queue
+	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
 
-		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
-
-		if !u.Activity || queue.TotalRecords > 0 {
-			u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",
-				server.URL, queue.TotalRecords, len(queue.Records))
-		}
+	if !u.Activity || queue.TotalRecords > 0 {
+		u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",
+			server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }
 
-// checkWhisparrQueue passes completed Whisparr-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkWhisparrQueue() {
+// checkWhisparrQueue saves completed Whisparr-queued downloads to u.Map.
+func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 	for _, server := range u.Whisparr {
 		if server.Queue == nil {
 			continue
@@ -140,10 +136,12 @@ func (u *Unpackerr) checkWhisparrQueue() {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, &Extract{
+			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				u.Map[q.Title] = &Extract{
 					App:         starr.Whisparr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.OutputPath, starr.Whisparr, q.Title, server.Paths),
@@ -153,7 +151,7 @@ func (u *Unpackerr) checkWhisparrQueue() {
 						"movieId":    q.MovieID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

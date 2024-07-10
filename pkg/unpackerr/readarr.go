@@ -98,33 +98,29 @@ func (u *Unpackerr) logReadarr() {
 }
 
 // getReadarrQueue saves the Readarr Queue(s).
-func (u *Unpackerr) getReadarrQueue() {
-	for _, server := range u.Readarr {
-		if server.APIKey == "" {
-			u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-			continue
-		}
+func (u *Unpackerr) getReadarrQueue(server *ReadarrConfig, start time.Time) {
+	if server.APIKey == "" {
+		u.Debugf("Readarr (%s): skipped, no API key", server.URL)
+		return
+	}
 
-		start := time.Now()
+	queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
+	if err != nil {
+		u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
+		return
+	}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
-		if err != nil {
-			u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
-			return
-		}
+	// Only update if there was not an error fetching.
+	server.Queue = queue
+	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
 
-		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Readarr, server.URL, nil)
-
-		if !u.Activity || queue.TotalRecords > 0 {
-			u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-		}
+	if !u.Activity || queue.TotalRecords > 0 {
+		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }
 
-// checkReadarQueue passes completed Readar-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkReadarrQueue() {
+// checkReadarQueue saves completed Readarr-queued downloads to u.Map.
+func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 	for _, server := range u.Readarr {
 		if server.Queue == nil {
 			continue
@@ -134,10 +130,12 @@ func (u *Unpackerr) checkReadarrQueue() {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, &Extract{
+			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				u.Map[q.Title] = &Extract{
 					App:         starr.Readarr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
@@ -149,7 +147,7 @@ func (u *Unpackerr) checkReadarrQueue() {
 						"downloadId": q.DownloadID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

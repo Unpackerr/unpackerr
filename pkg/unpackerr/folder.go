@@ -64,7 +64,7 @@ type Folder struct {
 	config   *FolderConfig
 	files    []string
 	retries  uint
-	archives []string
+	archives xtractr.ArchiveList
 }
 
 type eventData struct {
@@ -239,10 +239,10 @@ func (f *Folders) Remove(folder string) {
 }
 
 // extractTrackedItem starts an archive or folder's extraction after it hasn't been written to in a while.
-func (u *Unpackerr) extractTrackedItem(name string, folder *Folder) {
+func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Time) {
 	u.folders.Remove(name) // stop the fs watcher(s).
 	// update status.
-	u.folders.Folders[name].updated = time.Now()
+	u.folders.Folders[name].updated = now
 	u.folders.Folders[name].status = QUEUED
 
 	// Do not extract r00 file if rar file with same name exists.
@@ -255,7 +255,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder) {
 	}
 
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, true)
+	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].updated, true)
 	u.updateHistory(FolderString + ": " + name)
 
 	var exclude []string
@@ -320,39 +320,24 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		folder.status = EXTRACTEDNOTHING
 		u.Printf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
 	case resp.Error != nil:
+		folder.archives = resp.Archives
 		folder.status = EXTRACTFAILED
 		u.Errorf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
 		u.updateMetrics(resp, FolderString, folder.config.Path)
-
-		for _, v := range resp.Archives {
-			folder.archives = append(folder.archives, v...)
-		}
 	default: // this runs in a go routine
-		for _, v := range resp.Archives {
-			folder.archives = append(folder.archives, v...)
-		}
-
 		u.updateMetrics(resp, FolderString, folder.config.Path)
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
 			"extra archives: %d, files extracted: %d, written: %dMiB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), len(folder.archives),
-			mapLen(resp.Extras), len(resp.NewFiles), resp.Size/mebiByte)
+			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
+			resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)
 
+		folder.archives = resp.Archives
 		folder.status = EXTRACTED
 		folder.files = resp.NewFiles
 	}
 
-	folder.updated = time.Now()
-
-	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, true)
-}
-
-func mapLen(in map[string][]string) (out int) {
-	for _, v := range in {
-		out += len(v)
-	}
-
-	return out
+	folder.updated = resp.Started.Add(resp.Elapsed)
+	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -415,17 +400,17 @@ func (f *Folders) handleFileEvent(name, operation string) {
 }
 
 // processEvent is here to process the event in the `*Unpackerr` scope before sending it back to the `*Folders` scope.
-func (u *Unpackerr) processEvent(event *eventData) {
+func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 	// Do not watch our own log file.
 	if event.file == u.Config.LogFile || event.file == u.Config.Webserver.LogFile {
 		return
 	}
 
-	u.folders.processEvent(event)
+	u.folders.processEvent(event, now)
 }
 
 // processEvent processes the event that was received.
-func (f *Folders) processEvent(event *eventData) {
+func (f *Folders) processEvent(event *eventData, now time.Time) {
 	dirPath := filepath.Join(event.cnfg.Path, event.name)
 
 	stat, err := os.Stat(dirPath)
@@ -447,13 +432,13 @@ func (f *Folders) processEvent(event *eventData) {
 		return
 	}
 
-	f.saveEvent(event, dirPath)
+	f.saveEvent(event, dirPath, now)
 }
 
-func (f *Folders) saveEvent(event *eventData, dirPath string) {
+func (f *Folders) saveEvent(event *eventData, dirPath string, now time.Time) {
 	if _, ok := f.Folders[dirPath]; ok {
 		// f.Debugf("Item Updated: %v", event.file)
-		f.Folders[dirPath].updated = time.Now()
+		f.Folders[dirPath].updated = now
 		return
 	}
 
@@ -468,7 +453,7 @@ func (f *Folders) saveEvent(event *eventData, dirPath string) {
 	f.Printf("[Folder] Tracking New Item: %v (event: %s)", dirPath, event.op)
 
 	f.Folders[dirPath] = &Folder{
-		updated: time.Now(),
+		updated: now,
 		status:  WAITING,
 		config:  event.cnfg,
 	}
@@ -476,15 +461,15 @@ func (f *Folders) saveEvent(event *eventData, dirPath string) {
 
 // checkFolderStats runs at an interval to see if any folders need work done on them.
 // This runs on an interval ticker in the main go routine.
-func (u *Unpackerr) checkFolderStats() {
+func (u *Unpackerr) checkFolderStats(now time.Time) {
 	for name, folder := range u.folders.Folders {
-		switch elapsed := time.Since(folder.updated); {
+		switch elapsed := now.Sub(folder.updated); {
 		case WAITING == folder.status && elapsed >= u.StartDelay.Duration:
 			// The folder hasn't been written to in a while, extract it.
-			u.extractTrackedItem(name, folder)
+			u.extractTrackedItem(name, folder, now)
 		case EXTRACTEDNOTHING == folder.status:
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
-			if time.Since(folder.updated) > u.StartDelay.Duration {
+			if now.Sub(folder.updated) > u.StartDelay.Duration {
 				// Ignore "no compressed files" errors for folders.
 				delete(u.Map, name)
 				delete(u.folders.Folders, name)
@@ -493,7 +478,7 @@ func (u *Unpackerr) checkFolderStats() {
 			(u.MaxRetries == 0 || folder.retries < u.MaxRetries):
 			u.Retries++
 			folder.retries++
-			folder.updated = time.Now()
+			folder.updated = now
 			folder.status = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
 				folder.config.Path, folder.retries, u.MaxRetries, elapsed.Round(time.Second))
@@ -501,16 +486,16 @@ func (u *Unpackerr) checkFolderStats() {
 			// This empty block is to avoid deleting an item that needs more retries.
 		case folder.status > EXTRACTING && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, false)
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)
 			delete(u.folders.Folders, name)
 		case EXTRACTED == folder.status && elapsed >= folder.config.DeleteAfter.Duration:
-			u.deleteAfterReached(name, folder)
+			u.deleteAfterReached(name, now, folder)
 		}
 	}
 }
 
 //nolint:wsl
-func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
+func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folder) {
 	var webhook bool
 
 	// Folder reached delete delay (after extraction), nuke it.
@@ -526,11 +511,11 @@ func (u *Unpackerr) deleteAfterReached(name string, folder *Folder) {
 		u.delChan <- &fileDeleteReq{Paths: []string{name}}
 		webhook = true
 	} else if folder.config.DeleteOrig && len(folder.archives) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.archives}
+		u.delChan <- &fileDeleteReq{Paths: folder.archives.List()}
 		webhook = true
 	}
 
-	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, webhook)
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, webhook)
 	// Folder reached delete delay (after extraction), nuke it.
 	delete(u.folders.Folders, name)
 }
@@ -544,7 +529,7 @@ type newStatus struct {
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders in a few other places as well.
-func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
+func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook bool) {
 	if _, ok := u.Map[data.Name]; !ok {
 		// This is a new Folder being queued for extraction.
 		// Arr apps do not land here. They create their own queued items in u.Map.
@@ -552,7 +537,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 			Path:    data.Name,
 			App:     FolderString,
 			Status:  QUEUED,
-			Updated: time.Now(),
+			Updated: now,
 			IDs:     map[string]interface{}{"title": data.Name}, // required or webhook may break.
 		}
 
@@ -568,7 +553,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, sendHook bool) {
 	}
 
 	u.Map[data.Name].Status = data.Status
-	u.Map[data.Name].Updated = time.Now()
+	u.Map[data.Name].Updated = now
 
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])

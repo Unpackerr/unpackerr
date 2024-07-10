@@ -98,33 +98,29 @@ func (u *Unpackerr) logRadarr() {
 }
 
 // getRadarrQueue saves the Radarr Queue(s).
-func (u *Unpackerr) getRadarrQueue() {
-	for _, server := range u.Radarr {
-		if server.APIKey == "" {
-			u.Debugf("Radarr (%s): skipped, no API key", server.URL)
-			continue
-		}
+func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
+	if server.APIKey == "" {
+		u.Debugf("Radarr (%s): skipped, no API key", server.URL)
+		return
+	}
 
-		start := time.Now()
+	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
+		return
+	}
 
-		queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-		if err != nil {
-			u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
-			return
-		}
+	// Only update if there was not an error fetching.
+	server.Queue = queue
+	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
 
-		// Only update if there was not an error fetching.
-		server.Queue = queue
-		u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
-
-		if !u.Activity || queue.TotalRecords > 0 {
-			u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-		}
+	if !u.Activity || queue.TotalRecords > 0 {
+		u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }
 
-// checkRadarrQueue passes completed Radarr-queued downloads to the HandleCompleted method.
-func (u *Unpackerr) checkRadarrQueue() {
+// checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
+func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 	for _, server := range u.Radarr {
 		if server.Queue == nil {
 			continue
@@ -134,10 +130,12 @@ func (u *Unpackerr) checkRadarrQueue() {
 			switch x, ok := u.Map[q.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, q.Protocol, q.Title)
-			case (!ok || x.Status < QUEUED) && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.saveCompletedDownload(q.Title, &Extract{
+			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
+				u.Map[q.Title] = &Extract{ // Save the download to our map.
 					App:         starr.Radarr,
 					URL:         server.URL,
+					Updated:     now,
+					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
@@ -148,7 +146,7 @@ func (u *Unpackerr) checkRadarrQueue() {
 						"movieId":    q.MovieID,
 						"reason":     buildStatusReason(q.Status, q.StatusMessages),
 					},
-				})
+				}
 
 				fallthrough
 			default:

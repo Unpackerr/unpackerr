@@ -1,10 +1,7 @@
 package unpackerr
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,7 +11,6 @@ import (
 
 // ReadarrConfig represents the input data for a Readarr server.
 type ReadarrConfig struct {
-	starr.Config
 	StarrConfig
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -24,55 +20,17 @@ type ReadarrConfig struct {
 func (u *Unpackerr) validateReadarr() error {
 	tmp := u.Readarr[:0]
 
-	for i := range u.Readarr {
-		if u.Readarr[i].URL == "" {
-			u.Errorf("Missing Readarr URL in one of your configurations, skipped and ignored.")
-			continue
+	for idx := range u.Readarr {
+		if err := u.validateApp(&u.Lidarr[idx].StarrConfig, starr.Readarr); err != nil {
+			if errors.Is(err, ErrInvalidURL) {
+				continue // We ignore these errors, just remove the instance from the list.
+			}
+
+			return err
 		}
 
-		if u.Readarr[i].APIKey == "" {
-			u.Errorf("Missing Readarr API Key in one of your configurations, skipped and ignored.")
-			continue
-		}
-
-		if !strings.HasPrefix(u.Readarr[i].URL, "http://") && !strings.HasPrefix(u.Readarr[i].URL, "https://") {
-			return fmt.Errorf("%w: (readarr) %s", ErrInvalidURL, u.Readarr[i].URL)
-		}
-
-		if len(u.Readarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%s (%s) %w, your key length: %d",
-				starr.Readarr, u.Readarr[i].URL, ErrInvalidKey, len(u.Readarr[i].APIKey))
-		}
-
-		if u.Readarr[i].Timeout.Duration == 0 {
-			u.Readarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Readarr[i].DeleteDelay.Duration == 0 {
-			u.Readarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
-		}
-
-		if u.Readarr[i].Path != "" {
-			u.Readarr[i].Paths = append(u.Readarr[i].Paths, u.Readarr[i].Path)
-		}
-
-		if len(u.Readarr[i].Paths) == 0 {
-			u.Readarr[i].Paths = []string{defaultSavePath}
-		}
-
-		if u.Readarr[i].Protocols == "" {
-			u.Readarr[i].Protocols = defaultProtocol
-		}
-
-		u.Readarr[i].Config.Client = &http.Client{
-			Timeout: u.Readarr[i].Timeout.Duration,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Readarr[i].ValidSSL}, //nolint:gosec
-			},
-		}
-
-		u.Readarr[i].Readarr = readarr.New(&u.Readarr[i].Config)
-		tmp = append(tmp, u.Readarr[i])
+		u.Readarr[idx].Readarr = readarr.New(&u.Readarr[idx].Config)
+		tmp = append(tmp, u.Readarr[idx])
 	}
 
 	u.Readarr = tmp

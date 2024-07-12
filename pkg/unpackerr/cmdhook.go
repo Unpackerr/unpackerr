@@ -23,6 +23,7 @@ func (u *Unpackerr) validateCmdhook() error {
 	for i := range u.Cmdhook {
 		u.Cmdhook[i].URL = ""
 
+		u.Cmdhook[i].Command = expandHomedir(u.Cmdhook[i].Command)
 		if u.Cmdhook[i].Command == "" {
 			return ErrCmdhookNoCmd
 		}

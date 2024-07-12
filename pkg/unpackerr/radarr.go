@@ -1,10 +1,7 @@
 package unpackerr
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,7 +11,6 @@ import (
 
 // RadarrConfig represents the input data for a Radarr server.
 type RadarrConfig struct {
-	starr.Config
 	StarrConfig
 	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -24,55 +20,17 @@ type RadarrConfig struct {
 func (u *Unpackerr) validateRadarr() error {
 	tmp := u.Radarr[:0]
 
-	for i := range u.Radarr {
-		if u.Radarr[i].URL == "" {
-			u.Errorf("Missing Radarr URL in one of your configurations, skipped and ignored.")
-			continue
+	for idx := range u.Radarr {
+		if err := u.validateApp(&u.Radarr[idx].StarrConfig, starr.Radarr); err != nil {
+			if errors.Is(err, ErrInvalidURL) {
+				continue // We ignore these errors, just remove the instance from the list.
+			}
+
+			return err
 		}
 
-		if u.Radarr[i].APIKey == "" {
-			u.Errorf("Missing Radarr API Key in one of your configurations, skipped and ignored.")
-			continue
-		}
-
-		if !strings.HasPrefix(u.Radarr[i].URL, "http://") && !strings.HasPrefix(u.Radarr[i].URL, "https://") {
-			return fmt.Errorf("%w: (radarr) %s", ErrInvalidURL, u.Radarr[i].URL)
-		}
-
-		if len(u.Radarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%s (%s) %w, your key length: %d",
-				starr.Radarr, u.Radarr[i].URL, ErrInvalidKey, len(u.Radarr[i].APIKey))
-		}
-
-		if u.Radarr[i].Timeout.Duration == 0 {
-			u.Radarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Radarr[i].DeleteDelay.Duration == 0 {
-			u.Radarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
-		}
-
-		if u.Radarr[i].Path != "" {
-			u.Radarr[i].Paths = append(u.Radarr[i].Paths, u.Radarr[i].Path)
-		}
-
-		if len(u.Radarr[i].Paths) == 0 {
-			u.Radarr[i].Paths = []string{defaultSavePath}
-		}
-
-		if u.Radarr[i].Protocols == "" {
-			u.Radarr[i].Protocols = defaultProtocol
-		}
-
-		u.Radarr[i].Config.Client = &http.Client{
-			Timeout: u.Radarr[i].Timeout.Duration,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Radarr[i].ValidSSL}, //nolint:gosec
-			},
-		}
-
-		u.Radarr[i].Radarr = radarr.New(&u.Radarr[i].Config)
-		tmp = append(tmp, u.Radarr[i])
+		u.Radarr[idx].Radarr = radarr.New(&u.Radarr[idx].Config)
+		tmp = append(tmp, u.Radarr[idx])
 	}
 
 	u.Radarr = tmp

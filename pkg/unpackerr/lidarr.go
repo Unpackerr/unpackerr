@@ -1,10 +1,7 @@
 package unpackerr
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,7 +11,6 @@ import (
 
 // LidarrConfig represents the input data for a Lidarr server.
 type LidarrConfig struct {
-	starr.Config
 	StarrConfig
 	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -24,55 +20,17 @@ type LidarrConfig struct {
 func (u *Unpackerr) validateLidarr() error {
 	tmp := u.Lidarr[:0]
 
-	for i := range u.Lidarr {
-		if u.Lidarr[i].URL == "" {
-			u.Errorf("Missing Lidarr URL in one of your configurations, skipped and ignored.")
-			continue
+	for idx := range u.Lidarr {
+		if err := u.validateApp(&u.Lidarr[idx].StarrConfig, starr.Lidarr); err != nil {
+			if errors.Is(err, ErrInvalidURL) {
+				continue // We ignore these errors, just remove the instance from the list.
+			}
+
+			return err
 		}
 
-		if u.Lidarr[i].APIKey == "" {
-			u.Errorf("Missing Lidarr API Key in one of your configurations, skipped and ignored.")
-			continue
-		}
-
-		if !strings.HasPrefix(u.Lidarr[i].URL, "http://") && !strings.HasPrefix(u.Lidarr[i].URL, "https://") {
-			return fmt.Errorf("%w: (lidarr) %s", ErrInvalidURL, u.Lidarr[i].URL)
-		}
-
-		if len(u.Lidarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%s (%s) %w, your key length: %d",
-				starr.Lidarr, u.Lidarr[i].URL, ErrInvalidKey, len(u.Lidarr[i].APIKey))
-		}
-
-		if u.Lidarr[i].Timeout.Duration == 0 {
-			u.Lidarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Lidarr[i].DeleteDelay.Duration == 0 {
-			u.Lidarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
-		}
-
-		if u.Lidarr[i].Path != "" {
-			u.Lidarr[i].Paths = append(u.Lidarr[i].Paths, u.Lidarr[i].Path)
-		}
-
-		if len(u.Lidarr[i].Paths) == 0 {
-			u.Lidarr[i].Paths = []string{defaultSavePath}
-		}
-
-		if u.Lidarr[i].Protocols == "" {
-			u.Lidarr[i].Protocols = defaultProtocol
-		}
-
-		u.Lidarr[i].Config.Client = &http.Client{
-			Timeout: u.Lidarr[i].Timeout.Duration,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Lidarr[i].ValidSSL}, //nolint:gosec
-			},
-		}
-
-		u.Lidarr[i].Lidarr = lidarr.New(&u.Lidarr[i].Config)
-		tmp = append(tmp, u.Lidarr[i])
+		u.Lidarr[idx].Lidarr = lidarr.New(&u.Lidarr[idx].Config)
+		tmp = append(tmp, u.Lidarr[idx])
 	}
 
 	u.Lidarr = tmp

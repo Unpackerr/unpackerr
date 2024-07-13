@@ -104,7 +104,7 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Path:        u.getDownloadPath(q.OutputPath, starr.Whisparr, q.Title, server.Paths),
-					IDs: map[string]interface{}{
+					IDs: map[string]any{
 						"downloadId": q.DownloadID,
 						"title":      q.Title,
 						"movieId":    q.MovieID,

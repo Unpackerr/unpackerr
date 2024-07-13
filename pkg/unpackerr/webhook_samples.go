@@ -55,7 +55,7 @@ func samplePayload() *WebhookPayload {
 	return &WebhookPayload{
 		App:  "Starr",
 		Path: "/this/is/a/path",
-		IDs: map[string]interface{}{
+		IDs: map[string]any{
 			"title":      "Some Cool Title Name Here",
 			"downloadId": fmt.Sprintf("some-id-goes-here-%d", time.Now().Unix()),
 			"otherId":    "another-id-here-like-imdb",

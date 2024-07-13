@@ -23,20 +23,20 @@ type Extract struct {
 	DeleteDelay time.Duration
 	DeleteOrig  bool
 	Status      ExtractStatus
-	IDs         map[string]interface{}
+	IDs         map[string]any
 	Resp        *xtractr.Response
 }
 
 // Shared config items for all starr apps.
 type StarrConfig struct {
-	Path        string        `json:"path" toml:"path" xml:"path" yaml:"path"`
-	Paths       StringSlice   `json:"paths" toml:"paths" xml:"paths" yaml:"paths"`
-	Protocols   string        `json:"protocols" toml:"protocols" xml:"protocols" yaml:"protocols"`
-	DeleteOrig  bool          `json:"delete_orig" toml:"delete_orig" xml:"delete_orig" yaml:"delete_orig"`
+	Path        string        `json:"path"         toml:"path"         xml:"path"         yaml:"path"`
+	Paths       StringSlice   `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
+	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
+	DeleteOrig  bool          `json:"delete_orig"  toml:"delete_orig"  xml:"delete_orig"  yaml:"delete_orig"`
 	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Syncthing   bool          `json:"syncthing" toml:"syncthing" xml:"syncthing" yaml:"syncthing"`
-	ValidSSL    bool          `json:"valid_ssl" toml:"valid_ssl" xml:"valid_ssl" yaml:"valid_ssl"`
-	Timeout     cnfg.Duration `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
+	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
+	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
+	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
 	starr.Config
 }
 

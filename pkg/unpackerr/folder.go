@@ -27,15 +27,15 @@ const (
 //
 //nolint:lll
 type FolderConfig struct {
-	DeleteOrig       bool          `json:"delete_original" toml:"delete_original" xml:"delete_original" yaml:"delete_original"`
-	DeleteFiles      bool          `json:"delete_files" toml:"delete_files" xml:"delete_files" yaml:"delete_files"`
-	DisableLog       bool          `json:"disable_log" toml:"disable_log" xml:"disable_log" yaml:"disable_log"`
-	MoveBack         bool          `json:"move_back" toml:"move_back" xml:"move_back" yaml:"move_back"`
-	DeleteAfter      cnfg.Duration `json:"delete_after" toml:"delete_after" xml:"delete_after" yaml:"delete_after"`
-	ExtractPath      string        `json:"extract_path" toml:"extract_path" xml:"extract_path" yaml:"extract_path"`
-	ExtractISOs      bool          `json:"extract_isos" toml:"extract_isos" xml:"extract_isos" yaml:"extract_isos"`
+	DeleteOrig       bool          `json:"delete_original"  toml:"delete_original"   xml:"delete_original"   yaml:"delete_original"`
+	DeleteFiles      bool          `json:"delete_files"     toml:"delete_files"      xml:"delete_files"      yaml:"delete_files"`
+	DisableLog       bool          `json:"disable_log"      toml:"disable_log"       xml:"disable_log"       yaml:"disable_log"`
+	MoveBack         bool          `json:"move_back"        toml:"move_back"         xml:"move_back"         yaml:"move_back"`
+	DeleteAfter      cnfg.Duration `json:"delete_after"     toml:"delete_after"      xml:"delete_after"      yaml:"delete_after"`
+	ExtractPath      string        `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
+	ExtractISOs      bool          `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
 	DisableRecursion bool          `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
-	Path             string        `json:"path" toml:"path" xml:"path" yaml:"path"`
+	Path             string        `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -52,9 +52,9 @@ type Folders struct {
 
 // Logs interface for folders.
 type Logs interface {
-	Printf(msg string, v ...interface{})
-	Errorf(msg string, v ...interface{})
-	Debugf(msg string, v ...interface{})
+	Printf(msg string, v ...any)
+	Errorf(msg string, v ...any)
+	Debugf(msg string, v ...any)
 }
 
 // Folder is a "new" watched folder.
@@ -128,7 +128,7 @@ func (u *Unpackerr) PollFolders() {
 	go u.folders.watchFSNotify()
 	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
-	// Setting an interval of any value less than a millisecond
+	// Setting an interval of any value less than 5 milliseconds
 	// (except zero in docker) allows disabling the poller.
 	if u.Folder.Interval.Duration < minimumPollInterval {
 		return
@@ -548,7 +548,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 			App:     FolderString,
 			Status:  QUEUED,
 			Updated: now,
-			IDs:     map[string]interface{}{"title": data.Name}, // required or webhook may break.
+			IDs:     map[string]any{"title": data.Name}, // required or webhook may break.
 		}
 
 		if sendHook {

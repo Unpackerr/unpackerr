@@ -98,7 +98,7 @@ func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.OutputPath, starr.Readarr, q.Title, server.Paths),
-					IDs: map[string]interface{}{
+					IDs: map[string]any{
 						"title":      q.Title,
 						"authorId":   q.AuthorID,
 						"bookId":     q.BookID,

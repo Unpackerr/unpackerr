@@ -98,7 +98,7 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
 					Path:        u.getDownloadPath(q.OutputPath, starr.Lidarr, q.Title, server.Paths),
-					IDs: map[string]interface{}{
+					IDs: map[string]any{
 						"title":      q.Title,
 						"artistId":   q.ArtistID,
 						"albumId":    q.AlbumID,

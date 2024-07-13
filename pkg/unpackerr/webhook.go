@@ -21,21 +21,21 @@ import (
 
 // WebhookConfig defines the data to send webhooks to a server.
 type WebhookConfig struct {
-	Name       string          `json:"name" toml:"name" xml:"name" yaml:"name"`
-	URL        string          `json:"url" toml:"url" xml:"url,omitempty" yaml:"url"`
-	Command    string          `json:"command" toml:"command" xml:"command,omitempty" yaml:"command"`
-	CType      string          `json:"contentType" toml:"content_type" xml:"content_type,omitempty" yaml:"contentType"`
+	Name       string          `json:"name"         toml:"name"          xml:"name"                    yaml:"name"`
+	URL        string          `json:"url"          toml:"url"           xml:"url,omitempty"           yaml:"url"`
+	Command    string          `json:"command"      toml:"command"       xml:"command,omitempty"       yaml:"command"`
+	CType      string          `json:"contentType"  toml:"content_type"  xml:"content_type,omitempty"  yaml:"contentType"`
 	TmplPath   string          `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
-	TempName   string          `json:"template" toml:"template" xml:"template,omitempty" yaml:"template"`
-	Timeout    cnfg.Duration   `json:"timeout" toml:"timeout" xml:"timeout" yaml:"timeout"`
-	Shell      bool            `json:"shell" toml:"shell" xml:"shell" yaml:"shell"`
-	IgnoreSSL  bool            `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
-	Silent     bool            `json:"silent" toml:"silent" xml:"silent" yaml:"silent"`
-	Events     ExtractStatuses `json:"events" toml:"events" xml:"events" yaml:"events"`
-	Exclude    StringSlice     `json:"exclude" toml:"exclude" xml:"exclude" yaml:"exclude"`
-	Nickname   string          `json:"nickname" toml:"nickname" xml:"nickname,omitempty" yaml:"nickname"`
-	Token      string          `json:"token" toml:"token" xml:"token,omitempty" yaml:"token"`
-	Channel    string          `json:"channel" toml:"channel" xml:"channel,omitempty" yaml:"channel"`
+	TempName   string          `json:"template"     toml:"template"      xml:"template,omitempty"      yaml:"template"`
+	Timeout    cnfg.Duration   `json:"timeout"      toml:"timeout"       xml:"timeout"                 yaml:"timeout"`
+	Shell      bool            `json:"shell"        toml:"shell"         xml:"shell"                   yaml:"shell"`
+	IgnoreSSL  bool            `json:"ignoreSsl"    toml:"ignore_ssl"    xml:"ignore_ssl,omitempty"    yaml:"ignoreSsl"`
+	Silent     bool            `json:"silent"       toml:"silent"        xml:"silent"                  yaml:"silent"`
+	Events     ExtractStatuses `json:"events"       toml:"events"        xml:"events"                  yaml:"events"`
+	Exclude    StringSlice     `json:"exclude"      toml:"exclude"       xml:"exclude"                 yaml:"exclude"`
+	Nickname   string          `json:"nickname"     toml:"nickname"      xml:"nickname,omitempty"      yaml:"nickname"`
+	Token      string          `json:"token"        toml:"token"         xml:"token,omitempty"         yaml:"token"`
+	Channel    string          `json:"channel"      toml:"channel"       xml:"channel,omitempty"       yaml:"channel"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -161,7 +161,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 		return
 	}
 
-	b := body.String() //nolint:ifshort
+	b := body.String()
 
 	if reply, err := hook.Send(&body); err != nil {
 		u.Debugf("Webhook Payload: %s", b)
@@ -173,7 +173,7 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 	}
 }
 
-// Send marshals an interface{} into json and POSTs it to a URL.
+// Send marshals an any into json and POSTs it to a URL.
 func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	if w.URL == "" {
 		return nil, ErrWebhookNoURL

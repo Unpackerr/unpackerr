@@ -15,13 +15,13 @@ import (
 
 // WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
 type WebhookPayload struct {
-	Path   string                 `json:"path"`                // Path for the extracted item.
-	App    starr.App              `json:"app"`                 // Application Triggering Event
-	IDs    map[string]interface{} `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event  ExtractStatus          `json:"unpackerr_eventtype"` // The type of the event.
-	Time   time.Time              `json:"time"`                // Time of this event.
-	Data   *XtractPayload         `json:"data,omitempty"`      // Payload from extraction process.
-	Config *WebhookConfig         `json:"-"`                   // Payload from extraction process.
+	Path   string         `json:"path"`                // Path for the extracted item.
+	App    starr.App      `json:"app"`                 // Application Triggering Event
+	IDs    map[string]any `json:"ids,omitempty"`       // Arbitrary IDs from each app.
+	Event  ExtractStatus  `json:"unpackerr_eventtype"` // The type of the event.
+	Time   time.Time      `json:"time"`                // Time of this event.
+	Data   *XtractPayload `json:"data,omitempty"`      // Payload from extraction process.
+	Config *WebhookConfig `json:"-"`                   // Payload from extraction process.
 	// Application Metadata.
 	Go       string    `json:"go"`       // Version of go compiled with
 	OS       string    `json:"os"`       // Operating system: linux, windows, darwin
@@ -253,8 +253,8 @@ const WebhookTemplateSlack = `
 //nolint:wrapcheck
 func (w *WebhookConfig) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
-		"encode":     func(v interface{}) string { b, _ := json.Marshal(v); return string(b) },
-		"rawencode":  func(v interface{}) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck
+		"encode":     func(v any) string { b, _ := json.Marshal(v); return string(b) },
+		"rawencode":  func(v any) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck
 		"formencode": url.QueryEscape,
 		"separator":  separator,
 		"humanbytes": humanbytes,

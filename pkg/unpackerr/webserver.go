@@ -14,15 +14,15 @@ import (
 )
 
 type WebServer struct {
-	Metrics    bool        `toml:"metrics" json:"metrics" xml:"metrics" yaml:"metrics"`
-	LogFiles   int         `json:"logFiles" toml:"log_files" xml:"log_files" yaml:"logFiles"`
-	LogFileMb  int         `json:"logFileMb" toml:"log_file_mb" xml:"log_file_mb" yaml:"logFileMb"`
-	ListenAddr string      `toml:"listen_addr" json:"listenAddr" xml:"listen_addr" yaml:"listenAddr"`
-	LogFile    string      `json:"logFile" toml:"log_file" xml:"log_file" yaml:"logFile"`
+	Metrics    bool        `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
+	LogFiles   int         `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
+	LogFileMb  int         `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
+	ListenAddr string      `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
+	LogFile    string      `json:"logFile"     toml:"log_file"      xml:"log_file"      yaml:"logFile"`
 	SSLCrtFile string      `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
-	SSLKeyFile string      `json:"sslKeyFile" toml:"ssl_key_file" xml:"ssl_key_file" yaml:"sslKeyFile"`
-	URLBase    string      `json:"urlbase" toml:"urlbase" xml:"urlbase" yaml:"urlbase"`
-	Upstreams  StringSlice `json:"upstreams" toml:"upstreams" xml:"upstreams" yaml:"upstreams"`
+	SSLKeyFile string      `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
+	URLBase    string      `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
+	Upstreams  StringSlice `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server

@@ -91,7 +91,7 @@ func (status ExtractStatus) String() string {
 }
 
 // Debugf writes Debug log lines... to stdout and/or a file.
-func (l *Logger) Debugf(msg string, v ...interface{}) {
+func (l *Logger) Debugf(msg string, v ...any) {
 	err := l.Debug.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo
@@ -99,7 +99,7 @@ func (l *Logger) Debugf(msg string, v ...interface{}) {
 }
 
 // Printf writes log lines... to stdout and/or a file.
-func (l *Logger) Printf(msg string, v ...interface{}) {
+func (l *Logger) Printf(msg string, v ...any) {
 	err := l.Info.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo
@@ -107,7 +107,7 @@ func (l *Logger) Printf(msg string, v ...interface{}) {
 }
 
 // Errorf writes log errors... to stdout and/or a file.
-func (l *Logger) Errorf(msg string, v ...interface{}) {
+func (l *Logger) Errorf(msg string, v ...any) {
 	err := l.Error.Output(callDepth, fmt.Sprintf(msg, v...))
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo

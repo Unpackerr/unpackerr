@@ -107,7 +107,8 @@ func (u *Unpackerr) runWebServer() {
 	var err error
 
 	if u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "" {
-		err = u.Webserver.server.ListenAndServeTLS(u.Webserver.SSLCrtFile, u.Webserver.SSLKeyFile)
+		err = u.Webserver.server.ListenAndServeTLS(
+			expandHomedir(u.Webserver.SSLCrtFile), expandHomedir(u.Webserver.SSLKeyFile))
 	} else {
 		err = u.Webserver.server.ListenAndServe()
 	}

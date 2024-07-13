@@ -144,17 +144,27 @@ func (u *Unpackerr) PollFolders() {
 
 // checkFolders stats all configured folders and returns only "good" ones.
 func checkFolders(folders []*FolderConfig, log Logs) ([]*FolderConfig, []string) {
-	goodFolders := []*FolderConfig{}
-	goodFlist := []string{}
+	var (
+		err         error
+		goodFolders = folders[:0]
+		goodFlist   = []string{}
+	)
 
 	for _, folder := range folders {
-		path, err := filepath.Abs(folder.Path)
+		folder.Path, err = filepath.Abs(expandHomedir(folder.Path))
 		if err != nil {
 			log.Errorf("Folder '%s' (bad path): %v", folder.Path, err)
 			continue
 		}
 
-		folder.Path = path // rewrite it. might not be safe.
+		if folder.ExtractPath != "" {
+			folder.ExtractPath, err = filepath.Abs(expandHomedir(folder.ExtractPath))
+			if err != nil {
+				log.Errorf("Folder '%s' (bad extract path): %v", folder.ExtractPath, err)
+				continue
+			}
+		}
+
 		if stat, err := os.Stat(folder.Path); err != nil {
 			log.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
 			continue

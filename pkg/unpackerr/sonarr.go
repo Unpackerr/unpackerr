@@ -1,10 +1,7 @@
 package unpackerr
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,7 +11,6 @@ import (
 
 // SonarrConfig represents the input data for a Sonarr server.
 type SonarrConfig struct {
-	starr.Config
 	StarrConfig
 	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
@@ -24,55 +20,17 @@ type SonarrConfig struct {
 func (u *Unpackerr) validateSonarr() error {
 	tmp := u.Sonarr[:0]
 
-	for i := range u.Sonarr {
-		if u.Sonarr[i].URL == "" {
-			u.Errorf("Missing Sonarr URL in one of your configurations, skipped and ignored.")
-			continue
+	for idx := range u.Sonarr {
+		if err := u.validateApp(&u.Sonarr[idx].StarrConfig, starr.Sonarr); err != nil {
+			if errors.Is(err, ErrInvalidURL) {
+				continue // We ignore these errors, just remove the instance from the list.
+			}
+
+			return err
 		}
 
-		if u.Sonarr[i].APIKey == "" {
-			u.Errorf("Missing Sonarr API Key in one of your configurations, skipped and ignored.")
-			continue
-		}
-
-		if !strings.HasPrefix(u.Sonarr[i].URL, "http://") && !strings.HasPrefix(u.Sonarr[i].URL, "https://") {
-			return fmt.Errorf("%w: (sonarr) %s", ErrInvalidURL, u.Sonarr[i].URL)
-		}
-
-		if len(u.Sonarr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%s (%s) %w, your key length: %d",
-				starr.Sonarr, u.Sonarr[i].URL, ErrInvalidKey, len(u.Sonarr[i].APIKey))
-		}
-
-		if u.Sonarr[i].Timeout.Duration == 0 {
-			u.Sonarr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Sonarr[i].DeleteDelay.Duration == 0 {
-			u.Sonarr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
-		}
-
-		if u.Sonarr[i].Path != "" {
-			u.Sonarr[i].Paths = append(u.Sonarr[i].Paths, u.Sonarr[i].Path)
-		}
-
-		if len(u.Sonarr[i].Paths) == 0 {
-			u.Sonarr[i].Paths = []string{defaultSavePath}
-		}
-
-		if u.Sonarr[i].Protocols == "" {
-			u.Sonarr[i].Protocols = defaultProtocol
-		}
-
-		u.Sonarr[i].Config.Client = &http.Client{
-			Timeout: u.Sonarr[i].Timeout.Duration,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Sonarr[i].ValidSSL}, //nolint:gosec
-			},
-		}
-
-		u.Sonarr[i].Sonarr = sonarr.New(&u.Sonarr[i].Config)
-		tmp = append(tmp, u.Sonarr[i])
+		u.Sonarr[idx].Sonarr = sonarr.New(&u.Sonarr[idx].Config)
+		tmp = append(tmp, u.Sonarr[idx])
 	}
 
 	u.Sonarr = tmp

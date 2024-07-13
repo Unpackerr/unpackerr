@@ -1,7 +1,9 @@
 package unpackerr
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +17,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
+	"golift.io/starr"
 )
 
 const (
@@ -31,11 +34,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	def, cfl := configFileLocactions()
 	// Search for one, starting with the default.
 	for _, f = range append([]string{u.Flags.ConfigFile}, cfl...) {
-		d, err := homedir.Expand(f)
-		if err == nil {
-			f = d
-		}
-
+		f = expandHomedir(f)
 		if _, err := os.Stat(f); err == nil {
 			break // found one, bail out.
 		} // else { u.Print("rip:", err) }
@@ -193,12 +192,8 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 		return "", nil
 	}
 
-	file, err := homedir.Expand(file)
+	file, err := filepath.Abs(expandHomedir(file))
 	if err != nil {
-		return "", fmt.Errorf("expanding home: %w", err)
-	}
-
-	if file, err = filepath.Abs(file); err != nil {
 		return "", fmt.Errorf("absolute file: %w", err)
 	}
 
@@ -263,4 +258,68 @@ func isRunningInDocker() bool {
 	// docker creates a .dockerenv file at the root of the container.
 	_, err := os.Stat("/.dockerenv")
 	return err == nil
+}
+
+// expandHomedir expands a ~ to a homedir, or returns the original path in case of any error.
+func expandHomedir(filePath string) string {
+	expanded, err := homedir.Expand(filePath)
+	if err != nil {
+		return filePath
+	}
+
+	return expanded
+}
+
+func (u *Unpackerr) validateApp(s *StarrConfig, app starr.App) error {
+	if s.URL == "" {
+		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", app)
+		return ErrInvalidURL // this error is not printed.
+	}
+
+	if s.APIKey == "" {
+		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", app)
+		return ErrInvalidURL // this error is not printed.
+	}
+
+	if !strings.HasPrefix(s.URL, "http://") && !strings.HasPrefix(s.URL, "https://") {
+		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, app, s.URL)
+	}
+
+	if len(s.APIKey) != apiKeyLength {
+		return fmt.Errorf("%s (%s) %w, your key length: %d",
+			app, s.URL, ErrInvalidKey, len(s.APIKey))
+	}
+
+	if s.Timeout.Duration == 0 {
+		s.Timeout.Duration = u.Timeout.Duration
+	}
+
+	if s.DeleteDelay.Duration == 0 {
+		s.DeleteDelay.Duration = u.DeleteDelay.Duration
+	}
+
+	if s.Path != "" {
+		s.Paths = append(s.Paths, s.Path)
+	}
+
+	for idx, path := range s.Paths {
+		s.Paths[idx] = expandHomedir(path)
+	}
+
+	if len(s.Paths) == 0 {
+		s.Paths = []string{defaultSavePath}
+	}
+
+	if s.Protocols == "" {
+		s.Protocols = defaultProtocol
+	}
+
+	s.Config.Client = &http.Client{
+		Timeout: s.Timeout.Duration,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: !s.ValidSSL}, //nolint:gosec
+		},
+	}
+
+	return nil
 }

@@ -1,10 +1,7 @@
 package unpackerr
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"strings"
+	"errors"
 	"time"
 
 	"golift.io/starr"
@@ -28,56 +25,18 @@ type WhisparrConfig struct {
 func (u *Unpackerr) validateWhisparr() error {
 	tmp := u.Whisparr[:0]
 
-	for i := range u.Whisparr {
-		if u.Whisparr[i].URL == "" {
-			u.Errorf("Missing Whisparr URL in one of your configurations, skipped and ignored.")
-			continue
+	for idx := range u.Whisparr {
+		if err := u.validateApp(&u.Whisparr[idx].StarrConfig, starr.Whisparr); err != nil {
+			if errors.Is(err, ErrInvalidURL) {
+				continue // We ignore these errors, just remove the instance from the list.
+			}
+
+			return err
 		}
 
-		if u.Whisparr[i].APIKey == "" {
-			u.Errorf("Missing Whisparr API Key in one of your configurations, skipped and ignored.")
-			continue
-		}
-
-		if !strings.HasPrefix(u.Whisparr[i].URL, "http://") && !strings.HasPrefix(u.Whisparr[i].URL, "https://") {
-			return fmt.Errorf("%w: (whisparr) %s", ErrInvalidURL, u.Whisparr[i].URL)
-		}
-
-		if len(u.Whisparr[i].APIKey) != apiKeyLength {
-			return fmt.Errorf("%s (%s) %w, your key length: %d",
-				"Whisparr", u.Whisparr[i].URL, ErrInvalidKey, len(u.Whisparr[i].APIKey))
-		}
-
-		if u.Whisparr[i].Timeout.Duration == 0 {
-			u.Whisparr[i].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if u.Whisparr[i].DeleteDelay.Duration == 0 {
-			u.Whisparr[i].DeleteDelay.Duration = u.DeleteDelay.Duration
-		}
-
-		if u.Whisparr[i].Path != "" {
-			u.Whisparr[i].Paths = append(u.Whisparr[i].Paths, u.Whisparr[i].Path)
-		}
-
-		if len(u.Whisparr[i].Paths) == 0 {
-			u.Whisparr[i].Paths = []string{defaultSavePath}
-		}
-
-		if u.Whisparr[i].Protocols == "" {
-			u.Whisparr[i].Protocols = defaultProtocol
-		}
-
-		u.Whisparr[i].Config.Client = &http.Client{
-			Timeout: u.Whisparr[i].Timeout.Duration,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !u.Whisparr[i].ValidSSL}, //nolint:gosec
-			},
-		}
-
-		// shoehorned!
-		u.Whisparr[i].Radarr = radarr.New(&u.Whisparr[i].Config)
-		tmp = append(tmp, u.Whisparr[i])
+		// shoehorned into Radarr!
+		u.Whisparr[idx].Radarr = radarr.New(&u.Whisparr[idx].Config)
+		tmp = append(tmp, u.Whisparr[idx])
 	}
 
 	u.Whisparr = tmp

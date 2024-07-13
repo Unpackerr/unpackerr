@@ -72,6 +72,8 @@ services:
       - UN_FOLDER_0_DELETE_ORIGINAL=false
       - UN_FOLDER_0_DELETE_FILES=false
       - UN_FOLDER_0_MOVE_BACK=false
+      - UN_FOLDER_0_DISABLE_LOG=false
+      - UN_FOLDER_0_DISABLE_RECURSION=false
       # Webhook Config
       - UN_WEBHOOK_0_URL=
       - UN_WEBHOOK_0_NAME=

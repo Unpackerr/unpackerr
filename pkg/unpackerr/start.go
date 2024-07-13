@@ -158,7 +158,10 @@ func Start() (err error) {
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	u.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
 
-	output, err := cnfgfile.Parse(u.Config, &cnfgfile.Opts{Name: "Unpackerr"})
+	output, err := cnfgfile.Parse(u.Config, &cnfgfile.Opts{
+		Name:          "Unpackerr",
+		TransformPath: expandHomedir,
+	})
 	if err != nil {
 		return fmt.Errorf("using filepath: %w", err)
 	}

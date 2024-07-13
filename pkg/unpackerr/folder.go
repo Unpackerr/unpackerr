@@ -81,19 +81,19 @@ func (u *Unpackerr) logFolders() {
 			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
-			"log file: %v, move back:%v, isos:%v, event buffer:%d)",
+		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, "+
+			"log_file:%v, move_back:%v, isos:%v, event_buffer:%d)",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
 	} else {
-		u.Printf(" => Folder Config: %d paths, event buffer: %d ", count, u.Folder.Buffer)
+		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
 				epath = ", extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v, isos:%v)",
+			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, log_file:%v, move_back:%v, isos:%v)",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
 	}

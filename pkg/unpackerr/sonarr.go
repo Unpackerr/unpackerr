@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"golift.io/starr"
@@ -13,7 +12,6 @@ import (
 type SonarrConfig struct {
 	StarrConfig
 	Queue          *sonarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
@@ -39,13 +37,13 @@ func (u *Unpackerr) validateSonarr() error {
 }
 
 func (u *Unpackerr) logSonarr() {
-	if c := len(u.Sonarr); c == 1 {
+	if count := len(u.Sonarr); count == 1 {
 		u.Printf(" => Sonarr Config: 1 server: "+starrLogLine,
 			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
 			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
 			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
 	} else {
-		u.Printf(" => Sonarr Config: %d servers", c)
+		u.Printf(" => Sonarr Config: %d servers", count)
 
 		for _, f := range u.Sonarr {
 			u.Printf(starrLogPfx+starrLogLine,
@@ -84,12 +82,12 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, q.Title)
-			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Map[q.Title] = &Extract{
+		for _, record := range server.Queue.Records {
+			switch x, ok := u.Map[record.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, record.Title)
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Map[record.Title] = &Extract{
 					App:         starr.Sonarr,
 					URL:         server.URL,
 					Updated:     now,
@@ -97,20 +95,21 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.OutputPath, starr.Sonarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(record.OutputPath, starr.Sonarr, record.Title, server.Paths),
 					IDs: map[string]any{
-						"title":      q.Title,
-						"downloadId": q.DownloadID,
-						"seriesId":   q.SeriesID,
-						"episodeId":  q.EpisodeID,
-						"reason":     buildStatusReason(q.Status, q.StatusMessages),
+						"title":      record.Title,
+						"downloadId": record.DownloadID,
+						"seriesId":   record.SeriesID,
+						"episodeId":  record.EpisodeID,
+						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
 
 				fallthrough
 			default:
 				u.Debugf("%s (%s): %s (%s:%d%%): %v (Ep: %v)",
-					starr.Sonarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title, q.EpisodeID)
+					starr.Sonarr, server.URL, record.Status, record.Protocol,
+					percent(record.Sizeleft, record.Size), record.Title, record.EpisodeID)
 			}
 		}
 	}
@@ -123,8 +122,8 @@ func (u *Unpackerr) haveSonarrQitem(name string) bool {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			if q.Title == name {
+		for _, record := range server.Queue.Records {
+			if record.Title == name {
 				return true
 			}
 		}

@@ -149,16 +149,16 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 	u.updateHistory(string(item.App) + ": " + item.Path)
 }
 
-func (u *Unpackerr) getPasswordFromPath(s string) string {
-	start, end := strings.Index(s, "{{"), strings.Index(s, "}}")
+func (u *Unpackerr) getPasswordFromPath(path string) string {
+	start, end := strings.Index(path, "{{"), strings.Index(path, "}}")
 
 	if start == -1 || end == -1 || start > end {
 		return ""
 	}
 
-	u.Debugf("Found password in Path: %s", s[start+2:end])
+	u.Debugf("Found password in Path: %s", path[start+2:end])
 
-	return s[start+2 : end]
+	return path[start+2 : end]
 }
 
 // checkExtractDone checks if an extracted and imported item needs to be deleted.

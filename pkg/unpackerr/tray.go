@@ -192,22 +192,22 @@ func (u *Unpackerr) makeStatsChannels() {
 	u.menu["stats_stacks"].Disable()
 }
 
-func (u *Unpackerr) updateTray(s *Stats, stacks uint) {
+func (u *Unpackerr) updateTray(stats *Stats, stacks uint) {
 	if !ui.HasGUI() {
 		return
 	}
 
-	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(s.Waiting), 10))
-	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(s.Queued), 10))
-	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(s.Extracting), 10))
-	u.menu["stats_failed"].SetTitle("Failed: " + strconv.FormatUint(uint64(s.Failed), 10))
-	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(s.Extracted), 10))
-	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(s.Imported), 10))
-	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(s.Deleted), 10))
+	u.menu["stats_waiting"].SetTitle("Waiting: " + strconv.FormatUint(uint64(stats.Waiting), 10))
+	u.menu["stats_queued"].SetTitle("Queued: " + strconv.FormatUint(uint64(stats.Queued), 10))
+	u.menu["stats_extracting"].SetTitle("Extracting: " + strconv.FormatUint(uint64(stats.Extracting), 10))
+	u.menu["stats_failed"].SetTitle("Failed: " + strconv.FormatUint(uint64(stats.Failed), 10))
+	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(stats.Extracted), 10))
+	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(stats.Imported), 10))
+	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(stats.Deleted), 10))
 	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(u.Finished), 10))
 	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(u.Retries), 10))
-	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(s.HookOK), 10))
-	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(s.HookFail), 10))
+	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(stats.HookOK), 10))
+	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(stats.HookFail), 10))
 	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), 10))
 }
 
@@ -273,22 +273,22 @@ func (u *Unpackerr) updateHistory(item string) {
 	}
 
 	// u.History.Items is a slice with a set (identical) length and capacity.
-	for i := len(u.History.Items) - 1; i >= 0; i-- {
-		if i == 0 {
+	for idx := range len(u.History.Items) {
+		if idx == 0 {
 			u.History.Items[0] = item
 		} else {
-			u.History.Items[i] = u.History.Items[i-1]
+			u.History.Items[idx] = u.History.Items[idx-1]
 		}
 
 		if !ui.HasGUI() {
 			continue
 		}
 
-		if u.History.Items[i] != "" {
-			u.menu[hist+strconv.Itoa(i)].SetTitle(u.History.Items[i])
-			u.menu[hist+strconv.Itoa(i)].Show()
+		if u.History.Items[idx] != "" {
+			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.History.Items[idx])
+			u.menu[hist+strconv.Itoa(idx)].Show()
 		} else {
-			u.menu[hist+strconv.Itoa(i)].Hide()
+			u.menu[hist+strconv.Itoa(idx)].Hide()
 		}
 	}
 }

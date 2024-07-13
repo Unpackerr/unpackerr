@@ -28,25 +28,25 @@ const (
 )
 
 func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
-	var f, msg string
+	var configFile, msg string
 
 	// Load up the default file path and a list of alternate paths.
 	def, cfl := configFileLocactions()
 	// Search for one, starting with the default.
-	for _, f = range append([]string{u.Flags.ConfigFile}, cfl...) {
-		f = expandHomedir(f)
-		if _, err := os.Stat(f); err == nil {
+	for _, configFile = range append([]string{u.Flags.ConfigFile}, cfl...) {
+		configFile = expandHomedir(configFile)
+		if _, err := os.Stat(configFile); err == nil {
 			break // found one, bail out.
 		} // else { u.Print("rip:", err) }
 
-		f = ""
+		configFile = ""
 	}
 
 	// it's possible to get here with or without a file found.
 	msg = msgNoConfigFile
 
-	if f != "" {
-		u.Flags.ConfigFile, _ = filepath.Abs(f)
+	if configFile != "" {
+		u.Flags.ConfigFile, _ = filepath.Abs(configFile)
 		msg = msgConfigFound + u.Flags.ConfigFileWithAge()
 
 		if err := cnfgfile.Unmarshal(u.Config, u.Flags.ConfigFile); err != nil {
@@ -67,9 +67,9 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, err
 	}
 
-	fm, dm := u.validateConfig()
+	fileMode, dirMode := u.validateConfig()
 
-	return fm, dm, msg, nil
+	return fileMode, dirMode, msg, nil
 }
 
 func (f *Flags) ConfigFileWithAge() string {
@@ -130,16 +130,16 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		base = 32
 	)
 
-	fm, err := strconv.ParseUint(u.FileMode, bits, base)
+	fileMode, err := strconv.ParseUint(u.FileMode, bits, base)
 	if err != nil || u.FileMode == "" {
-		fm = defaultFileMode
-		u.FileMode = strconv.FormatUint(fm, bits)
+		fileMode = defaultFileMode
+		u.FileMode = strconv.FormatUint(fileMode, bits)
 	}
 
-	dm, err := strconv.ParseUint(u.DirMode, bits, base)
+	dirMode, err := strconv.ParseUint(u.DirMode, bits, base)
 	if err != nil || u.DirMode == "" {
-		dm = defaultDirMode
-		u.DirMode = strconv.FormatUint(dm, bits)
+		dirMode = defaultDirMode
+		u.DirMode = strconv.FormatUint(dirMode, bits)
 	}
 
 	if u.Parallel == 0 {
@@ -176,7 +176,7 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.History.Items = make([]string, u.KeepHistory)
 	}
 
-	return fm, dm
+	return fileMode, dirMode
 }
 
 // createConfigFile attempts to avoid creating a config file on linux or freebsd.
@@ -202,15 +202,15 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 		return "", fmt.Errorf("making config dir: %w", err)
 	}
 
-	f, err := os.Create(file)
+	fOpen, err := os.Create(file)
 	if err != nil {
 		return "", fmt.Errorf("creating config file: %w", err)
 	}
-	defer f.Close()
+	defer fOpen.Close()
 
-	if a, err := bindata.Asset("../../examples/unpackerr.conf.example"); err != nil {
+	if asset, err := bindata.Asset("../../examples/unpackerr.conf.example"); err != nil {
 		return "", fmt.Errorf("getting config file: %w", err)
-	} else if _, err = f.Write(a); err != nil {
+	} else if _, err = fOpen.Write(asset); err != nil {
 		return "", fmt.Errorf("writing config file: %w", err)
 	}
 
@@ -270,54 +270,54 @@ func expandHomedir(filePath string) string {
 	return expanded
 }
 
-func (u *Unpackerr) validateApp(s *StarrConfig, app starr.App) error {
-	if s.URL == "" {
+func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
+	if conf.URL == "" {
 		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", app)
 		return ErrInvalidURL // this error is not printed.
 	}
 
-	if s.APIKey == "" {
+	if conf.APIKey == "" {
 		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", app)
 		return ErrInvalidURL // this error is not printed.
 	}
 
-	if !strings.HasPrefix(s.URL, "http://") && !strings.HasPrefix(s.URL, "https://") {
-		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, app, s.URL)
+	if !strings.HasPrefix(conf.URL, "http://") && !strings.HasPrefix(conf.URL, "https://") {
+		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, app, conf.URL)
 	}
 
-	if len(s.APIKey) != apiKeyLength {
+	if len(conf.APIKey) != apiKeyLength {
 		return fmt.Errorf("%s (%s) %w, your key length: %d",
-			app, s.URL, ErrInvalidKey, len(s.APIKey))
+			app, conf.URL, ErrInvalidKey, len(conf.APIKey))
 	}
 
-	if s.Timeout.Duration == 0 {
-		s.Timeout.Duration = u.Timeout.Duration
+	if conf.Timeout.Duration == 0 {
+		conf.Timeout.Duration = u.Timeout.Duration
 	}
 
-	if s.DeleteDelay.Duration == 0 {
-		s.DeleteDelay.Duration = u.DeleteDelay.Duration
+	if conf.DeleteDelay.Duration == 0 {
+		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
 	}
 
-	if s.Path != "" {
-		s.Paths = append(s.Paths, s.Path)
+	if conf.Path != "" {
+		conf.Paths = append(conf.Paths, conf.Path)
 	}
 
-	for idx, path := range s.Paths {
-		s.Paths[idx] = expandHomedir(path)
+	for idx, path := range conf.Paths {
+		conf.Paths[idx] = expandHomedir(path)
 	}
 
-	if len(s.Paths) == 0 {
-		s.Paths = []string{defaultSavePath}
+	if len(conf.Paths) == 0 {
+		conf.Paths = []string{defaultSavePath}
 	}
 
-	if s.Protocols == "" {
-		s.Protocols = defaultProtocol
+	if conf.Protocols == "" {
+		conf.Protocols = defaultProtocol
 	}
 
-	s.Config.Client = &http.Client{
-		Timeout: s.Timeout.Duration,
+	conf.Config.Client = &http.Client{
+		Timeout: conf.Timeout.Duration,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: !s.ValidSSL}, //nolint:gosec
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: !conf.ValidSSL}, //nolint:gosec
 		},
 	}
 

@@ -91,31 +91,32 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, q.Protocol, q.Title)
-			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Map[q.Title] = &Extract{
+		for _, record := range server.Queue.Records {
+			switch x, ok := u.Map[record.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Whisparr, server.URL, record.Protocol, record.Title)
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Map[record.Title] = &Extract{
 					App:         starr.Whisparr,
 					URL:         server.URL,
 					Updated:     now,
 					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
-					Path:        u.getDownloadPath(q.OutputPath, starr.Whisparr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(record.OutputPath, starr.Whisparr, record.Title, server.Paths),
 					IDs: map[string]any{
-						"downloadId": q.DownloadID,
-						"title":      q.Title,
-						"movieId":    q.MovieID,
-						"reason":     buildStatusReason(q.Status, q.StatusMessages),
+						"downloadId": record.DownloadID,
+						"title":      record.Title,
+						"movieId":    record.MovieID,
+						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
 
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Whisparr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Whisparr, server.URL, record.Status, record.Protocol,
+					percent(record.Sizeleft, record.Size), record.Title)
 			}
 		}
 	}
@@ -128,8 +129,8 @@ func (u *Unpackerr) haveWhisparrQitem(name string) bool {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			if q.Title == name {
+		for _, record := range server.Queue.Records {
+			if record.Title == name {
 				return true
 			}
 		}

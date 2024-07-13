@@ -39,26 +39,27 @@ func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect satisfies the Prometheus custom metrics collector.
-func (c *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
+func (c *MetricsCollector) Collect(metrics chan<- prometheus.Metric) {
 	stats := c.stats()
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Waiting), "waiting")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Queued), "queued")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Extracting), "extracting")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Failed), "failed")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Extracted), "extracted")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Imported), "imported")
-	ch <- prometheus.MustNewConstMetric(c.gauge, prometheus.GaugeValue, float64(stats.Deleted), "deleted")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(stats.HookOK), "hook_ok")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(stats.HookFail), "hook_fail")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(stats.CmdOK), "cmd_ok")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(stats.CmdFail), "cmd_fail")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(c.Retries), "retries")
-	ch <- prometheus.MustNewConstMetric(c.counter, prometheus.CounterValue, float64(c.Finished), "finished")
-	ch <- prometheus.MustNewConstMetric(c.buffer, prometheus.GaugeValue, float64(len(c.folders.Events)), "folder_events")
-	ch <- prometheus.MustNewConstMetric(c.buffer, prometheus.GaugeValue, float64(len(c.updates)), "xtractr_updates")
-	ch <- prometheus.MustNewConstMetric(c.buffer, prometheus.GaugeValue, float64(len(c.folders.Updates)), "folder_updates")
-	ch <- prometheus.MustNewConstMetric(c.buffer, prometheus.GaugeValue, float64(len(c.delChan)), "deletes")
-	ch <- prometheus.MustNewConstMetric(c.buffer, prometheus.GaugeValue, float64(len(c.hookChan)), "hooks")
+	newMetric := prometheus.MustNewConstMetric
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Waiting), "waiting")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Queued), "queued")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Extracting), "extracting")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Failed), "failed")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Extracted), "extracted")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Imported), "imported")
+	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Deleted), "deleted")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(stats.HookOK), "hook_ok")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(stats.HookFail), "hook_fail")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(stats.CmdOK), "cmd_ok")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(stats.CmdFail), "cmd_fail")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(c.Retries), "retries")
+	metrics <- newMetric(c.counter, prometheus.CounterValue, float64(c.Finished), "finished")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.folders.Events)), "folder_events")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.updates)), "xtractr_updates")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.folders.Updates)), "folder_updates")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.delChan)), "deletes")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.hookChan)), "hooks")
 }
 
 // updateMetrics observes metrics for each completed extraction. The url for a folder is the watch path.

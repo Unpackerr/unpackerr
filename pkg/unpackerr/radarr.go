@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"golift.io/starr"
@@ -13,7 +12,6 @@ import (
 type RadarrConfig struct {
 	StarrConfig
 	Queue          *radarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
@@ -39,13 +37,13 @@ func (u *Unpackerr) validateRadarr() error {
 }
 
 func (u *Unpackerr) logRadarr() {
-	if c := len(u.Radarr); c == 1 {
+	if count := len(u.Radarr); count == 1 {
 		u.Printf(" => Radarr Config: 1 server: "+starrLogLine,
 			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
 			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Syncthing,
 			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
 	} else {
-		u.Printf(" => Radarr Config: %d servers", c)
+		u.Printf(" => Radarr Config: %d servers", count)
 
 		for _, f := range u.Radarr {
 			u.Printf(starrLogPfx+starrLogLine,
@@ -84,12 +82,12 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, q.Protocol, q.Title)
-			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Map[q.Title] = &Extract{ // Save the download to our map.
+		for _, record := range server.Queue.Records {
+			switch x, ok := u.Map[record.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, record.Protocol, record.Title)
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Map[record.Title] = &Extract{ // Save the download to our map.
 					App:         starr.Radarr,
 					URL:         server.URL,
 					Updated:     now,
@@ -97,19 +95,20 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.OutputPath, starr.Radarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(record.OutputPath, starr.Radarr, record.Title, server.Paths),
 					IDs: map[string]any{
-						"downloadId": q.DownloadID,
-						"title":      q.Title,
-						"movieId":    q.MovieID,
-						"reason":     buildStatusReason(q.Status, q.StatusMessages),
+						"downloadId": record.DownloadID,
+						"title":      record.Title,
+						"movieId":    record.MovieID,
+						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
 
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Radarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Radarr, server.URL, record.Status, record.Protocol,
+					percent(record.Sizeleft, record.Size), record.Title)
 			}
 		}
 	}
@@ -122,8 +121,8 @@ func (u *Unpackerr) haveRadarrQitem(name string) bool {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			if q.Title == name {
+		for _, record := range server.Queue.Records {
+			if record.Title == name {
 				return true
 			}
 		}

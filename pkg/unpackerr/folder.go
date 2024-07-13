@@ -81,19 +81,19 @@ func (u *Unpackerr) logFolders() {
 			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete after:%v, delete orig:%v, "+
-			"log file: %v, move back:%v, isos:%v, event buffer:%d)",
+		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, "+
+			"log_file:%v, move_back:%v, isos:%v, event_buffer:%d)",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
 	} else {
-		u.Printf(" => Folder Config: %d paths, event buffer: %d ", count, u.Folder.Buffer)
+		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
 				epath = ", extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s (delete after:%v, delete orig:%v, log file: %v, move back:%v, isos:%v)",
+			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, log_file:%v, move_back:%v, isos:%v)",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
 	}
@@ -397,10 +397,10 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		}
 
 		// processEvent (below) handles events sent to f.Events.
-		if p := filepath.Dir(name); p == cnfg.Path {
+		if dir := filepath.Dir(name); dir == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
 		} else {
-			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name, op: operation}
+			f.Events <- &eventData{name: filepath.Base(dir), cnfg: cnfg, file: name, op: operation}
 		}
 
 		return

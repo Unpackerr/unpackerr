@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"golift.io/starr"
@@ -14,7 +13,6 @@ type LidarrConfig struct {
 	StarrConfig
 	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
 func (u *Unpackerr) validateLidarr() error {
@@ -39,13 +37,13 @@ func (u *Unpackerr) validateLidarr() error {
 }
 
 func (u *Unpackerr) logLidarr() {
-	if c := len(u.Lidarr); c == 1 {
+	if count := len(u.Lidarr); count == 1 {
 		u.Printf(" => Lidarr Config: 1 server: "+starrLogLine,
 			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
 			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Syncthing,
 			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths)
 	} else {
-		u.Printf(" => Lidarr Config: %d servers", c)
+		u.Printf(" => Lidarr Config: %d servers", count)
 
 		for _, f := range u.Lidarr {
 			u.Printf(starrLogPfx+starrLogLine,
@@ -84,12 +82,12 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, q.Protocol, q.Title)
-			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Map[q.Title] = &Extract{
+		for _, record := range server.Queue.Records {
+			switch x, ok := u.Map[record.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, record.Protocol, record.Title)
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Map[record.Title] = &Extract{
 					App:         starr.Lidarr,
 					URL:         server.URL,
 					Updated:     now,
@@ -97,20 +95,21 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.OutputPath, starr.Lidarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(record.OutputPath, starr.Lidarr, record.Title, server.Paths),
 					IDs: map[string]any{
-						"title":      q.Title,
-						"artistId":   q.ArtistID,
-						"albumId":    q.AlbumID,
-						"downloadId": q.DownloadID,
-						"reason":     buildStatusReason(q.Status, q.StatusMessages),
+						"title":      record.Title,
+						"artistId":   record.ArtistID,
+						"albumId":    record.AlbumID,
+						"downloadId": record.DownloadID,
+						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
 
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Lidarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Lidarr, server.URL, record.Status, record.Protocol,
+					percent(record.Sizeleft, record.Size), record.Title)
 			}
 		}
 	}
@@ -123,8 +122,8 @@ func (u *Unpackerr) haveLidarrQitem(name string) bool {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			if q.Title == name {
+		for _, record := range server.Queue.Records {
+			if record.Title == name {
 				return true
 			}
 		}

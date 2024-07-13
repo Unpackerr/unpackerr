@@ -133,65 +133,64 @@ func New() *Unpackerr {
 }
 
 // Start runs the app.
-func Start() (err error) {
+func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
-	u := New().ParseFlags() // Grab CLI args (like config file location).
-	if u.Flags.verReq {
+	unpackerr := New().ParseFlags() // Grab CLI args (like config file location).
+	if unpackerr.Flags.verReq {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
-
-		return nil // don't run anything else.
+		return nil                              // don't run anything else.
 	}
 
-	fm, dm, msg, err := u.unmarshalConfig()
+	fileMode, dirMode, msg, err := unpackerr.unmarshalConfig()
 	if err != nil {
 		return fmt.Errorf("%s: %w", msg, err)
 	}
-	// Do not do any logging before this.
-	// ie. No running of u.Debugf or u.Print* before running unmarshalConfig()
-
 	// We cannot log anything until setupLogging() runs.
-	// We cannot run setupLogging until we read the above config.
-	u.setupLogging()
-	u.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Umask: %d, Now: %v",
+	// We cannot run setupLogging until we unmarshal the above config.
+	unpackerr.setupLogging()
+	// Do not do any logging before this.
+	// ie. No running of u.Debugf or u.Print* before running setupLogging()
+	unpackerr.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Umask: %d, Now: %v",
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
-	u.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
-
-	output, err := cnfgfile.Parse(u.Config, &cnfgfile.Opts{
+	unpackerr.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+	// Parse filepath: strings from the config and read in extra config files.
+	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",
 		TransformPath: expandHomedir,
+		Prefix:        "filepath:",
 	})
 	if err != nil {
-		return fmt.Errorf("using filepath: %w", err)
+		return fmt.Errorf("parsing filepaths: %w", err)
 	}
 
-	if err := u.validateApps(); err != nil {
+	if err := unpackerr.validateApps(); err != nil {
 		return err
 	}
 
-	u.logStartupInfo(msg, output)
+	unpackerr.logStartupInfo(msg, output)
 
-	if u.Flags.webhook > 0 {
-		return u.sampleWebhook(ExtractStatus(u.Flags.webhook))
+	if unpackerr.Flags.webhook > 0 {
+		return unpackerr.sampleWebhook(ExtractStatus(unpackerr.Flags.webhook))
 	}
 
-	u.Xtractr = xtractr.NewQueue(&xtractr.Config{
-		Parallel: int(u.Parallel),
+	unpackerr.Xtractr = xtractr.NewQueue(&xtractr.Config{
+		Parallel: int(unpackerr.Parallel),
 		Suffix:   suffix,
-		Logger:   u.Logger,
-		FileMode: os.FileMode(fm),
-		DirMode:  os.FileMode(dm),
+		Logger:   unpackerr.Logger,
+		FileMode: os.FileMode(fileMode),
+		DirMode:  os.FileMode(dirMode),
 	})
 
-	if len(u.Webhook) > 0 || len(u.Cmdhook) > 0 {
-		go u.watchCmdAndWebhooks()
+	if len(unpackerr.Webhook) > 0 || len(unpackerr.Cmdhook) > 0 {
+		go unpackerr.watchCmdAndWebhooks()
 	}
 
-	go u.watchDeleteChannel()
-	u.startWebServer()
-	u.watchWorkThread()
-	u.startTray() // runs tray or waits for exit depending on hasGUI.
+	go unpackerr.watchDeleteChannel()
+	unpackerr.startWebServer()
+	unpackerr.watchWorkThread()
+	unpackerr.startTray() // runs tray or waits for exit depending on hasGUI.
 
 	return nil
 }
@@ -210,46 +209,46 @@ func fileList(paths ...string) []string {
 }
 
 func (u *Unpackerr) watchDeleteChannel() {
-	for f := range u.delChan {
-		u.Debugf("Deleting files: %s", strings.Join(fileList(f.Paths...), ", "))
+	for input := range u.delChan {
+		u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
 
-		if len(f.Paths) > 0 && f.Paths[0] != "" {
-			u.DeleteFiles(f.Paths...)
+		if len(input.Paths) > 0 && input.Paths[0] != "" {
+			u.DeleteFiles(input.Paths...)
 
-			if !f.PurgeEmptyParent {
+			if !input.PurgeEmptyParent {
 				continue
 			}
 
-			for _, path := range f.Paths {
-				if p := filepath.Dir(path); dirIsEmpty(p) {
-					u.Printf("Purging empty folder: %s", p)
-					u.DeleteFiles(p)
+			for _, path := range input.Paths {
+				if dir := filepath.Dir(path); dirIsEmpty(dir) {
+					u.Printf("Purging empty folder: %s", dir)
+					u.DeleteFiles(dir)
 				}
 			}
 		}
 	}
 }
 
-func dirIsEmpty(name string) bool {
-	f, err := os.Open(name)
+func dirIsEmpty(path string) bool {
+	dir, err := os.Open(path)
 	if err != nil {
 		return false
 	}
-	defer f.Close()
+	defer dir.Close()
 
-	_, err = f.Readdirnames(1)
+	_, err = dir.Readdirnames(1)
 
 	return err == io.EOF //nolint:errorlint // this is still correct.
 }
 
 func (u *Unpackerr) watchCmdAndWebhooks() {
-	for qh := range u.hookChan {
-		if qh.WebhookConfig.URL != "" {
-			u.sendWebhookWithLog(qh.WebhookConfig, qh.WebhookPayload)
+	for hook := range u.hookChan {
+		if hook.WebhookConfig.URL != "" {
+			u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 		}
 
-		if qh.WebhookConfig.Command != "" {
-			u.runCmdhookWithLog(qh.WebhookConfig, qh.WebhookPayload)
+		if hook.WebhookConfig.Command != "" {
+			u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 		}
 	}
 }
@@ -315,8 +314,13 @@ func (u *Unpackerr) Run() {
 }
 
 // Custom percentage procedure for starr apps.
-func percent(size, total float64) int {
-	const oneHundred = 100
+// Returns an unsigned integer 0-100.
+func percent(remaining, total float64) uint {
+	const oneHundred = 100.0
 
-	return int(oneHundred - (size / total * oneHundred))
+	if remaining == 0 {
+		return oneHundred
+	}
+
+	return uint(oneHundred - (remaining / total * oneHundred))
 }

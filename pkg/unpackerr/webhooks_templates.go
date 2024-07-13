@@ -308,16 +308,16 @@ func (w *WebhookConfig) Template() (*template.Template, error) {
 	}
 }
 
-func separator(s string) func() string {
-	var i bool
+func separator(separator string) func() string {
+	var found bool
 
 	return func() string {
-		if !i {
-			i = true
+		if !found {
+			found = true
 			return ""
 		}
 
-		return s
+		return separator
 	}
 }
 

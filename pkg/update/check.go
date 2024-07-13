@@ -74,7 +74,7 @@ func GetRelease(uri string) (*GitHubReleasesLatest, error) {
 
 // FillUpdate compares a current version with the latest GitHub release.
 func FillUpdate(release *GitHubReleasesLatest, version string) *Update {
-	u := &Update{
+	update := &Update{
 		RelDate: release.PublishedAt,
 		CurrURL: release.HTMLURL,
 		Current: release.TagName,
@@ -97,12 +97,12 @@ func FillUpdate(release *GitHubReleasesLatest, version string) *Update {
 
 	for _, file := range release.Assets {
 		if strings.HasSuffix(file.BrowserDownloadURL, suffix) {
-			u.CurrURL = file.BrowserDownloadURL
-			u.RelDate = file.UpdatedAt
+			update.CurrURL = file.BrowserDownloadURL
+			update.RelDate = file.UpdatedAt
 		}
 	}
 
-	return u
+	return update
 }
 
 // GitHubReleasesLatest is the output from the releases/latest API on GitHub.

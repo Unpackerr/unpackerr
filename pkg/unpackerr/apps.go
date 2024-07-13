@@ -94,30 +94,30 @@ func (u *Unpackerr) watchWorkThread() {
 // retrieveAppQueues polls all the starr app queues. At the same time.
 // Then calls the check methods to scan their queue contents for changes.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
+	wait := sync.WaitGroup{}
+	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
 	// Run each app's getQueue method in a go routine as a waitgroup.
 	for _, server := range u.Lidarr {
-		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wg.Done}
+		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wait.Done}
 	}
 
 	for _, server := range u.Radarr {
-		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wg.Done}
+		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wait.Done}
 	}
 
 	for _, server := range u.Readarr {
-		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wg.Done}
+		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wait.Done}
 	}
 
 	for _, server := range u.Sonarr {
-		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wg.Done}
+		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wait.Done}
 	}
 
 	for _, server := range u.Whisparr {
-		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wg.Done}
+		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wait.Done}
 	}
 
-	wg.Wait()
+	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
 	u.checkLidarrQueue(now)
 	u.checkRadarrQueue(now)
@@ -193,9 +193,11 @@ func (slice StringSlice) MarshalENV(tag string) (map[string]string, error) {
 	return map[string]string{tag: strings.Join(slice, ",")}, nil
 }
 
-func buildStatusReason(status string, messages []*starr.StatusMessage) (output string) {
-	for i := range messages {
-		for _, msg := range messages[i].Messages {
+func buildStatusReason(status string, messages []*starr.StatusMessage) string {
+	var output string
+
+	for idx := range messages {
+		for _, msg := range messages[idx].Messages {
 			if output != "" {
 				output += "; "
 			}

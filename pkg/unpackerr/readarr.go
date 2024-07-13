@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"golift.io/starr"
@@ -13,7 +12,6 @@ import (
 type ReadarrConfig struct {
 	StarrConfig
 	Queue            *readarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	sync.RWMutex     `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
@@ -39,13 +37,13 @@ func (u *Unpackerr) validateReadarr() error {
 }
 
 func (u *Unpackerr) logReadarr() {
-	if c := len(u.Readarr); c == 1 {
+	if count := len(u.Readarr); count == 1 {
 		u.Printf(" => Readarr Config: 1 server: "+starrLogLine,
 			u.Readarr[0].URL, u.Readarr[0].APIKey != "", u.Readarr[0].Timeout,
 			u.Readarr[0].ValidSSL, u.Readarr[0].Protocols, u.Readarr[0].Syncthing,
 			u.Readarr[0].DeleteOrig, u.Readarr[0].DeleteDelay.Duration, u.Readarr[0].Paths)
 	} else {
-		u.Printf(" => Readarr Config: %d servers", c)
+		u.Printf(" => Readarr Config: %d servers", count)
 
 		for _, f := range u.Readarr {
 			u.Printf(starrLogPfx+starrLogLine,
@@ -84,12 +82,12 @@ func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			switch x, ok := u.Map[q.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, q.Protocol, q.Title)
-			case !ok && u.isComplete(q.Status, q.Protocol, server.Protocols):
-				u.Map[q.Title] = &Extract{
+		for _, record := range server.Queue.Records {
+			switch x, ok := u.Map[record.Title]; {
+			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, record.Protocol, record.Title)
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+				u.Map[record.Title] = &Extract{
 					App:         starr.Readarr,
 					URL:         server.URL,
 					Updated:     now,
@@ -97,20 +95,21 @@ func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
-					Path:        u.getDownloadPath(q.OutputPath, starr.Readarr, q.Title, server.Paths),
+					Path:        u.getDownloadPath(record.OutputPath, starr.Readarr, record.Title, server.Paths),
 					IDs: map[string]any{
-						"title":      q.Title,
-						"authorId":   q.AuthorID,
-						"bookId":     q.BookID,
-						"downloadId": q.DownloadID,
-						"reason":     buildStatusReason(q.Status, q.StatusMessages),
+						"title":      record.Title,
+						"authorId":   record.AuthorID,
+						"bookId":     record.BookID,
+						"downloadId": record.DownloadID,
+						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
 
 				fallthrough
 			default:
 				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Readarr, server.URL, q.Status, q.Protocol, percent(q.Sizeleft, q.Size), q.Title)
+					starr.Readarr, server.URL, record.Status, record.Protocol,
+					percent(record.Sizeleft, record.Size), record.Title)
 			}
 		}
 	}
@@ -123,8 +122,8 @@ func (u *Unpackerr) haveReadarrQitem(name string) bool {
 			continue
 		}
 
-		for _, q := range server.Queue.Records {
-			if q.Title == name {
+		for _, record := range server.Queue.Records {
+			if record.Title == name {
 				return true
 			}
 		}

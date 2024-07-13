@@ -397,10 +397,10 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		}
 
 		// processEvent (below) handles events sent to f.Events.
-		if p := filepath.Dir(name); p == cnfg.Path {
+		if dir := filepath.Dir(name); dir == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
 		} else {
-			f.Events <- &eventData{name: filepath.Base(p), cnfg: cnfg, file: name, op: operation}
+			f.Events <- &eventData{name: filepath.Base(dir), cnfg: cnfg, file: name, op: operation}
 		}
 
 		return

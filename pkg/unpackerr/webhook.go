@@ -89,18 +89,18 @@ func (statuses ExtractStatuses) MarshalENV(tag string) (map[string]string, error
 }
 
 // runAllHooks sends webhooks and executes command hooks.
-func (u *Unpackerr) runAllHooks(i *Extract) {
-	if i.Status == IMPORTED && i.App == FolderString {
+func (u *Unpackerr) runAllHooks(item *Extract) {
+	if item.Status == IMPORTED && item.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
 
 	payload := &WebhookPayload{
-		Path:  i.Path,
-		App:   i.App,
-		IDs:   i.IDs,
-		Time:  i.Updated,
+		Path:  item.Path,
+		App:   item.App,
+		IDs:   item.IDs,
+		Time:  item.Updated,
 		Data:  nil,
-		Event: i.Status,
+		Event: item.Status,
 		// Application Metadata.
 		Go:       runtime.Version(),
 		OS:       runtime.GOOS,
@@ -111,40 +111,40 @@ func (u *Unpackerr) runAllHooks(i *Extract) {
 		Started:  version.Started,
 	}
 
-	if i.Status <= EXTRACTED && i.Resp != nil {
+	if item.Status <= EXTRACTED && item.Resp != nil {
 		payload.Data = &XtractPayload{
-			Files:   i.Resp.NewFiles,
-			File:    i.Resp.NewFiles,
-			Start:   i.Resp.Started,
-			Output:  i.Resp.Output,
-			Bytes:   i.Resp.Size,
-			Queue:   i.Resp.Queued,
-			Elapsed: cnfg.Duration{Duration: i.Resp.Elapsed},
+			Files:   item.Resp.NewFiles,
+			File:    item.Resp.NewFiles,
+			Start:   item.Resp.Started,
+			Output:  item.Resp.Output,
+			Bytes:   item.Resp.Size,
+			Queue:   item.Resp.Queued,
+			Elapsed: cnfg.Duration{Duration: item.Resp.Elapsed},
 		}
 
-		for _, v := range i.Resp.Archives {
+		for _, v := range item.Resp.Archives {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
 			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
-		for _, v := range i.Resp.Extras {
+		for _, v := range item.Resp.Extras {
 			payload.Data.Archives = append(payload.Data.Archives, v...)
 			payload.Data.Archive = append(payload.Data.Archive, v...)
 		}
 
-		if i.Resp.Error != nil {
-			payload.Data.Error = i.Resp.Error.Error()
+		if item.Resp.Error != nil {
+			payload.Data.Error = item.Resp.Error.Error()
 		}
 	}
 
 	for _, hook := range u.Webhook {
-		if hook.HasEvent(i.Status) && !hook.Excluded(i.App) {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
 			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
 		}
 	}
 
 	for _, hook := range u.Cmdhook {
-		if hook.HasEvent(i.Status) && !hook.Excluded(i.App) {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
 			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
 		}
 	}
@@ -161,14 +161,14 @@ func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayl
 		return
 	}
 
-	b := body.String()
+	bodyStr := body.String()
 
 	if reply, err := hook.Send(&body); err != nil {
-		u.Debugf("Webhook Payload: %s", b)
+		u.Debugf("Webhook Payload: %s", bodyStr)
 		u.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
 		u.Debugf("Webhook Response: %s", string(reply))
 	} else if !hook.Silent {
-		u.Debugf("Webhook Payload: %s", b)
+		u.Debugf("Webhook Payload: %s", bodyStr)
 		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
 	}
 }
@@ -187,12 +187,12 @@ func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
 	defer cancel()
 
-	b, err := w.send(ctx, body)
+	resp, err := w.send(ctx, body)
 	if err != nil {
 		w.fails++
 	}
 
-	return b, err
+	return resp, err
 }
 
 func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
@@ -221,42 +221,42 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 }
 
 func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
-	for i := range u.Webhook {
-		u.Webhook[i].Command = ""
+	for idx := range u.Webhook {
+		u.Webhook[idx].Command = ""
 
-		if u.Webhook[i].URL == "" {
+		if u.Webhook[idx].URL == "" {
 			return ErrWebhookNoURL
 		}
 
-		if u.Webhook[i].Name == "" {
-			u.Webhook[i].Name = u.Webhook[i].URL
+		if u.Webhook[idx].Name == "" {
+			u.Webhook[idx].Name = u.Webhook[idx].URL
 		}
 
-		if u.Webhook[i].Nickname == "" && u.Webhook[i].TmplPath == "" &&
-			!strings.Contains(u.Webhook[i].URL, "pushover.net") {
-			u.Webhook[i].Nickname = "Unpackerr"
+		if u.Webhook[idx].Nickname == "" && u.Webhook[idx].TmplPath == "" &&
+			!strings.Contains(u.Webhook[idx].URL, "pushover.net") {
+			u.Webhook[idx].Nickname = "Unpackerr"
 		}
 
-		if u.Webhook[i].CType == "" {
-			u.Webhook[i].CType = "application/json"
-			if strings.Contains(u.Webhook[i].URL, "pushover.net") {
-				u.Webhook[i].CType = "application/x-www-form-urlencoded"
+		if u.Webhook[idx].CType == "" {
+			u.Webhook[idx].CType = "application/json"
+			if strings.Contains(u.Webhook[idx].URL, "pushover.net") {
+				u.Webhook[idx].CType = "application/x-www-form-urlencoded"
 			}
 		}
 
-		if u.Webhook[i].Timeout.Duration == 0 {
-			u.Webhook[i].Timeout.Duration = u.Timeout.Duration
+		if u.Webhook[idx].Timeout.Duration == 0 {
+			u.Webhook[idx].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if len(u.Webhook[i].Events) == 0 {
-			u.Webhook[i].Events = []ExtractStatus{WAITING}
+		if len(u.Webhook[idx].Events) == 0 {
+			u.Webhook[idx].Events = []ExtractStatus{WAITING}
 		}
 
-		if u.Webhook[i].client == nil {
-			u.Webhook[i].client = &http.Client{
-				Timeout: u.Webhook[i].Timeout.Duration,
+		if u.Webhook[idx].client == nil {
+			u.Webhook[idx].client = &http.Client{
+				Timeout: u.Webhook[idx].Timeout.Duration,
 				Transport: &http.Transport{TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: u.Webhook[i].IgnoreSSL, //nolint:gosec
+					InsecureSkipVerify: u.Webhook[idx].IgnoreSSL, //nolint:gosec
 				}},
 			}
 		}
@@ -266,58 +266,60 @@ func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
 }
 
 func (u *Unpackerr) logWebhook() {
-	var ex, pfx string
+	var vars, prefix string
 
 	if len(u.Webhook) == 1 {
-		pfx = " => Webhook Config: 1 URL"
+		prefix = " => Webhook Config: 1 URL"
 	} else {
 		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
-		pfx = " =>    URL" //nolint:wsl
+		prefix = " =>    URL" //nolint:wsl
 	}
 
-	for _, f := range u.Webhook {
-		if ex = ""; f.TmplPath != "" {
-			ex = ", template: " + f.TmplPath + ", content_type: " + f.CType
+	for _, hook := range u.Webhook {
+		if vars = ""; hook.TmplPath != "" {
+			vars = ", template: " + hook.TmplPath + ", content_type: " + hook.CType
 		}
 
-		if f.Channel != "" {
-			ex += ", channel: " + f.Channel
+		if hook.Channel != "" {
+			vars += ", channel: " + hook.Channel
 		}
 
-		if f.Nickname != "" {
-			ex += ", nickname: " + f.Nickname
+		if hook.Nickname != "" {
+			vars += ", nickname: " + hook.Nickname
 		}
 
-		if len(f.Exclude) > 0 {
-			ex += ", exclude: \"" + strings.Join(f.Exclude, "; ") + `"`
+		if len(hook.Exclude) > 0 {
+			vars += ", exclude: \"" + strings.Join(hook.Exclude, "; ") + `"`
 		}
 
 		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",
-			pfx, f.Name, f.Timeout, f.IgnoreSSL, f.Silent, ex, logEvents(f.Events))
+			prefix, hook.Name, hook.Timeout, hook.IgnoreSSL, hook.Silent, vars, logEvents(hook.Events))
 	}
 }
 
 // logEvents is only used in logWebhook to format events for printing.
-func logEvents(events []ExtractStatus) (s string) {
+func logEvents(events []ExtractStatus) string {
 	if len(events) == 1 && events[0] == WAITING {
 		return "all"
 	}
 
-	for _, e := range events {
-		if len(s) > 0 {
-			s += "; "
+	var output string
+
+	for _, event := range events {
+		if len(output) > 0 {
+			output += "; "
 		}
 
-		s += e.String()
+		output += event.String()
 	}
 
-	return s
+	return output
 }
 
 // Excluded returns true if an app is in the Exclude slice.
 func (w *WebhookConfig) Excluded(app starr.App) bool {
-	for _, a := range w.Exclude {
-		if strings.EqualFold(a, string(app)) {
+	for _, exclude := range w.Exclude {
+		if strings.EqualFold(exclude, string(app)) {
 			return true
 		}
 	}
@@ -328,8 +330,8 @@ func (w *WebhookConfig) Excluded(app starr.App) bool {
 // HasEvent returns true if a status event is in the Events slice.
 // Also returns true if the Events slice has only one value of WAITING.
 func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
-	for _, h := range w.Events {
-		if (h == WAITING && len(w.Events) == 1) || h == e {
+	for _, status := range w.Events {
+		if (status == WAITING && len(w.Events) == 1) || status == e {
 			return true
 		}
 	}
@@ -338,11 +340,13 @@ func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
 }
 
 // WebhookCounts returns the total count of requests and errors for all webhooks.
-func (u *Unpackerr) WebhookCounts() (total uint, fails uint) {
+func (u *Unpackerr) WebhookCounts() (uint, uint) {
+	var total, fails uint
+
 	for _, hook := range u.Webhook {
-		t, f := hook.Counts()
-		total += t
-		fails += f
+		posts, failures := hook.Counts()
+		total += posts
+		fails += failures
 	}
 
 	return total, fails

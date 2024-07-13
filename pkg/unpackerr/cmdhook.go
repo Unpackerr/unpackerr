@@ -20,24 +20,24 @@ var (
 )
 
 func (u *Unpackerr) validateCmdhook() error {
-	for i := range u.Cmdhook {
-		u.Cmdhook[i].URL = ""
+	for idx := range u.Cmdhook {
+		u.Cmdhook[idx].URL = ""
 
-		u.Cmdhook[i].Command = expandHomedir(u.Cmdhook[i].Command)
-		if u.Cmdhook[i].Command == "" {
+		u.Cmdhook[idx].Command = expandHomedir(u.Cmdhook[idx].Command)
+		if u.Cmdhook[idx].Command == "" {
 			return ErrCmdhookNoCmd
 		}
 
-		if u.Cmdhook[i].Name == "" {
-			u.Cmdhook[i].Name = strings.Fields(u.Cmdhook[i].Command)[0]
+		if u.Cmdhook[idx].Name == "" {
+			u.Cmdhook[idx].Name = strings.Fields(u.Cmdhook[idx].Command)[0]
 		}
 
-		if u.Cmdhook[i].Timeout.Duration == 0 {
-			u.Cmdhook[i].Timeout.Duration = u.Timeout.Duration
+		if u.Cmdhook[idx].Timeout.Duration == 0 {
+			u.Cmdhook[idx].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if len(u.Cmdhook[i].Events) == 0 {
-			u.Cmdhook[i].Events = []ExtractStatus{WAITING}
+		if len(u.Cmdhook[idx].Events) == 0 {
+			u.Cmdhook[idx].Events = []ExtractStatus{WAITING}
 		}
 	}
 
@@ -121,27 +121,29 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 }
 
 func (u *Unpackerr) logCmdhook() {
-	var pfx string
+	var prefix string
 
 	if len(u.Cmdhook) == 1 {
-		pfx = " => Command Hook Config: 1 cmd"
+		prefix = " => Command Hook Config: 1 cmd"
 	} else {
 		u.Printf(" => Command Hook Configs: %d commands", len(u.Cmdhook))
-		pfx = " =>    Command" //nolint:wsl
+		prefix = " =>    Command" //nolint:wsl
 	}
 
 	for _, f := range u.Cmdhook {
 		u.Printf("%s: %s, timeout: %v, silent: %v, events: %v, shell: %v, cmd: %s",
-			pfx, f.Name, f.Timeout, f.Silent, logEvents(f.Events), f.Shell, f.Command)
+			prefix, f.Name, f.Timeout, f.Silent, logEvents(f.Events), f.Shell, f.Command)
 	}
 }
 
 // CmdhookCounts returns the total count of requests and errors for all webhooks.
-func (u *Unpackerr) CmdhookCounts() (total uint, fails uint) {
+func (u *Unpackerr) CmdhookCounts() (uint, uint) {
+	var total, fails uint
+
 	for _, hook := range u.Cmdhook {
-		t, f := hook.Counts()
-		total += t
-		fails += f
+		posts, failures := hook.Counts()
+		total += posts
+		fails += failures
 	}
 
 	return total, fails

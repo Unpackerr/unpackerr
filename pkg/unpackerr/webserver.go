@@ -148,28 +148,30 @@ type AllowedIPs struct {
 var _ = fmt.Stringer(AllowedIPs{})
 
 // String turns a list of allowedIPs into a printable masterpiece.
-func (n AllowedIPs) String() (s string) {
+func (n AllowedIPs) String() string {
 	if len(n.Nets) < 1 {
 		return "(none)"
 	}
 
-	for i := range n.Nets {
-		if s != "" {
-			s += ", "
+	var output string
+
+	for network := range n.Nets {
+		if output != "" {
+			output += ", "
 		}
 
-		s += n.Nets[i].String()
+		output += n.Nets[network].String()
 	}
 
-	return s
+	return output
 }
 
 // Contains returns true if an IP is allowed.
-func (n AllowedIPs) Contains(ip string) bool {
-	ip = strings.Trim(ip[:strings.LastIndex(ip, ":")], "[]")
+func (n AllowedIPs) Contains(ipAddr string) bool {
+	ipAddr = strings.Trim(ipAddr[:strings.LastIndex(ipAddr, ":")], "[]")
 
-	for i := range n.Nets {
-		if n.Nets[i].Contains(net.ParseIP(ip)) {
+	for idx := range n.Nets {
+		if n.Nets[idx].Contains(net.ParseIP(ipAddr)) {
 			return true
 		}
 	}
@@ -180,13 +182,13 @@ func (n AllowedIPs) Contains(ip string) bool {
 // MakeIPs turns a list of CIDR strings (or plain IPs) into a list of net.IPNet.
 // This "allowed" list is later used to check incoming IPs from web requests.
 func MakeIPs(upstreams []string) AllowedIPs {
-	a := AllowedIPs{
+	allowed := AllowedIPs{
 		Input: make([]string, len(upstreams)),
 		Nets:  []*net.IPNet{},
 	}
 
 	for idx, ipAddr := range upstreams {
-		a.Input[idx] = ipAddr
+		allowed.Input[idx] = ipAddr
 
 		if !strings.Contains(ipAddr, "/") {
 			if strings.Contains(ipAddr, ":") {
@@ -196,10 +198,10 @@ func MakeIPs(upstreams []string) AllowedIPs {
 			}
 		}
 
-		if _, i, err := net.ParseCIDR(ipAddr); err == nil {
-			a.Nets = append(a.Nets, i)
+		if _, net, err := net.ParseCIDR(ipAddr); err == nil {
+			allowed.Nets = append(allowed.Nets, net)
 		}
 	}
 
-	return a
+	return allowed
 }

@@ -53,6 +53,9 @@ start_delay = "1m"
 ## extraction will start again. Uses Go Duration.
 retry_delay = "5m"
 
+## How many times to retry a failed extraction. Pauses retry_delay between attempts.
+max_retries = 3
+
 ## How many files may be extracted in parallel. 1 works fine.
 ## Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1

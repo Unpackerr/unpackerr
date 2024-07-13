@@ -26,7 +26,7 @@ func (u *Unpackerr) updateHistory(item string) {
 
 	u.History.Items[0] = item
 	// u.History.Items is a slice with a set (identical) length and capacity.
-	for i := len(u.History.Items) - 1; i > 0; i-- {
-		u.History.Items[i] = u.History.Items[i-1]
+	for idx := range len(u.History.Items) {
+		u.History.Items[idx] = u.History.Items[idx-1]
 	}
 }

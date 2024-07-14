@@ -1,0 +1,480 @@
+# Unpackerr Config File Definition
+---
+
+header: |
+  ####################################################
+  ##      Unpackerr Example Configuration File      ##
+  ####################################################
+  ## The following values are application defaults. ##
+  ## Environment Variables may override all values. ##
+  ## More configuration help: https://unpackerr.zip ##
+  ## Generator: https://notifiarr.com/unpackerr.php ##
+  ####################################################
+
+envvar_prefix: UN_
+order:
+  - header
+  - global_params
+  - webserver
+  - starr_header
+  - starr
+  - starr_footer
+  - folder_header
+  - folder
+  - folders
+  - webhook_header
+  - webhooks
+  - cmdhooks_header
+  - cmdhooks
+
+global_params:
+- name: debug
+  envvar: DEBUG
+  default: false
+  comment: false
+  short: Turns on more logs.
+  desc: |
+    [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
+    Recommend trying this so you know what it looks like. I personally leave it on.
+- name: quiet
+  envvar: QUIET
+  default: false
+  comment: false
+  short: Do not print logs to stdout or stderr.
+  desc: >
+    Disable writing messages to stdout/stderr. This silences the app. Set a log
+    file below if you set this to true. Recommended when starting with systemctl.
+- name: error_stderr
+  envvar: ERROR_STDERR
+  default: false
+  comment: false
+  short: Print ERROR lines to stderr instead of stdout.
+  desc: |
+    Send error output to stderr instead of stdout by setting error_stderr to true.
+    Recommend leaving this at false. Ignored if quiet (above) is true.
+- name: activity
+  envvar: ACTIVITY
+  default: false
+  comment: false
+  short: Setting true will print only queue counts with activity.
+  desc: |
+    Setting activity to true will silence all app queue log lines with only zeros.
+    Set this to true when you want less log spam.
+- name: log_queues
+  envvar: LOG_QUEUES
+  default: "1m"
+  comment: false
+  short: How often to print internal counters. Uses Go Duration.
+  desc: |
+    The Starr-application activity queue is logged on an interval.
+    Adjust that interval with this setting.
+    Default is a minute. 2m, 5m, 10m, 30m, 1h are also perfectly acceptable.
+- name: log_file
+  envvar: LOG_FILE
+  default: /downloads/unpackerr.log
+  comment: true
+  short: Provide optional file path to write logs
+  desc: |
+    Write messages to a log file. This is the same data that is normally output to stdout.
+    This setting is great for Docker users that want to export their logs to a file.
+    The alternative is to use syslog to log the output of the application to a file.
+    Default is no log file; this is unset.
+    Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
+    log_files=0 turns off auto-rotation.
+    Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
+- name: log_files
+  envvar: LOG_FILES
+  default: 10
+  comment: false
+  short: Log files to keep after rotating. `0` disables rotation
+- name: log_file_mb
+  envvar: LOG_FILE_MB
+  default: 10
+  comment: false
+  short: Max size of log files in megabytes
+- name: interval
+  envvar: INTERVAL
+  default: 2m
+  comment: false
+  short: How often apps are polled, recommend `1m` to `5m`
+  desc: |
+    How often to poll starr apps (sonarr, radarr, etc).
+    Recommend 1m-5m. Uses Go Duration.
+- name: start_delay
+  envvar: START_DELAY
+  default: 1m
+  comment: false
+  short: Files are queued at least this long before extraction.
+  desc: |
+    How long an item must be queued (download complete) before extraction will start.
+    One minute is the historic default and works well. Set higher if your downloads
+    take longer to finalize (or transfer locally). Uses Go Duration.
+- name: retry_delay
+  envvar: RETRY_DELAY
+  default: 5m
+  comment: false
+  short: Failed extractions are retried after at least this long.
+  desc: |
+    How long to wait before removing the history for a failed extraction.
+    Once the history is deleted the item will be recognized as new and
+    extraction will start again. Uses Go Duration.
+- name: max_retries
+  envvar: MAX_RETRIES
+  default: 3
+  comment: false
+  short: Failed extractions are retried after at least this long.
+  desc: |
+    How many times to retry a failed extraction. Pauses retry_delay between attempts.
+- name: parallel
+  envvar: PARALLEL
+  default: 1
+  comment: false
+  short: Times to retry failed extractions. `0` = unlimited.
+  desc: |
+    How many files may be extracted in parallel. 1 works fine.
+    Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
+- name: file_mode
+  envvar: FILE_MODE
+  default: '0644'
+  comment: false
+  short: Extracted files are written with this mode.
+  desc: |
+    Use these configurations to control the file modes used for newly extracted
+    files and folders. Recommend 0644/0755 or 0666/0777.
+- name: dir_mode
+  envvar: DIR_MODE
+  default: '0755'
+  comment: false
+  short: Extracted folders are written with this mode
+
+webserver:
+envvar_prefix: WEBSERVER
+params:
+- name: metrics
+  envvar: METRICS
+  default: false
+  short: Extracted folders are written with this mode
+  desc: The web server currently only supports metrics; set this to true if you wish to use it.
+- name: listen_addr
+  envvar: LISTEN_ADDR
+  default: 0.0.0.0:5656
+  short:  ip:port to listen on; `0.0.0.0` is all IPs.
+  desc: This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
+- name: log_file
+  envvar: LOG_FILE
+  default: ''
+  short: Provide optional file path to write HTTP logs.
+  desc: Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
+- name: log_files
+  envvar: LOG_FILES
+  default: 10
+  short: Log files to keep after rotating. `0` to disable.
+  desc: This app automatically rotates logs. Set these to the size and number to keep.
+- name: log_file_mb
+  envvar: LOG_FILE_MB
+  default: 10
+  short: Max size of HTTP log files in megabytes
+- name: ssl_cert_file
+  envvar: SSL_CERT_FILE
+  default: ''
+  short: Path to SSL cert file to serve HTTPS.
+  desc: Set both of these to valid file paths to enable HTTPS/TLS.
+- name: ssl_key_file
+  envvar: SSL_KEY_FILE
+  default: ''
+  short: Path to SSL key file to serve HTTPS.
+- name: urlbase
+  envvar: URLBASE
+  default: /
+  short: Base URL path to serve HTTP content.
+  desc: Base URL from which to serve content.
+- name: upstreams
+  envvar: UPSTREAMS
+  default: []
+  kind: conlist
+  short: List of upstream proxy CIDRs or IPs to trust.
+  desc: |
+    Upstreams should be set to the IP or CIDR of your trusted upstream proxy.
+    Setting this correctly allows X-Forwarded-For to be used in logs.
+    In the future it may control auth proxy trust. Must be a list of strings.
+    example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+
+starr_header: |
+  ###############################################################################
+  ##-IMPORTANT-#######-READ THIS!!!-################ Seriously, read this. ######
+  ###############################################################################
+  ## The following sections can be repeated if you have more than one Sonarr,  ##
+  ## Radarr, Lidarr, Readarr, Whisparr, Folder, Webhook, and/or Command Hook.  ##
+  ## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
+  ## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
+  ## and api_key if they are in use. Comment them with a hash if they are not. ##
+  ## Uncomment the [[lidarr]] and/or [[readarr]] headers and values if in use. ##
+  ###############################################################################
+  ###############################################################################
+  ##           ALL LINES BEGINNING WITH A HASH # ARE IGNORED COMMENTS          ##
+  ##           REMOVE THE HASH # FROM CONFIG LINES YOU WANT TO CHANGE          ##
+  ###############################################################################
+  ###############################################################################
+
+starrs:
+- sonarr:
+  comment: false
+  header: |
+    Leaving the [[sonarr]] header uncommented (no leading hash #) without also
+    uncommenting the api_key (remove the hash #) will produce a startup warning.
+  url: http://127.0.0.1:8989
+- radarr:
+  comment: false
+  header: |
+    Leaving the [[radarr]] header uncommented (no leading hash #) without also
+    uncommenting the api_key (remove the hash #) will produce a startup warning.
+  url: http://127.0.0.1:7878
+- lidarr:
+  comment: true
+  url: http://127.0.0.1:8686
+- readarr:
+  comment: true
+  url: http://127.0.0.1:8787
+- whisparr:
+  comment: true
+  url: http://127.0.0.1:6969
+
+starr:
+- name: url
+  envvar: URL
+  short: URL where this starr app can be accessed.
+- name: api_key
+  envvar: API_KEY
+  default: 0123456789abcdef0123456789abcdef
+  short: Provide URL and API key if you use this app.
+- name: paths
+  envvar: PATHS
+  default: ['/downloads']
+  kind: list
+  short: File system path where downloaded items are located.
+  desc: |
+    List of paths where content is downloaded for this app.
+    Used as fallback if the path the Starr app reports does not exist or is not accessible.
+- name: protocols
+  envvar: PROTOCOLS
+  default: torrent
+  short: 'Protocols to process. Alt: `torrent,usenet`'
+  desc: 'Default protocols is torrent. Alternative: torrent,usenet'
+- name: timeout
+  envvar: TIMEOUT
+  default: 10s
+  short: How long to wait for the app to respond.
+  desc: How long to wait for a reply from the backend.
+- name: delete_delay
+  envvar: DELETE_DELAY
+  default: false
+  short: Extracts are deleted this long after import, `-1s` to disable.
+  desc: How long to wait after import before deleting the extracted items.
+- name: delete_orig
+  envvar: DELETE_ORIG
+  default: false
+  short: Delete archives after import? Recommend keeping this false.
+  desc: |
+    If you use this app with NZB you may wish to delete archives after extraction.
+    General recommendation is: do not enable this for torrent use.
+    Setting this to true deletes the entire original download folder after import.
+- name: syncthing
+  envvar: SYNCTHING
+  default: false
+  short: Setting this to true makes unpackerr wait for syncthing to finish.
+  desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+
+starr_footer: |
+  ##################################################################################
+  ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
+  ### Only using Starr apps? The things above. The below configs are OPTIONAL. ### #
+  ##################################################################################
+
+folder_header: |
+  ##-Folders-#######################################################################
+  ## This application can also watch folders for things to extract. If you copy a ##
+  ## subfolder into a watched folder (defined below) any extractable items in the ##
+  ## folder will be decompressed. This has nothing to do with Starr applications. ##
+  ##################################################################################
+
+folder:
+- name: interval
+  envvar: INTERVAL
+  default: 1s
+  short: How often poller checks for new folders. Use `1ms` to disable it.
+  desc: How often poller checks for new folders. Use `1ms` to disable it.
+- name: buffer
+  envvar: BUFFER
+  default: 20000
+  short: How many new folder items can be tracked at once.
+  desc: How many new folder items can be tracked at once.
+
+folders:
+- name: path
+  envvar: PATH
+  default: ''
+  example: /some/folder/to/watch
+  short: Folder to watch for archives. **Not for Starr apps.**
+- name: extract_path
+  envvar: EXTRACT_PATH
+  default: ''
+  short: Where to extract to. Default is the same as `path`.
+  desc: Path to extract files to. The default (leaving this blank) is the same as `path` (above).
+- name: delete_after
+  envvar: DELETE_AFTER
+  default: 10m
+  short: Delete extracted files and/or archives after this duration; `0` disables.
+  desc: |
+    Delete extracted or original files this long after extraction.
+    The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
+- name: disable_recursion
+  envvar: DISABLE_RECURSION
+  default: false
+  short: Setting this to true disables extracting archives inside archives.
+  desc: Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+- name: delete_files
+  envvar: DELETE_FILES
+  default: false
+  short: Delete extracted files after successful extraction.
+  desc: Delete extracted files after successful extraction? Honors delete_after.
+- name: delete_original
+  envvar: DELETE_ORIGINAL
+  default: false
+  short: Delete archives after successful extraction.
+  desc: Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
+- name: disable_log
+  envvar: DISABLE_LOG
+  default: false
+  short: Turns off creation of extraction logs files for this folder.
+  desc: Disable extraction log (unpackerred.txt) file creation?
+- name: move_back
+  envvar: MOVE_BACK
+  default: false
+  short: Move extracted items back into original folder.
+  desc: Move extracted files into original folder? If false, files go into an _unpackerred folder.
+- name: extract_isos
+  envvar: EXTRACT_ISOS
+  default: false
+  short: Setting this to true enables .iso file extraction.
+  desc: Set this to true if you want this app to extract ISO files with .iso extension.
+
+webhook_header: |
+  ################
+  ### Webhooks ###
+  ################
+  # Sends a webhook when an extraction queues, starts, finishes, and/or is deleted.
+  # Created to integrate with notifiarr.com.
+  # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
+  # Can possibly be used with other services by providing a custom template_path.
+  ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
+
+webhooks:
+- name: url
+  envvar: URL
+  default: ''
+  example: https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com
+  short: URL to send POST webhook to.
+- name: name
+  envvar: NAME
+  default: ''
+  short: Provide an optional name to hide the URL in logs.
+  desc: Provide an optional name to hide the URL in logs.
+- name: silent
+  envvar: SILENT
+  default: false
+  short: Hide successful POSTs from logs.
+  desc: Do not log success (less log spam).
+- name: events
+  envvar: EVENTS
+  default: [0]
+  short: List of event ids to send notification for, `0` == all.
+  desc: List of event ids to send notification for, 0 == all.
+- name: nickname
+  envvar: NICKNAME
+  default: ''
+  short: Passed into templates for telegram, discord and slack hooks.
+  desc: |
+    ### Advanced Optional Webhook Configuration
+    Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+- name: channel
+  envvar: CHANNEL
+  default: ''
+  short: Passed into templates for slack.com webhooks.
+  desc: Also passed into templates. Used in Slack templates for destination channel.
+- name: exclude
+  envvar: EXCLUDE
+  default: []
+  short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
+  desc: List of apps to exclude, ie. ["radarr", "lidarr"]
+- name: template_path
+  envvar: TEMPLATE_PATH
+  default: ''
+  short: Instead of an internal template, provide your own.
+  desc: Override internal webhook template for discord.com or other hooks.
+- name: template
+  envvar: TEMPLATE
+  default: ''
+  short: Instead of auto template selection, force a built-in template.
+  desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack'
+- name: ignore_ssl
+  envvar: IGNORE_SSL
+  default: false
+  short: Ignore invalid SSL certificates.
+  desc: Set this to true to ignore the SSL certificate on the server.
+- name: timeout
+  envvar: TIMEOUT
+  default: 10s
+  short: How long to wait for server response.
+  desc: You can adjust how long to wait for a server response.
+- name: content_type
+  envvar: CONTENT_TYPE
+  default: application/json
+  short: Content-Type header sent to webhook.
+  desc: If your custom template uses another MIME type, set this.
+
+cmdhooks_header: |
+  #####################
+  ### Command Hooks ###
+  #####################
+  # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
+  # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
+  ###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
+
+cmdhooks:
+- name: command
+  envvar: COMMAND
+  default: ''
+  example: /my/cool/app
+  short: Command to run.
+- name: name
+  envvar: NAME
+  default: ''
+  short: Provide an optional name to hide the URL in logs.
+  desc: Provide an optional name to hide the URL in logs.
+- name: shell
+  envvar: SHELL
+  default: false
+  short: Run command inside a shell.
+  desc: Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
+- name: silent
+  envvar: SILENT
+  default: false
+  short: Hide command output from logs.
+  desc: Do not log command's output.
+- name: events
+  envvar: EVENTS
+  default: [0]
+  short: List of event ids to run command for, `0` == all.
+  desc: List of event ids to run command for, 0 == all.
+- name: exclude
+  envvar: EXCLUDE
+  default: []
+  short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
+  desc: |
+    ### Optional Command Hook Configuration
+    List of apps to exclude, ie. ["radarr", "lidarr"]
+- name: timeout
+  envvar: TIMEOUT
+  default: 10s
+  short: How long to wait for command to run.
+  desc: You can adjust how long to wait for command to run.

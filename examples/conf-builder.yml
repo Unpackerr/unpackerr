@@ -245,7 +245,8 @@ starr:
   short: URL where this starr app can be accessed.
 - name: api_key
   envvar: API_KEY
-  default: 0123456789abcdef0123456789abcdef
+  default: ''
+  example: 0123456789abcdef0123456789abcdef
   short: Provide URL and API key if you use this app.
 - name: paths
   envvar: PATHS
@@ -387,6 +388,7 @@ webhooks:
 - name: events
   envvar: EVENTS
   default: [0]
+  kind: list
   short: List of event ids to send notification for, `0` == all.
   desc: List of event ids to send notification for, 0 == all.
 - name: nickname
@@ -404,6 +406,7 @@ webhooks:
 - name: exclude
   envvar: EXCLUDE
   default: []
+  kind: list
   short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
   desc: List of apps to exclude, ie. ["radarr", "lidarr"]
 - name: template_path
@@ -464,11 +467,13 @@ cmdhooks:
 - name: events
   envvar: EVENTS
   default: [0]
+  kind: list
   short: List of event ids to run command for, `0` == all.
   desc: List of event ids to run command for, 0 == all.
 - name: exclude
   envvar: EXCLUDE
   default: []
+  kind: list
   short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
   desc: |
     ### Optional Command Hook Configuration

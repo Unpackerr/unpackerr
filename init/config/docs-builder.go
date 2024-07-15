@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	outputDir = "build/"
+	outputDir = "generated/"
 	dirMode   = 0o755
 	fileMode  = 0o644
 )

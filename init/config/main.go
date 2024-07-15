@@ -1,13 +1,21 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 const (
 	list = "list"
+	// inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
+	inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/dn2_conf_builder/init/config/conf-builder.yml"
+	opTimeout = 6 * time.Second
 )
 
 type section string
@@ -59,10 +67,11 @@ type Def struct {
 type Defs map[section]*Def
 
 func main() {
-	file, err := os.Open("./conf-builder.yml")
+	file, err := openFile()
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 
 	config := &Config{}
 	// Decode conf-builder file into Go data structure.
@@ -82,6 +91,32 @@ func main() {
 	case os.Args[1] == "docs":
 		printDocusaurus(config)
 	}
+}
+
+// openFile opens a file or url for the parser.
+func openFile() (io.ReadCloser, error) {
+	fileName := inputFile
+	if len(os.Args) > 2 { //nolint:mnd
+		fileName = os.Args[len(os.Args)-1] // take last arg as file.
+	}
+
+	if strings.HasPrefix(fileName, "http") {
+		http.DefaultClient.Timeout = opTimeout
+
+		resp, err := http.Get(fileName) //nolint:noctx // because we set a timeout.
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", fileName, err)
+		}
+
+		return resp.Body, nil
+	}
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fileName, err)
+	}
+
+	return file, nil
 }
 
 func createDefinedSection(def *Def, section *Header) *Header {

@@ -3,58 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v3"
 )
 
-type Param struct {
-	Name    string `yaml:"name"`
-	EnvVar  string `yaml:"envvar"`
-	Default any    `yaml:"default"`
-	Example any    `yaml:"example"`
-	Short   string `yaml:"short"`
-	Desc    string `yaml:"desc"`
-	Kind    string `yaml:"kind"` // "", list, conlist
-}
-
-type Header struct {
-	Text     string   `yaml:"text"`
-	Prefix   string   `yaml:"envvar_prefix"`
-	Params   []*Param `yaml:"params"`
-	Kind     string   `yaml:"kind"`      // "", list
-	NoHeader bool     `yaml:"no_header"` // Do not print [section] header.
-}
-
-type Def struct {
-	Comment  bool           `yaml:"comment"` // just the header.
-	Text     string         `yaml:"text"`
-	Defaults map[string]any `yaml:"defaults"`
-}
-
-type Defs map[string]*Def
-
-type ConfigFile struct {
-	Defs     map[string]Defs    `yaml:"defs"`
-	Prefix   string             `yaml:"envvar_prefix"`
-	Order    []string           `yaml:"order"`
-	Sections map[string]*Header `yaml:"sections"`
-}
-
-func main() {
-	file, err := os.Open("./conf-builder.yml")
-	if err != nil {
-		panic(err)
-	}
-
-	config := &ConfigFile{}
-	// Decode conf-builder file into Go data structure.
-	if err = yaml.NewDecoder(file).Decode(config); err != nil {
-		panic(err)
-	}
-
+func printConfFile(config *Config) {
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
 		// If Order contains a missing section, panic.
@@ -84,7 +38,7 @@ func printSection(name string, section *Header, noComment bool) {
 	}
 
 	if !section.NoHeader { // Print the [section] or [[section]] header.
-		if section.Kind == "list" { // list sections are commented by default.
+		if section.Kind == list { // list sections are commented by default.
 			fmt.Println(comment + "[[" + name + "]]") // list sections use double-brackets.
 		} else {
 			fmt.Println("[" + name + "]") // non-list sections use single brackets.
@@ -108,7 +62,7 @@ func printSection(name string, section *Header, noComment bool) {
 			comment = "#"
 		}
 
-		if section.Kind == "list" {
+		if section.Kind == list {
 			// If the 'kind' is a 'list', we comment all the parameters.
 			fmt.Printf("# %s = %s\n", param.Name, param.Value())
 		} else {

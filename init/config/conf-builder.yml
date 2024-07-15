@@ -16,26 +16,31 @@ order:
 defs:
   starr:
     sonarr:
+      prefix: SONARR_
       text: |
         ## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
       defaults:
         url: http://127.0.0.1:8989
     radarr:
+      prefix: RADARR_
       text: |
         ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
       defaults:
         url: http://127.0.0.1:7878
     lidarr:
+      prefix: LIDARR_
       comment: true
       defaults:
         url: http://127.0.0.1:8686
     readarr:
+      prefix: READARR_
       comment: true
       defaults:
         url: http://127.0.0.1:8787
     whisparr:
+      prefix: WHISPARR_
       comment: true
       defaults:
         url: http://127.0.0.1:6969
@@ -231,7 +236,6 @@ sections:
       ###############################################################################
 
   starr:
-    envvar_prefix: '$APP_' # $APP must be replaced by parser.
     kind: list
     params:
     - name: url

@@ -12,14 +12,20 @@ linters:
     - tagliatelle
     - cyclop
     - testpackage
-run:
-  timeout: 3m
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+      # Exclude some linters from testing files.
+      - linters:
+          - forbidigo
+          - lll
+        path: 'init/.*'
 output:
   sort-results: true
+run:
+  timeout: 3m
 
 linters-settings:
   ireturn:
@@ -42,3 +48,4 @@ linters-settings:
         - github.com/prometheus/client_golang/
         - github.com/spf13/pflag
         - github.com/julienschmidt/httprouter
+        - github.com/BurntSushi/toml

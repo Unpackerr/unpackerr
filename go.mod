@@ -3,6 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.22
 
 require (
+	github.com/BurntSushi/toml v1.4.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
 	github.com/getlantern/systray v1.2.2
@@ -20,11 +21,10 @@ require (
 	golift.io/starr v1.0.0
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.2.3-0.20240710043203-2d7c8a38d931
-
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
@@ -68,5 +68,4 @@ require (
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

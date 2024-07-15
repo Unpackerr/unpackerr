@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -43,47 +44,48 @@ func printCompose(config *Config) {
 		}
 
 		if config.Defs[section] == nil {
-			config.Sections[section].printCompose(strings.Title(section), config.Prefix) //nolint:staticcheck
+			fmt.Print(config.Sections[section].makeCompose(config.Sections[section].Title, config.Prefix, false))
 		} else {
-			config.Sections[section].printComposeDefined(config.Prefix, config.Defs[section])
+			fmt.Print(config.Sections[section].makeComposeDefined(config.Prefix, config.Defs[section], config.DefOrder[section], false))
 		}
 	}
 }
 
-func (h *Header) printCompose(title, prefix string) {
-	if len(h.Params) > 0 {
-		fmt.Println(space, "##", title)
+func (h *Header) makeCompose(title, prefix string, bare bool) string {
+	var buf bytes.Buffer
+
+	if len(h.Params) > 0 && bare {
+		buf.WriteString("## " + title + "\n")
+	} else if len(h.Params) > 0 {
+		buf.WriteString(space + " ## " + title + "\n")
+	}
+
+	pfx := space + " - "
+	if bare {
+		pfx = ""
 	}
 
 	for _, param := range h.Params {
 		if h.Kind == list {
-			fmt.Print(param.Compose(prefix + h.Prefix + "0_"))
+			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {
-			fmt.Print(param.Compose(prefix + h.Prefix))
+			buf.WriteString(param.Compose(pfx + prefix + h.Prefix))
 		}
 	}
+
+	return buf.String()
 }
 
-func (h *Header) printComposeDefined(prefix string, defs Defs) {
-	for section, def := range defs {
-		// Loop each defined section Defaults, and see if one of the param names match.
-		for overrideName, override := range def.Defaults {
-			for _, defined := range h.Params {
-				// If the name of the default (override) matches this param name, overwrite the value.
-				if defined.Name == overrideName {
-					defined.Default = override
-				}
-			}
-		}
+func (h *Header) makeComposeDefined(prefix string, defs Defs, order []section, bare bool) string {
+	var buf bytes.Buffer
 
+	for _, section := range order {
+		newHeader := createDefinedSection(defs[section], h)
 		// Make a brand new section and print it.
-		(&Header{
-			Text:   def.Text,
-			Prefix: def.Prefix,
-			Params: h.Params,
-			Kind:   h.Kind,
-		}).printCompose(strings.Title(section), prefix) //nolint:staticcheck
+		buf.WriteString(newHeader.makeCompose(h.Title, prefix, bare))
 	}
+
+	return buf.String()
 }
 
 func (p *Param) Compose(prefix string) string {
@@ -94,12 +96,12 @@ func (p *Param) Compose(prefix string) string {
 
 	switch p.Kind {
 	default:
-		return fmt.Sprint(space, " - ", prefix, p.EnvVar, "=", val, "\n")
+		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
 	case list:
 		var out string
 
 		for idx, sv := range val.([]any) { //nolint:forcetypeassert
-			out += fmt.Sprint(space, " - ", prefix, p.EnvVar, idx, "=", sv, "\n")
+			out += fmt.Sprint(prefix, p.EnvVar, idx, "=", sv, "\n")
 		}
 
 		return out
@@ -110,6 +112,6 @@ func (p *Param) Compose(prefix string) string {
 			out = append(out, fmt.Sprint(sv))
 		}
 
-		return fmt.Sprint(space, " - ", prefix, p.EnvVar, "=", strings.Join(out, ","), "\n")
+		return fmt.Sprint(prefix, p.EnvVar, "=", strings.Join(out, ","), "\n")
 	}
 }

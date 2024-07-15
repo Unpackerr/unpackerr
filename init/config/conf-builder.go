@@ -17,61 +17,66 @@ func printConfFile(config *Config) {
 		}
 
 		if config.Defs[section] != nil {
-			printDefinedSection(config.Sections[section], config.Defs[section])
+			fmt.Print(config.Sections[section].makeDefinedSection(config.Defs[section], config.DefOrder[section], false))
 		} else {
-			printSection(section, config.Sections[section], false)
+			fmt.Print(config.Sections[section].makeSection(section, false, false))
 		}
 	}
 }
 
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.
-func printSection(name string, section *Header, noComment bool) {
+func (h *Header) makeSection(name section, showHeader, showValue bool) string {
+	var buf bytes.Buffer
+
 	// Print section header text.
-	if section.Text != "" {
-		fmt.Printf("%s", section.Text)
+	if h.Text != "" {
+		buf.WriteString(h.Text)
 	}
 
 	comment := "#"
-	if noComment {
+	if showHeader {
 		// this only happens when a defined section has a comment override on the repeating headers.
 		comment = ""
 	}
 
-	if !section.NoHeader { // Print the [section] or [[section]] header.
-		if section.Kind == list { // list sections are commented by default.
-			fmt.Println(comment + "[[" + name + "]]") // list sections use double-brackets.
+	if !h.NoHeader { // Print the [section] or [[section]] header.
+		if h.Kind == list { // list sections are commented by default.
+			buf.WriteString(comment + "[[" + string(name) + "]]" + "\n") // list sections use double-brackets.
 		} else {
-			fmt.Println("[" + name + "]") // non-list sections use single brackets.
+			buf.WriteString("[" + string(name) + "]" + "\n") // non-list sections use single brackets.
 		}
 	}
 
-	for _, param := range section.Params {
+	for _, param := range h.Params {
 		// Print an empty newline for each param if the section has no header and the param has a description.
-		if section.NoHeader && param.Desc != "" {
-			fmt.Println()
+		if h.NoHeader && param.Desc != "" {
+			buf.WriteString("\n")
 		}
 
 		// Add ## to the beginning of each line in the description.
 		// Uses the newline \n character to figure out where each line begins.
 		if param.Desc != "" {
-			fmt.Println("##", strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## "))
+			buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
 		}
 
-		// If example is not empty, use that commented out, otherwise use the default.
-		if comment = ""; param.Example != nil {
-			comment = "#"
-		}
-
-		if section.Kind == list {
+		switch {
+		default:
+			fallthrough
+		case showValue:
+			buf.WriteString(fmt.Sprintf("%s = %s\n", param.Name, param.Value()))
+		case param.Example != nil:
+			// If example is not empty, use that commented out, otherwise use the default.
+			fallthrough
+		case h.Kind == list:
 			// If the 'kind' is a 'list', we comment all the parameters.
-			fmt.Printf("# %s = %s\n", param.Name, param.Value())
-		} else {
-			fmt.Printf("%s%s = %s\n", comment, param.Name, param.Value())
+			buf.WriteString(fmt.Sprintf("#%s = %s\n", param.Name, param.Value()))
 		}
 	}
 
 	// Each section needs a newline at the end.
-	fmt.Println()
+	buf.WriteString("\n")
+
+	return buf.String()
 }
 
 func (p *Param) Value() string {
@@ -89,26 +94,16 @@ func (p *Param) Value() string {
 	return string(out)
 }
 
-// printDefinedSection duplicates sections from overrides, and prints it once for each override.
-func printDefinedSection(section *Header, defs Defs) {
-	for name, def := range defs {
-		// Loop each defined section Defaults, and see if one of the param names match.
-		for overrideName, override := range def.Defaults {
-			for _, defined := range section.Params {
-				// If the name of the default (override) matches this param name, overwrite the value.
-				if defined.Name == overrideName {
-					defined.Default = override
-				}
-			}
-		}
+// makeDefinedSection duplicates sections from overrides, and prints it once for each override.
+func (h *Header) makeDefinedSection(defs Defs, order []section, showValue bool) string {
+	var buf bytes.Buffer
 
+	for _, section := range order {
+		newHeader := createDefinedSection(defs[section], h)
 		// Make a brand new section and pass it back in.
-		printSection(name, &Header{
-			Text:     def.Text,
-			Prefix:   section.Prefix,
-			Params:   section.Params,
-			Kind:     section.Kind,
-			NoHeader: false,
-		}, !def.Comment) // Only defined sections can comment the header.
+		// Only defined sections can comment the header.
+		buf.WriteString(newHeader.makeSection(section, !defs[section].Comment, showValue))
 	}
+
+	return buf.String()
 }

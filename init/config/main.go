@@ -10,15 +10,27 @@ const (
 	list = "list"
 )
 
+type section string
+
+type Option struct {
+	Name  string `yaml:"name"`
+	Value any    `yaml:"value"`
+}
+
 type Config struct {
-	Defs     map[string]Defs    `yaml:"defs"`
-	Prefix   string             `yaml:"envvar_prefix"`
-	Order    []string           `yaml:"order"`
-	Sections map[string]*Header `yaml:"sections"`
+	DefOrder map[section][]section `yaml:"def_order"`
+	Defs     map[section]Defs      `yaml:"defs"`
+	Prefix   string                `yaml:"envvar_prefix"`
+	Order    []section             `yaml:"order"`
+	Sections map[section]*Header   `yaml:"sections"`
 }
 
 type Header struct {
+	Tail     string   `yaml:"tail"`
+	Title    string   `yaml:"title"`
 	Text     string   `yaml:"text"`
+	Docs     string   `yaml:"docs"`
+	Notes    string   `yaml:"notes"`
 	Prefix   string   `yaml:"envvar_prefix"`
 	Params   []*Param `yaml:"params"`
 	Kind     string   `yaml:"kind"`      // "", list
@@ -26,23 +38,25 @@ type Header struct {
 }
 
 type Param struct {
-	Name    string `yaml:"name"`
-	EnvVar  string `yaml:"envvar"`
-	Default any    `yaml:"default"`
-	Example any    `yaml:"example"`
-	Short   string `yaml:"short"`
-	Desc    string `yaml:"desc"`
-	Kind    string `yaml:"kind"` // "", list, conlist
+	Name      string   `yaml:"name"`
+	EnvVar    string   `yaml:"envvar"`
+	Default   any      `yaml:"default"`
+	Example   any      `yaml:"example"`
+	Short     string   `yaml:"short"`
+	Desc      string   `yaml:"desc"`
+	Kind      string   `yaml:"kind"` // "", list, conlist
+	Recommend []Option `yaml:"recommend"`
 }
 
 type Def struct {
 	Comment  bool           `yaml:"comment"` // just the header.
+	Title    string         `yaml:"title"`
 	Prefix   string         `yaml:"prefix"`
 	Text     string         `yaml:"text"`
 	Defaults map[string]any `yaml:"defaults"`
 }
 
-type Defs map[string]*Def
+type Defs map[section]*Def
 
 func main() {
 	file, err := os.Open("./conf-builder.yml")
@@ -68,4 +82,26 @@ func main() {
 	case os.Args[1] == "docs":
 		printDocusaurus(config)
 	}
+}
+
+func createDefinedSection(def *Def, section *Header) *Header {
+	newSection := &Header{
+		Text:   def.Text,
+		Prefix: def.Prefix,
+		Title:  def.Title,
+		Params: section.Params,
+		Kind:   section.Kind,
+	}
+
+	// Loop each defined section Defaults, and see if one of the param names match.
+	for overrideName, override := range def.Defaults {
+		for _, defined := range newSection.Params {
+			// If the name of the default (override) matches this param name, overwrite the value.
+			if defined.Name == overrideName {
+				defined.Default = override
+			}
+		}
+	}
+
+	return newSection
 }

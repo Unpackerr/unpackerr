@@ -21,7 +21,7 @@ issues:
       - linters:
           - forbidigo
           - lll
-        path: 'init/.*'
+        path: 'init/config/.*.\.go'
 output:
   sort-results: true
 run:

@@ -71,7 +71,7 @@ func makeGenerated(config *Config) error {
 		}
 	}
 
-	return output("generated", first.String()+"\n"+second.String())
+	return output("index", first.String()+"\n"+second.String())
 }
 
 func (h *Header) makeDocs(prefix string, section section) string {

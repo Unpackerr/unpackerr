@@ -1,20 +1,29 @@
+//go:generate go run . --config ../../examples/unpackerr.conf.example --compose ../../examples/docker-compose.yml --type config,compose --file conf-builder.yml
+
 package main
 
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	flag "github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	list      = "list"
-	inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
-	opTimeout = 6 * time.Second
+	list           = "list"
+	dirMode        = 0o755
+	fileMode       = 0o644
+	outputDir      = "generated/"
+	exampleConfig  = "unpackerr.conf.example"
+	exampleCompose = "docker-compose.yml"
+	inputFile      = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
+	opTimeout      = 6 * time.Second
 )
 
 type section string
@@ -66,43 +75,61 @@ type Def struct {
 type Defs map[section]*Def
 
 func main() {
-	file, err := openFile()
+	flags := parseFlags()
+
+	file, err := openFile(flags.File)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	defer file.Close()
 
 	config := &Config{}
 	// Decode conf-builder file into Go data structure.
 	if err = yaml.NewDecoder(file).Decode(config); err != nil {
-		panic(err)
+		log.Fatalln(err) //nolint:gocritic
 	}
 
-	switch {
-	default:
-		fallthrough
-	case len(os.Args) <= 1:
-		fallthrough
-	case os.Args[1] == "conf":
-		printConfFile(config)
-	case os.Args[1] == "compose", os.Args[1] == "docker":
-		printCompose(config)
-	case os.Args[1] == "docs":
-		printDocusaurus(config)
+	for _, builder := range flags.Type {
+		switch builder {
+		case "docs":
+			log.Println("Building Docusaurus")
+			printDocusaurus(config, flags.Docs)
+		case "config":
+			log.Println("Building Config File")
+			printConfFile(config, flags.Config)
+		case "compose":
+			log.Println("Building Docker Compose")
+			createCompose(config, flags.Compose)
+		}
 	}
 }
 
-// openFile opens a file or url for the parser.
-func openFile() (io.ReadCloser, error) {
-	fileName := inputFile
-	if len(os.Args) > 2 { //nolint:mnd
-		fileName = os.Args[len(os.Args)-1] // take last arg as file.
-	}
+type flags struct {
+	Type    []string
+	Config  string
+	Compose string
+	Docs    string
+	File    string
+}
 
+func parseFlags() *flags {
+	flags := flags{}
+	flag.StringSliceVarP(&flags.Type, "type", "t", []string{"compose", "docs", "config"}, "Choose 1 or more outputs, or don't and get them all.")
+	flag.StringVar(&flags.Config, "config", exampleConfig, "Choose filename for generated config file.")
+	flag.StringVar(&flags.Compose, "compose", exampleCompose, "Choose a filename for the generated docker compose service.")
+	flag.StringVar(&flags.Docs, "docs", outputDir, "Choose folder for generated documentation. ")
+	flag.StringVarP(&flags.File, "file", "f", inputFile, "URL or filepath for conf-builder.yml")
+	flag.Parse()
+
+	return &flags
+}
+
+// openFile opens a file or url for the parser.
+func openFile(fileName string) (io.ReadCloser, error) {
 	if strings.HasPrefix(fileName, "http") {
 		http.DefaultClient.Timeout = opTimeout
 
-		resp, err := http.Get(fileName) //nolint:noctx // because we set a timeout.
+		resp, err := http.Get(fileName) //nolint:noctx,gosec // because we set a timeout.
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", fileName, err)
 		}

@@ -1,13 +1,13 @@
-####################################################
-##      Unpackerr Example Configuration File      ##
-####################################################
-## The following values are application defaults. ##
-## Environment Variables may override all values. ##
-## More configuration help: https://unpackerr.zip ##
-## Generator: https://notifiarr.com/unpackerr.php ##
-####################################################
+#######################################################
+##       Unpackerr Example Configuration File        ##
+#######################################################
+##  The values are a mix of defaults and examples.   ##
+##  Environment Variables may override all values.   ##
+##  More configuration help: https://unpackerr.zip   ##
+## Config Generator: https://notifiarr.com/unpackerr ##
+#######################################################
 
-## [true/false] Turn on debug messages in the output. Do not wrap this in quotes.
+## Turn on debug messages in the output. Do not wrap this in quotes.
 ## Recommend trying this so you know what it looks like. I personally leave it on.
 debug = false
 
@@ -67,24 +67,33 @@ dir_mode = "0755"
 
 [webserver]
 ## The web server currently only supports metrics; set this to true if you wish to use it.
-  metrics = false
+ metrics = false
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
-  listen_addr = "0.0.0.0:5656"
+ listen_addr = "0.0.0.0:5656"
 ## Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
-  log_file = ""
+ log_file = ''
 ## This app automatically rotates logs. Set these to the size and number to keep.
-  log_files = 10
-  log_file_mb = 10
+ log_files = 10
+ log_file_mb = 10
 ## Set both of these to valid file paths to enable HTTPS/TLS.
-  ssl_cert_file = ""
-  ssl_key_file = ""
+ ssl_cert_file = ''
+ ssl_key_file = ''
 ## Base URL from which to serve content.
-  urlbase = "/"
+ urlbase = "/"
 ## Upstreams should be set to the IP or CIDR of your trusted upstream proxy.
 ## Setting this correctly allows X-Forwarded-For to be used in logs.
 ## In the future it may control auth proxy trust. Must be a list of strings.
 ## example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
-  upstreams = [ ]
+ upstreams = []
+
+## Global Folder configuration that affects all watched folders.
+[folders]
+## How often poller checks for new folders.
+## The default of `0s` will disable the poller on all systems except Docker.
+## Set this value to `1ms` to disable it in Docker.
+ interval = "0s"
+## How many new folder events can be immediately queued. Don't change this.
+ buffer = 20000
 
 ###############################################################################
 ##-IMPORTANT-#######-READ THIS!!!-################ Seriously, read this. ######
@@ -107,7 +116,8 @@ dir_mode = "0755"
 [[sonarr]]
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Sonarr items are located.
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 # protocols = "torrent"
@@ -127,9 +137,10 @@ dir_mode = "0755"
 [[radarr]]
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Radarr items are located.
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrents. Alternative: "torrent,usenet"
+## Default protocols is torrent. Alternative: "torrent,usenet"
 # protocols = "torrent"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
@@ -142,10 +153,11 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-#[[lidarr]]
+# [[lidarr]]
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
-## File system path where downloaded Lidarr items are located.
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 # protocols = "torrent"
@@ -160,10 +172,11 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-#[[readarr]]
+# [[readarr]]
 # url = "http://127.0.0.1:8787"
-# api_key = "0123456789abcdef0123456789abc"
-## File system path where downloaded Readarr items are located.
+# api_key = "0123456789abcdef0123456789abcdef"
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
 ## Default protocols is torrent. Alternative: "torrent,usenet"
 # protocols = "torrent"
@@ -178,43 +191,55 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-
-#[[whisparr]]
+# [[whisparr]]
 # url = "http://127.0.0.1:6969"
-# api_key = "0123456789abcdef0123456789abc"
-## Whisparr shares the same settings as the other starr apps. Copy them under the
-## uncommented [[whisparr]] header and without the leading hash # to apply them.
+# api_key = "0123456789abcdef0123456789abcdef"
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
+# paths = ['/downloads']
+## Default protocols is torrent. Alternative: "torrent,usenet"
+# protocols = "torrent"
+## How long to wait for a reply from the backend.
+# timeout = "10s"
+## How long to wait after import before deleting the extracted items.
+# delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+# delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
 
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
 ### Only using Starr apps? The things above. The below configs are OPTIONAL. ### #
 ##################################################################################
 
+
 ##-Folders-#######################################################################
 ## This application can also watch folders for things to extract. If you copy a ##
 ## subfolder into a watched folder (defined below) any extractable items in the ##
 ## folder will be decompressed. This has nothing to do with Starr applications. ##
 ##################################################################################
-#[[folder]]
-# path = '/some/folder/to/watch'
+# [[folder]]
+# path = '/downloads/auto_extract'
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
-# extract_path = ""
+# extract_path = ''
 ## Delete extracted or original files this long after extraction.
 ## The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
-## Delete extracted files after successful extraction? true/false, no quotes. Honors delete_after.
+## Delete extracted files after successful extraction? Honors delete_after.
 # delete_files = false
-## Delete original items after successful extraction? true/false, no quotes. Honors delete_after.
+## Delete original items after successful extraction? Honors delete_after.
 # delete_original = false
-## Disable extraction log (unpackerred.txt) file creation? true/false, no quotes.
+## Disable extraction log (unpackerred.txt) file creation?
 # disable_log = false
 ## Move extracted files into original folder? If false, files go into an _unpackerred folder.
 # move_back = false
 ## Set this to true if you want this app to extract ISO files with .iso extension.
 # extract_isos = false
-
 
 ################
 ### Webhooks ###
@@ -224,21 +249,33 @@ dir_mode = "0755"
 # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
 # Can possibly be used with other services by providing a custom template_path.
 ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
-#[[webhook]]
-# url    = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
-# name   = ""    # Set this to hide the URL in logs.
-# silent = false # do not log success (less log spam)
-# events = [0]   # list of event ids to include, 0 == all.
-## Advanced Optional Webhook Configuration
-# nickname      = ""    # Used in Discord and Slack templates as bot name, in Telegram as chat_id.
-# channel       = ""    # Also passed into templates. Used in Slack templates for destination channel.
-# exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
-# template_path = ""    # Override internal webhook template for discord.com or other hooks.
-# template      = ""    # Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack
-# ignore_ssl    = false # Set this to true to ignore the SSL certificate on the server.
-# timeout       = "10s" # You can adjust how long to wait for a server response.
-# content_type  = "application/json" # If your custom template uses another MIME type, set this.
-
+# [[webhook]]
+# url = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
+## Provide an optional name to hide the URL in logs.
+## If a name is not provided then the URL is used.
+# name = ""
+## Do not log success (less log spam).
+# silent = false
+## List of event ids to send notification for, [0] for all.
+## The default is [0] and this is an example:
+# events = [1, 4, 6]
+## ===> Advanced Optional Webhook Configuration <===
+## Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+# nickname = "Unpackerr"
+## Also passed into templates. Used in Slack templates for destination channel.
+# channel = ""
+## List of apps to exclude. None by default. This is an example:
+# exclude = ["readarr", "lidarr"]
+## Override internal webhook template for discord.com or other hooks.
+# template_path = ''
+## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack
+# template = ""
+## Set this to true to ignore the SSL certificate on the server.
+# ignore_ssl = false
+## You can adjust how long to wait for a server response.
+# timeout = "10s"
+## If your custom template uses another MIME type, set this.
+# content_type = "application/json"
 
 #####################
 ### Command Hooks ###
@@ -246,12 +283,21 @@ dir_mode = "0755"
 # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
 # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
 ###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
-#[[cmdhook]]
-# command = '/my/cool/app' # Path to command or script.
-# shell   = false # Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
-# name    = ""    # Provide an optional name for logging.
-# silent  = false # Hides command output from logs.
-# events  = [0]   # list of event ids to include, 0 == all.
-## Optional Command Hook Configuration
-# exclude       = []    # list of apps to exclude, ie. ["radarr", "lidarr"]
-# timeout       = "10s" # You can adjust how long to wait for a server response.
+# [[cmdhook]]
+# command = '/downloads/scripts/command.sh'
+## Provide an optional name to hide the URL in logs.
+## If a name is not provided the first word in the command is used.
+# name = ""
+## Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
+# shell = false
+## Do not log command's output.
+# silent = false
+## List of event ids to run command for, [0] for all.
+## The default is [0] and this is an example:
+# events = [1, 4, 7]
+## ===> Optional Command Hook Configuration <===
+## List of apps to exclude. None by default. This is an example:
+# exclude = ["readarr", "lidarr"]
+## You can adjust how long to wait for the command to run.
+# timeout = "10s"
+

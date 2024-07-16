@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,22 +13,16 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-const (
-	outputDir = "generated/"
-	dirMode   = 0o755
-	fileMode  = 0o644
-)
-
-func printDocusaurus(config *Config) {
-	// Loop the 'Order' list.
-	if err := makeGenerated(config); err != nil {
-		panic(err)
+func printDocusaurus(config *Config, output string) {
+	// Generate index file first.
+	if err := makeGenerated(config, output); err != nil {
+		log.Fatalln(err)
 	}
-
+	// Loop the 'Order' list.
 	for _, section := range config.Order {
-		// If Order contains a missing section, panic.
+		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			panic(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
 		}
 
 		if len(config.Sections[section].Params) < 1 {
@@ -36,28 +31,30 @@ func printDocusaurus(config *Config) {
 
 		if config.Defs[section] != nil {
 			data := config.Sections[section].makeDefinedDocs(config.Prefix, config.Defs[section], config.DefOrder[section])
-			if err := output(string(section), data); err != nil {
-				panic(err)
+			if err := writeDocusaurus(output, string(section), data); err != nil {
+				log.Fatalln(err)
 			}
 		} else {
 			data := config.Sections[section].makeDocs(config.Prefix, section)
-			if err := output(string(section), data); err != nil {
-				panic(err)
+			if err := writeDocusaurus(output, string(section), data); err != nil {
+				log.Fatalln(err)
 			}
 		}
 	}
 }
 
-func output(file, content string) error {
-	_ = os.Mkdir(outputDir, dirMode)
+func writeDocusaurus(dir, file, content string) error {
+	_ = os.Mkdir(dir, dirMode)
 	date := "---\n# Generated: " + time.Now().Round(time.Second).String() + "\n---\n\n"
+	filePath := filepath.Join(dir, file+".md")
+	fmt.Printf("Writing: %s, size: %d\n", filePath, len(content))
 	//nolint:wrapcheck
-	return os.WriteFile(filepath.Join(outputDir, file+".md"), []byte(date+content), fileMode)
+	return os.WriteFile(filePath, []byte(date+content), fileMode)
 }
 
 // makeGenerated writes a special file that the website can import.
 // Adds all param sections except global into a docusaurus import format.
-func makeGenerated(config *Config) error {
+func makeGenerated(config *Config, output string) error {
 	var (
 		first  bytes.Buffer
 		second bytes.Buffer
@@ -71,7 +68,7 @@ func makeGenerated(config *Config) error {
 		}
 	}
 
-	return output("index", first.String()+"\n"+second.String())
+	return writeDocusaurus(output, "index", first.String()+"\n"+second.String())
 }
 
 func (h *Header) makeDocs(prefix string, section section) string {
@@ -79,7 +76,7 @@ func (h *Header) makeDocs(prefix string, section section) string {
 	buf.WriteString("## " + h.Title + "\n\n<details>\n")
 
 	conf := h.makeSection(section, true, true)
-	env := h.makeCompose(h.Title, prefix, true)
+	env := h.makeCompose(prefix, true)
 	header := "[" + string(section) + "]"
 
 	if h.Kind == list {

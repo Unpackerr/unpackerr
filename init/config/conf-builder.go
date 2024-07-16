@@ -3,24 +3,34 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
-func printConfFile(config *Config) {
+func printConfFile(config *Config, output string) {
+	buf := bytes.Buffer{}
+
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
-		// If Order contains a missing section, panic.
+		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			panic(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
 		}
 
 		if config.Defs[section] != nil {
-			fmt.Print(config.Sections[section].makeDefinedSection(config.Defs[section], config.DefOrder[section], false))
+			buf.WriteString(config.Sections[section].makeDefinedSection(config.Defs[section], config.DefOrder[section], false))
 		} else {
-			fmt.Print(config.Sections[section].makeSection(section, false, false))
+			buf.WriteString(config.Sections[section].makeSection(section, false, false))
 		}
+	}
+
+	log.Println("Writing", output, "size:", buf.Len())
+
+	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
+		log.Fatalln(err)
 	}
 }
 
@@ -33,13 +43,15 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		buf.WriteString(h.Text)
 	}
 
-	comment := "#"
+	space, comment := "", "# "
 	if showHeader {
 		// this only happens when a defined section has a comment override on the repeating headers.
 		comment = ""
 	}
 
 	if !h.NoHeader { // Print the [section] or [[section]] header.
+		space = " "
+
 		if h.Kind == list { // list sections are commented by default.
 			buf.WriteString(comment + "[[" + string(name) + "]]" + "\n") // list sections use double-brackets.
 		} else {
@@ -63,13 +75,13 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		default:
 			fallthrough
 		case showValue:
-			buf.WriteString(fmt.Sprintf("%s = %s\n", param.Name, param.Value()))
+			buf.WriteString(fmt.Sprintf("%s%s = %s\n", space, param.Name, param.Value()))
 		case param.Example != nil:
 			// If example is not empty, use that commented out, otherwise use the default.
 			fallthrough
 		case h.Kind == list:
 			// If the 'kind' is a 'list', we comment all the parameters.
-			buf.WriteString(fmt.Sprintf("#%s = %s\n", param.Name, param.Value()))
+			buf.WriteString(fmt.Sprintf("#%s%s = %s\n", space, param.Name, param.Value()))
 		}
 	}
 

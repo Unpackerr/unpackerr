@@ -15,7 +15,7 @@ and a suite of docusaurus-markdown files to create the official
 
 The config file is generated every time `go generate` runs. This happens during the build, so the
 config file compiled into the application is always up to date. The repo needs to be updated manually
-when the definition file changes. Just run `go generate` before committing.
+when the definition file changes. Just run `go generate ./...` before committing.
 
 ### Compose Service
 

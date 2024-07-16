@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	list = "list"
+	list      = "list"
 	inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
 	opTimeout = 6 * time.Second
 )

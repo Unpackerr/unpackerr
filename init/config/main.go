@@ -95,13 +95,13 @@ func main() {
 
 	for _, builder := range flags.Type {
 		switch builder {
-		case "docs":
+		case "doc", "docs", "documentation", "docusaurus":
 			log.Println("Building Docusaurus")
 			printDocusaurus(config, flags.Docs)
-		case "config":
+		case "conf", "config":
 			log.Println("Building Config File")
 			printConfFile(config, flags.Config)
-		case "compose":
+		case "docker", "compose", "yml":
 			log.Println("Building Docker Compose")
 			createCompose(config, flags.Compose)
 		}

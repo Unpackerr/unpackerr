@@ -1,0 +1,3 @@
+- All params must have a default, even if it's `[]` or `''`.
+- Examples override params, but get commented out.
+- All list params are commented.

@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 )
 
@@ -14,7 +16,7 @@ const (
 ### Generator: https://notifiarr.com/unpackerr
 ##################################################################
 services:
-
+  ## Copy the service below to your file if you have other services.
   unpackerr:
     image: golift/unpackerr
     container_name: unpackerr
@@ -33,31 +35,38 @@ services:
     - TZ=${TZ}`
 )
 
-func printCompose(config *Config) {
-	fmt.Println(composeHeader)
+func createCompose(config *Config, output string) {
+	buf := bytes.Buffer{}
+	buf.WriteString(composeHeader + "\n")
 
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
-		// If Order contains a missing section, panic.
+		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			panic(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
 		}
 
 		if config.Defs[section] == nil {
-			fmt.Print(config.Sections[section].makeCompose(config.Sections[section].Title, config.Prefix, false))
+			buf.WriteString(config.Sections[section].makeCompose(config.Prefix, false))
 		} else {
-			fmt.Print(config.Sections[section].makeComposeDefined(config.Prefix, config.Defs[section], config.DefOrder[section], false))
+			buf.WriteString(config.Sections[section].makeComposeDefined(config.Prefix, config.Defs[section], config.DefOrder[section], false))
 		}
+	}
+
+	log.Println("Writing", output, "size:", buf.Len())
+
+	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
+		log.Fatalln(err)
 	}
 }
 
-func (h *Header) makeCompose(title, prefix string, bare bool) string {
+func (h *Header) makeCompose(prefix string, bare bool) string {
 	var buf bytes.Buffer
 
 	if len(h.Params) > 0 && bare {
-		buf.WriteString("## " + title + "\n")
+		buf.WriteString("## " + h.Title + "\n")
 	} else if len(h.Params) > 0 {
-		buf.WriteString(space + " ## " + title + "\n")
+		buf.WriteString(space + " ## " + h.Title + "\n")
 	}
 
 	pfx := space + " - "
@@ -82,7 +91,7 @@ func (h *Header) makeComposeDefined(prefix string, defs Defs, order []section, b
 	for _, section := range order {
 		newHeader := createDefinedSection(defs[section], h)
 		// Make a brand new section and print it.
-		buf.WriteString(newHeader.makeCompose(h.Title, prefix, bare))
+		buf.WriteString(newHeader.makeCompose(prefix, bare))
 	}
 
 	return buf.String()

@@ -193,7 +193,7 @@ sections:
       #######################################################
       ##       Unpackerr Example Configuration File        ##
       #######################################################
-      ##  The displayed values are application defaults.   ##
+      ##  The values are a mix of defaults and examples.   ##
       ##  Environment Variables may override all values.   ##
       ##  More configuration help: https://unpackerr.zip   ##
       ## Config Generator: https://notifiarr.com/unpackerr ##
@@ -447,7 +447,7 @@ sections:
         - value: torrent,usenet
         - value: usenet
       short: 'Protocols to process. Alt: `torrent,usenet`'
-      desc: 'Default protocols is torrent. Alternative: torrent,usenet'
+      desc: 'Default protocols is torrent. Alternative: "torrent,usenet"'
     - name: timeout
       envvar: TIMEOUT
       default: 10s

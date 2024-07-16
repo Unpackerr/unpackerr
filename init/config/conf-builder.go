@@ -43,7 +43,7 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		buf.WriteString(h.Text)
 	}
 
-	space, comment := "", "# "
+	space, comment := "", "#"
 	if showHeader {
 		// this only happens when a defined section has a comment override on the repeating headers.
 		comment = ""

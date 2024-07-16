@@ -153,7 +153,7 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-# [[lidarr]]
+#[[lidarr]]
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## List of paths where content is downloaded for this app.
@@ -172,7 +172,7 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-# [[readarr]]
+#[[readarr]]
 # url = "http://127.0.0.1:8787"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## List of paths where content is downloaded for this app.
@@ -191,7 +191,7 @@ dir_mode = "0755"
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
-# [[whisparr]]
+#[[whisparr]]
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## List of paths where content is downloaded for this app.
@@ -221,7 +221,7 @@ dir_mode = "0755"
 ## subfolder into a watched folder (defined below) any extractable items in the ##
 ## folder will be decompressed. This has nothing to do with Starr applications. ##
 ##################################################################################
-# [[folder]]
+#[[folder]]
 # path = '/downloads/auto_extract'
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
 # extract_path = ''
@@ -249,7 +249,7 @@ dir_mode = "0755"
 # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
 # Can possibly be used with other services by providing a custom template_path.
 ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
-# [[webhook]]
+#[[webhook]]
 # url = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
 ## Provide an optional name to hide the URL in logs.
 ## If a name is not provided then the URL is used.
@@ -283,7 +283,7 @@ dir_mode = "0755"
 # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
 # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
 ###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
-# [[cmdhook]]
+#[[cmdhook]]
 # command = '/downloads/scripts/command.sh'
 ## Provide an optional name to hide the URL in logs.
 ## If a name is not provided the first word in the command is used.

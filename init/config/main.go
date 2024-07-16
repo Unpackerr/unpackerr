@@ -13,8 +13,7 @@ import (
 
 const (
 	list = "list"
-	// inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
-	inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/dn2_conf_builder/init/config/conf-builder.yml"
+	inputFile = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
 	opTimeout = 6 * time.Second
 )
 

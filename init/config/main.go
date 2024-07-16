@@ -98,12 +98,14 @@ func main() {
 		case "doc", "docs", "documentation", "docusaurus":
 			log.Println("Building Docusaurus")
 			printDocusaurus(config, flags.Docs)
-		case "conf", "config":
+		case "conf", "config", "example":
 			log.Println("Building Config File")
 			printConfFile(config, flags.Config)
 		case "docker", "compose", "yml":
 			log.Println("Building Docker Compose")
 			createCompose(config, flags.Compose)
+		default:
+			log.Println("Unknown type: " + builder)
 		}
 	}
 }

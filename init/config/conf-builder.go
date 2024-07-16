@@ -51,6 +51,7 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 
 	if !h.NoHeader { // Print the [section] or [[section]] header.
 		space = " "
+
 		if h.Kind == list { // list sections are commented by default.
 			buf.WriteString(comment + "[[" + string(name) + "]]" + "\n") // list sections use double-brackets.
 		} else {

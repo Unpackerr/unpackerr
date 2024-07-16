@@ -86,7 +86,7 @@ func main() {
 	config := &Config{}
 	// Decode conf-builder file into Go data structure.
 	if err = yaml.NewDecoder(file).Decode(config); err != nil {
-		log.Fatalln(err)
+		log.Fatalln(err) //nolint:gocritic
 	}
 
 	for _, builder := range flags.Type {
@@ -129,7 +129,7 @@ func openFile(fileName string) (io.ReadCloser, error) {
 	if strings.HasPrefix(fileName, "http") {
 		http.DefaultClient.Timeout = opTimeout
 
-		resp, err := http.Get(fileName) //nolint:noctx // because we set a timeout.
+		resp, err := http.Get(fileName) //nolint:noctx,gosec // because we set a timeout.
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", fileName, err)
 		}

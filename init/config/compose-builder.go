@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+//nolint:lll
 const (
 	space         = "   "
 	composeHeader = `### Unpackerr docker-compose.yml Example
@@ -49,7 +50,8 @@ func createCompose(config *Config, output string) {
 		if config.Defs[section] == nil {
 			buf.WriteString(config.Sections[section].makeCompose(config.Prefix, false))
 		} else {
-			buf.WriteString(config.Sections[section].makeComposeDefined(config.Prefix, config.Defs[section], config.DefOrder[section], false))
+			buf.WriteString(config.Sections[section].
+				makeComposeDefined(config.Prefix, config.Defs[section], config.DefOrder[section], false))
 		}
 	}
 

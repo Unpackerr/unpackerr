@@ -47,7 +47,7 @@ func writeDocusaurus(dir, file, content string) error {
 	_ = os.Mkdir(dir, dirMode)
 	date := "---\n# Generated: " + time.Now().Round(time.Second).String() + "\n---\n\n"
 	filePath := filepath.Join(dir, file+".md")
-	fmt.Printf("Writing: %s, size: %d\n", filePath, len(content))
+	log.Printf("Writing: %s, size: %d", filePath, len(content))
 	//nolint:wrapcheck
 	return os.WriteFile(filePath, []byte(date+content), fileMode)
 }
@@ -86,7 +86,8 @@ func (h *Header) makeDocs(prefix string, section section) string {
 	if h.NoHeader {
 		buf.WriteString("  <summary>Examples. Prefix: <b>" + prefix + "</b></summary>\n\n")
 	} else {
-		buf.WriteString("  <summary>Examples. Prefix: <b>" + prefix + h.Prefix + "</b>, Header: <b>" + header + "</b></summary>\n\n")
+		buf.WriteString("  <summary>Examples. Prefix: <b>" + prefix + h.Prefix +
+			"</b>, Header: <b>" + header + "</b></summary>\n\n")
 	}
 
 	buf.WriteString("- Using the config file:\n\n```yaml\n")

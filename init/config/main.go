@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"log"
@@ -22,9 +24,11 @@ const (
 	outputDir      = "generated/"
 	exampleConfig  = "unpackerr.conf.example"
 	exampleCompose = "docker-compose.yml"
-	inputFile      = "https://raw.githubusercontent.com/Unpackerr/unpackerr/main/init/config/conf-builder.yml"
 	opTimeout      = 6 * time.Second
 )
+
+//go:embed conf-builder.yml
+var confBuilder []byte
 
 type section string
 
@@ -114,18 +118,30 @@ type flags struct {
 
 func parseFlags() *flags {
 	flags := flags{}
-	flag.StringSliceVarP(&flags.Type, "type", "t", []string{"compose", "docs", "config"}, "Choose 1 or more outputs, or don't and get them all.")
-	flag.StringVar(&flags.Config, "config", exampleConfig, "Choose filename for generated config file.")
-	flag.StringVar(&flags.Compose, "compose", exampleCompose, "Choose a filename for the generated docker compose service.")
-	flag.StringVar(&flags.Docs, "docs", outputDir, "Choose folder for generated documentation. ")
-	flag.StringVarP(&flags.File, "file", "f", inputFile, "URL or filepath for conf-builder.yml")
+	flag.StringSliceVarP(&flags.Type, "type", "t", []string{"compose", "docs", "config"},
+		"Choose 1 or more outputs, or don't and get them all.")
+	flag.StringVar(&flags.Config, "config", exampleConfig,
+		"Choose filename for generated config file.")
+	flag.StringVar(&flags.Compose, "compose", exampleCompose,
+		"Choose a filename for the generated docker compose service.")
+	flag.StringVar(&flags.Docs, "docs", outputDir,
+		"Choose folder for generated documentation. ")
+	flag.StringVarP(&flags.File, "file", "f", "internal",
+		"URL or filepath for conf-builder.yml, internal uses the compiled-in file")
 	flag.Parse()
 
 	return &flags
 }
 
-// openFile opens a file or url for the parser.
+// openFile opens a file or url for the parser, or returns the internal file.
 func openFile(fileName string) (io.ReadCloser, error) {
+	if fileName == "internal" {
+		buf := bytes.Buffer{}
+		buf.Write(confBuilder)
+
+		return io.NopCloser(&buf), nil
+	}
+
 	if strings.HasPrefix(fileName, "http") {
 		http.DefaultClient.Timeout = opTimeout
 

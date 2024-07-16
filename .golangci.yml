@@ -16,12 +16,7 @@ linters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-      # Exclude some linters from testing files.
-      - linters:
-          - forbidigo
-          - lll
-        path: 'init/config/.*.\.go'
+
 output:
   sort-results: true
 run:

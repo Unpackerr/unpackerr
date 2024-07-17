@@ -1,4 +1,4 @@
-//go:generate go run . --config ../../examples/unpackerr.conf.example --compose ../../examples/docker-compose.yml --type config,compose --file conf-builder.yml
+//go:generate go run . --config ../../examples/unpackerr.conf.example --compose ../../examples/docker-compose.yml --type config,compose --file definitions.yml
 
 package main
 
@@ -27,7 +27,7 @@ const (
 	opTimeout      = 6 * time.Second
 )
 
-//go:embed conf-builder.yml
+//go:embed definitions.yml
 var confBuilder []byte
 
 type section string
@@ -88,7 +88,7 @@ func main() {
 	defer file.Close()
 
 	config := &Config{}
-	// Decode conf-builder file into Go data structure.
+	// Decode definitions file into Go data structure.
 	if err = yaml.NewDecoder(file).Decode(config); err != nil {
 		log.Fatalln(err) //nolint:gocritic
 	}
@@ -129,7 +129,7 @@ func parseFlags() *flags {
 	flag.StringVar(&flags.Docs, "docs", outputDir,
 		"Choose folder for generated documentation.")
 	flag.StringVarP(&flags.File, "file", "f", "internal",
-		"URL or filepath for conf-builder.yml, internal uses the compiled-in file.")
+		"URL or filepath for definitions.yml, 'internal' uses the compiled-in file.")
 	flag.Parse()
 
 	return &flags

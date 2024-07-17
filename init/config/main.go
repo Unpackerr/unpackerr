@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -181,4 +182,17 @@ func createDefinedSection(def *Def, section *Header) *Header {
 	}
 
 	return newSection
+}
+
+// This is used only by compose and config. docs has it's own.
+func writeFile(dir, output string, buf *bytes.Buffer) {
+	_ = os.Mkdir(dir, dirMode)
+	filePath := filepath.Join(dir, output)
+	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
+	buf.WriteString("## => Content Auto Generated, " +
+		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")+"\n"))
+
+	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
+		log.Fatalln(err)
+	}
 }

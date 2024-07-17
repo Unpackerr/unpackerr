@@ -48,7 +48,8 @@ func createDocusaurus(config *Config, output string) {
 
 func writeDocusaurus(dir, file, content string) error {
 	_ = os.Mkdir(dir, dirMode)
-	date := "---\n# Generated: " + time.Now().Round(time.Second).String() + "\n---\n\n"
+	date := "---\n## => Content Auto Generated, " +
+		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")) + "\n---\n\n"
 	filePath := filepath.Join(dir, file+".md")
 	log.Printf("Writing: %s, size: %d", filePath, len(content))
 	//nolint:wrapcheck
@@ -67,7 +68,15 @@ func makeGenerated(config *Config, output string) error {
 		}
 	}
 
-	return writeDocusaurus(output, "index", first.String()+"\n"+second.String())
+	err := writeDocusaurus(output, "index", first.String()+"\n"+second.String())
+	if err != nil {
+		return err
+	}
+
+	date := strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))
+	// Create a footer file that can be imported.
+	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+date+"</font>\n")
 }
 
 func (h *Header) makeDocs(prefix string, section section) string {

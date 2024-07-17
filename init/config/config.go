@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -30,13 +28,7 @@ func createConfFile(config *Config, output, dir string) {
 		}
 	}
 
-	_ = os.Mkdir(dir, dirMode)
-	filePath := filepath.Join(dir, output)
-	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
-
-	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
-		log.Fatalln(err)
-	}
+	writeFile(dir, output, &buf)
 }
 
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.

@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 )
 
 /* This file creates an example compose file: docker-compose.yml */
@@ -33,10 +30,10 @@ services:
     user: ${PUID}:${PGID}
     #user: 1000:100
     # What you see below are defaults mixed with examples where examples make more sense than the default.
-	# You only need to modify things specific to your environment.
-    # Remove apps and feature configs you do not use or need. 
-    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, 
-	#     UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
+    # You only need to modify things specific to your environment.
+    # Remove apps and feature configs you do not use or need.
+    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK,
+    #     UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
     environment:
     - TZ=${TZ}`
 )
@@ -60,14 +57,8 @@ func createCompose(config *Config, output, dir string) {
 		}
 	}
 
-	_ = os.Mkdir(dir, dirMode)
-	filePath := filepath.Join(dir, output)
-	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
-	buf.WriteString("\n# Generated: " + time.Now().Round(time.Second).String() + "\n")
-
-	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
-		log.Fatalln(err)
-	}
+	buf.WriteString("\n")
+	writeFile(dir, output, &buf)
 }
 
 func (h *Header) makeCompose(prefix string, bare bool) string {

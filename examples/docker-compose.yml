@@ -16,9 +16,11 @@ services:
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
     #user: 1000:100
-    # What you see below are defaults for this compose. You only need to modify things specific to your environment.
-    # Remove apps and feature configs you do not use or need. 
-    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
+    # What you see below are defaults mixed with examples where examples make more sense than the default.
+    # You only need to modify things specific to your environment.
+    # Remove apps and feature configs you do not use or need.
+    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK,
+    #     UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
     environment:
     - TZ=${TZ}
     ## Global Settings
@@ -132,3 +134,5 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_0=readarr
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
+
+## => Content Auto Generated, 17 JUL 2024 08:35 UTC

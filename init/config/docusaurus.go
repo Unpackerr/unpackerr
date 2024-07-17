@@ -13,6 +13,8 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+/* This file creates a folder full of docusaurus markdown files for https://unpackerr.zip */
+
 func printDocusaurus(config *Config, output string) {
 	// Generate index file first.
 	if err := makeGenerated(config, output); err != nil {

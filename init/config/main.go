@@ -127,9 +127,9 @@ func parseFlags() *flags {
 	flag.StringVar(&flags.Compose, "compose", exampleCompose,
 		"Choose a filename for the generated docker compose service.")
 	flag.StringVar(&flags.Docs, "docs", outputDir,
-		"Choose folder for generated documentation. ")
+		"Choose folder for generated documentation.")
 	flag.StringVarP(&flags.File, "file", "f", "internal",
-		"URL or filepath for conf-builder.yml, internal uses the compiled-in file")
+		"URL or filepath for conf-builder.yml, internal uses the compiled-in file.")
 	flag.Parse()
 
 	return &flags

@@ -10,7 +10,6 @@ import (
 
 /* This file creates an example compose file: docker-compose.yml */
 
-//nolint:lll
 const (
 	space         = "   "
 	composeHeader = `### Unpackerr docker-compose.yml Example
@@ -31,9 +30,11 @@ services:
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
     #user: 1000:100
-    # What you see below are defaults for this compose. You only need to modify things specific to your environment.
+    # What you see below are defaults mixed with examples where examples make more sense than the default.
+	# You only need to modify things specific to your environment.
     # Remove apps and feature configs you do not use or need. 
-    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
+    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, 
+	#     UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
     environment:
     - TZ=${TZ}`
 )

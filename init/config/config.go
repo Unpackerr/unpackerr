@@ -10,6 +10,8 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+/* This file creates an example config file: unpackerr.conf.example */
+
 func printConfFile(config *Config, output string) {
 	buf := bytes.Buffer{}
 

@@ -56,8 +56,9 @@ func writeDocusaurus(dir, file, content string) error {
 	return os.WriteFile(filePath, []byte(date+content), fileMode)
 }
 
-// makeGenerated writes a special file that the website can import.
+// makeGenerated writes a special index file that the website can import.
 // Adds all param sections except global into a docusaurus import format.
+// Also creates a footer file that can be imported and displayed.
 func makeGenerated(config *Config, output string) error {
 	var first, second bytes.Buffer
 
@@ -73,7 +74,6 @@ func makeGenerated(config *Config, output string) error {
 		return err
 	}
 
-	// Create a footer file that can be imported.
 	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
 		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
 		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))+"</font>\n")

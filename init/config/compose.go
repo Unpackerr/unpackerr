@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+/* This file creates an example compose file: docker-compose.yml */
+
 //nolint:lll
 const (
 	space         = "   "

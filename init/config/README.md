@@ -1,6 +1,6 @@
 # Unpackerr Configuration Generator
 
-This folder contains a [yaml](conf-builder.yml) file that describes the entire Unpackerr configuration.
+This folder contains a [yaml](definitions.yml) file that describes the entire Unpackerr configuration.
 This description includes all variables, their defaults, their recommendations, comments and documentation.
 
 ## Builders

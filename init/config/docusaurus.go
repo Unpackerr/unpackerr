@@ -15,7 +15,7 @@ import (
 
 /* This file creates a folder full of docusaurus markdown files for https://unpackerr.zip */
 
-func printDocusaurus(config *Config, output string) {
+func createDocusaurus(config *Config, output string) {
 	// Generate index file first.
 	if err := makeGenerated(config, output); err != nil {
 		log.Fatalln(err)
@@ -24,14 +24,15 @@ func printDocusaurus(config *Config, output string) {
 	for _, section := range config.Order {
 		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
-
+		// We only care about sections with parameters defined.
 		if len(config.Sections[section].Params) < 1 {
 			continue
 		}
 
 		if config.Defs[section] != nil {
+			// Repeat this section based on defined definitions.
 			data := config.Sections[section].makeDefinedDocs(config.Prefix, config.Defs[section], config.DefOrder[section])
 			if err := writeDocusaurus(output, string(section), data); err != nil {
 				log.Fatalln(err)
@@ -47,72 +48,74 @@ func printDocusaurus(config *Config, output string) {
 
 func writeDocusaurus(dir, file, content string) error {
 	_ = os.Mkdir(dir, dirMode)
-	date := "---\n# Generated: " + time.Now().Round(time.Second).String() + "\n---\n\n"
+	date := "---\n## => Content Auto Generated, " +
+		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")) + "\n---\n\n"
 	filePath := filepath.Join(dir, file+".md")
 	log.Printf("Writing: %s, size: %d", filePath, len(content))
 	//nolint:wrapcheck
 	return os.WriteFile(filePath, []byte(date+content), fileMode)
 }
 
-// makeGenerated writes a special file that the website can import.
+// makeGenerated writes a special index file that the website can import.
 // Adds all param sections except global into a docusaurus import format.
+// Also creates a footer file that can be imported and displayed.
 func makeGenerated(config *Config, output string) error {
-	var (
-		first  bytes.Buffer
-		second bytes.Buffer
-	)
+	var first, second bytes.Buffer
 
 	for _, section := range config.Order {
 		if len(config.Sections[section].Params) > 0 && section != "global" {
-			title := "G" + string(section)
-			first.WriteString("import " + title + " from './" + string(section) + ".md';\n")
-			second.WriteString("<" + title + "/>\n")
+			first.WriteString("import G" + string(section) + " from './" + string(section) + ".md';\n")
+			second.WriteString("<G" + string(section) + "/>\n")
 		}
 	}
 
-	return writeDocusaurus(output, "index", first.String()+"\n"+second.String())
+	err := writeDocusaurus(output, "index", first.String()+"\n"+second.String())
+	if err != nil {
+		return err
+	}
+
+	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
+		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))+"</font>\n")
 }
 
 func (h *Header) makeDocs(prefix string, section section) string {
+	conf := h.makeSection(section, true, true) // Generate this portion of the config file.
+	env := h.makeCompose(prefix, true)         // Generate this portion of the docker-compose example.
+
 	buf := bytes.Buffer{}
-	buf.WriteString("## " + h.Title + "\n\n<details>\n")
+	buf.WriteString("## " + h.Title + "\n\n<details>\n  <summary>Examples. Prefix: <b>" + prefix)
 
-	conf := h.makeSection(section, true, true)
-	env := h.makeCompose(prefix, true)
-	header := "[" + string(section) + "]"
+	if !h.NoHeader {
+		brace1, brace2 := "[", "]"
+		if h.Kind == list {
+			brace1, brace2 = "[[", "]]"
+		}
 
-	if h.Kind == list {
-		header = "[[" + string(section) + "]]"
+		buf.WriteString(h.Prefix + "</b>, Header: <b> ")   // Add to the line above.
+		buf.WriteString(brace1 + string(section) + brace2) // Add to the line above.
 	}
 
-	if h.NoHeader {
-		buf.WriteString("  <summary>Examples. Prefix: <b>" + prefix + "</b></summary>\n\n")
-	} else {
-		buf.WriteString("  <summary>Examples. Prefix: <b>" + prefix + h.Prefix +
-			"</b>, Header: <b>" + header + "</b></summary>\n\n")
-	}
-
+	buf.WriteString("</b></summary>\n\n") // Add to the line above.
 	buf.WriteString("- Using the config file:\n\n```yaml\n")
 	buf.WriteString(strings.TrimSpace(conf) + "\n```\n\n")
 	buf.WriteString("- Using environment variables:\n\n```js\n")
 	buf.WriteString(env + "```\n\n</details>\n\n")
-	buf.WriteString(h.Docs + "\n") // Docs comes before the table.
-	buf.WriteString(h.makeDocsTable(prefix) + "\n")
-	buf.WriteString(h.Tail) // Tail goes after the docs and table.
+	buf.WriteString(h.Docs + "\n" + h.makeDocsTable(prefix) + "\n" + h.Tail)
 
 	if h.Notes != "" { // Notes become a sub header.
-		buf.WriteString("### " + h.Title + " Notes\n\n" + h.Notes)
+		buf.WriteString("### Notes for " + h.Title + "\n\n" + h.Notes)
 	}
 
 	return buf.String()
 }
 
-func (h *Header) makeDocsTable(prefix string) string {
-	const (
-		tableHeader = "|Config Name|Variable Name|Default / Note|\n|---|---|---|\n"
-		tableFormat = "|%s|`%s`|%v / %s|\n"
-	)
+const (
+	tableHeader = "|Config Name|Variable Name|Default / Note|\n|---|---|---|\n"
+	tableFormat = "|%s|`%s`|%v / %s|\n"
+)
 
+func (h *Header) makeDocsTable(prefix string) string {
 	buf := bytes.Buffer{}
 	buf.WriteString(tableHeader)
 

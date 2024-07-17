@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 )
 
 /* This file creates an example compose file: docker-compose.yml */
 
-//nolint:lll
 const (
 	space         = "   "
 	composeHeader = `### Unpackerr docker-compose.yml Example
@@ -31,14 +29,16 @@ services:
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
     #user: 1000:100
-    # What you see below are defaults for this compose. You only need to modify things specific to your environment.
-    # Remove apps and feature configs you do not use or need. 
-    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK, UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
+    # What you see below are defaults mixed with examples where examples make more sense than the default.
+    # You only need to modify things specific to your environment.
+    # Remove apps and feature configs you do not use or need.
+    # ie. Remove all lines that begin with UN_CMDHOOK, UN_WEBHOOK,
+    #     UN_FOLDER, UN_WEBSERVER, and other apps you do not use.
     environment:
     - TZ=${TZ}`
 )
 
-func createCompose(config *Config, output string) {
+func createCompose(config *Config, output, dir string) {
 	buf := bytes.Buffer{}
 	buf.WriteString(composeHeader + "\n")
 
@@ -46,7 +46,7 @@ func createCompose(config *Config, output string) {
 	for _, section := range config.Order {
 		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
 		if config.Defs[section] == nil {
@@ -57,11 +57,8 @@ func createCompose(config *Config, output string) {
 		}
 	}
 
-	log.Println("Writing", output, "size:", buf.Len())
-
-	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
-		log.Fatalln(err)
-	}
+	buf.WriteString("\n")
+	writeFile(dir, output, &buf)
 }
 
 func (h *Header) makeCompose(prefix string, bare bool) string {

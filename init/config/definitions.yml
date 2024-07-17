@@ -122,6 +122,8 @@ recommendations:
   - name: 24 hours
     value: 24h
   folders: &FOLDER_INTERVALS
+  - name: Default (1s in Docker)
+    value: 0s
   - name: Disabled
     value: 1ms
   - name: 1/2 second

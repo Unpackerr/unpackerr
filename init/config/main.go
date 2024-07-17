@@ -1,4 +1,4 @@
-//go:generate go run . --config ../../examples/unpackerr.conf.example --compose ../../examples/docker-compose.yml --type config,compose --file definitions.yml
+//go:generate go run . --type config,compose --file definitions.yml --output ../../examples
 
 package main
 
@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -97,13 +98,13 @@ func main() {
 		switch builder {
 		case "doc", "docs", "documentation", "docusaurus":
 			log.Println("Building Docusaurus")
-			printDocusaurus(config, flags.Docs)
+			createDocusaurus(config, flags.Output)
 		case "conf", "config", "example":
 			log.Println("Building Config File")
-			printConfFile(config, flags.Config)
+			createConfFile(config, flags.Config, flags.Output)
 		case "docker", "compose", "yml":
 			log.Println("Building Docker Compose")
-			createCompose(config, flags.Compose)
+			createCompose(config, flags.Compose, flags.Output)
 		default:
 			log.Println("Unknown type: " + builder)
 		}
@@ -114,7 +115,7 @@ type flags struct {
 	Type    []string
 	Config  string
 	Compose string
-	Docs    string
+	Output  string
 	File    string
 }
 
@@ -126,8 +127,8 @@ func parseFlags() *flags {
 		"Choose filename for generated config file.")
 	flag.StringVar(&flags.Compose, "compose", exampleCompose,
 		"Choose a filename for the generated docker compose service.")
-	flag.StringVar(&flags.Docs, "docs", outputDir,
-		"Choose folder for generated documentation.")
+	flag.StringVar(&flags.Output, "output", outputDir,
+		"Choose folder for generated files.")
 	flag.StringVarP(&flags.File, "file", "f", "internal",
 		"URL or filepath for definitions.yml, 'internal' uses the compiled-in file.")
 	flag.Parse()
@@ -138,29 +139,27 @@ func parseFlags() *flags {
 // openFile opens a file or url for the parser, or returns the internal file.
 func openFile(fileName string) (io.ReadCloser, error) {
 	if fileName == "internal" {
-		buf := bytes.Buffer{}
-		buf.Write(confBuilder)
-
-		return io.NopCloser(&buf), nil
+		buf := bytes.NewBuffer(confBuilder)
+		return io.NopCloser(buf), nil
 	}
 
-	if strings.HasPrefix(fileName, "http") {
-		http.DefaultClient.Timeout = opTimeout
-
-		resp, err := http.Get(fileName) //nolint:noctx,gosec // because we set a timeout.
+	if !strings.HasPrefix(fileName, "http") {
+		file, err := os.Open(fileName)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", fileName, err)
 		}
 
-		return resp.Body, nil
+		return file, nil
 	}
 
-	file, err := os.Open(fileName)
+	http.DefaultClient.Timeout = opTimeout
+	//nolint:noctx,gosec // because we set a timeout.
+	resp, err := http.Get(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", fileName, err)
 	}
 
-	return file, nil
+	return resp.Body, nil
 }
 
 func createDefinedSection(def *Def, section *Header) *Header {
@@ -183,4 +182,17 @@ func createDefinedSection(def *Def, section *Header) *Header {
 	}
 
 	return newSection
+}
+
+// This is used only by compose and config. docs has it's own.
+func writeFile(dir, output string, buf *bytes.Buffer) {
+	_ = os.Mkdir(dir, dirMode)
+	filePath := filepath.Join(dir, output)
+	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
+	buf.WriteString("## => Content Auto Generated, " +
+		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")+"\n"))
+
+	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
+		log.Fatalln(err)
+	}
 }

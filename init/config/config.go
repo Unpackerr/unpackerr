@@ -4,20 +4,21 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
-func printConfFile(config *Config, output string) {
+/* This file creates an example config file: unpackerr.conf.example */
+
+func createConfFile(config *Config, output, dir string) {
 	buf := bytes.Buffer{}
 
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
 		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
 		if config.Defs[section] != nil {
@@ -27,11 +28,7 @@ func printConfFile(config *Config, output string) {
 		}
 	}
 
-	log.Println("Writing", output, "size:", buf.Len())
-
-	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
-		log.Fatalln(err)
-	}
+	writeFile(dir, output, &buf)
 }
 
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.

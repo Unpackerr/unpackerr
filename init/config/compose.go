@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 /* This file creates an example compose file: docker-compose.yml */
@@ -39,7 +41,7 @@ services:
     - TZ=${TZ}`
 )
 
-func createCompose(config *Config, output string) {
+func createCompose(config *Config, output, dir string) {
 	buf := bytes.Buffer{}
 	buf.WriteString(composeHeader + "\n")
 
@@ -47,7 +49,7 @@ func createCompose(config *Config, output string) {
 	for _, section := range config.Order {
 		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
 		if config.Defs[section] == nil {
@@ -58,9 +60,12 @@ func createCompose(config *Config, output string) {
 		}
 	}
 
-	log.Println("Writing", output, "size:", buf.Len())
+	_ = os.Mkdir(dir, dirMode)
+	filePath := filepath.Join(dir, output)
+	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
+	buf.WriteString("\n# Generated: " + time.Now().Round(time.Second).String() + "\n")
 
-	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
+	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
 		log.Fatalln(err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -12,14 +13,14 @@ import (
 
 /* This file creates an example config file: unpackerr.conf.example */
 
-func printConfFile(config *Config, output string) {
+func createConfFile(config *Config, output, dir string) {
 	buf := bytes.Buffer{}
 
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
 		// If Order contains a missing section, bail.
 		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in conf-builder.yml.")
+			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
 		if config.Defs[section] != nil {
@@ -29,9 +30,11 @@ func printConfFile(config *Config, output string) {
 		}
 	}
 
-	log.Println("Writing", output, "size:", buf.Len())
+	_ = os.Mkdir(dir, dirMode)
+	filePath := filepath.Join(dir, output)
+	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
 
-	if err := os.WriteFile(output, buf.Bytes(), fileMode); err != nil {
+	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
 		log.Fatalln(err)
 	}
 }

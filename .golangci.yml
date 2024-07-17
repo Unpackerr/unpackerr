@@ -23,8 +23,6 @@ run:
   timeout: 3m
 
 linters-settings:
-  ireturn:
-    allow: generic,stdlib,error
   depguard:
     rules:
       main:

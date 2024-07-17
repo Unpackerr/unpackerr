@@ -16,7 +16,7 @@ def_order:
   - sonarr
   - radarr
   - lidarr
-  - readarr 
+  - readarr
   - whisparr
 recommendations:
   apps: &APPS

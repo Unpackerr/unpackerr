@@ -9,4 +9,6 @@ var (
 	ConfigFile []byte
 	//go:embed docker-compose.yml
 	DockerCompose []byte
+	//go:embed MANUAL.md
+	ManualMakrdown []byte
 )

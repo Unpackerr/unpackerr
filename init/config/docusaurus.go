@@ -76,7 +76,8 @@ func makeGenerated(config *Config, output string) error {
 	date := strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))
 	// Create a footer file that can be imported.
 	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
-		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+date+"</font>\n")
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
+		date+"</font>\n")
 }
 
 func (h *Header) makeDocs(prefix string, section section) string {

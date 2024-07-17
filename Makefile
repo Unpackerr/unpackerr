@@ -75,7 +75,7 @@ clean:
 	rm -f unpackerr unpackerr.*.{macos,freebsd,linux,exe}{,.gz,.zip} unpackerr.1{,.gz} unpackerr.rb
 	rm -f unpackerr{_,-}*.{deb,rpm,txz} v*.tar.gz.sha256 examples/MANUAL .metadata.make rsrc_*.syso
 	rm -f cmd/unpackerr/README{,.html} README{,.html} ./unpackerr_manual.html rsrc.syso Unpackerr.*.app.zip
-	rm -f PKGBUILD pkg/bindata/bindata.go
+	rm -f PKGBUILD
 	rm -rf package_build_* release Unpackerr.*.app Unpackerr.app
 
 ####################
@@ -94,12 +94,12 @@ unpackerr.1.gz:
 
 # TODO: provide a template that adds the date to the built html file.
 readme: README.html
-README.html: 
+README.html:
 	# This turns README.md into README.html
 	go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version $(VERSION) --date "$(DATE)" README.md
 
 rsrc: rsrc.syso
-rsrc.syso: init/windows/application.ico init/windows/manifest.xml 
+rsrc.syso: init/windows/application.ico init/windows/manifest.xml
 	go run github.com/akavel/rsrc@latest -arch amd64 -ico init/windows/application.ico -manifest init/windows/manifest.xml
 
 ####################
@@ -337,8 +337,8 @@ lint: generate
 	GOOS=freebsd golangci-lint run
 	GOOS=windows golangci-lint run
 
-generate: pkg/bindata/bindata.go
-pkg/bindata/bindata.go: pkg/bindata/files/*
+generate: examples/unpackerr.conf.example
+examples/unpackerr.conf.example: init/config/*
 	find pkg -name .DS\* -delete
 	go generate ./...
 

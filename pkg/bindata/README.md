@@ -1,2 +1,1 @@
-The files in this folder are auto generated from the files/ folder.
-Currently bindata is used to store the app GUI icon files.
+The files in this folder are bundled into the compiled application binary.

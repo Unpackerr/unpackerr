@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Unpackerr/unpackerr/pkg/bindata"
+	"github.com/Unpackerr/unpackerr/examples"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/hako/durafmt"
 	homedir "github.com/mitchellh/go-homedir"
@@ -208,9 +208,7 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 	}
 	defer fOpen.Close()
 
-	if asset, err := bindata.Asset("../../examples/unpackerr.conf.example"); err != nil {
-		return "", fmt.Errorf("getting config file: %w", err)
-	} else if _, err = fOpen.Write(asset); err != nil {
+	if _, err = fOpen.Write(examples.ConfigFile); err != nil {
 		return "", fmt.Errorf("writing config file: %w", err)
 	}
 

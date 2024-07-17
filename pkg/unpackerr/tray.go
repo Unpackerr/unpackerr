@@ -46,14 +46,7 @@ func (u *Unpackerr) exitTray() {
 
 // readyTray creates the system tray/menu bar app items, and starts the web server.
 func (u *Unpackerr) readyTray() {
-	b, err := bindata.Asset(ui.SystrayIcon)
-	if err == nil {
-		systray.SetTemplateIcon(b, b)
-	} else {
-		u.Errorf("Reading Icon: %v", err)
-		systray.SetTitle("DNC")
-	}
-
+	systray.SetTemplateIcon(bindata.SystrayIcon, bindata.SystrayIcon)
 	systray.SetTooltip("Unpackerr" + " v" + version.Version)
 	u.makeChannels()
 

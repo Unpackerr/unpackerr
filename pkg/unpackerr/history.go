@@ -32,7 +32,7 @@ func (u *Unpackerr) updateHistory(item string) {
 
 	u.History.Items[0] = item
 
-	//nolint:intrange // Do not process 0; this isn't an `intrange`.
+	// Do not process 0; this isn't an `intrange`.
 	for idx := len(u.History.Items) - 1; idx > 0; idx-- {
 		// u.History.Items is a slice with a set (identical) length and capacity.
 		switch u.History.Items[idx] = u.History.Items[idx-1]; {

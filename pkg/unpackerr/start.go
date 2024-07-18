@@ -85,14 +85,6 @@ type Flags struct {
 	webhook    uint
 }
 
-// History holds the history of extracted items.
-type History struct {
-	Items    []string
-	Finished uint
-	Retries  uint
-	Map      map[string]*Extract
-}
-
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {

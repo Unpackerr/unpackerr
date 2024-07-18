@@ -18,15 +18,3 @@ func (u *Unpackerr) startTray() {
 func (u *Unpackerr) updateTray(_ *Stats, _ uint) {
 	// there is no tray.
 }
-
-func (u *Unpackerr) updateHistory(item string) {
-	if u.KeepHistory == 0 {
-		return
-	}
-
-	u.History.Items[0] = item
-	// u.History.Items is a slice with a set (identical) length and capacity.
-	for idx := range u.History.Items {
-		u.History.Items[idx] = u.History.Items[idx-1]
-	}
-}

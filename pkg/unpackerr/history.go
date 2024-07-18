@@ -39,7 +39,7 @@ func (u *Unpackerr) updateHistory(item string) {
 		case !ui.HasGUI():
 			continue
 		case u.History.Items[idx] != "":
-			u.menu[hist+starr.Itoa(idx)].SetTitle(u.History.Items[idx])
+			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.History.Items[idx])
 			u.menu[hist+strconv.Itoa(idx)].Show()
 		default:
 			u.menu[hist+strconv.Itoa(idx)].Hide()

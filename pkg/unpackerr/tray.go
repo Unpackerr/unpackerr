@@ -18,12 +18,6 @@ import (
 	"golift.io/version"
 )
 
-// Safety constants.
-const (
-	hist     = "hist_"
-	histNone = "hist_none"
-)
-
 // startTray Run()s readyTray to bring up the web server and the GUI app.
 func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
@@ -252,36 +246,5 @@ func (u *Unpackerr) checkForUpdate() {
 		version.Version, version.Revision, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
 	if yes {
 		_ = ui.OpenURL(update.CurrURL)
-	}
-}
-
-// This is called every time an item is queued.
-func (u *Unpackerr) updateHistory(item string) {
-	if u.KeepHistory == 0 {
-		return
-	}
-
-	if ui.HasGUI() && item != "" {
-		u.menu[histNone].Hide()
-	}
-
-	// u.History.Items is a slice with a set (identical) length and capacity.
-	for idx := range u.History.Items {
-		if idx == 0 {
-			u.History.Items[0] = item
-		} else {
-			u.History.Items[idx] = u.History.Items[idx-1]
-		}
-
-		if !ui.HasGUI() {
-			continue
-		}
-
-		if u.History.Items[idx] != "" {
-			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.History.Items[idx])
-			u.menu[hist+strconv.Itoa(idx)].Show()
-		} else {
-			u.menu[hist+strconv.Itoa(idx)].Hide()
-		}
 	}
 }

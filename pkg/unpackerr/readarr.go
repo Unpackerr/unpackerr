@@ -19,7 +19,7 @@ func (u *Unpackerr) validateReadarr() error {
 	tmp := u.Readarr[:0]
 
 	for idx := range u.Readarr {
-		if err := u.validateApp(&u.Lidarr[idx].StarrConfig, starr.Readarr); err != nil {
+		if err := u.validateApp(&u.Readarr[idx].StarrConfig, starr.Readarr); err != nil {
 			if errors.Is(err, ErrInvalidURL) {
 				continue // We ignore these errors, just remove the instance from the list.
 			}

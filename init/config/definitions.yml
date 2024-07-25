@@ -313,7 +313,7 @@ sections:
       envvar: PARALLEL
       default: 1
       recommend: *NUMBERS
-      short: Times to retry failed extractions. `0` = unlimited.
+      short: Concurrent extractions, only recommend `1`
       desc: |
         How many files may be extracted in parallel. 1 works fine.
         Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.

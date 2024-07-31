@@ -62,7 +62,7 @@ release: clean linux_packages freebsd_packages windows
 	mv unpackerr.*.linux unpackerr.*.freebsd $@/
 	gzip -9r $@/
 	for i in unpackerr*.exe ; do zip -9qj $@/$$i.zip $$i examples/*.example *.html; rm -f $$i;done
-	mv *.rpm *.deb *.txz *.zst $@/
+	mv *.rpm *.deb *.txz *.zst *.sig $@/
 	# Generating File Hashes
 	openssl dgst -r -sha256 $@/* | sed 's#release/##' | tee $@/checksums.sha256.txt
 

@@ -289,15 +289,15 @@ package_build_linux_deb: generate readme man linux
 	[ ! -d "init/linux/deb" ] || cp -r init/linux/deb/* $@
 
 # Build an environment that can be packaged for arch linux.
-package_build_linux_zst: generate readme man linux unpackerr.conf.example
+package_build_linux_zst: generate readme man linux
 	# Building package environment for linux.
 	mkdir -p $@/usr/bin $@/etc/unpackerr $@/usr/share/man/man1 \
 	  $@/usr/share/licenses/unpackerr $@/usr/share/doc/unpackerr $@/var/log/unpackerr
 	# Copying the binary, config file, unit file, and man page into the env.
 	cp unpackerr.amd64.linux $@/usr/bin/unpackerr
 	cp *.1.gz $@/usr/share/man/man1
-	cp unpackerr.conf.example $@/etc/unpackerr/
-	cp unpackerr.conf.example $@/etc/unpackerr/unpackerr.conf
+	cp examples/unpackerr.conf.example $@/etc/unpackerr/
+	cp examples/unpackerr.conf.example $@/etc/unpackerr/unpackerr.conf
 	cp LICENSE $@/usr/share/licenses/unpackerr
 	cp *.html examples/*?.?* $@/usr/share/doc/unpackerr/
 	mkdir -p $@/usr/lib/systemd/system $@/usr/lib/sysusers.d

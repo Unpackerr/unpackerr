@@ -33,8 +33,8 @@ build() {
 
   go build -o unpackerr -ldflags "$VLDFLAGS" .
   go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version ${pkgver} --date "${DATE}" README.md
-	go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version ${pkgver} --date "${DATE}" examples/MANUAL.md
-	gzip -9 examples/MANUAL
+  go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version ${pkgver} --date "${DATE}" examples/MANUAL.md
+  gzip -9 examples/MANUAL
   mv examples/MANUAL.gz ${pkgname}.1.gz
 }
 

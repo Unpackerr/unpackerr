@@ -1,9 +1,12 @@
 # Systemd service unit for unpackerr.
+# Be sure to use `systemctl edit unpackerr` to modify this service with an override.conf because
+# direct changes will be overwritten by package updates.
+# Read more here: https://unpackerr.zip/docs/install/linux#change-the-uidgid
 
 [Unit]
 Description=unpackerr - archive extraction daemon
-After=network.target
-Requires=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 ExecStart=/usr/bin/unpackerr $DAEMON_OPTS

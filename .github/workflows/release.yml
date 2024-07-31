@@ -165,6 +165,7 @@ jobs:
             *.gz
             *.txt
             *.zst
+            *.sig
 
   archlinux-aur:
     # description: creates and uploads and aur file to the golift/aur repo for arch linux.

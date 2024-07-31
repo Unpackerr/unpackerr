@@ -62,7 +62,7 @@ jobs:
       - name: make-release
         id: release
         run: |
-          sudo apt install -y rpm fakeroot zip debsigs gnupg jq
+          sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
           sudo gem install --no-document fpm
           echo "${GPG_SIGNING_KEY}" | gpg --import -
           make release
@@ -164,6 +164,7 @@ jobs:
             *.dmg
             *.gz
             *.txt
+            *.zst
 
   archlinux-aur:
     # description: creates and uploads and aur file to the golift/aur repo for arch linux.

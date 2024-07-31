@@ -62,7 +62,7 @@ release: clean linux_packages freebsd_packages windows
 	mv unpackerr.*.linux unpackerr.*.freebsd $@/
 	gzip -9r $@/
 	for i in unpackerr*.exe ; do zip -9qj $@/$$i.zip $$i examples/*.example *.html; rm -f $$i;done
-	mv *.rpm *.deb *.txz $@/
+	mv *.rpm *.deb *.txz *.zst $@/
 	# Generating File Hashes
 	openssl dgst -r -sha256 $@/* | sed 's#release/##' | tee $@/checksums.sha256.txt
 
@@ -101,6 +101,11 @@ README.html:
 rsrc: rsrc.syso
 rsrc.syso: init/windows/application.ico init/windows/manifest.xml
 	go run github.com/akavel/rsrc@latest -arch amd64 -ico init/windows/application.ico -manifest init/windows/manifest.xml
+
+generate: examples/unpackerr.conf.example
+examples/unpackerr.conf.example: init/config/*
+	find pkg -name .DS\* -delete
+	go generate ./...
 
 ####################
 ##### Binaries #####
@@ -166,7 +171,7 @@ unpackerr.amd64.exe: generate rsrc.syso main.go
 ##### Packages #####
 ####################
 
-linux_packages: rpm deb rpm386 deb386 debarm rpmarm debarmhf rpmarmhf
+linux_packages: rpm deb zst rpm386 deb386 debarm rpmarm zstarm debarmhf rpmarmhf zstarmhf
 
 freebsd_packages: freebsd_pkg freebsd386_pkg freebsdarm_pkg
 
@@ -240,8 +245,23 @@ unpackerr-$(VERSION)_$(ITERATION).armhf.txz: package_build_freebsd_arm check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 
+zst: unpackerr_$(VERSION)-$(ITERATION)-x86_64.pkg.tar.zst
+unpackerr_$(VERSION)-$(ITERATION)-x86_64.pkg.tar.zst: package_build_linux_zst check_fpm
+	@echo "Building 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
+	fpm -s dir -t pacman $(PACKAGE_ARGS) -a x86_64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
+
+zstarm: unpackerr_$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst
+unpackerr_$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst: package_build_linux_aarch64_zst check_fpm
+	@echo "Building 64-bit ARM8 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
+	fpm -s dir -t pacman $(PACKAGE_ARGS) -a aarch64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
+
+zstarmhf: unpackerr_$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst
+unpackerr_$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst: package_build_linux_armhf_zst check_fpm
+	@echo "Building 32-bit ARM6/7 HF 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
+	fpm -s dir -t pacman $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
+
 # Build an environment that can be packaged for linux.
-package_build_linux_rpm: readme man linux
+package_build_linux_rpm: generate readme man linux
 	# Building package environment for linux.
 	mkdir -p $@/usr/bin $@/etc/unpackerr $@/usr/share/man/man1 $@/usr/share/doc/unpackerr $@/usr/lib/unpackerr
 	# Copying the binary, config file, unit file, and man page into the env.
@@ -255,7 +275,7 @@ package_build_linux_rpm: readme man linux
 	[ ! -d "init/linux/rpm" ] || cp -r init/linux/rpm/* $@
 
 # Build an environment that can be packaged for linux.
-package_build_linux_deb: readme man linux
+package_build_linux_deb: generate readme man linux
 	# Building package environment for linux.
 	mkdir -p $@/usr/bin $@/etc/unpackerr $@/usr/share/man/man1 $@/usr/share/doc/unpackerr $@/usr/lib/unpackerr
 	# Copying the binary, config file, unit file, and man page into the env.
@@ -267,6 +287,24 @@ package_build_linux_deb: readme man linux
 	mkdir -p $@/lib/systemd/system
 	cp init/systemd/unpackerr.service $@/lib/systemd/system/
 	[ ! -d "init/linux/deb" ] || cp -r init/linux/deb/* $@
+
+# Build an environment that can be packaged for arch linux.
+package_build_linux_zst: generate readme man linux unpackerr.conf.example
+	# Building package environment for linux.
+	mkdir -p $@/usr/bin $@/etc/unpackerr $@/usr/share/man/man1 \
+	  $@/usr/share/licenses/unpackerr $@/usr/share/doc/unpackerr $@/var/log/unpackerr
+	# Copying the binary, config file, unit file, and man page into the env.
+	cp unpackerr.amd64.linux $@/usr/bin/unpackerr
+	cp *.1.gz $@/usr/share/man/man1
+	cp unpackerr.conf.example $@/etc/unpackerr/
+	cp unpackerr.conf.example $@/etc/unpackerr/unpackerr.conf
+	cp LICENSE $@/usr/share/licenses/unpackerr
+	cp *.html examples/*?.?* $@/usr/share/doc/unpackerr/
+	mkdir -p $@/usr/lib/systemd/system $@/usr/lib/sysusers.d
+	echo "u unpackerr - \"unpackerr daemon\"" > $@/usr/lib/sysusers.d/unpackerr.conf
+	chmod 775 $@/var/log/unpackerr $@/usr/share/doc/unpackerr $@/etc/unpackerr
+	cp init/systemd/unpackerr.service $@/usr/lib/systemd/system/
+	[ ! -d "init/linux/zst" ] || cp -r init/linux/zst/* $@
 
 package_build_linux_386_deb: package_build_linux_deb linux386
 	mkdir -p $@
@@ -297,8 +335,18 @@ package_build_linux_armhf_rpm: package_build_linux_rpm armhf
 	cp -r $</* $@/
 	cp unpackerr.arm.linux $@/usr/bin/unpackerr
 
+package_build_linux_armhf_zst: package_build_linux_zst armhf
+	mkdir -p $@
+	cp -r $</* $@/
+	cp unpackerr.arm.linux $@/usr/bin/unpackerr
+
+package_build_linux_aarch64_zst: package_build_linux_zst arm64
+	mkdir -p $@
+	cp -r $</* $@/
+	cp unpackerr.arm64.linux $@/usr/bin/unpackerr
+
 # Build an environment that can be packaged for freebsd.
-package_build_freebsd: readme man freebsd
+package_build_freebsd: generate readme man freebsd
 	mkdir -p $@/usr/local/bin $@/usr/local/etc/unpackerr $@/usr/local/share/man/man1 $@/usr/local/share/doc/unpackerr
 	cp unpackerr.amd64.freebsd $@/usr/local/bin/unpackerr
 	cp *.1.gz $@/usr/local/share/man/man1
@@ -336,11 +384,6 @@ lint: generate
 	GOOS=linux golangci-lint run
 	GOOS=freebsd golangci-lint run
 	GOOS=windows golangci-lint run
-
-generate: examples/unpackerr.conf.example
-examples/unpackerr.conf.example: init/config/*
-	find pkg -name .DS\* -delete
-	go generate ./...
 
 ##################
 ##### Docker #####

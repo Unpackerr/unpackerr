@@ -18,11 +18,13 @@ push_it() {
   rm -rf release_repo
 }
 
+set -e
+
 # Make an id_rsa file with our secret.
 mkdir -p $HOME/.ssh
 KEY_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
-chmod 600 "${KEY_FILE}"
 echo "${DEPLOY_KEY}" > "${KEY_FILE}"
+chmod 600 "${KEY_FILE}"
 # Configure ssh to use this secret on a custom hostname.
 AUR_HOST="arch.$(basename $KEY_FILE)"
 printf "%s\n" \

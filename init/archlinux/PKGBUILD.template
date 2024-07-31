@@ -42,7 +42,7 @@ package() {
   cd "${srcdir}/${pkgname}-${pkgver}"
 
   # Directories.
-  install -d -m 755 "${pkgdir}/usr/share/"{licenses,doc}"/${pkgname}" "${pkgdir}/etc/${pkgname}"
+  install -d -m 775 "${pkgdir}/usr/share/"{licenses,doc}"/${pkgname}" "${pkgdir}/etc/${pkgname}"
 
   # Install the binary
   install -D -m 755 "${pkgname}" "${pkgdir}/usr/bin/${pkgname}"

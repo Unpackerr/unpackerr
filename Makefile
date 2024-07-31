@@ -230,21 +230,21 @@ unpackerr_$(VERSION)-$(ITERATION)_armhf.deb: package_build_linux_armhf_deb check
 	fpm -s dir -t deb $(PACKAGE_ARGS) -a armhf -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 	[ "$(SIGNING_KEY)" = "" ] || debsigs --default-key="$(SIGNING_KEY)" --sign=origin $@
 
-freebsd_pkg: unpackerr-$(VERSION)_$(ITERATION).amd64.txz
+freebsd_pkg: unpackerr-$(VERSION)_$(ITERATION).amd64.txz unpackerr-$(VERSION)_$(ITERATION).amd64.txz.sig
 unpackerr-$(VERSION)_$(ITERATION).amd64.txz: package_build_freebsd check_fpm
 	@echo "Building 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a amd64 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 unpackerr-$(VERSION)_$(ITERATION).amd64.txz.sig: unpackerr-$(VERSION)_$(ITERATION).amd64.txz
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
-freebsd386_pkg: unpackerr-$(VERSION)_$(ITERATION).i386.txz
+freebsd386_pkg: unpackerr-$(VERSION)_$(ITERATION).i386.txz unpackerr-$(VERSION)_$(ITERATION).i386.txz.sig
 unpackerr-$(VERSION)_$(ITERATION).i386.txz: package_build_freebsd_386 check_fpm
 	@echo "Building 32-bit 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a 386 -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
 unpackerr-$(VERSION)_$(ITERATION).i386.txz.sig: unpackerr-$(VERSION)_$(ITERATION).i386.txz
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
-freebsdarm_pkg: unpackerr-$(VERSION)_$(ITERATION).armhf.txz
+freebsdarm_pkg: unpackerr-$(VERSION)_$(ITERATION).armhf.txz unpackerr-$(VERSION)_$(ITERATION).armhf.txz.sig
 unpackerr-$(VERSION)_$(ITERATION).armhf.txz: package_build_freebsd_arm check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'freebsd pkg' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t freebsd $(PACKAGE_ARGS) -a arm -v $(VERSION) -p $@ -C $< $(EXTRA_FPM_FLAGS)
@@ -258,14 +258,14 @@ unpackerr-$(VERSION)-$(ITERATION)-x86_64.pkg.tar.zst: package_build_linux_zst ch
 unpackerr-$(VERSION)-$(ITERATION)-x86_64.pkg.tar.zst.sig: unpackerr-$(VERSION)-$(ITERATION)-x86_64.pkg.tar.zst
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
-zstarm: unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst
+zstarm: unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst.sig
 unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst: package_build_linux_aarch64_zst check_fpm
 	@echo "Building 64-bit ARM8 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t pacman $(PACKAGE_ARGS) -a aarch64 -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
 unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst.sig: unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
-zstarmhf: unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst
+zstarmhf: unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst.sig
 unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst: package_build_linux_armhf_zst check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t pacman $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)

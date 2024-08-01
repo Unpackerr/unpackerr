@@ -30,18 +30,14 @@ prepare(){
 build() {
   cd "$pkgname-$pkgver"
 
-  export CGO_CPPFLAGS="${CPPFLAGS}"
-  export CGO_CFLAGS="${CFLAGS}"
-  export CGO_CXXFLAGS="${CXXFLAGS}"
-  export CGO_LDFLAGS="${LDFLAGS}"
   export GOFLAGS="-buildmode=pie -trimpath -modcacherw"
-  export VLDFLAGS="-w -s -X 'golift.io/version.Branch=main (${sha512sums[0]:0:11})' \
+  LDFLAGS="-w -s -X 'golift.io/version.Branch=main (${sha512sums[0]:0:11})' \
     -X golift.io/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:00Z) \
-    -X golift.io/version.BuildUser=$(whoami) \
+    -X golift.io/version.BuildUser=$(whoami || echo unknown) \
     -X golift.io/version.Revision=${pkgrel} \
     -X golift.io/version.Version=${pkgver}"
 
-  go build -o unpackerr -ldflags "$VLDFLAGS" .
+  go build -o unpackerr -ldflags "$LDFLAGS" .
   go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "${pkgver}" --date "${DATE}" README.md
   go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "${pkgver}" --date "${DATE}" examples/MANUAL.md
   gzip -9 examples/MANUAL

@@ -1,11 +1,21 @@
-pkgname=unpackerr
+# Maintainer: David Newhall II <captain@golift.io>
+# Maintainer: Donald Webster <fryfrog@gmail.com>
+
+pkgname='unpackerr'
 pkgver={{VERSION}}
 pkgrel={{Iter}}
 pkgdesc='{{Desc}}'
 arch=('x86_64' 'arm' 'armv6h' 'armv7h' 'aarch64' 'i686' 'pentium4')
-url='https://golift.io/unpackerr'
+url='https://unpackerr.zip'
 license=('MIT')
 makedepends=('go' 'gzip')
+optdepends=(
+  'transmission-cli: torrent downloader (CLI and daemon)'
+  'transmission-gtk: torrent downloader (GTK+)'
+  'transmission-qt: torrent downloader (Qt)'
+  'deluge: torrent downloader'
+  'rtorrent: torrent downloader'
+)
 
 source=("${pkgname}-${pkgver}.tar.gz::{{SOURCE_PATH}}")
 sha512sums=('{{SHA}}')
@@ -32,10 +42,10 @@ build() {
     -X golift.io/version.Version=${pkgver}"
 
   go build -o unpackerr -ldflags "$VLDFLAGS" .
-  go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version ${pkgver} --date "${DATE}" README.md
-  go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version ${pkgver} --date "${DATE}" examples/MANUAL.md
+  go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "${pkgver}" --date "${DATE}" README.md
+  go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "${pkgver}" --date "${DATE}" examples/MANUAL.md
   gzip -9 examples/MANUAL
-  mv examples/MANUAL.gz ${pkgname}.1.gz
+  mv examples/MANUAL.gz "${pkgname}.1.gz"
 }
 
 package() {
@@ -53,7 +63,7 @@ package() {
 
   # License, documentation, manual.
   install -D -m 644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-  install -D -m 644 *.html examples/* "${pkgdir}/usr/share/doc/${pkgname}/"
+  install -D -m 644 ./*.html examples/* "${pkgdir}/usr/share/doc/${pkgname}/"
   install -D -m 644 "${pkgname}.1.gz" "${pkgdir}/usr/share/man/man1/${pkgname}.1.gz"
 
   # Install the systemd service unit and system user account.

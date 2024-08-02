@@ -50,10 +50,10 @@ services:
     - UN_WEBSERVER_URLBASE=/
     - UN_WEBSERVER_UPSTREAMS=
     ## Folder Settings
-    - UN_FOLDERS_INTERVAL=0s
+    - UN_FOLDERS_INTERVAL=1s
     - UN_FOLDERS_BUFFER=20000
     ## Sonarr Settings
-    - UN_SONARR_0_URL=http://127.0.0.1:8989
+    - UN_SONARR_0_URL=http://sonarr:8989
     - UN_SONARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_SONARR_0_PATHS_0=/downloads
     - UN_SONARR_0_PROTOCOLS=torrent
@@ -62,7 +62,7 @@ services:
     - UN_SONARR_0_DELETE_ORIG=false
     - UN_SONARR_0_SYNCTHING=false
     ## Radarr Settings
-    - UN_RADARR_0_URL=http://127.0.0.1:7878
+    - UN_RADARR_0_URL=http://radarr:7878
     - UN_RADARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_RADARR_0_PATHS_0=/downloads
     - UN_RADARR_0_PROTOCOLS=torrent
@@ -71,7 +71,7 @@ services:
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
     ## Lidarr Settings
-    - UN_LIDARR_0_URL=http://127.0.0.1:8686
+    - UN_LIDARR_0_URL=http://lidarr:8686
     - UN_LIDARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_LIDARR_0_PATHS_0=/downloads
     - UN_LIDARR_0_PROTOCOLS=torrent
@@ -80,7 +80,7 @@ services:
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
     ## Readarr Settings
-    - UN_READARR_0_URL=http://127.0.0.1:8787
+    - UN_READARR_0_URL=http://readarr:8787
     - UN_READARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_READARR_0_PATHS_0=/downloads
     - UN_READARR_0_PROTOCOLS=torrent
@@ -89,7 +89,7 @@ services:
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
     ## Whisparr Settings
-    - UN_WHISPARR_0_URL=http://127.0.0.1:6969
+    - UN_WHISPARR_0_URL=http://whisparr:6969
     - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_WHISPARR_0_PATHS_0=/downloads
     - UN_WHISPARR_0_PROTOCOLS=torrent
@@ -135,4 +135,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 31 JUL 2024 17:36 UTC
+## => Content Auto Generated, 02 AUG 2024 02:13 UTC

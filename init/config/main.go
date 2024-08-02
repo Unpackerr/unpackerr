@@ -62,6 +62,7 @@ type Param struct {
 	Name      string   `yaml:"name"`
 	EnvVar    string   `yaml:"envvar"`
 	Default   any      `yaml:"default"`
+	Docker    any      `yaml:"docker"`
 	Example   any      `yaml:"example"`
 	Short     string   `yaml:"short"`
 	Desc      string   `yaml:"desc"`
@@ -70,11 +71,13 @@ type Param struct {
 }
 
 type Def struct {
-	Comment  bool           `yaml:"comment"` // just the header.
-	Title    string         `yaml:"title"`
-	Prefix   string         `yaml:"prefix"`
-	Text     string         `yaml:"text"`
-	Defaults map[string]any `yaml:"defaults"`
+	Comment       bool           `yaml:"comment"` // just the header.
+	Title         string         `yaml:"title"`
+	Prefix        string         `yaml:"prefix"`
+	Text          string         `yaml:"text"`
+	Defaults      map[string]any `yaml:"defaults"`
+	Examples      map[string]any `yaml:"examples"`
+	DockerExample map[string]any `yaml:"docker_example"`
 }
 
 type Defs map[section]*Def
@@ -177,6 +180,24 @@ func createDefinedSection(def *Def, section *Header) *Header {
 			// If the name of the default (override) matches this param name, overwrite the value.
 			if defined.Name == overrideName {
 				defined.Default = override
+			}
+		}
+	}
+
+	// Do it again, but with examples.
+	for overrideName, override := range def.Examples {
+		for _, defined := range newSection.Params {
+			if defined.Name == overrideName {
+				defined.Example = override
+			}
+		}
+	}
+
+	// Do it again, but with the docker defaults.
+	for overrideName, override := range def.DockerExample {
+		for _, defined := range newSection.Params {
+			if defined.Name == overrideName {
+				defined.Docker = override
 			}
 		}
 	}

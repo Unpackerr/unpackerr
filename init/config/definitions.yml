@@ -157,7 +157,9 @@ defs:
       text: |
         ## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
-      defaults:
+      docker_example:
+        url: http://sonarr:8989
+      examples:
         url: http://127.0.0.1:8989
     radarr:
       title: Radarr Settings
@@ -165,25 +167,33 @@ defs:
       text: |
         ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
-      defaults:
+      docker_example:
+        url: http://radarr:7878
+      examples:
         url: http://127.0.0.1:7878
     lidarr:
       title: Lidarr Settings
       prefix: LIDARR_
       comment: true
-      defaults:
+      docker_example:
+        url: http://lidarr:8686
+      examples:
         url: http://127.0.0.1:8686
     readarr:
       title: Readarr Settings
       prefix: READARR_
       comment: true
-      defaults:
+      docker_example:
+        url: http://readarr:8787
+      examples:
         url: http://127.0.0.1:8787
     whisparr:
       title: Whisparr Settings
       prefix: WHISPARR_
       comment: true
-      defaults:
+      docker_example:
+        url: http://whisparr:6969
+      examples:
         url: http://127.0.0.1:6969
 
 sections:
@@ -489,6 +499,7 @@ sections:
     - name: interval
       envvar: INTERVAL
       default: 0s
+      docker: 1s
       short: How often poller checks for new folders. Use `1ms` to disable it.
       recommend: *FOLDER_INTERVALS
       desc: |

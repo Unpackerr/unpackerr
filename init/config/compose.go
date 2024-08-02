@@ -99,9 +99,11 @@ func (h *Header) makeComposeDefined(prefix string, defs Defs, order []section, b
 }
 
 func (p *Param) Compose(prefix string) string {
-	val := p.Default
-	if p.Example != nil {
-		val = p.Example
+	val := p.Example
+	if p.Docker != nil {
+		val = p.Docker
+	} else if val == nil {
+		val = p.Default
 	}
 
 	switch p.Kind {

@@ -438,7 +438,7 @@ sections:
     - name: url
       envvar: URL
       short: URL where this starr app can be accessed.
-      default: "starr is not a real section has no default url"
+      default: ""
     - name: api_key
       envvar: API_KEY
       default: ''

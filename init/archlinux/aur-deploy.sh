@@ -10,8 +10,8 @@ echo "==> Using URL: $SOURCE_PATH"
 SHA=$(curl -sL "$SOURCE_PATH" | sha512sum | awk '{print $1}')
 
 push_it() {
-  git config user.email "unpackerr@auto.releaser"
-  git config user.name "unpackerr-auto-releaser"
+  git config user.email "unpackerr@github.releaser"
+  git config user.name "unpackerr-github-releaser"
   pushd release_repo
   git add .
   git commit -m "Update unpackerr on Release: v${VERSION}-${ITERATION}"

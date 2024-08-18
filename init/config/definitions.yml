@@ -562,7 +562,7 @@ sections:
       default: false
       recommend: *BOOLEAN
       short: Delete extracted files after successful extraction.
-      desc: Delete extracted files after successful extraction? Honors delete_after.
+      desc: Delete extracted files after successful extraction? Honors delete_after. Requires delete_after to be greater than 0.
     - name: delete_original
       envvar: DELETE_ORIGINAL
       default: false

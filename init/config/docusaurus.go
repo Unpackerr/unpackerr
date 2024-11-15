@@ -119,8 +119,13 @@ func (h *Header) makeDocsTable(prefix string) string {
 	buf := bytes.Buffer{}
 	buf.WriteString(tableHeader)
 
+	hSuffix := ""
+	if h.Kind == list {
+		hSuffix = "0_"
+	}
+
 	for _, param := range h.Params {
-		envVar := prefix + h.Prefix + param.EnvVar
+		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
 		if param.Kind == list {
 			envVar += "0"
 		}

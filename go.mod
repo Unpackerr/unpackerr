@@ -6,7 +6,7 @@ toolchain go1.23.3
 
 require (
 	github.com/BurntSushi/toml v1.4.0
-	github.com/fsnotify/fsnotify v1.7.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
 	github.com/getlantern/systray v1.2.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b

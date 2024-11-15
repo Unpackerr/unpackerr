@@ -121,7 +121,7 @@ func (h *Header) makeDocsTable(prefix string) string {
 
 	hSuffix := ""
 	if h.Kind == list {
-		hSuffix = "_0_"
+		hSuffix = "0_"
 	}
 
 	for _, param := range h.Params {

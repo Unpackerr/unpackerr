@@ -140,10 +140,10 @@ func (u *Unpackerr) makeHistoryChannels() {
 		u.menu[histNone].SetTooltip("history is disabled in the config")
 	}
 
-	for i := range int(u.KeepHistory) {
-		u.menu[hist+strconv.Itoa(i)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
-		u.menu[hist+strconv.Itoa(i)].Disable()
-		u.menu[hist+strconv.Itoa(i)].Hide()
+	for i := range u.KeepHistory {
+		u.menu[hist+strconv.FormatUint(uint64(i), 10)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
+		u.menu[hist+strconv.FormatUint(uint64(i), 10)].Disable()
+		u.menu[hist+strconv.FormatUint(uint64(i), 10)].Hide()
 	}
 }
 
@@ -227,7 +227,7 @@ func (u *Unpackerr) checkForUpdate() {
 	update, err := update.Check("Unpackerr/unpackerr", version.Version)
 	if err != nil {
 		u.Errorf("Update Check: %v", err)
-		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: "+err.Error())
+		_, _ = ui.Error("Unpackerr", "Failure checking version on GitHub: %v", err)
 
 		return
 	}

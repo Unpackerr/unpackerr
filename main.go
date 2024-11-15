@@ -17,7 +17,7 @@ func main() {
 	}()
 
 	if err := unpackerr.Start(); err != nil {
-		_, _ = ui.Error("Unpackerr Error", err.Error())
+		_, _ = ui.Error("Unpackerr Error", "%v", err)
 		log.Fatalln("[ERROR]", err) //nolint:gocritic
 	}
 }

@@ -125,6 +125,8 @@ func New() *Unpackerr {
 }
 
 // Start runs the app.
+//
+//nolint:gosec // not too concerned with possible integer overflows reading user-provided config files.
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
@@ -146,7 +148,7 @@ func Start() error {
 	unpackerr.Printf("Unpackerr v%s-%s Starting! PID: %v, UID: %d, GID: %d, Umask: %d, Now: %v",
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
-	unpackerr.Debugf(strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",

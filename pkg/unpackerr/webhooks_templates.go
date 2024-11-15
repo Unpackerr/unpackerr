@@ -78,6 +78,7 @@ const WebhookTemplateNotifiarr = `{
 const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
+  "disable_web_page_preview": true,
   "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.Event.Desc -}}
     \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{.App -}}

@@ -2,8 +2,7 @@ linters:
   enable-all: true
   disable:
     # deprecated
-    - execinquery
-    - gomnd
+    - exportloopref
     # unused
     - exhaustruct
     - exhaustive

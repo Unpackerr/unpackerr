@@ -8,12 +8,12 @@ func Warning(_, _ string) (bool, error) {
 }
 
 // Error wraps dlgs.Error.
-func Error(_, _ string) (bool, error) {
+func Error(_, _ string, _ any) (bool, error) {
 	return true, nil
 }
 
 // Info wraps dlgs.Info.
-func Info(_, _ string) (bool, error) {
+func Info(_, _ string, _ any) (bool, error) {
 	return true, nil
 }
 
@@ -23,6 +23,6 @@ func Entry(_, _, val string) (string, bool, error) {
 }
 
 // Question wraps dlgs.Question.
-func Question(_, _ string, _ bool) (bool, error) {
+func Question(_ string, _ bool, _ string, _ any) (bool, error) {
 	return true, nil
 }

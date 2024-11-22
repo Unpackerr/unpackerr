@@ -189,8 +189,8 @@ func (slice *StringSlice) UnmarshalENV(_, envval string) error {
 	return nil
 }
 
-func (slice StringSlice) MarshalENV(tag string) (map[string]string, error) {
-	return map[string]string{tag: strings.Join(slice, ",")}, nil
+func (slice *StringSlice) MarshalENV(tag string) (map[string]string, error) {
+	return map[string]string{tag: strings.Join(*slice, ",")}, nil
 }
 
 func buildStatusReason(status string, messages []*starr.StatusMessage) string {

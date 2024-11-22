@@ -113,7 +113,7 @@ func (u *Unpackerr) runWebServer() {
 		err = u.Webserver.server.ListenAndServe()
 	}
 
-	if err != nil && !errors.Is(http.ErrServerClosed, err) {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		u.Errorf("Web Server Failed: %v", err)
 	}
 }

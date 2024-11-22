@@ -78,10 +78,10 @@ func (statuses *ExtractStatuses) UnmarshalENV(tag, envval string) error {
 	return nil
 }
 
-func (statuses ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
-	vals := make([]string, len(statuses))
+func (statuses *ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
+	vals := make([]string, len(*statuses))
 
-	for idx, status := range statuses {
+	for idx, status := range *statuses {
 		vals[idx] = status.String()
 	}
 

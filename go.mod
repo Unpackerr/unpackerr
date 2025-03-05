@@ -1,8 +1,8 @@
 module github.com/Unpackerr/unpackerr
 
-go 1.23
+go 1.23.0
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
-	golang.org/x/mod v0.22.0
+	golang.org/x/mod v0.24.0
 	golift.io/cnfg v0.2.3
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20240723172740-cb73b9c4894c

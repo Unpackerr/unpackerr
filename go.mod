@@ -1,6 +1,6 @@
 module github.com/Unpackerr/unpackerr
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.4
 
@@ -20,7 +20,7 @@ require (
 	golift.io/cnfg v0.2.3
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20240723172740-cb73b9c4894c
-	golift.io/starr v1.0.0
+	golift.io/starr v1.1.0
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.2.3-0.20240710043203-2d7c8a38d931
 	gopkg.in/yaml.v3 v3.0.1
@@ -66,8 +66,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )

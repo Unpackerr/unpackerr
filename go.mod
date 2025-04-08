@@ -13,7 +13,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lestrrat-go/apache-logformat/v2 v2.0.6
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_golang v1.22.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	golang.org/x/mod v0.22.0
@@ -47,7 +47,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/kdomanski/iso9660 v0.4.0 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
@@ -55,7 +55,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.55.0 // indirect
+	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/sshaman1101/dcompress v0.0.0-20200109162717-50436a6332de // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
@@ -66,8 +66,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 )

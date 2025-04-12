@@ -1,8 +1,7 @@
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    # deprecated
-    - exportloopref
     # unused
     - exhaustruct
     - exhaustive
@@ -11,33 +10,45 @@ linters:
     - tagliatelle
     - cyclop
     - testpackage
+    #fix this
+    - staticcheck
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+          allow:
+            - $gostd
+            - github.com/Unpackerr/unpackerr
+            - github.com/lestrrat-go/apache-logformat
+            - github.com/gen2brain/dlgs
+            - github.com/getlantern/systray
+            - github.com/hako/durafmt
+            - github.com/mitchellh/go-homedir
+            - github.com/fsnotify/fsnotify
+            - github.com/radovskyb/watcher
+            - github.com/prometheus/client_golang/
+            - github.com/spf13/pflag
+            - github.com/julienschmidt/httprouter
+            - github.com/BurntSushi/toml
+            - golift.io
+            - golang.org/x
+            - gopkg.in/yaml.v3
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-output:
-  sort-results: true
-run:
-  timeout: 3m
-
-linters-settings:
-  depguard:
-    rules:
-      main:
-        files:
-        - $all
-        allow:
-        - $gostd
-        - github.com/Unpackerr/unpackerr
-        - github.com/lestrrat-go/apache-logformat
-        - github.com/gen2brain/dlgs
-        - github.com/getlantern/systray
-        - github.com/hako/durafmt
-        - github.com/mitchellh/go-homedir
-        - github.com/fsnotify/fsnotify
-        - github.com/radovskyb/watcher
-        - github.com/prometheus/client_golang/
-        - github.com/spf13/pflag
-        - github.com/julienschmidt/httprouter
-        - github.com/BurntSushi/toml
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports

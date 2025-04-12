@@ -101,26 +101,25 @@ func (u *Unpackerr) watchDebugChannels() {
 
 func (u *Unpackerr) watchGuiChannels() {
 	for {
-		//nolint:errcheck
 		select {
 		case <-u.menu["conf"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["edit"].Clicked():
 			u.Printf("User Editing Config File: %s", u.Flags.ConfigFile)
-			ui.OpenFile(u.Flags.ConfigFile)
+			_ = ui.OpenFile(u.Flags.ConfigFile)
 		case <-u.menu["link"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["info"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["disc"].Clicked():
-			ui.OpenURL("https://golift.io/discord")
+			_ = ui.OpenURL("https://golift.io/discord")
 		case <-u.menu["gh"].Clicked():
-			ui.OpenURL("https://github.com/Unpackerr/unpackerr/")
+			_ = ui.OpenURL("https://github.com/Unpackerr/unpackerr/")
 		case <-u.menu["logs"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["logs_view"].Clicked():
 			u.Printf("User Viewing Log File: %s", u.Config.LogFile)
-			ui.OpenLog(u.Config.LogFile)
+			_ = ui.OpenLog(u.Config.LogFile)
 		case <-u.menu["logs_rotate"].Clicked():
 			u.rotateLogs()
 		case <-u.menu["update"].Clicked():

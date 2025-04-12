@@ -9,13 +9,9 @@ import (
 func TestDirIsEmpty(t *testing.T) {
 	t.Parallel()
 
-	emptyDir, err := os.MkdirTemp("", "gobuildtestdir")
-	if err != nil {
-		t.Fatalf("Got an error making temp folder: %v", err)
-	}
-
+	emptyDir := t.TempDir()
 	if !dirIsEmpty(emptyDir) {
-		t.Fatal("dirIsEmpty should return true on an emty folder")
+		t.Fatal("dirIsEmpty should return true on an empty folder")
 	}
 
 	f, err := os.Create(filepath.Join(emptyDir, "emptyFile"))

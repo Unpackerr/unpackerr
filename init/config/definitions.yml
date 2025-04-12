@@ -268,7 +268,7 @@ sections:
         Default is no log file; this is unset.
         Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
         log_files=0 turns off auto-rotation.
-        Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
+        Default files is 10 and size(mb) is 10 Megabytes.
     - name: log_files
       envvar: LOG_FILES
       default: 10

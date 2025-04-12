@@ -34,7 +34,7 @@ log_queues = "1m"
 ## Default is no log file; this is unset.
 ## Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
 ## log_files=0 turns off auto-rotation.
-## Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
+## Default files is 10 and size(mb) is 10 Megabytes.
 #log_file = '/downloads/unpackerr.log'
 log_files = 10
 log_file_mb = 10
@@ -302,4 +302,4 @@ dir_mode = "0755"
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 12 APR 2025 04:26 UTC
+## => Content Auto Generated, 12 APR 2025 04:54 UTC

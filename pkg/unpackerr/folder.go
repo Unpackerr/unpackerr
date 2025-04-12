@@ -93,9 +93,9 @@ func (u *Unpackerr) logFolders() {
 			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, "+
+		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v"+
 			"log_file:%v, move_back:%v, isos:%v, event_buffer:%d)",
-			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig,
+			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
 	} else {
 		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
@@ -105,8 +105,9 @@ func (u *Unpackerr) logFolders() {
 				epath = ", extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, log_file:%v, move_back:%v, isos:%v)",
-				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, !folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
+			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v, log_file:%v, move_back:%v, isos:%v)",
+				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
 	}
 }

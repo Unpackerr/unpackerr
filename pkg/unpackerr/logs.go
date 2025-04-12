@@ -261,7 +261,7 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 			msg = fmt.Sprintf("%d @ %dMb", u.Config.LogFiles, u.Config.LogFileMb)
 		}
 
-		u.Printf(" => Log File: %s (%s)", u.Config.LogFile, msg)
+		u.Printf(" => Log File: %s (%s, mode: %s)", u.LogFile, msg, u.LogFileMode)
 	}
 
 	u.logWebhook()

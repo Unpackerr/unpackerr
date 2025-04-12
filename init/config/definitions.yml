@@ -286,6 +286,16 @@ sections:
       default: 10
       recommend: *NUMBERS
       short: Max size of log files in megabytes
+    - name: log_file_mode
+      envvar: LOG_FILE_MODE
+      default: '0600'
+      recommend: &FILE_MODES
+      - value: '0600'
+      - value: '0640'
+      - value: '0660'
+      - value: '0644'
+      - value: '0664'
+      short: "POSIX mode used for new log files; not for Windows"
     - name: interval
       envvar: INTERVAL
       default: 2m
@@ -330,12 +340,7 @@ sections:
     - name: file_mode
       envvar: FILE_MODE
       default: '0644'
-      recommend:
-      - value: '0600'
-      - value: '0640'
-      - value: '0660'
-      - value: '0644'
-      - value: '0640'
+      recommend: *FILE_MODES
       short: Extracted files are written with this mode.
       desc: |
         Use these configurations to control the file modes used for newly extracted

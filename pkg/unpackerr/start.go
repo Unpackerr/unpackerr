@@ -22,6 +22,7 @@ import (
 const (
 	defaultMaxRetries  = 3
 	defaultFileMode    = 0o644
+	defaultLogFileMode = 0o600
 	defaultDirMode     = 0o755
 	defaultTimeout     = 10 * time.Second
 	minimumInterval    = 15 * time.Second
@@ -41,6 +42,8 @@ const (
 	defaultLogFiles    = 10
 	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
 	windows            = "windows"
+	bits8              = 8
+	base32             = 32
 )
 
 //nolint:gochecknoglobals

@@ -134,6 +134,7 @@ func (u *Unpackerr) validateApps() error {
 		u.validateReadarr,
 		u.validateSonarr,
 		u.validateWhisparr,
+		u.validateFolders,
 	} {
 		if err := validate(); err != nil {
 			return err

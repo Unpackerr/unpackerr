@@ -21,21 +21,22 @@ import (
 const (
 	defaultPollInterval = time.Second
 	minimumPollInterval = 5 * time.Millisecond
+	defaultFolderDelete = 10 * time.Minute
 )
 
 // FolderConfig defines the input data for a watched folder.
 //
 //nolint:lll
 type FolderConfig struct {
-	DeleteOrig       bool          `json:"delete_original"  toml:"delete_original"   xml:"delete_original"   yaml:"delete_original"`
-	DeleteFiles      bool          `json:"delete_files"     toml:"delete_files"      xml:"delete_files"      yaml:"delete_files"`
-	DisableLog       bool          `json:"disable_log"      toml:"disable_log"       xml:"disable_log"       yaml:"disable_log"`
-	MoveBack         bool          `json:"move_back"        toml:"move_back"         xml:"move_back"         yaml:"move_back"`
-	DeleteAfter      cnfg.Duration `json:"delete_after"     toml:"delete_after"      xml:"delete_after"      yaml:"delete_after"`
-	ExtractPath      string        `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
-	ExtractISOs      bool          `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
-	DisableRecursion bool          `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
-	Path             string        `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
+	DeleteOrig       bool           `json:"delete_original"  toml:"delete_original"   xml:"delete_original"   yaml:"delete_original"`
+	DeleteFiles      bool           `json:"delete_files"     toml:"delete_files"      xml:"delete_files"      yaml:"delete_files"`
+	DisableLog       bool           `json:"disable_log"      toml:"disable_log"       xml:"disable_log"       yaml:"disable_log"`
+	MoveBack         bool           `json:"move_back"        toml:"move_back"         xml:"move_back"         yaml:"move_back"`
+	DeleteAfter      *cnfg.Duration `json:"delete_after"     toml:"delete_after"      xml:"delete_after"      yaml:"delete_after"`
+	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
+	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
+	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
+	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -72,6 +73,17 @@ type eventData struct {
 	name string
 	file string
 	op   string
+}
+
+func (u *Unpackerr) validateFolders() error {
+	for idx := range u.Folders {
+		if u.Folders[idx].DeleteAfter == nil {
+			// If delete after wasn't set, then set it to 10 minutes.
+			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
+		}
+	}
+
+	return nil
 }
 
 func (u *Unpackerr) logFolders() {

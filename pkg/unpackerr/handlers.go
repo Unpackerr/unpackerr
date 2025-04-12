@@ -257,9 +257,9 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 }
 
 // isComplete is run so many times in different places that it became a method.
-func (u *Unpackerr) isComplete(status, protocol, protos string) bool {
+func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos string) bool {
 	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
-		if strings.EqualFold(protocol, s) {
+		if strings.EqualFold(string(protocol), s) {
 			return strings.EqualFold(status, "completed")
 		}
 	}

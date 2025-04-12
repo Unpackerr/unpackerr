@@ -125,21 +125,20 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
 
-	const (
-		bits = 8
-		base = 32
-	)
-
-	fileMode, err := strconv.ParseUint(u.FileMode, bits, base)
-	if err != nil || u.FileMode == "" {
-		fileMode = defaultFileMode
-		u.FileMode = strconv.FormatUint(fileMode, bits)
+	if _, err := strconv.ParseUint(u.LogFileMode, bits8, base32); err != nil || u.LogFileMode == "" {
+		u.LogFileMode = strconv.FormatUint(defaultLogFileMode, bits8)
 	}
 
-	dirMode, err := strconv.ParseUint(u.DirMode, bits, base)
+	fileMode, err := strconv.ParseUint(u.FileMode, bits8, base32)
+	if err != nil || u.FileMode == "" {
+		fileMode = defaultFileMode
+		u.FileMode = strconv.FormatUint(fileMode, bits8)
+	}
+
+	dirMode, err := strconv.ParseUint(u.DirMode, bits8, base32)
 	if err != nil || u.DirMode == "" {
 		dirMode = defaultDirMode
-		u.DirMode = strconv.FormatUint(dirMode, bits)
+		u.DirMode = strconv.FormatUint(dirMode, bits8)
 	}
 
 	if u.Parallel == 0 {

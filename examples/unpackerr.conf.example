@@ -34,10 +34,11 @@ log_queues = "1m"
 ## Default is no log file; this is unset.
 ## Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
 ## log_files=0 turns off auto-rotation.
-## Default files is 10 and size(mb) is 10 Megabytes; both doubled if debug is true.
+## Default files is 10 and size(mb) is 10 Megabytes.
 #log_file = '/downloads/unpackerr.log'
 log_files = 10
 log_file_mb = 10
+log_file_mode = "0600"
 
 ## How often to poll starr apps (sonarr, radarr, etc).
 ## Recommend 1m-5m. Uses Go Duration.
@@ -230,9 +231,9 @@ dir_mode = "0755"
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
-## Delete extracted files after successful extraction? Honors delete_after.
+## Delete extracted files after successful extraction? delete_after must be greater than 0.
 # delete_files = false
-## Delete original items after successful extraction? Honors delete_after.
+## Delete original items after successful extraction? delete_after must be greater than 0.
 # delete_original = false
 ## Disable extraction log (unpackerred.txt) file creation?
 # disable_log = false
@@ -301,4 +302,4 @@ dir_mode = "0755"
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 15 NOV 2024 21:29 UTC
+## => Content Auto Generated, 12 APR 2025 04:54 UTC

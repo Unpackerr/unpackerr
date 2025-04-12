@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -141,6 +142,7 @@ func (u *Unpackerr) setupLogging() {
 		u.Config.LogFile = logFile
 	}
 
+	fileMode, _ := strconv.ParseUint(u.LogFileMode, bits8, base32)
 	rotate := &rotatorr.Config{
 		Filepath: u.Config.LogFile,                     // log file name.
 		FileSize: int64(u.Config.LogFileMb) * megabyte, // megabytes
@@ -148,7 +150,8 @@ func (u *Unpackerr) setupLogging() {
 			FileCount:  u.Config.LogFiles,
 			PostRotate: u.postLogRotate,
 		}, // number of files to keep.
-		DirMode: logsDirMode,
+		DirMode:  logsDirMode,
+		FileMode: os.FileMode(fileMode),
 	}
 
 	if u.Config.LogFile != "" {
@@ -258,7 +261,7 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 			msg = fmt.Sprintf("%d @ %dMb", u.Config.LogFiles, u.Config.LogFileMb)
 		}
 
-		u.Printf(" => Log File: %s (%s)", u.Config.LogFile, msg)
+		u.Printf(" => Log File: %s (%s, mode: %s)", u.LogFile, msg, u.LogFileMode)
 	}
 
 	u.logWebhook()

@@ -25,6 +25,7 @@ type Extract struct {
 	Status      ExtractStatus
 	IDs         map[string]any
 	Resp        *xtractr.Response
+	Progress    *Progress
 }
 
 // Shared config items for all starr apps.
@@ -73,9 +74,26 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			data.Updated = now
 		}
 
-		u.Printf("[%s] Status: %s (%v, elapsed: %v)", data.App, name, data.Status.Desc(),
-			now.Sub(data.Updated).Round(time.Second))
+		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
+			now.Sub(data.Updated).Round(time.Second), data.Progress)
 	}
+}
+
+func (p *Progress) String() string {
+	if p == nil {
+		return ""
+	}
+
+	var wrote, total uint64
+
+	if p.Total > 0 {
+		wrote, total = p.Wrote, p.Total
+	} else if p.Compressed > 0 {
+		wrote, total = p.Read, p.Compressed
+	}
+
+	return fmt.Sprintf("archive %d/%d current: %d/%d bytes (%.0f)",
+		p.Extracted+1, p.Archives, wrote, total, p.Percent())
 }
 
 // extractCompletedDownloads process each download and checks if it needs to be extracted.
@@ -126,16 +144,52 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		Name:      name,
 		Filter: xtractr.Filter{
 			Path: item.Path,
-			ExcludeSuffix: xtractr.AllExcept([]string{
+			ExcludeSuffix: xtractr.AllExcept(
 				".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2",
-			}),
+			),
 		},
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,
+		Updates:    u.handleProgressUpdate(name),
 	})
 
 	u.logQueuedDownload(queueSize, item, files)
+}
+
+type Progress struct {
+	xtractr.Progress
+	// Name of this item in the Map.
+	Name string
+	// Number of archives in this Xtract.
+	Archives int
+	// Number of archives extracted from this Xtract.
+	Extracted int
+}
+
+func (u *Unpackerr) handleProgressUpdate(name string) chan xtractr.Progress {
+	chn := make(chan xtractr.Progress)
+	prog := &Progress{Name: name}
+
+	go func() {
+		for p := range chn {
+			if prog.Progress = p; p.Done {
+				prog.Extracted++
+			}
+
+			u.progress <- prog // ends up in u.handleProgress() (below)
+		}
+	}()
+
+	return chn
+}
+
+func (u *Unpackerr) handleProgress(prog *Progress) {
+	if item := u.Map[prog.Name]; item != nil {
+		if item.Progress = prog; item.Resp != nil {
+			prog.Archives = len(item.Resp.Archives)
+		}
+	}
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
@@ -206,6 +260,10 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	if item := u.Map[resp.X.Name]; resp.Done && item != nil {
 		u.updateMetrics(resp, item.App, item.URL)
+
+		if item.Progress != nil {
+			item.Progress.Archives = len(resp.Archives)
+		}
 	}
 
 	switch now := resp.Started.Add(resp.Elapsed); {
@@ -218,6 +276,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	default:
 		files := fileList(resp.X.Path)
 
+		close(resp.X.Updates)
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)

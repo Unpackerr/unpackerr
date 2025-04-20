@@ -59,6 +59,7 @@ type Unpackerr struct {
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
+	progress chan *Progress
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
@@ -99,6 +100,7 @@ func New() *Unpackerr {
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
+		progress: make(chan *Progress),
 		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory: defaultHistory,
@@ -306,6 +308,9 @@ func (u *Unpackerr) Run() {
 		case now := <-logger.C:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)
+		case prog := <-u.progress:
+			// Progress update for starr app extraction.
+			u.handleProgress(prog)
 		}
 	}
 }

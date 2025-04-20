@@ -93,8 +93,8 @@ func (u *Unpackerr) logFolders() {
 			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v"+
-			"log_file:%v, move_back:%v, isos:%v, event_buffer:%d)",
+		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
+			"log_file:%v move_back:%v isos:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
 	} else {
@@ -102,10 +102,10 @@ func (u *Unpackerr) logFolders() {
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
-				epath = ", extract to: " + folder.ExtractPath
+				epath = " extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v, log_file:%v, move_back:%v, isos:%v)",
+			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v move_back:%v isos:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
 				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
@@ -297,6 +297,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		DeleteOrig:       false,
 		CBChannel:        u.folders.Updates,
 		CBFunction:       nil,
+		Updates:          u.handleProgressUpdate(name),
 		LogFile:          !folder.config.DisableLog,
 		DisableRecursion: folder.config.DisableRecursion,
 	})
@@ -337,6 +338,11 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 		delete(u.Map, resp.X.Name)
 		return
 	case !resp.Done:
+		if u.Map[resp.X.Name] != nil && u.Map[resp.X.Name].Progress != nil {
+			// Update the total archive count in the progress status.
+			u.Map[resp.X.Name].Progress.Archives = len(resp.Archives)
+		}
+
 		folder.status = EXTRACTING
 		u.Printf("[Folder] Extraction Started: %s, retries: %d, items in queue: %d", resp.X.Name, folder.retries, resp.Queued)
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
@@ -520,7 +526,6 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 //nolint:wsl
 func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folder) {
 	var webhook bool
-
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.config.DeleteFiles && !folder.config.MoveBack {
 		u.delChan <- &fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}}

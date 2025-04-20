@@ -271,11 +271,12 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		poller  = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
-		cleaner = time.NewTicker(cleanerInterval)              // clean at a fast interval.
-		logger  = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
-		xtractr = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
-		now     = version.Started                              // Used for file system event time stamps.
+		poller   = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
+		cleaner  = time.NewTicker(cleanerInterval)              // clean at a fast interval.
+		logger   = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
+		xtractr  = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
+		progress = time.NewTicker(u.Config.Progress.Duration)   // Progress update for extractions.
+		now      = version.Started                              // Used for file system event time stamps.
 	)
 
 	u.PollFolders()          // This initializes channel(s) used below.
@@ -309,8 +310,11 @@ func (u *Unpackerr) Run() {
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)
 		case prog := <-u.progress:
-			// Progress update for starr app extraction.
+			// Update progress for in-process extractions.
 			u.handleProgress(prog)
+		case now = <-progress.C:
+			// Print the collected progress info.
+			u.printProgress(now)
 		}
 	}
 }

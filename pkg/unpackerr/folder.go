@@ -297,7 +297,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		DeleteOrig:       false,
 		CBChannel:        u.folders.Updates,
 		CBFunction:       nil,
-		Updates:          u.handleProgressUpdate(name),
+		Progress:         u.progressUpdateCallback(name),
 		LogFile:          !folder.config.DisableLog,
 		DisableRecursion: folder.config.DisableRecursion,
 	})
@@ -340,7 +340,7 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	case !resp.Done:
 		if u.Map[resp.X.Name] != nil && u.Map[resp.X.Name].Progress != nil {
 			// Update the total archive count in the progress status.
-			u.Map[resp.X.Name].Progress.Archives = len(resp.Archives)
+			u.Map[resp.X.Name].Progress.Archives = resp.Archives.Count()
 		}
 
 		folder.status = EXTRACTING

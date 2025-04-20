@@ -304,6 +304,24 @@ sections:
       desc: |
         How often to poll starr apps (sonarr, radarr, etc).
         Recommend 1m-5m. Uses Go Duration.
+    - name: progress
+      envvar: PROGRESS
+      default: 15s
+      recommend:
+      - name: '2 seconds'
+        value: '2s'
+      - name: '5 seconds'
+        value: '5s'
+      - name: '10 seconds'
+        value: '10s'
+      - name: '15 seconds'
+        value: '15s'
+      - name: '1 minute'
+        value: '1m'
+      short: How often status is logged for in-progress extractions.
+      desc: |
+        How often status is logged for in-progress extractions.
+        Recommend 2-60s. Uses Go Duration.
     - name: start_delay
       envvar: START_DELAY
       default: 1m

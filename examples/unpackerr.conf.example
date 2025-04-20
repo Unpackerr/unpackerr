@@ -44,6 +44,10 @@ log_file_mode = "0600"
 ## Recommend 1m-5m. Uses Go Duration.
 interval = "2m"
 
+## How often status is logged for in-progress extractions.
+## Recommend 2-60s. Uses Go Duration.
+progress = "15s"
+
 ## How long an item must be queued (download complete) before extraction will start.
 ## One minute is the historic default and works well. Set higher if your downloads
 ## take longer to finalize (or transfer locally). Uses Go Duration.
@@ -302,4 +306,4 @@ dir_mode = "0755"
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 12 APR 2025 04:54 UTC
+## => Content Auto Generated, 20 APR 2025 20:24 UTC

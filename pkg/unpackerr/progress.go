@@ -3,28 +3,33 @@ package unpackerr
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"code.cloudfoundry.org/bytefmt"
 	"golift.io/xtractr"
 )
 
 const (
-	minimumProgressInterval = 2 * time.Second
+	minimumProgressInterval = time.Second
 	defaultProgressInterval = 15 * time.Second
 )
 
-type Progress struct {
+// ExtractProgress holds the progress for an entire Extract.
+// An Extract is "a new item in a watch folder" or "a download in a starr app".
+// Either may produce multiple xtractr.XFile structs (extractable archives).
+type ExtractProgress struct {
 	*xtractr.Progress
-	// Name of this item in the Map.
-	Name string
+	// Extract extract that exists in the map.
+	*Extract
 	// Number of archives in this Xtract.
 	Archives int
 	// Number of archives extracted from this Xtract.
 	Extracted int
 }
 
-func (p *Progress) String() string {
-	if p == nil {
+func (p *ExtractProgress) String() string {
+	if p == nil || p.Progress == nil {
 		return "no progress yet"
 	}
 
@@ -36,32 +41,26 @@ func (p *Progress) String() string {
 		wrote, total = p.Read, p.Compressed
 	}
 
-	return fmt.Sprintf("extracted %d/%d archives, current: %d/%d bytes (%.0f%%): %s",
-		p.Extracted, p.Archives, wrote, total, p.Percent(), filepath.Base(p.XFile.FilePath))
+	return fmt.Sprintf("on archive: %d/%d @ %sB/%sB (%.0f%%): %s",
+		p.Extracted+1, p.Archives, bytefmt.ByteSize(wrote), bytefmt.ByteSize(total),
+		p.Percent(), strings.TrimLeft(strings.TrimPrefix(p.XFile.FilePath, p.Path), string(filepath.Separator)))
 }
 
-func (u *Unpackerr) progressUpdateCallback(name string) func(xtractr.Progress) {
-	return func(prog xtractr.Progress) {
-		u.progress <- &Progress{Progress: &prog, Name: name} // ends up in u.handleProgress() (below)
+func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress) {
+	return func(prog xtractr.Progress) { // sends update to u.handleProgress() (below)
+		u.progChan <- &ExtractProgress{Progress: &prog, Extract: item}
 	}
 }
 
-func (u *Unpackerr) handleProgress(prog *Progress) {
-	if item := u.Map[prog.Name]; item != nil {
-		if item.Progress == nil {
-			item.Progress = prog
-		} else {
-			item.Progress.Progress = prog.Progress
-		}
-
-		if prog.Done {
-			item.Progress.Extracted++
-		}
-
-		if item.Resp != nil {
-			prog.Archives = item.Resp.Archives.Count()
-		}
+// prog = what just came in, it's ephemeral.
+// prog.XProg = what is saved in the map, update this one.
+// prog.Progress = also what just came in, we just set it here.
+func (u *Unpackerr) handleProgress(prog *ExtractProgress) {
+	if prog.XProg.Progress != nil && prog.XProg.XFile != prog.XFile {
+		prog.XProg.Extracted++
 	}
+
+	prog.XProg.Progress = prog.Progress
 }
 
 func (u *Unpackerr) printProgress(now time.Time) {
@@ -70,7 +69,9 @@ func (u *Unpackerr) printProgress(now time.Time) {
 			continue
 		}
 
-		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
-			now.Sub(data.Updated).Round(time.Second), data.Progress)
+		if prog := data.XProg.String(); prog != "no progress yet" {
+			u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
+				now.Sub(data.Updated).Round(time.Second), prog)
+		}
 	}
 }

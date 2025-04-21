@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/bytefmt"
 	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/xtractr"
@@ -25,7 +26,7 @@ type Extract struct {
 	Status      ExtractStatus
 	IDs         map[string]any
 	Resp        *xtractr.Response
-	Progress    *Progress
+	XProg       *ExtractProgress
 }
 
 // Shared config items for all starr apps.
@@ -75,7 +76,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 		}
 
 		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
-			now.Sub(data.Updated).Round(time.Second), data.Progress)
+			now.Sub(data.Updated).Round(time.Second), data.XProg)
 	}
 }
 
@@ -134,7 +135,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		TempFolder: false,
 		DeleteOrig: false,
 		CBChannel:  u.updates,
-		Progress:   u.progressUpdateCallback(name),
+		Progress:   u.progressUpdateCallback(item),
 	})
 
 	u.logQueuedDownload(queueSize, item, files)
@@ -208,10 +209,8 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	if item := u.Map[resp.X.Name]; resp.Done && item != nil {
 		u.updateMetrics(resp, item.App, item.URL)
-
-		if item.Progress != nil {
-			item.Progress.Archives = resp.Archives.Count()
-		}
+	} else if item != nil {
+		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 	}
 
 	switch now := resp.Started.Add(resp.Elapsed); {
@@ -224,8 +223,8 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	default:
 		files := fileList(resp.X.Path)
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
-			"files extracted: %d, wrote: %dMiB", resp.X.Name, resp.Elapsed.Round(time.Second),
-			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)
+			"files extracted: %d, wrote: %sB", resp.X.Name, resp.Elapsed.Round(time.Second),
+			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 	}

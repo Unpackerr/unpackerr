@@ -34,7 +34,6 @@ const (
 	defaultDeleteDelay = 5 * time.Minute
 	defaultHistory     = 10             // items kept in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
-	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
 	defaultFolderBuf   = 20000          // Channel queue size for file system events.
 	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
@@ -59,7 +58,7 @@ type Unpackerr struct {
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
-	progress chan *Progress
+	progChan chan *ExtractProgress
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
@@ -100,7 +99,7 @@ func New() *Unpackerr {
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
-		progress: make(chan *Progress),
+		progChan: make(chan *ExtractProgress),
 		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory: defaultHistory,
@@ -309,7 +308,7 @@ func (u *Unpackerr) Run() {
 		case now := <-logger.C:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)
-		case prog := <-u.progress:
+		case prog := <-u.progChan:
 			// Update progress for in-process extractions.
 			u.handleProgress(prog)
 		case now = <-progress.C:

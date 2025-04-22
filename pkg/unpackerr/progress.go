@@ -20,11 +20,11 @@ const (
 // Either may produce multiple xtractr.XFile structs (extractable archives).
 type ExtractProgress struct {
 	*xtractr.Progress
-	// Extract extract that exists in the map.
+	// Extract that exists in the map.
 	*Extract
-	// Number of archives in this Xtract.
+	// Number of archives in this Extract.
 	Archives int
-	// Number of archives extracted from this Xtract.
+	// Number of archives extracted from this Extract.
 	Extracted int
 }
 
@@ -52,15 +52,15 @@ func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress)
 	}
 }
 
-// prog = what just came in, it's ephemeral.
-// prog.XProg = what is saved in the map, update this one.
-// prog.Progress = also what just came in, we just set it here.
-func (u *Unpackerr) handleProgress(prog *ExtractProgress) {
-	if prog.XProg.Progress != nil && prog.XProg.XFile != prog.XFile {
-		prog.XProg.Extracted++
+// exp = what just came in, it's ephemeral.
+// exp.Progress = also what just came in, must set it here.
+// exp.XProg = what is saved in the map, update this one.
+func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
+	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
+		exp.XProg.Extracted++
 	}
 
-	prog.XProg.Progress = prog.Progress
+	exp.XProg.Progress = exp.Progress
 }
 
 func (u *Unpackerr) printProgress(now time.Time) {

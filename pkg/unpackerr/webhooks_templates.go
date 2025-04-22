@@ -41,7 +41,7 @@ type XtractPayload struct {
 	File     []string      `json:"file,omitempty"`     // list of all files extracted
 	Start    time.Time     `json:"start,omitempty"`    // start time of extraction
 	Output   string        `json:"output,omitempty"`   // temporary items folder
-	Bytes    int64         `json:"bytes,omitempty"`    // Bytes written
+	Bytes    uint64        `json:"bytes,omitempty"`    // Bytes written
 	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`  // Duration as a string: 5m32s
 	Queue    int           `json:"queue,omitempty"`    // Extraction Queue Size
 }

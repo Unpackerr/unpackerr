@@ -35,6 +35,7 @@ linters:
             - golift.io
             - golang.org/x
             - gopkg.in/yaml.v3
+            - code.cloudfoundry.org/bytefmt
 
   exclusions:
     generated: lax

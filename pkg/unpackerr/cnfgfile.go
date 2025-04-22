@@ -145,6 +145,12 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.Parallel++
 	}
 
+	if u.Progress.Duration == 0 {
+		u.Progress.Duration = defaultProgressInterval
+	} else if u.Progress.Duration < minimumProgressInterval {
+		u.Progress.Duration = minimumProgressInterval
+	}
+
 	if u.Folder.Buffer == 0 {
 		u.Folder.Buffer = defaultFolderBuf
 	} else if u.Folder.Buffer < minimumFolderBuf {

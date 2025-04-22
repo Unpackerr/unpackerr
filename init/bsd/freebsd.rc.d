@@ -33,9 +33,12 @@ load_rc_config ${name}
 : ${unpackerr_group:="unpackerr"}
 : ${unpackerr_config:="/usr/local/etc/unpackerr/unpackerr.conf"}
 
-# Make a place for the pid file.
-mkdir -p $(dirname ${pidfile})
-chown -R $unpackerr_user $(dirname ${pidfile})
+start_precmd=${name}_precmd
+unpackerr_precmd() {
+  # Make a place for the pid file.
+  mkdir -p $(dirname ${pidfile})
+  chown -R $unpackerr_user $(dirname ${pidfile})
+}
 
 # Go!
 run_rc_command "$1"

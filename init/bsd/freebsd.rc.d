@@ -11,28 +11,27 @@
 # Optionally there are other parameters:
 # ${unpackerr_user="unpackerr"}
 # ${unpackerr_group="unpackerr"}
-# ${unpackerr_config="/usr/local/etc/${real_name}/unpackerr.conf"}
+# ${unpackerr_config="/usr/local/etc/unpackerr/unpackerr.conf"}
 
 . /etc/rc.subr
 
 name="unpackerr"
-real_name="unpackerr"
 rcvar="unpackerr_enable"
-unpackerr_command="/usr/local/bin/${real_name}"
-pidfile="/var/run/${real_name}/pid"
+unpackerr_command="/usr/local/bin/${name}"
+pidfile="/var/run/${name}/pid"
 # Suck in optional exported override variables.
 # ie. add something like the following to this file: export UP_POLLER_DEBUG=true
-unpackerr_env_file="/usr/local/etc/defaults/${real_name}"
+unpackerr_env_file="/usr/local/etc/defaults/${name}"
 
 # This runs `daemon` as the `unpackerr_user` user.
 command="/usr/sbin/daemon"
-command_args="-P ${pidfile} -r -t ${real_name} -T ${real_name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
+command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
 
 load_rc_config ${name}
 : ${unpackerr_enable:=NO}
 : ${unpackerr_user:="unpackerr"}
 : ${unpackerr_group:="unpackerr"}
-: ${unpackerr_config:="/usr/local/etc/${real_name}/unpackerr.conf"}
+: ${unpackerr_config:="/usr/local/etc/unpackerr/unpackerr.conf"}
 
 # Make a place for the pid file.
 mkdir -p $(dirname ${pidfile})

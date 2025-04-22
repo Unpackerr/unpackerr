@@ -19,8 +19,8 @@ name="unpackerr"
 rcvar="unpackerr_enable"
 unpackerr_command="/usr/local/bin/${name}"
 pidfile="/var/run/${name}/pid"
-# Suck in optional exported override variables.
-# ie. add something like the following to this file: export UP_POLLER_DEBUG=true
+# Suck in optional exported override variables. See: https://unpackerr.zip/docs/install/configuration
+# ie. add something like the following to this file: export UN_DEBUG=true
 unpackerr_env_file="/usr/local/etc/defaults/${name}"
 
 load_rc_config ${name}

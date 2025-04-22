@@ -23,15 +23,15 @@ pidfile="/var/run/${name}/pid"
 # ie. add something like the following to this file: export UP_POLLER_DEBUG=true
 unpackerr_env_file="/usr/local/etc/defaults/${name}"
 
-# This runs `daemon` as the `unpackerr_user` user.
-command="/usr/sbin/daemon"
-command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
-
 load_rc_config ${name}
 : ${unpackerr_enable:=NO}
 : ${unpackerr_user:="unpackerr"}
 : ${unpackerr_group:="unpackerr"}
 : ${unpackerr_config:="/usr/local/etc/unpackerr/unpackerr.conf"}
+
+# This runs `daemon` as the `unpackerr_user` user using `chroot`.
+command="/usr/sbin/daemon"
+command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
 
 start_precmd=${name}_precmd
 unpackerr_precmd() {

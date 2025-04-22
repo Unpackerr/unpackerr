@@ -5,31 +5,41 @@
 # PROVIDE: unpackerr
 # REQUIRE: networking syslog
 # KEYWORD:
+#
+# Add the following line to /etc/rc.conf or use `sysrc` to enable unpackerr.
+# ${unpackerr_enable="YES"}
+# Optionally there are other parameters:
+# ${unpackerr_user="unpackerr"}
+# ${unpackerr_group="unpackerr"}
+# ${unpackerr_config="/usr/local/etc/unpackerr/unpackerr.conf"}
 
 . /etc/rc.subr
 
 name="unpackerr"
-real_name="unpackerr"
 rcvar="unpackerr_enable"
-unpackerr_command="/usr/local/bin/${real_name}"
-unpackerr_user="unpackerr"
-unpackerr_config="/usr/local/etc/${real_name}/unpackerr.conf"
-pidfile="/var/run/${real_name}/pid"
-
-# This runs `daemon` as the `unpackerr_user` user.
-command="/usr/sbin/daemon"
-command_args="-P ${pidfile} -r -t ${real_name} -T ${real_name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
+unpackerr_command="/usr/local/bin/${name}"
+pidfile="/var/run/${name}/pid"
+unpackerr_env="UN_LOG_FILE=/usr/local/var/log/${name}/${name}.log UN_WEBSERVER_LOG_FILE=/usr/local/var/log/${name}/http.log UN_QUIET=true"
+# Suck in optional exported override variables. See: https://unpackerr.zip/docs/install/configuration
+# ie. add something like the following to this file: export UN_DEBUG=true
+unpackerr_env_file="/usr/local/etc/defaults/${name}"
 
 load_rc_config ${name}
-: ${unpackerr_enable:=no}
+: ${unpackerr_enable:=NO}
+: ${unpackerr_user:="unpackerr"}
+: ${unpackerr_group:="unpackerr"}
+: ${unpackerr_config:="/usr/local/etc/unpackerr/unpackerr.conf"}
 
-# Make a place for the pid file.
-mkdir -p $(dirname ${pidfile})
-chown -R $unpackerr_user $(dirname ${pidfile})
+# This runs `daemon` as the `unpackerr_user` user using `chroot`.
+command="/usr/sbin/daemon"
+command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
 
-# Suck in optional exported override variables.
-# ie. add something like the following to this file: export UP_POLLER_DEBUG=true
-[ -f "/usr/local/etc/defaults/${real_name}" ] && . "/usr/local/etc/defaults/${real_name}"
+start_precmd=${name}_precmd
+unpackerr_precmd() {
+  # Make a place for the pid file.
+  mkdir -p $(dirname ${pidfile})
+  chown -R $unpackerr_user $(dirname ${pidfile})
+}
 
 # Go!
 run_rc_command "$1"

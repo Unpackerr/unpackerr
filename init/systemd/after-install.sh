@@ -5,18 +5,13 @@
 
 OS="$(uname -s)"
 
-if [ "${OS}" = "Linux" ]; then
-  # Make a user and group for this app, but only if it does not already exist.
-  id unpackerr >/dev/null 2>&1  || \
-    useradd --system --user-group --no-create-home --home-dir /tmp --shell /bin/false unpackerr
-elif [ "${OS}" = "OpenBSD" ]; then
-  id unpackerr >/dev/null 2>&1  || \
-    useradd  -g =uid -d /tmp -s /bin/false unpackerr
-elif [ "${OS}" = "FreeBSD" ]; then
-  id unpackerr >/dev/null 2>&1  || \
-    pw useradd unpackerr -d /tmp -w no -s /bin/false
-else
-  echo "Unknown OS: ${OS}, please add system user unpackerr manually."
+logdir='/var/log/unpackerr'
+[[ "$(uname -s)" = "Linux" ]] || logdir='/usr/local/var/log/unpackerr'
+
+if [ ! -d "${logdir}" ]; then
+  mkdir "${logdir}"
+  chown unpackerr: "${logdir}"
+  chmod 0755 "${logdir}"
 fi
 
 if [ -x "/bin/systemctl" ]; then

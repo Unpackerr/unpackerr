@@ -11,12 +11,18 @@ if [ "${OS}" = "Linux" ]; then
     useradd --system --user-group --no-create-home --home-dir /tmp --shell /bin/false unpackerr
 elif [ "${OS}" = "OpenBSD" ]; then
   id unpackerr >/dev/null 2>&1  || \
-    useradd  -g =uid -d /tmp -s /bin/false unpackerr
+    useradd -g =uid -d /tmp -s /bin/false unpackerr
 elif [ "${OS}" = "FreeBSD" ]; then
   id unpackerr >/dev/null 2>&1  || \
     pw useradd unpackerr -d /tmp -w no -s /bin/false
 else
   echo "Unknown OS: ${OS}, please add system user unpackerr manually."
+fi
+
+if [ ! -d "/var/log/unpackerr" ]; then
+  mkdir /var/log/unpackerr
+  chown unpackerr: /var/log/unapckerr
+  chmod 0755 /var/log/unpackerr
 fi
 
 if [ -x "/bin/systemctl" ]; then

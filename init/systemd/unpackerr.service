@@ -12,6 +12,8 @@ After=network-online.target
 ExecStart=/usr/bin/unpackerr $DAEMON_OPTS
 EnvironmentFile=-/etc/default/unpackerr
 EnvironmentFile=-/etc/sysconfig/unpackerr
+Environment=UN_LOG_FILE=/var/log/unpackerr/unpackerr.log
+Environment=UN_WEBSERVER_LOG_FILE=/var/log/unpackerr/http.log
 Restart=always
 RestartSec=10
 SyslogIdentifier=unpackerr
@@ -19,6 +21,7 @@ Type=simple
 WorkingDirectory=/tmp
 
 # These should be set correctly for your environment.
+# If you change User, fix ownership on /var/log/unpackerr too.
 UMask=0002
 User=unpackerr
 Group=unpackerr

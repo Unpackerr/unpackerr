@@ -14,6 +14,7 @@ EnvironmentFile=-/etc/default/unpackerr
 EnvironmentFile=-/etc/sysconfig/unpackerr
 Environment=UN_LOG_FILE=/var/log/unpackerr/unpackerr.log
 Environment=UN_WEBSERVER_LOG_FILE=/var/log/unpackerr/http.log
+Environment=UN_QUIET=true
 Restart=always
 RestartSec=10
 SyslogIdentifier=unpackerr

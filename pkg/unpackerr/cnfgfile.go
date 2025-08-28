@@ -353,7 +353,6 @@ func (u *Unpackerr) configureTLS(conf *StarrConfig, app starr.App) (*tls.Config,
 	if conf.TLSCACert != "" {
 		caPath := expandHomedir(conf.TLSCACert)
 		caCert, err := os.ReadFile(caPath)
-
 		if err != nil {
 			return nil, fmt.Errorf("%s (%s) failed reading CA cert from %s: %w",
 				app, conf.URL, caPath, err)

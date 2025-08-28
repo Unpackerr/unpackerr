@@ -153,4 +153,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 28 AUG 2025 18:38 UTC
+## => Content Auto Generated, 28 AUG 2025 20:00 UTC

@@ -36,6 +36,7 @@ const (
 var (
 	ErrInvalidURL = errors.New("provided application URL is invalid")
 	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be %d characters", apiKeyLength)
+	ErrInvalidCA  = errors.New("failed parsing CA certificate")
 )
 
 // Config defines the configuration data used to start the application.

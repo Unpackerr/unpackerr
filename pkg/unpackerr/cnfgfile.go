@@ -351,16 +351,15 @@ func (u *Unpackerr) configureTLS(conf *StarrConfig, app starr.App) (*tls.Config,
 
 	// Add custom CA if configured
 	if conf.TLSCACert != "" {
-		caPath := expandHomedir(conf.TLSCACert)
-		caCert, err := os.ReadFile(caPath)
+		caCert, err := os.ReadFile(expandHomedir(conf.TLSCACert))
 		if err != nil {
 			return nil, fmt.Errorf("%s (%s) failed reading CA cert from %s: %w",
-				app, conf.URL, caPath, err)
+				app, conf.URL, expandHomedir(conf.TLSCACert), err)
 		}
 
 		caCertPool := x509.NewCertPool()
 		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("%w: %s (%s) from %s", ErrInvalidCA, app, conf.URL, caPath)
+			return nil, fmt.Errorf("%w: %s (%s) from %s", ErrInvalidCA, app, conf.URL, expandHomedir(conf.TLSCACert))
 		}
 
 		tlsConfig.RootCAs = caCertPool

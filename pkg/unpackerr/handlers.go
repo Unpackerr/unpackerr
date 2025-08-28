@@ -29,15 +29,19 @@ type Extract struct {
 
 // Shared config items for all starr apps.
 type StarrConfig struct {
-	Path        string        `json:"path"         toml:"path"         xml:"path"         yaml:"path"`
-	Paths       StringSlice   `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
-	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
-	DeleteOrig  bool          `json:"delete_orig"  toml:"delete_orig"  xml:"delete_orig"  yaml:"delete_orig"`
-	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
-	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
-	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
 	starr.Config
+
+	Path          string        `json:"path"            toml:"path"            xml:"path"            yaml:"path"`
+	Paths         StringSlice   `json:"paths"           toml:"paths"           xml:"paths"           yaml:"paths"`
+	Protocols     string        `json:"protocols"       toml:"protocols"       xml:"protocols"       yaml:"protocols"`
+	DeleteOrig    bool          `json:"delete_orig"     toml:"delete_orig"     xml:"delete_orig"     yaml:"delete_orig"`
+	DeleteDelay   cnfg.Duration `json:"delete_delay"    toml:"delete_delay"    xml:"delete_delay"    yaml:"delete_delay"`
+	Syncthing     bool          `json:"syncthing"       toml:"syncthing"       xml:"syncthing"       yaml:"syncthing"`
+	ValidSSL      bool          `json:"valid_ssl"       toml:"valid_ssl"       xml:"valid_ssl"       yaml:"valid_ssl"`
+	Timeout       cnfg.Duration `json:"timeout"         toml:"timeout"         xml:"timeout"         yaml:"timeout"`
+	TLSClientCert string        `json:"tls_client_cert" toml:"tls_client_cert" xml:"tls_client_cert" yaml:"tls_client_cert"` //nolint:lll
+	TLSClientKey  string        `json:"tls_client_key"  toml:"tls_client_key"  xml:"tls_client_key"  yaml:"tls_client_key"`
+	TLSCACert     string        `json:"tls_ca_cert"     toml:"tls_ca_cert"     xml:"tls_ca_cert"     yaml:"tls_ca_cert"`
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.

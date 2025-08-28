@@ -25,6 +25,8 @@ services:
       # You need at least this one volume mapped so Unpackerr can find your files to extract.
       # Make sure this matches your Starr apps; the folder mount (/downloads or /data) should be identical.
       - /mnt/HostDownloads:/downloads
+      # OPTIONAL: If using mTLS certificates, mount the certificate directory.
+      # - /path/to/certs:/certs:ro
     restart: always
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}

@@ -132,6 +132,18 @@ dir_mode = "0755"
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Path to TLS client certificate file for mutual TLS authentication.
+## Required when your Starr app is behind a reverse proxy with mTLS enabled.
+## Must be paired with tls_client_key. Leave empty for standard TLS connections.
+# tls_client_cert = "/path/to/client.crt"
+## Path to TLS client private key file for mutual TLS authentication.
+## This key must match the tls_client_cert certificate.
+## Both cert and key are required for mTLS to work.
+# tls_client_key = "/path/to/client.key"
+## Path to custom Certificate Authority bundle to verify server certificate.
+## Use this when your Starr app uses a certificate signed by a private CA.
+## If not set, system default CA bundle is used.
+# tls_ca_cert = "/path/to/ca-bundle.crt"
 
 ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
@@ -153,6 +165,18 @@ dir_mode = "0755"
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Path to TLS client certificate file for mutual TLS authentication.
+## Required when your Starr app is behind a reverse proxy with mTLS enabled.
+## Must be paired with tls_client_key. Leave empty for standard TLS connections.
+# tls_client_cert = "/path/to/client.crt"
+## Path to TLS client private key file for mutual TLS authentication.
+## This key must match the tls_client_cert certificate.
+## Both cert and key are required for mTLS to work.
+# tls_client_key = "/path/to/client.key"
+## Path to custom Certificate Authority bundle to verify server certificate.
+## Use this when your Starr app uses a certificate signed by a private CA.
+## If not set, system default CA bundle is used.
+# tls_ca_cert = "/path/to/ca-bundle.crt"
 
 #[[lidarr]]
 # url = "http://127.0.0.1:8686"
@@ -172,6 +196,18 @@ dir_mode = "0755"
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Path to TLS client certificate file for mutual TLS authentication.
+## Required when your Starr app is behind a reverse proxy with mTLS enabled.
+## Must be paired with tls_client_key. Leave empty for standard TLS connections.
+# tls_client_cert = "/path/to/client.crt"
+## Path to TLS client private key file for mutual TLS authentication.
+## This key must match the tls_client_cert certificate.
+## Both cert and key are required for mTLS to work.
+# tls_client_key = "/path/to/client.key"
+## Path to custom Certificate Authority bundle to verify server certificate.
+## Use this when your Starr app uses a certificate signed by a private CA.
+## If not set, system default CA bundle is used.
+# tls_ca_cert = "/path/to/ca-bundle.crt"
 
 #[[readarr]]
 # url = "http://127.0.0.1:8787"
@@ -191,6 +227,18 @@ dir_mode = "0755"
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Path to TLS client certificate file for mutual TLS authentication.
+## Required when your Starr app is behind a reverse proxy with mTLS enabled.
+## Must be paired with tls_client_key. Leave empty for standard TLS connections.
+# tls_client_cert = "/path/to/client.crt"
+## Path to TLS client private key file for mutual TLS authentication.
+## This key must match the tls_client_cert certificate.
+## Both cert and key are required for mTLS to work.
+# tls_client_key = "/path/to/client.key"
+## Path to custom Certificate Authority bundle to verify server certificate.
+## Use this when your Starr app uses a certificate signed by a private CA.
+## If not set, system default CA bundle is used.
+# tls_ca_cert = "/path/to/ca-bundle.crt"
 
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
@@ -210,6 +258,18 @@ dir_mode = "0755"
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Path to TLS client certificate file for mutual TLS authentication.
+## Required when your Starr app is behind a reverse proxy with mTLS enabled.
+## Must be paired with tls_client_key. Leave empty for standard TLS connections.
+# tls_client_cert = "/path/to/client.crt"
+## Path to TLS client private key file for mutual TLS authentication.
+## This key must match the tls_client_cert certificate.
+## Both cert and key are required for mTLS to work.
+# tls_client_key = "/path/to/client.key"
+## Path to custom Certificate Authority bundle to verify server certificate.
+## Use this when your Starr app uses a certificate signed by a private CA.
+## If not set, system default CA bundle is used.
+# tls_ca_cert = "/path/to/ca-bundle.crt"
 
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
@@ -302,4 +362,4 @@ dir_mode = "0755"
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 12 APR 2025 04:54 UTC
+## => Content Auto Generated, 28 AUG 2025 18:38 UTC

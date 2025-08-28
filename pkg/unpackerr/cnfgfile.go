@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -311,10 +312,43 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		conf.Protocols = defaultProtocol
 	}
 
+	// Create TLS config - default behavior unchanged
+	tlsConfig := &tls.Config{InsecureSkipVerify: !conf.ValidSSL} //nolint:gosec
+
+	// Add mTLS if certificates are configured
+	if conf.TLSClientCert != "" && conf.TLSClientKey != "" {
+		certPath := expandHomedir(conf.TLSClientCert)
+		keyPath := expandHomedir(conf.TLSClientKey)
+
+		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+		if err != nil {
+			return fmt.Errorf("%s (%s) failed loading TLS client cert from %s and %s: %w",
+				app, conf.URL, certPath, keyPath, err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+		u.Debugf("%s (%s): Loaded mTLS client certificate", app, conf.URL)
+	}
+
+	// Add custom CA if configured
+	if conf.TLSCACert != "" {
+		caPath := expandHomedir(conf.TLSCACert)
+		caCert, err := os.ReadFile(caPath)
+		if err != nil {
+			return fmt.Errorf("%s (%s) failed reading CA cert from %s: %w",
+				app, conf.URL, caPath, err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return fmt.Errorf("%s (%s) failed parsing CA cert from %s", app, conf.URL, caPath)
+		}
+		tlsConfig.RootCAs = caCertPool
+		u.Debugf("%s (%s): Loaded custom CA certificate", app, conf.URL)
+	}
+
 	conf.Config.Client = &http.Client{
 		Timeout: conf.Timeout.Duration,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: !conf.ValidSSL}, //nolint:gosec
+			TLSClientConfig: tlsConfig,
 		},
 	}
 

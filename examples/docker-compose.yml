@@ -12,6 +12,8 @@ services:
       # You need at least this one volume mapped so Unpackerr can find your files to extract.
       # Make sure this matches your Starr apps; the folder mount (/downloads or /data) should be identical.
       - /mnt/HostDownloads:/downloads
+      # OPTIONAL: If using mTLS certificates, mount the certificate directory.
+      # - /path/to/certs:/certs:ro
     restart: always
     # Get the user:group correct so unpackerr can read and write to your files.
     user: ${PUID}:${PGID}
@@ -62,6 +64,9 @@ services:
     - UN_SONARR_0_DELETE_DELAY=5m
     - UN_SONARR_0_DELETE_ORIG=false
     - UN_SONARR_0_SYNCTHING=false
+    - UN_SONARR_0_TLS_CLIENT_CERT=/path/to/client.crt
+    - UN_SONARR_0_TLS_CLIENT_KEY=/path/to/client.key
+    - UN_SONARR_0_TLS_CA_CERT=/path/to/ca-bundle.crt
     ## Radarr Settings
     - UN_RADARR_0_URL=http://radarr:7878
     - UN_RADARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -71,6 +76,9 @@ services:
     - UN_RADARR_0_DELETE_DELAY=5m
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
+    - UN_RADARR_0_TLS_CLIENT_CERT=/path/to/client.crt
+    - UN_RADARR_0_TLS_CLIENT_KEY=/path/to/client.key
+    - UN_RADARR_0_TLS_CA_CERT=/path/to/ca-bundle.crt
     ## Lidarr Settings
     - UN_LIDARR_0_URL=http://lidarr:8686
     - UN_LIDARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -80,6 +88,9 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_TLS_CLIENT_CERT=/path/to/client.crt
+    - UN_LIDARR_0_TLS_CLIENT_KEY=/path/to/client.key
+    - UN_LIDARR_0_TLS_CA_CERT=/path/to/ca-bundle.crt
     ## Readarr Settings
     - UN_READARR_0_URL=http://readarr:8787
     - UN_READARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -89,6 +100,9 @@ services:
     - UN_READARR_0_DELETE_DELAY=5m
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
+    - UN_READARR_0_TLS_CLIENT_CERT=/path/to/client.crt
+    - UN_READARR_0_TLS_CLIENT_KEY=/path/to/client.key
+    - UN_READARR_0_TLS_CA_CERT=/path/to/ca-bundle.crt
     ## Whisparr Settings
     - UN_WHISPARR_0_URL=http://whisparr:6969
     - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -98,6 +112,9 @@ services:
     - UN_WHISPARR_0_DELETE_DELAY=5m
     - UN_WHISPARR_0_DELETE_ORIG=false
     - UN_WHISPARR_0_SYNCTHING=false
+    - UN_WHISPARR_0_TLS_CLIENT_CERT=/path/to/client.crt
+    - UN_WHISPARR_0_TLS_CLIENT_KEY=/path/to/client.key
+    - UN_WHISPARR_0_TLS_CA_CERT=/path/to/ca-bundle.crt
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
     - UN_FOLDER_0_EXTRACT_PATH=
@@ -136,4 +153,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 12 APR 2025 04:54 UTC
+## => Content Auto Generated, 28 AUG 2025 18:38 UTC

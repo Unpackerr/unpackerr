@@ -493,6 +493,33 @@ sections:
       recommend: *BOOLEAN
       short: Setting this to true makes unpackerr wait for syncthing to finish.
       desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+    - name: tls_client_cert
+      envvar: TLS_CLIENT_CERT
+      default: ''
+      example: /path/to/client.crt
+      short: Path to TLS client certificate for mTLS.
+      desc: |
+        Path to TLS client certificate file for mutual TLS authentication.
+        Required when your Starr app is behind a reverse proxy with mTLS enabled.
+        Must be paired with tls_client_key. Leave empty for standard TLS connections.
+    - name: tls_client_key
+      envvar: TLS_CLIENT_KEY
+      default: ''
+      example: /path/to/client.key
+      short: Path to TLS client private key for mTLS.
+      desc: |
+        Path to TLS client private key file for mutual TLS authentication.
+        This key must match the tls_client_cert certificate.
+        Both cert and key are required for mTLS to work.
+    - name: tls_ca_cert
+      envvar: TLS_CA_CERT
+      default: ''
+      example: /path/to/ca-bundle.crt
+      short: Path to custom CA certificate.
+      desc: |
+        Path to custom Certificate Authority bundle to verify server certificate.
+        Use this when your Starr app uses a certificate signed by a private CA.
+        If not set, system default CA bundle is used.
 
   # Global folder configuration.
   folders:

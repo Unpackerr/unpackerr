@@ -3,6 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.24
 
 require (
+	code.cloudfoundry.org/bytefmt v0.37.0
 	github.com/BurntSushi/toml v1.5.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
@@ -20,12 +21,11 @@ require (
 	golift.io/rotatorr v0.0.0-20240723172740-cb73b9c4894c
 	golift.io/starr v1.1.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.2.3-0.20250420200725-7c253b295785
+	golift.io/xtractr v0.2.3-0.20250915022548-1e2b1ed89c4a
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	code.cloudfoundry.org/bytefmt v0.37.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect

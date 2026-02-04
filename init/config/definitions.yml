@@ -372,7 +372,7 @@ sections:
           - value: '0775'
         short: Extracted folders are written with this mode
       - name: passwords
-        envvar: PASSWORD
+        envvar: PASSWORD_
         default: []
         kind: list
         short: List of passwords to use for encrypted archives.

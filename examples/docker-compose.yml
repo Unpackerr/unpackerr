@@ -34,6 +34,7 @@ services:
     - UN_LOG_FILE_MB=10
     - UN_LOG_FILE_MODE=0600
     - UN_INTERVAL=2m
+    - UN_PROGRESS=15s
     - UN_START_DELAY=1m
     - UN_RETRY_DELAY=5m
     - UN_MAX_RETRIES=3
@@ -136,4 +137,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 12 APR 2025 04:54 UTC
+## => Content Auto Generated, 14 FEB 2026 03:44 UTC

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/bytefmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/radovskyb/watcher"
 	"golift.io/cnfg"
@@ -41,6 +42,7 @@ type FolderConfig struct {
 
 // Folders holds all known (created) folders in all watch paths.
 type Folders struct {
+	Logs
 	Interval time.Duration
 	Config   []*FolderConfig
 	Folders  map[string]*Folder
@@ -48,7 +50,6 @@ type Folders struct {
 	Updates  chan *xtractr.Response
 	FSNotify *fsnotify.Watcher
 	Watcher  *watcher.Watcher
-	Logs
 }
 
 // Logs interface for folders.
@@ -93,8 +94,8 @@ func (u *Unpackerr) logFolders() {
 			epath = ", extract to: " + folder.ExtractPath
 		}
 
-		u.Printf(" => Folder Config: 1 path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v"+
-			"log_file:%v, move_back:%v, isos:%v, event_buffer:%d)",
+		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
+			"log_file:%v move_back:%v isos:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
 			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
 	} else {
@@ -102,10 +103,10 @@ func (u *Unpackerr) logFolders() {
 
 		for _, folder := range u.Folders {
 			if epath = ""; folder.ExtractPath != "" {
-				epath = ", extract to: " + folder.ExtractPath
+				epath = " extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s (delete_after:%v, delete_orig:%v, delete_files:%v, log_file:%v, move_back:%v, isos:%v)",
+			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v move_back:%v isos:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
 				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
 		}
@@ -278,7 +279,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].updated, true)
+	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].updated, true)
 	u.updateHistory(FolderString + ": " + name)
 
 	var exclude []string
@@ -297,6 +298,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		DeleteOrig:       false,
 		CBChannel:        u.folders.Updates,
 		CBFunction:       nil,
+		Progress:         u.progressUpdateCallback(item),
 		LogFile:          !folder.config.DisableLog,
 		DisableRecursion: folder.config.DisableRecursion,
 	})
@@ -331,12 +333,15 @@ func getFileList(path string) []os.FileInfo {
 func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	folder, ok := u.folders.Folders[resp.X.Name]
 
-	switch {
-	case !ok:
+	switch item := u.Map[resp.X.Name]; {
+	case !ok, item == nil:
 		// It doesn't exist? weird. delete it and bail out.
+		delete(u.folders.Folders, resp.X.Name)
 		delete(u.Map, resp.X.Name)
+
 		return
 	case !resp.Done:
+		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 		folder.status = EXTRACTING
 		u.Printf("[Folder] Extraction Started: %s, retries: %d, items in queue: %d", resp.X.Name, folder.retries, resp.Queued)
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
@@ -350,9 +355,9 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	default: // this runs in a go routine
 		u.updateMetrics(resp, FolderString, folder.config.Path)
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, written: %dMiB",
+			"extra archives: %d, files extracted: %d, written: %sB",
 			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
-			resp.Extras.Count(), len(resp.NewFiles), resp.Size/mebiByte)
+			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 
 		folder.archives = resp.Archives
 		folder.status = EXTRACTED
@@ -520,7 +525,6 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 //nolint:wsl
 func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folder) {
 	var webhook bool
-
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.config.DeleteFiles && !folder.config.MoveBack {
 		u.delChan <- &fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}}
@@ -552,7 +556,7 @@ type newStatus struct {
 // updateQueueStatus for an on-going tracked extraction.
 // This is called from a channel callback to update status in a single go routine.
 // This is used by apps and Folders in a few other places as well.
-func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook bool) {
+func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook bool) *Extract {
 	if _, ok := u.Map[data.Name]; !ok {
 		// This is a new Folder being queued for extraction.
 		// Arr apps do not land here. They create their own queued items in u.Map.
@@ -564,11 +568,13 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 			IDs:     map[string]any{"title": data.Name}, // required or webhook may break.
 		}
 
+		u.Map[data.Name].XProg = &ExtractProgress{Extract: u.Map[data.Name]}
+
 		if sendHook {
 			u.runAllHooks(u.Map[data.Name])
 		}
 
-		return
+		return u.Map[data.Name]
 	}
 
 	if data.Resp != nil {
@@ -581,4 +587,6 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])
 	}
+
+	return u.Map[data.Name]
 }

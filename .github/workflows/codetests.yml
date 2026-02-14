@@ -37,9 +37,9 @@ jobs:
       - name: go-generate
         run: GOOS=darwin go generate ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: 'v2.0'
+          version: v2.9
 
   golangci-linux:
     # description: "Runs golangci-lint on linux against linux and windows."
@@ -58,6 +58,6 @@ jobs:
       - name: go-generate
         run: GOOS=linux go generate ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: 'v2.0'
+          version: v2.9

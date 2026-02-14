@@ -34,7 +34,6 @@ const (
 	defaultDeleteDelay = 5 * time.Minute
 	defaultHistory     = 10             // items kept in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
-	mebiByte           = 1024 * 1024    // Used to turn bytes in MiB.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
 	defaultFolderBuf   = 20000          // Channel queue size for file system events.
 	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
@@ -59,6 +58,7 @@ type Unpackerr struct {
 	folders  *Folders
 	sigChan  chan os.Signal
 	updates  chan *xtractr.Response
+	progChan chan *ExtractProgress
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
@@ -99,6 +99,7 @@ func New() *Unpackerr {
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
+		progChan: make(chan *ExtractProgress),
 		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory: defaultHistory,
@@ -269,11 +270,12 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		poller  = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
-		cleaner = time.NewTicker(cleanerInterval)              // clean at a fast interval.
-		logger  = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
-		xtractr = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
-		now     = version.Started                              // Used for file system event time stamps.
+		poller   = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
+		cleaner  = time.NewTicker(cleanerInterval)              // clean at a fast interval.
+		logger   = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
+		xtractr  = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
+		progress = time.NewTicker(u.Config.Progress.Duration)   // Progress update for extractions.
+		now      = version.Started                              // Used for file system event time stamps.
 	)
 
 	u.PollFolders()          // This initializes channel(s) used below.
@@ -306,6 +308,12 @@ func (u *Unpackerr) Run() {
 		case now := <-logger.C:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)
+		case prog := <-u.progChan:
+			// Update progress for in-process extractions.
+			u.handleProgress(prog)
+		case now = <-progress.C:
+			// Print the collected progress info.
+			u.printProgress(now)
 		}
 	}
 }

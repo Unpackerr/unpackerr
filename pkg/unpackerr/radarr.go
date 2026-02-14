@@ -103,6 +103,7 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 						"reason":     buildStatusReason(record.Status, record.StatusMessages),
 					},
 				}
+				u.Map[record.Title].XProg = &ExtractProgress{Extract: u.Map[record.Title]}
 
 				fallthrough
 			default:

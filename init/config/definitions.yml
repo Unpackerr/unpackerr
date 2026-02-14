@@ -70,7 +70,7 @@ recommendations:
       value: 5m
     - name: 10 minutes
       value: 10m
-    - name: 15m minutes
+    - name: 15 minutes
       value: 15m
     - name: 20 minutes
       value: 20m
@@ -108,7 +108,7 @@ recommendations:
       value: 5m
     - name: 10 minutes
       value: 10m
-    - name: 15m minutes
+    - name: 15 minutes
       value: 15m
     - name: 20 minutes
       value: 20m

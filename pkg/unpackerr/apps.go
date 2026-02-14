@@ -60,6 +60,7 @@ type Config struct {
 	DeleteDelay cnfg.Duration    `json:"deleteDelay"        toml:"delete_delay"  xml:"delete_delay"  yaml:"deleteDelay"`
 	StartDelay  cnfg.Duration    `json:"startDelay"         toml:"start_delay"   xml:"start_delay"   yaml:"startDelay"`
 	RetryDelay  cnfg.Duration    `json:"retryDelay"         toml:"retry_delay"   xml:"retry_delay"   yaml:"retryDelay"`
+	Progress    cnfg.Duration    `json:"progress"           toml:"progress"      xml:"progress"      yaml:"progress"`
 	KeepHistory uint             `json:"keepHistory"        toml:"keep_history"  xml:"keep_history"  yaml:"keepHistory"` // undocumented.
 	Passwords   StringSlice      `json:"passwords"          toml:"passwords"     xml:"password"      yaml:"passwords"`
 	Webserver   *WebServer       `json:"webserver"          toml:"webserver"     xml:"webserver"     yaml:"webserver"`
@@ -71,7 +72,7 @@ type Config struct {
 	Folders     []*FolderConfig  `json:"folder,omitempty"   toml:"folder"        xml:"folder"        yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty"  toml:"webhook"       xml:"webhook"       yaml:"webhook,omitempty"`
 	Cmdhook     []*WebhookConfig `json:"cmdhook,omitempty"  toml:"cmdhook"       xml:"cmdhook"       yaml:"cmdhook,omitempty"`
-	Folder      FoldersConfig    `json:"folders,omitempty"  toml:"folders"       xml:"folders"       yaml:"folders,omitempty"` // undocumented.
+	Folder      FoldersConfig    `json:"folders"            toml:"folders"       xml:"folders"       yaml:"folders"` // undocumented.
 }
 
 type FoldersConfig struct {

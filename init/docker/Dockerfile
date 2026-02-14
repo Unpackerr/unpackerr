@@ -3,7 +3,7 @@
 # https://github.com/golift/application-builder
 #
 
-FROM golang:1-bullseye as builder
+FROM golang:1-bullseye AS builder
 
 WORKDIR /src
 COPY main.go settings.sh go.mod go.sum ./

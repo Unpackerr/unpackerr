@@ -1,4 +1,4 @@
-version: "2"
+version: '2'
 linters:
   default: all
   disable:
@@ -12,6 +12,11 @@ linters:
     - testpackage
     #fix this
     - staticcheck
+    - embeddedstructfieldcheck # this is a trash rule.
+    - funcorder # also lame.
+    - noinlineerr # I like inline errors.
+    - wsl_v5 # this one sucks compared to wsl, and lacks configurability.
+
   settings:
     depguard:
       rules:

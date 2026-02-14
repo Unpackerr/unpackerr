@@ -110,20 +110,20 @@ func (p *Param) Compose(prefix string) string {
 	default:
 		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
 	case list:
-		var out string
+		var out strings.Builder
 
 		for idx, sv := range val.([]any) { //nolint:forcetypeassert
-			out += fmt.Sprint(prefix, p.EnvVar, idx, "=", sv, "\n")
+			fmt.Fprintf(&out, "%s%s%d=%s\n", prefix, p.EnvVar, idx, sv)
 		}
 
-		return out
+		return out.String()
 	case "conlist":
-		out := []string{}
+		var out strings.Builder
 
 		for _, sv := range val.([]any) { //nolint:forcetypeassert
-			out = append(out, fmt.Sprint(sv))
+			fmt.Fprintf(&out, "%s", sv)
 		}
 
-		return fmt.Sprint(prefix, p.EnvVar, "=", strings.Join(out, ","), "\n")
+		return fmt.Sprint(prefix, p.EnvVar, "=", out.String(), "\n")
 	}
 }

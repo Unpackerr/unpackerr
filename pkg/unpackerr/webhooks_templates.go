@@ -39,10 +39,10 @@ type XtractPayload struct {
 	Archives StringSlice   `json:"archives,omitempty"` // list of all archive files extracted
 	Files    StringSlice   `json:"files,omitempty"`    // list of all files extracted
 	File     []string      `json:"file,omitempty"`     // list of all files extracted
-	Start    time.Time     `json:"start,omitempty"`    // start time of extraction
+	Start    time.Time     `json:"start"`              // start time of extraction
 	Output   string        `json:"output,omitempty"`   // temporary items folder
 	Bytes    uint64        `json:"bytes,omitempty"`    // Bytes written
-	Elapsed  cnfg.Duration `json:"elapsed,omitempty"`  // Duration as a string: 5m32s
+	Elapsed  cnfg.Duration `json:"elapsed"`            // Duration as a string: 5m32s
 	Queue    int           `json:"queue,omitempty"`    // Extraction Queue Size
 }
 
@@ -95,6 +95,7 @@ const WebhookTemplateTelegram = `{
 `
 
 // The extra spaces before the newlines here are required to make this look good on web and on android.
+
 const WebhookTemplateGotify = `{
   "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.Event.Desc}}",
   "message": "**App**: {{.App}}  \n**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}

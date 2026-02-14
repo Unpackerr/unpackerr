@@ -42,6 +42,7 @@ type FolderConfig struct {
 
 // Folders holds all known (created) folders in all watch paths.
 type Folders struct {
+	Logs
 	Interval time.Duration
 	Config   []*FolderConfig
 	Folders  map[string]*Folder
@@ -49,7 +50,6 @@ type Folders struct {
 	Updates  chan *xtractr.Response
 	FSNotify *fsnotify.Watcher
 	Watcher  *watcher.Watcher
-	Logs
 }
 
 // Logs interface for folders.

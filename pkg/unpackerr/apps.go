@@ -72,7 +72,7 @@ type Config struct {
 	Folders     []*FolderConfig  `json:"folder,omitempty"   toml:"folder"        xml:"folder"        yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty"  toml:"webhook"       xml:"webhook"       yaml:"webhook,omitempty"`
 	Cmdhook     []*WebhookConfig `json:"cmdhook,omitempty"  toml:"cmdhook"       xml:"cmdhook"       yaml:"cmdhook,omitempty"`
-	Folder      FoldersConfig    `json:"folders,omitempty"  toml:"folders"       xml:"folders"       yaml:"folders,omitempty"` // undocumented.
+	Folder      FoldersConfig    `json:"folders"            toml:"folders"       xml:"folders"       yaml:"folders"` // undocumented.
 }
 
 type FoldersConfig struct {

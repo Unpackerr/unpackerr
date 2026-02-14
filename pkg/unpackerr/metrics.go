@@ -42,6 +42,7 @@ func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *MetricsCollector) Collect(metrics chan<- prometheus.Metric) {
 	stats := c.stats()
 	newMetric := prometheus.MustNewConstMetric
+
 	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Waiting), "waiting")
 	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Queued), "queued")
 	metrics <- newMetric(c.gauge, prometheus.GaugeValue, float64(stats.Extracting), "extracting")

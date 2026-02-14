@@ -29,8 +29,9 @@ type Extract struct {
 	XProg       *ExtractProgress
 }
 
-// Shared config items for all starr apps.
+// StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
+	starr.Config
 	Path        string        `json:"path"         toml:"path"         xml:"path"         yaml:"path"`
 	Paths       StringSlice   `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
 	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
@@ -39,7 +40,6 @@ type StarrConfig struct {
 	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
 	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
 	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
-	starr.Config
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -262,7 +262,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 
 // isComplete is run so many times in different places that it became a method.
 func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos string) bool {
-	for _, s := range strings.Fields(strings.ReplaceAll(protos, ",", " ")) {
+	for s := range strings.FieldsSeq(strings.ReplaceAll(protos, ",", " ")) {
 		if strings.EqualFold(string(protocol), s) {
 			return strings.EqualFold(status, "completed")
 		}

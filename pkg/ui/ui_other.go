@@ -20,7 +20,7 @@ func HasGUI() bool {
 
 // StartCmd starts a command.
 func StartCmd(c string, v ...string) error {
-	cmd := exec.Command(c, v...)
+	cmd := exec.Command(c, v...) //nolint:noctx // we should fix this.
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 

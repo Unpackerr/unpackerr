@@ -37,7 +37,7 @@ jobs:
           brew install Bearer/tap/gon
           make signdmg
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dmg-release
           path: release
@@ -68,7 +68,7 @@ jobs:
           make release
           source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release
           path: release
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Download files: ${{ matrix.files }}"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.files }}
       - name: Upload files to unstable.golift.io

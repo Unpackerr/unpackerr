@@ -17,11 +17,11 @@ jobs:
     name: Make macOS DMG
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: go-generate
@@ -52,11 +52,11 @@ jobs:
     env:
       GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: make-release
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release
       - uses: golift/upload-packagecloud@v1
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release
       - uses: golift/upload-packagecloud@v1
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download ${{ matrix.files }} Files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.files }}
       - name: Publish ${{ matrix.files }} artifacts to github
@@ -173,7 +173,7 @@ jobs:
     name: Deploy ArchLinux AUR
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: '0'
       - name: Deploy Arch AUR
@@ -194,7 +194,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

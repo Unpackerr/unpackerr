@@ -113,9 +113,9 @@ services:
     - UN_WEBHOOK_0_URL=https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com
     - UN_WEBHOOK_0_NAME=
     - UN_WEBHOOK_0_SILENT=false
-    - UN_WEBHOOK_0_EVENTS_0=%!s(int=1)
-    - UN_WEBHOOK_0_EVENTS_1=%!s(int=4)
-    - UN_WEBHOOK_0_EVENTS_2=%!s(int=6)
+    - UN_WEBHOOK_0_EVENTS_0=1
+    - UN_WEBHOOK_0_EVENTS_1=4
+    - UN_WEBHOOK_0_EVENTS_2=6
     - UN_WEBHOOK_0_NICKNAME=Unpackerr
     - UN_WEBHOOK_0_CHANNEL=
     - UN_WEBHOOK_0_EXCLUDE_0=readarr
@@ -130,11 +130,11 @@ services:
     - UN_CMDHOOK_0_NAME=
     - UN_CMDHOOK_0_SHELL=false
     - UN_CMDHOOK_0_SILENT=false
-    - UN_CMDHOOK_0_EVENTS_0=%!s(int=1)
-    - UN_CMDHOOK_0_EVENTS_1=%!s(int=4)
-    - UN_CMDHOOK_0_EVENTS_2=%!s(int=7)
+    - UN_CMDHOOK_0_EVENTS_0=1
+    - UN_CMDHOOK_0_EVENTS_1=4
+    - UN_CMDHOOK_0_EVENTS_2=7
     - UN_CMDHOOK_0_EXCLUDE_0=readarr
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 14 FEB 2026 03:34 UTC
+## => Content Auto Generated, 14 FEB 2026 03:44 UTC

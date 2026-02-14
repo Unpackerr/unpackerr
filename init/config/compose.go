@@ -113,7 +113,7 @@ func (p *Param) Compose(prefix string) string {
 		var out strings.Builder
 
 		for idx, sv := range val.([]any) { //nolint:forcetypeassert
-			fmt.Fprintf(&out, "%s%s%d=%s\n", prefix, p.EnvVar, idx, sv)
+			fmt.Fprint(&out, prefix, p.EnvVar, idx, "=", sv, "\n")
 		}
 
 		return out.String()
@@ -121,7 +121,7 @@ func (p *Param) Compose(prefix string) string {
 		var out strings.Builder
 
 		for _, sv := range val.([]any) { //nolint:forcetypeassert
-			fmt.Fprintf(&out, "%s", sv)
+			fmt.Fprint(&out, sv)
 		}
 
 		return fmt.Sprint(prefix, p.EnvVar, "=", out.String(), "\n")

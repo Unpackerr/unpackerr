@@ -21,7 +21,7 @@ jobs:
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: go-generate
@@ -56,7 +56,7 @@ jobs:
         with:
           # we need the whole thing so we can count commits.
           fetch-depth: '0'
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: make-release

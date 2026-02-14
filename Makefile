@@ -23,6 +23,7 @@ endif
 RPMVERSION:=$(shell echo $(VERSION) | tr -- - _)
 
 define PACKAGE_ARGS
+--before-install init/systemd/before-install.sh \
 --after-install init/systemd/after-install.sh \
 --before-remove init/systemd/before-remove.sh \
 --name unpackerr \

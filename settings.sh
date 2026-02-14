@@ -20,7 +20,7 @@ export DATE VERSION ITERATION COMMIT BRANCH
 ### Optional ###
 
 # Import this signing key only if it's in the keyring.
-if gpg --list-keys 2>/dev/null | grep -q B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C; then
+if gpg --list-keys 2>/dev/null | grep -q B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C && debsigs -h > /dev/null; then
     export SIGNING_KEY=B93DD66EF98E54E2EAE025BA0166AD34ABC5A57C
 fi
 

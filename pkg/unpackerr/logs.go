@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
@@ -138,10 +139,7 @@ func (u *Unpackerr) setupLogging() {
 		u.Logger.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
-	if logFile, err := homedir.Expand(u.Config.LogFile); err == nil {
-		u.Config.LogFile = logFile
-	}
-
+	u.Config.LogFile = getLogFilePath(u.Config.LogFile, "unpackerr.log")
 	fileMode, _ := strconv.ParseUint(u.LogFileMode, bits8, base32)
 	rotate := &rotatorr.Config{
 		Filepath: u.Config.LogFile,                     // log file name.
@@ -175,6 +173,19 @@ func (u *Unpackerr) setupLogging() {
 	}
 }
 
+// getLogFilePath takes in a path and a base name. In case the path is a directory, they are joined.
+func getLogFilePath(logFile, base string) string {
+	if expanded, err := homedir.Expand(logFile); err == nil {
+		logFile = expanded
+	}
+
+	if stat, err := os.Stat(logFile); err == nil && stat.IsDir() {
+		return filepath.Join(logFile, base)
+	}
+
+	return logFile
+}
+
 func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
@@ -193,10 +204,7 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 }
 
 func (u *Unpackerr) setupHTTPLogging() {
-	if logFile, err := homedir.Expand(u.Webserver.LogFile); err == nil {
-		u.Webserver.LogFile = logFile
-	}
-
+	u.Webserver.LogFile = getLogFilePath(u.Webserver.LogFile, "http.log")
 	rotate := &rotatorr.Config{
 		Filepath: u.Webserver.LogFile,                     // log file name.
 		FileSize: int64(u.Webserver.LogFileMb) * megabyte, // megabytes

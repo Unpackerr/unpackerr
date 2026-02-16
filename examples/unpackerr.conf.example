@@ -233,6 +233,10 @@ passwords = []
 ##################################################################################
 #[[folder]]
 # path = '/downloads/auto_extract'
+## Paths to ignore while watching this folder. Excluded paths and their
+## children are not tracked or extracted.
+## Paths may be absolute, or relative to this folder's `path`.
+# exclude_paths = []
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
 # extract_path = ''
 ## Delete extracted or original files this long after extraction.
@@ -311,4 +315,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 14 FEB 2026 03:44 UTC
+## => Content Auto Generated, 16 FEB 2026 17:44 UTC

@@ -37,6 +37,7 @@ type FolderConfig struct {
 	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
 	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
 	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
+	ExcludePaths     StringSlice    `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_paths"     yaml:"exclude_paths"`
 	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
 
@@ -179,6 +180,8 @@ func checkFolders(folders []*FolderConfig, log Logs) ([]*FolderConfig, []string)
 			}
 		}
 
+		folder.ExcludePaths = normalizeFolderExcludePaths(folder.Path, folder.ExcludePaths)
+
 		if stat, err := os.Stat(folder.Path); err != nil {
 			log.Errorf("Folder '%s' (cannot watch): %v", folder.Path, err)
 			continue
@@ -192,6 +195,45 @@ func checkFolders(folders []*FolderConfig, log Logs) ([]*FolderConfig, []string)
 	}
 
 	return goodFolders, goodFlist
+}
+
+func normalizeFolderExcludePaths(basePath string, excludes []string) []string {
+	cleaned := make([]string, 0, len(excludes))
+
+	for _, exclude := range excludes {
+		exclude = strings.TrimSpace(exclude)
+		if exclude == "" {
+			continue
+		}
+
+		exclude = expandHomedir(exclude)
+		if !filepath.IsAbs(exclude) {
+			exclude = filepath.Join(basePath, exclude)
+		}
+
+		if abs, err := filepath.Abs(exclude); err == nil {
+			cleaned = append(cleaned, filepath.Clean(abs))
+		}
+	}
+
+	return cleaned
+}
+
+func (c *FolderConfig) isExcludedPath(path string) bool {
+	if len(c.ExcludePaths) == 0 || path == "" {
+		return false
+	}
+
+	path = filepath.Clean(path)
+
+	for _, exclude := range c.ExcludePaths {
+		exclude = filepath.Clean(exclude)
+		if path == exclude || strings.HasPrefix(path, exclude+string(os.PathSeparator)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // newWatcher returns a new folder watcher.
@@ -414,6 +456,11 @@ func (f *Folders) handleFileEvent(name, operation string) {
 			continue // Not the configured folder for the event we just got.
 		}
 
+		if cnfg.isExcludedPath(name) {
+			f.Debugf("Folder: Ignored event from excluded path: %v", name)
+			continue
+		}
+
 		// processEvent (below) handles events sent to f.Events.
 		if dir := filepath.Dir(name); dir == cnfg.Path {
 			f.Events <- &eventData{name: filepath.Base(name), cnfg: cnfg, file: name, op: operation}
@@ -440,6 +487,11 @@ func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 // processEvent processes the event that was received.
 func (f *Folders) processEvent(event *eventData, now time.Time) {
 	dirPath := filepath.Join(event.cnfg.Path, event.name)
+
+	if event.cnfg.isExcludedPath(event.file) || event.cnfg.isExcludedPath(dirPath) {
+		f.Debugf("Folder: Ignored File Event (%s) '%s' (excluded path)", event.op, event.file)
+		return
+	}
 
 	stat, err := os.Stat(dirPath)
 	if err != nil {

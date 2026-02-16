@@ -39,7 +39,7 @@ func TestFolderConfigIsExcludedPath(t *testing.T) {
 
 	base := t.TempDir()
 	excluded := filepath.Join(base, "permanent")
-	cfg := &FolderConfig{ExcludePaths: StringSlice{excluded}}
+	cfg := &FolderConfig{ExcludePaths: []string{excluded}}
 
 	if !cfg.isExcludedPath(excluded) {
 		t.Fatal("expected exact excluded path to match")
@@ -126,7 +126,7 @@ func TestFoldersProcessEventExcludedPath(t *testing.T) {
 
 	cfg := &FolderConfig{
 		Path:         watchPath,
-		ExcludePaths: StringSlice{excluded},
+		ExcludePaths: []string{excluded},
 	}
 	folders := newTestFolders(t, cfg)
 
@@ -164,7 +164,7 @@ func TestFoldersHandleFileEventExcludedPath(t *testing.T) {
 	folders := &Folders{
 		Config: []*FolderConfig{{
 			Path:         watchPath,
-			ExcludePaths: StringSlice{excluded},
+			ExcludePaths: []string{excluded},
 		}},
 		Events: make(chan *eventData, 1),
 		Logs:   noopLogger{},

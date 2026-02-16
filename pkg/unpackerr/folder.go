@@ -37,7 +37,7 @@ type FolderConfig struct {
 	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
 	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
 	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
-	ExcludePaths     StringSlice    `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_paths"     yaml:"exclude_paths"`
+	ExcludePaths     StringSlice    `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
 	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
 

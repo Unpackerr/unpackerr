@@ -568,7 +568,7 @@ sections:
         example: /downloads/auto_extract
         short: Folder to watch for archives. **Not for Starr apps.**
       - name: exclude_paths
-        envvar: EXCLUDE_PATHS_
+        envvar: EXCLUDE_PATH_
         default: []
         kind: list
         short: List of paths to ignore under this watched folder.

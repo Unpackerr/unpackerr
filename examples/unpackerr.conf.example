@@ -73,6 +73,10 @@ dir_mode = "0755"
 ## List of passwords to use for encrypted archives. Must be a list of strings.
 ## Use this special format as a password to read more passwords from a file:
 ## passwords = [ "filepath:/path/to/passwords.txt" ]
+## Environment variable format uses an index per item:
+## UN_PASSWORD_0=filepath:/path/to/passwords.txt
+## Password files should contain one password per line.
+## Password files are read once at startup.
 passwords = []
 
 [webserver]
@@ -311,4 +315,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 14 FEB 2026 03:44 UTC
+## => Content Auto Generated, 16 FEB 2026 17:37 UTC

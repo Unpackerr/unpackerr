@@ -1,8 +1,3 @@
-#
-# This is part of Application Builder.
-# https://github.com/golift/application-builder
-#
-
 FROM golang:1-alpine AS builder
 
 WORKDIR /src
@@ -12,17 +7,19 @@ COPY pkg pkg
 COPY examples examples
 RUN go generate ./...
 
-RUN apk add --no-cache tzdata openssl
-
 ARG TARGETOS
+ARG TARGETARCH
 ARG BUILD_DATE
 ARG BRANCH
 ARG VERSION
 ARG ITERATION
 ARG COMMIT
 
-RUN GOFLAGS="-trimpath -mod=readonly -modcacherw" \
-    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /tmp/image -tags osusergo,netgo \
+ENV GOFLAGS="-trimpath -mod=readonly -modcacherw"
+ENV GOOS=${TARGETOS}
+ENV GOARCH=${TARGETARCH}
+
+RUN go build -o /tmp/unpackerr -tags osusergo,netgo \
     -ldflags "-w -s -X \"golift.io/version.Branch=${BRANCH} (${COMMIT})\" \
     -X \"golift.io/version.BuildDate=${BUILD_DATE}\" \
     -X \"golift.io/version.BuildUser=docker\" \
@@ -45,7 +42,7 @@ ARG AUTHOR=golift
 # Build-time metadata as defined at https://github.com/opencontainers/image-spec/blob/master/annotations.md
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title="Unpackerr" \
-      org.opencontainers.image.documentation="${SOURCE_URL}/wiki/Docker" \
+      org.opencontainers.image.documentation="https://unpackerr.zip" \
       org.opencontainers.image.description="${DESC}" \
       org.opencontainers.image.url="${SOURCE_URL}" \
       org.opencontainers.image.revision="${COMMIT}" \
@@ -56,10 +53,9 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.licenses="${LICENSE}" \
       org.opencontainers.image.version="${VERSION}-${ITERATION}"
 
-COPY --from=builder /tmp/image /unpackerr
+COPY --from=builder /tmp/unpackerr /unpackerr
 # Make sure we have an ssl cert chain and timezone data.
-COPY --from=builder /etc/ssl /etc/ssl
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+RUN apk add --no-cache openssl tzdata
 
 ENV TZ=UTC
 

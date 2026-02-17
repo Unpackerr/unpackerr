@@ -272,11 +272,18 @@ func (u *Unpackerr) Run() {
 	var (
 		poller   = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
 		cleaner  = time.NewTicker(cleanerInterval)              // clean at a fast interval.
-		logger   = time.NewTicker(u.Config.LogQueues.Duration)  // log queue states every minute.
 		xtractr  = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
 		progress = time.NewTicker(u.Config.Progress.Duration)   // Progress update for extractions.
 		now      = version.Started                              // Used for file system event time stamps.
 	)
+
+	// Only start the queue/totals log timer when at least one app or folder is configured.
+	var logger <-chan time.Time
+	if len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr)+len(u.Folders) > 0 {
+		logger = time.NewTicker(u.Config.LogQueues.Duration).C
+	} else {
+		u.Printf("No Starr apps or folders configured. Shut down and add some apps or folders to your config file.")
+	}
 
 	u.PollFolders()          // This initializes channel(s) used below.
 	u.retrieveAppQueues(now) // Get in-app queues on startup.
@@ -305,7 +312,7 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
-		case now := <-logger.C:
+		case now := <-logger:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)
 		case prog := <-u.progChan:

@@ -266,11 +266,11 @@ unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst: package_build_linux_aarch
 unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst.sig: unpackerr-$(VERSION)-$(ITERATION)-aarch64.pkg.tar.zst
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
-zstarmhf: unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst.sig
-unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst: package_build_linux_armhf_zst check_fpm
+zstarmhf: unpackerr-$(VERSION)-$(ITERATION)-arm7hf.pkg.tar.zst unpackerr-$(VERSION)-$(ITERATION)-arm7hf.pkg.tar.zst.sig
+unpackerr-$(VERSION)-$(ITERATION)-arm7hf.pkg.tar.zst: package_build_linux_armhf_zst check_fpm
 	@echo "Building 32-bit ARM6/7 HF 'pacman' package for unpackerr version '$(VERSION)-$(ITERATION)'."
 	fpm -s dir -t pacman $(PACKAGE_ARGS) -a armhf -v $(VERSION) -C $< $(EXTRA_FPM_FLAGS)
-unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst.sig: unpackerr-$(VERSION)-$(ITERATION)-armhf.pkg.tar.zst
+unpackerr-$(VERSION)-$(ITERATION)-arm7hf.pkg.tar.zst.sig: unpackerr-$(VERSION)-$(ITERATION)-arm7hf.pkg.tar.zst
 	[ "$(SIGNING_KEY)" = "" ] || gpg --local-user "$(SIGNING_KEY)" --output $@ --detach-sig $<
 
 # Build an environment that can be packaged for linux.

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -70,6 +71,9 @@ type Unpackerr struct {
 type fileDeleteReq struct {
 	Paths            []string
 	PurgeEmptyParent bool
+	// PurgeEmptyRoot, when set with PurgeEmptyParent, allows purging empty parent dirs
+	// up to and including this path (e.g. the Starr app download folder). Stops above this root.
+	PurgeEmptyRoot string
 }
 
 // Logger provides a struct we can pass into other packages.
@@ -199,6 +203,8 @@ func fileList(paths ...string) []string {
 	for _, path := range paths {
 		if file, err := os.Open(path); err == nil {
 			names, _ := file.Readdirnames(0)
+			_ = file.Close()
+
 			files = append(files, names...)
 		}
 	}
@@ -208,23 +214,89 @@ func fileList(paths ...string) []string {
 
 func (u *Unpackerr) watchDeleteChannel() {
 	for input := range u.delChan {
+		if len(input.Paths) == 0 {
+			continue
+		}
+
 		u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
+		u.DeleteFiles(input.Paths...)
 
-		if len(input.Paths) > 0 && input.Paths[0] != "" {
-			u.DeleteFiles(input.Paths...)
+		if !input.PurgeEmptyParent {
+			continue
+		}
 
-			if !input.PurgeEmptyParent {
-				continue
-			}
+		root := input.PurgeEmptyRoot
+		if root != "" {
+			root = filepath.Clean(root)
+		}
 
-			for _, path := range input.Paths {
-				if dir := filepath.Dir(path); dirIsEmpty(dir) {
-					u.Printf("Purging empty folder: %s", dir)
-					u.DeleteFiles(dir)
-				}
+		if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
+			if root != "" {
+				u.Printf("Purged %d empty folder(s) up to %s", purged, root)
+			} else {
+				u.Printf("Purged %d empty folder(s)", purged)
 			}
 		}
 	}
+}
+
+// purgeEmptyFolders removes empty ancestor dirs of the given paths, up to root (if set).
+// Each dir is considered at most once; dirs are purged deepest-first. Returns the number removed.
+func (u *Unpackerr) purgeEmptyFolders(paths []string, root string) int {
+	// Collect unique candidate dirs (all ancestors of all paths, up to root).
+	candidates := make(map[string]struct{})
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+			dir = filepath.Clean(dir)
+			if root != "" {
+				rel, err := filepath.Rel(root, dir)
+				if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					break
+				}
+			}
+
+			candidates[dir] = struct{}{}
+
+			if root != "" && dir == root {
+				break
+			}
+
+			if parent := filepath.Dir(dir); parent == dir {
+				break
+			}
+		}
+	}
+
+	if len(candidates) == 0 {
+		return 0
+	}
+
+	// Sort deepest first so we remove children before parents.
+	dirs := make([]string, 0, len(candidates))
+	for d := range candidates {
+		dirs = append(dirs, d)
+	}
+
+	sort.Slice(dirs, func(i, j int) bool {
+		return len(dirs[i]) > len(dirs[j])
+	})
+
+	var purged int
+
+	for _, dir := range dirs {
+		if dirIsEmpty(dir) {
+			u.DeleteFiles(dir)
+
+			purged++
+		}
+	}
+
+	return purged
 }
 
 func dirIsEmpty(path string) bool {

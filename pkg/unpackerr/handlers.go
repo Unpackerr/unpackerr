@@ -194,8 +194,12 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 				u.delChan <- &fileDeleteReq{Paths: []string{item.Path}}
 				webhook = true
 			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
-				// In a routine so it can run slowly and not block.
-				u.delChan <- &fileDeleteReq{Paths: item.Resp.NewFiles, PurgeEmptyParent: true}
+				// Delete extracted files and purge empty parents up to and including the download path.
+				u.delChan <- &fileDeleteReq{
+					Paths:            item.Resp.NewFiles,
+					PurgeEmptyParent: true,
+					PurgeEmptyRoot:   item.Path,
+				}
 				webhook = true
 			}
 

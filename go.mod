@@ -18,7 +18,7 @@ require (
 	golang.org/x/mod v0.33.0
 	golift.io/cnfg v0.2.3
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
-	golift.io/rotatorr v0.0.0-20240723172740-cb73b9c4894c
+	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	golift.io/starr v1.3.0
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.3.0

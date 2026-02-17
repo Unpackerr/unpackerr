@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,8 @@ import (
 )
 
 func TestFolderDisableRecursionHonored(t *testing.T) {
+	t.Parallel()
+
 	archivePath := makeNestedZipFixture(t)
 	done := runExtraction(t, archivePath, true)
 
@@ -32,6 +35,8 @@ func TestFolderDisableRecursionHonored(t *testing.T) {
 }
 
 func TestFolderDisableRecursionFalseExtractsNested(t *testing.T) {
+	t.Parallel()
+
 	archivePath := makeNestedZipFixture(t)
 	done := runExtraction(t, archivePath, false)
 
@@ -46,6 +51,8 @@ func TestFolderDisableRecursionFalseExtractsNested(t *testing.T) {
 }
 
 func TestFolderExcludeSuffixesDirectoryDoesNotExcludeAllArchives(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	exclude := folderExcludeSuffixes(dir, &FolderConfig{DisableRecursion: true, ExtractISOs: false})
 
@@ -59,6 +66,8 @@ func TestFolderExcludeSuffixesDirectoryDoesNotExcludeAllArchives(t *testing.T) {
 }
 
 func TestFolderExcludeSuffixesArchiveExcludesAllWhenDisableRecursion(t *testing.T) {
+	t.Parallel()
+
 	archivePath := makeNestedZipFixture(t)
 	exclude := folderExcludeSuffixes(archivePath, &FolderConfig{DisableRecursion: true, ExtractISOs: false})
 
@@ -79,9 +88,11 @@ func runExtraction(t *testing.T, archivePath string, disableRecursion bool) *xtr
 		FileMode: defaultFileMode,
 		DirMode:  defaultDirMode,
 	})
+
 	t.Cleanup(func() { queue.Stop() })
 
 	callbacks := make(chan *xtractr.Response, updateChanBuf)
+
 	_, err := queue.Extract(&xtractr.Xtract{
 		Name:             archivePath,
 		Filter:           xtractr.Filter{Path: archivePath, ExcludeSuffix: exclude},
@@ -131,7 +142,7 @@ func makeNestedZipFixture(t *testing.T) string {
 		t.Fatalf("building outer zip fixture: %v", err)
 	}
 
-	if err := os.WriteFile(archivePath, outerZipBytes, 0o644); err != nil {
+	if err := os.WriteFile(archivePath, outerZipBytes, 0o600); err != nil {
 		t.Fatalf("writing outer zip fixture: %v", err)
 	}
 
@@ -141,22 +152,22 @@ func makeNestedZipFixture(t *testing.T) string {
 func buildZip(entries map[string][]byte) ([]byte, error) {
 	var output bytes.Buffer
 
-	w := zip.NewWriter(&output)
+	writer := zip.NewWriter(&output)
 	for name, data := range entries {
-		f, err := w.Create(name)
+		entry, err := writer.Create(name)
 		if err != nil {
-			_ = w.Close()
-			return nil, err
+			_ = writer.Close()
+			return nil, fmt.Errorf("creating zip entry: %w", err)
 		}
 
-		if _, err := f.Write(data); err != nil {
-			_ = w.Close()
-			return nil, err
+		if _, err := entry.Write(data); err != nil {
+			_ = writer.Close()
+			return nil, fmt.Errorf("creating zip entry: %w", err)
 		}
 	}
 
-	if err := w.Close(); err != nil {
-		return nil, err
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("closing zip writer: %w", err)
 	}
 
 	return output.Bytes(), nil
@@ -167,7 +178,7 @@ func containsFileBase(root, base string) bool {
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d == nil || d.IsDir() {
-			return nil
+			return nil //nolint:nilerr
 		}
 
 		if filepath.Base(path) == base {
@@ -184,7 +195,7 @@ func listFiles(root string) []string {
 	files := []string{}
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d == nil || d.IsDir() {
-			return nil
+			return nil //nolint:nilerr
 		}
 
 		if rel, relErr := filepath.Rel(root, path); relErr == nil {

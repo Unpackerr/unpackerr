@@ -70,6 +70,9 @@ type Unpackerr struct {
 type fileDeleteReq struct {
 	Paths            []string
 	PurgeEmptyParent bool
+	// PurgeEmptyRoot, when set with PurgeEmptyParent, allows purging empty parent dirs
+	// up to and including this path (e.g. the Starr app download folder). Stops above this root.
+	PurgeEmptyRoot string
 }
 
 // Logger provides a struct we can pass into other packages.
@@ -208,22 +211,50 @@ func fileList(paths ...string) []string {
 
 func (u *Unpackerr) watchDeleteChannel() {
 	for input := range u.delChan {
+		if len(input.Paths) == 0 || input.Paths[0] == "" {
+			continue
+		}
+
 		u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
+		u.DeleteFiles(input.Paths...)
 
-		if len(input.Paths) > 0 && input.Paths[0] != "" {
-			u.DeleteFiles(input.Paths...)
+		if !input.PurgeEmptyParent {
+			continue
+		}
 
-			if !input.PurgeEmptyParent {
-				continue
-			}
+		root := filepath.Clean(input.PurgeEmptyRoot)
+		for _, path := range input.Paths {
+			u.purgeEmptyFolders(path, root)
+		}
+	}
+}
 
-			for _, path := range input.Paths {
-				if dir := filepath.Dir(path); dirIsEmpty(dir) {
-					u.Printf("Purging empty folder: %s", dir)
-					u.DeleteFiles(dir)
-				}
+func (u *Unpackerr) purgeEmptyFolders(path, root string) {
+	for dir := filepath.Dir(path); ; {
+		if !dirIsEmpty(dir) {
+			break
+		}
+
+		if root != "" {
+			rel, err := filepath.Rel(root, dir)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				break
 			}
 		}
+
+		u.Printf("Purging empty folder: %s", dir)
+		u.DeleteFiles(dir)
+
+		if root != "" && filepath.Clean(dir) == root {
+			break
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+
+		dir = parent
 	}
 }
 

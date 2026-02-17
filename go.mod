@@ -16,7 +16,7 @@ require (
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/mod v0.33.0
-	golift.io/cnfg v0.2.3
+	golift.io/cnfg v0.2.4
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20240723172740-cb73b9c4894c
 	golift.io/starr v1.3.0

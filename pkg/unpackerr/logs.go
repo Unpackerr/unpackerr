@@ -153,7 +153,15 @@ func (u *Unpackerr) setupLogging() {
 	}
 
 	if u.Config.LogFile != "" {
-		u.rotatorr = rotatorr.NewMust(rotate)
+		var err error
+
+		u.rotatorr, err = rotatorr.New(rotate)
+		if err != nil {
+			// Fall back to stdout so we don't hammer the filesystem with failed open attempts.
+			u.rotatorr = nil
+			_, _ = os.Stdout.WriteString("[Unpackerr] Log file unavailable (check path and permissions!!), " +
+				"logging to stdout only: " + err.Error() + "\n")
+		}
 	}
 
 	stderr := os.Stdout
@@ -161,12 +169,14 @@ func (u *Unpackerr) setupLogging() {
 		stderr = os.Stderr
 	}
 
+	useLogFile := u.Config.LogFile != "" && u.rotatorr != nil
+
 	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && u.Config.LogFile != "":
+	case !u.Config.Quiet && useLogFile:
 		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, stderr))
-	case !u.Config.Quiet && u.Config.LogFile == "":
+	case !u.Config.Quiet && !useLogFile:
 		u.updateLogOutput(os.Stdout, stderr)
-	case u.Config.LogFile == "":
+	case !useLogFile:
 		u.updateLogOutput(io.Discard, io.Discard) // default is "nothing"
 	default:
 		u.updateLogOutput(u.rotatorr, u.rotatorr)

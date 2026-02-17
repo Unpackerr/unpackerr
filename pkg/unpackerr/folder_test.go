@@ -62,7 +62,7 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 	folders := newTestFolders(t, cfg)
 
 	archive := filepath.Join(watchPath, "movie.rar")
-	if err := os.WriteFile(archive, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(archive, []byte("x"), 0o600); err != nil {
 		t.Fatalf("creating archive test file: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 	}
 
 	plain := filepath.Join(watchPath, "note.txt")
-	if err := os.WriteFile(plain, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(plain, []byte("x"), 0o600); err != nil {
 		t.Fatalf("creating non-archive test file: %v", err)
 	}
 
@@ -94,7 +94,7 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 	}
 
 	dir := filepath.Join(watchPath, "incoming")
-	if err := os.Mkdir(dir, 0o755); err != nil {
+	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatalf("creating folder test dir: %v", err)
 	}
 
@@ -114,13 +114,14 @@ func TestFoldersProcessEventExcludedPath(t *testing.T) {
 	t.Parallel()
 
 	watchPath := t.TempDir()
+
 	excluded := filepath.Join(watchPath, "permanent")
-	if err := os.MkdirAll(filepath.Join(excluded, "sub"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(excluded, "sub"), 0o700); err != nil {
 		t.Fatalf("creating excluded test path: %v", err)
 	}
 
 	nested := filepath.Join(excluded, "sub", "file.rar")
-	if err := os.WriteFile(nested, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(nested, []byte("x"), 0o600); err != nil {
 		t.Fatalf("creating nested archive file: %v", err)
 	}
 
@@ -191,8 +192,9 @@ func newTestFolders(t *testing.T, cfg *FolderConfig) *Folders {
 		if folders.Watcher != nil {
 			folders.Watcher.Close()
 		}
+
 		if folders.FSNotify != nil {
-			folders.FSNotify.Close()
+			_ = folders.FSNotify.Close()
 		}
 	})
 

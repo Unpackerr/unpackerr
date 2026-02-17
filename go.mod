@@ -1,8 +1,6 @@
 module github.com/Unpackerr/unpackerr
 
-go 1.24.9
-
-toolchain go1.26.0
+go 1.26.0
 
 require (
 	code.cloudfoundry.org/bytefmt v0.64.0

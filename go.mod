@@ -48,6 +48,7 @@ require (
 	github.com/kdomanski/iso9660 v0.4.0 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/lestrrat-go/strftime v1.1.1 // indirect
+	github.com/mogaika/udf v0.0.0-20171019171931-167f0ab01c73 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode/v2 v2.2.2 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
@@ -75,3 +76,7 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
+
+replace golift.io/xtractr => ../xtractr-264
+
+replace github.com/kdomanski/iso9660 => ../iso9660-264

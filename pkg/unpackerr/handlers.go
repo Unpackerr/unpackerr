@@ -129,7 +129,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		Filter: xtractr.Filter{
 			Path: item.Path,
 			ExcludeSuffix: xtractr.AllExcept(
-				".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2",
+				".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2", ".iso",
 			),
 		},
 		TempFolder: false,

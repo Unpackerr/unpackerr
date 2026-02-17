@@ -3,7 +3,7 @@
 # https://github.com/golift/application-builder
 #
 
-FROM golang:1-bullseye AS builder
+FROM golang:1-alpine AS builder
 
 WORKDIR /src
 COPY main.go settings.sh go.mod go.sum ./
@@ -12,7 +12,7 @@ COPY pkg pkg
 COPY examples examples
 RUN go generate ./...
 
-RUN apt update && apt install -y tzdata openssl
+RUN apk add --no-cache tzdata openssl
 
 ARG TARGETOS
 ARG BUILD_DATE
@@ -29,7 +29,7 @@ RUN GOFLAGS="-trimpath -mod=readonly -modcacherw" \
     -X \"golift.io/version.Revision=${ITERATION}\" \
     -X \"golift.io/version.Version=${VERSION}\""
 
-FROM scratch
+FROM alpine
 
 ARG TARGETOS
 ARG TARGETARCH

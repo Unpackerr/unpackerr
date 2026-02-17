@@ -204,6 +204,7 @@ func fileList(paths ...string) []string {
 		if file, err := os.Open(path); err == nil {
 			names, _ := file.Readdirnames(0)
 			_ = file.Close()
+
 			files = append(files, names...)
 		}
 	}
@@ -213,7 +214,7 @@ func fileList(paths ...string) []string {
 
 func (u *Unpackerr) watchDeleteChannel() {
 	for input := range u.delChan {
-		if len(input.Paths) == 0 || input.Paths[0] == "" {
+		if len(input.Paths) == 0 {
 			continue
 		}
 
@@ -224,7 +225,11 @@ func (u *Unpackerr) watchDeleteChannel() {
 			continue
 		}
 
-		root := filepath.Clean(input.PurgeEmptyRoot)
+		root := input.PurgeEmptyRoot
+		if root != "" {
+			root = filepath.Clean(root)
+		}
+
 		if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
 			if root != "" {
 				u.Printf("Purged %d empty folder(s) up to %s", purged, root)
@@ -242,6 +247,10 @@ func (u *Unpackerr) purgeEmptyFolders(paths []string, root string) int {
 	candidates := make(map[string]struct{})
 
 	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
 		for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
 			dir = filepath.Clean(dir)
 			if root != "" {

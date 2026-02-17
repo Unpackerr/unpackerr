@@ -203,6 +203,7 @@ func fileList(paths ...string) []string {
 	for _, path := range paths {
 		if file, err := os.Open(path); err == nil {
 			names, _ := file.Readdirnames(0)
+			_ = file.Close()
 			files = append(files, names...)
 		}
 	}

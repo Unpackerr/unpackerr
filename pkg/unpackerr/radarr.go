@@ -39,16 +39,16 @@ func (u *Unpackerr) validateRadarr() error {
 func (u *Unpackerr) logRadarr() {
 	if count := len(u.Radarr); count == 1 {
 		u.Printf(" => Radarr Config: 1 server: "+starrLogLine,
-			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout,
+			u.Radarr[0].URL, u.Radarr[0].APIKey != "", u.Radarr[0].Timeout.String(),
 			u.Radarr[0].ValidSSL, u.Radarr[0].Protocols, u.Radarr[0].Syncthing,
-			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.Duration, u.Radarr[0].Paths)
+			u.Radarr[0].DeleteOrig, u.Radarr[0].DeleteDelay.String(), u.Radarr[0].Paths)
 	} else {
 		u.Printf(" => Radarr Config: %d servers", count)
 
 		for _, f := range u.Radarr {
 			u.Printf(starrLogPfx+starrLogLine,
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.URL, f.APIKey != "", f.Timeout.String(), f.ValidSSL, f.Protocols,
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.String(), f.Paths)
 		}
 	}
 }

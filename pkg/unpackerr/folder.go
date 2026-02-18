@@ -154,7 +154,7 @@ func (u *Unpackerr) PollFolders() {
 			u.Errorf("Folder poller stopped: %v", err)
 		}
 	}()
-	u.Printf("[Folder] Polling @ %v: %s", u.Folder.Interval, strings.Join(flist, ", "))
+	u.Printf("[Folder] Polling @ %s: %s", u.Folder.Interval.String(), strings.Join(flist, ", "))
 }
 
 // checkFolders stats all configured folders and returns only "good" ones.

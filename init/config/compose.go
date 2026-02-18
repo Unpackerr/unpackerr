@@ -90,7 +90,7 @@ func (h *Header) makeComposeDefined(prefix string, defs Defs, order []section, b
 	var buf bytes.Buffer
 
 	for _, section := range order {
-		newHeader := createDefinedSection(defs[section], h)
+		newHeader := createDefinedSection(defs[section], h, section)
 		// Make a brand new section and print it.
 		buf.WriteString(newHeader.makeCompose(prefix, bare))
 	}

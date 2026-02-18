@@ -108,7 +108,7 @@ func (h *Header) makeDefinedSection(defs Defs, order []section, showValue bool) 
 	var buf bytes.Buffer
 
 	for _, section := range order {
-		newHeader := createDefinedSection(defs[section], h)
+		newHeader := createDefinedSection(defs[section], h, section)
 		// Make a brand new section and pass it back in.
 		// Only defined sections can comment the header.
 		buf.WriteString(newHeader.makeSection(section, !defs[section].Comment, showValue))

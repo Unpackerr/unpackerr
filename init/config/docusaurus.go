@@ -148,7 +148,7 @@ func (h *Header) makeDefinedDocs(prefix string, defs Defs, order []section) stri
 	var buf bytes.Buffer
 
 	for _, section := range order {
-		buf.WriteString(createDefinedSection(defs[section], h).makeDocs(prefix, section))
+		buf.WriteString(createDefinedSection(defs[section], h, section).makeDocs(prefix, section))
 	}
 
 	return buf.String()

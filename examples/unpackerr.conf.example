@@ -181,6 +181,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When enabled, FLAC files with embedded CUE sheets are split into
+## individual track files.
+# split_flac = false
 
 #[[readarr]]
 # url = "http://127.0.0.1:8787"
@@ -315,4 +318,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 16 FEB 2026 17:44 UTC
+## => Content Auto Generated, 18 FEB 2026 06:53 UTC

@@ -81,6 +81,7 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_SPLIT_FLAC=false
     ## Readarr Settings
     - UN_READARR_0_URL=http://readarr:8787
     - UN_READARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -137,4 +138,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 14 FEB 2026 03:44 UTC
+## => Content Auto Generated, 18 FEB 2026 06:53 UTC

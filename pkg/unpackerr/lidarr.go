@@ -12,8 +12,8 @@ import (
 type LidarrConfig struct {
 	StarrConfig
 	SplitFlac      bool          `json:"split_flac" toml:"split_flac" xml:"split_flac" yaml:"split_flac"`
-	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Queue          *lidarr.Queue `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
+	*lidarr.Lidarr `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
 }
 
 func (u *Unpackerr) validateLidarr() error {
@@ -40,17 +40,17 @@ func (u *Unpackerr) validateLidarr() error {
 func (u *Unpackerr) logLidarr() {
 	if count := len(u.Lidarr); count == 1 {
 		u.Printf(" => Lidarr Config: 1 server: "+starrLogLine+", split_flac:%v",
-			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout,
+			u.Lidarr[0].URL, u.Lidarr[0].APIKey != "", u.Lidarr[0].Timeout.String(),
 			u.Lidarr[0].ValidSSL, u.Lidarr[0].Protocols, u.Lidarr[0].Syncthing,
-			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.Duration, u.Lidarr[0].Paths,
+			u.Lidarr[0].DeleteOrig, u.Lidarr[0].DeleteDelay.String(), u.Lidarr[0].Paths,
 			u.Lidarr[0].SplitFlac)
 	} else {
 		u.Printf(" => Lidarr Config: %d servers", count)
 
 		for _, f := range u.Lidarr {
 			u.Printf(starrLogPfx+starrLogLine+", split_flac:%v",
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths,
+				f.URL, f.APIKey != "", f.Timeout.String(), f.ValidSSL, f.Protocols,
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.String(), f.Paths,
 				f.SplitFlac)
 		}
 	}

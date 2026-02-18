@@ -2,6 +2,9 @@ module github.com/Unpackerr/unpackerr
 
 go 1.26.0
 
+//nolint:gomoddirectives // we need to use our own iso9660 package until we fix the issue with the original package.
+replace github.com/kdomanski/iso9660 => github.com/Unpackerr/iso9660 v0.0.1
+
 require (
 	code.cloudfoundry.org/bytefmt v0.64.0
 	github.com/BurntSushi/toml v1.6.0
@@ -21,7 +24,7 @@ require (
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	golift.io/starr v1.3.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.3.1-0.20260218045420-698696d97b1b
+	golift.io/xtractr v0.3.1-0.20260218060125-b814a941badb
 	gopkg.in/yaml.v3 v3.0.1
 )
 

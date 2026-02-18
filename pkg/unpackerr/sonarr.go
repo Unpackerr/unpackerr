@@ -39,16 +39,16 @@ func (u *Unpackerr) validateSonarr() error {
 func (u *Unpackerr) logSonarr() {
 	if count := len(u.Sonarr); count == 1 {
 		u.Printf(" => Sonarr Config: 1 server: "+starrLogLine,
-			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout,
+			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout.String(),
 			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
-			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.Duration, u.Sonarr[0].Paths)
+			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.String(), u.Sonarr[0].Paths)
 	} else {
 		u.Printf(" => Sonarr Config: %d servers", count)
 
 		for _, f := range u.Sonarr {
 			u.Printf(starrLogPfx+starrLogLine,
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
+				f.URL, f.APIKey != "", f.Timeout.String(), f.ValidSSL, f.Protocols,
+				f.Syncthing, f.DeleteOrig, f.DeleteDelay.String(), f.Paths)
 		}
 	}
 }

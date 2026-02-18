@@ -12,8 +12,8 @@ import (
 type LidarrConfig struct {
 	StarrConfig
 	SplitFlac      bool          `json:"split_flac" toml:"split_flac" xml:"split_flac" yaml:"split_flac"`
-	Queue          *lidarr.Queue `json:"-" toml:"-" xml:"-" yaml:"-"`
-	*lidarr.Lidarr `json:"-" toml:"-" xml:"-" yaml:"-"`
+	Queue          *lidarr.Queue `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
+	*lidarr.Lidarr `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
 }
 
 func (u *Unpackerr) validateLidarr() error {

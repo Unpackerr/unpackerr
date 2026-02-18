@@ -517,6 +517,15 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: split_flac
+        envvar: SPLIT_FLAC
+        default: false
+        recommend: *BOOLEAN
+        apps: [lidarr]
+        short: Split FLAC cue sheets into separate tracks.
+        desc: |
+          When enabled, FLAC files with embedded CUE sheets are split into
+          individual track files.
 
   # Global folder configuration.
   folders:

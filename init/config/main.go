@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -68,6 +69,7 @@ type Param struct {
 	Desc      string   `yaml:"desc"`
 	Kind      string   `yaml:"kind"` // "", list, conlist
 	Recommend []Option `yaml:"recommend"`
+	Apps      []string `yaml:"apps"` // If set, param only appears for these starr app names (e.g. lidarr).
 }
 
 type Def struct {
@@ -165,12 +167,20 @@ func openFile(fileName string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func createDefinedSection(def *Def, section *Header) *Header {
+func createDefinedSection(def *Def, section *Header, sectionName section) *Header {
+	// Filter params to only those that apply to this app (empty Apps = all apps).
+	params := make([]*Param, 0, len(section.Params))
+	for _, p := range section.Params {
+		if len(p.Apps) == 0 || slices.Contains(p.Apps, string(sectionName)) {
+			params = append(params, p)
+		}
+	}
+
 	newSection := &Header{
 		Text:   def.Text,
 		Prefix: def.Prefix,
 		Title:  def.Title,
-		Params: section.Params,
+		Params: params,
 		Kind:   section.Kind,
 	}
 

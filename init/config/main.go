@@ -168,8 +168,8 @@ func openFile(fileName string) (io.ReadCloser, error) {
 }
 
 func createDefinedSection(def *Def, section *Header, sectionName section) *Header {
-	// Filter params to only those that apply to this app (empty Apps = all apps).
 	params := make([]*Param, 0, len(section.Params))
+	// Filter params to only those that apply to this app (empty Apps = all apps).
 	for _, p := range section.Params {
 		if len(p.Apps) == 0 || slices.Contains(p.Apps, string(sectionName)) {
 			params = append(params, p)

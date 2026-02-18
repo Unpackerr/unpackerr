@@ -16,6 +16,7 @@ import (
 // Extract holds data for files being extracted.
 type Extract struct {
 	Syncthing   bool
+	SplitFlac   bool
 	Retries     uint
 	Path        string
 	App         starr.App
@@ -122,15 +123,18 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	item.Status = QUEUED
 	item.Updated = now
 	// This queues the extraction. Which may start right away.
+	archiveTypes := []string{".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2"}
+	if item.SplitFlac {
+		archiveTypes = append(archiveTypes, ".cue")
+	}
+
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:  u.getPasswordFromPath(item.Path),
 		Passwords: u.Passwords,
 		Name:      name,
 		Filter: xtractr.Filter{
-			Path: item.Path,
-			ExcludeSuffix: xtractr.AllExcept(
-				".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2",
-			),
+			Path:          item.Path,
+			ExcludeSuffix: xtractr.AllExcept(archiveTypes...),
 		},
 		TempFolder: false,
 		DeleteOrig: false,

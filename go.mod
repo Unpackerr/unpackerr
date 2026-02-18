@@ -84,3 +84,4 @@ require (
 	golift.io/udf v0.0.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
+

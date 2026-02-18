@@ -82,4 +82,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace golift.io/xtractr => ../xtractr-487

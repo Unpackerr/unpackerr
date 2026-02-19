@@ -24,7 +24,7 @@ require (
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	golift.io/starr v1.3.0
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.3.1-0.20260218060125-b814a941badb
+	golift.io/xtractr v0.3.1-0.20260219054943-e6f0434c2d7a
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -84,4 +84,3 @@ require (
 	golift.io/udf v0.0.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-

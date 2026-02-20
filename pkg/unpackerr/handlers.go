@@ -215,7 +215,8 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 // handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
 func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
-	if item := u.Map[resp.X.Name]; resp.Done && item != nil {
+	item := u.Map[resp.X.Name]
+	if resp.Done && item != nil {
 		u.updateMetrics(resp, item.App, item.URL)
 	} else if item != nil {
 		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
@@ -235,6 +236,11 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
+
+		if item != nil && item.App == starr.Lidarr && item.SplitFlac &&
+			extractionHasFlacFiles(resp.NewFiles) {
+			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
+		}
 	}
 }
 

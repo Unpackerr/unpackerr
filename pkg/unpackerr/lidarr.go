@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"golift.io/starr"
@@ -135,4 +136,73 @@ func (u *Unpackerr) haveLidarrQitem(name string) bool {
 	}
 
 	return false
+}
+
+// lidarrServerByURL returns the Lidarr server config that matches the given URL, or nil.
+func (u *Unpackerr) lidarrServerByURL(url string) *LidarrConfig {
+	for _, server := range u.Lidarr {
+		if server.URL == url {
+			return server
+		}
+	}
+
+	return nil
+}
+
+// extractionHasFlacFiles returns true if any path in files has a .flac extension.
+// Used to only trigger manual import after a FLAC+CUE split, not for e.g. zip-of-mp3s.
+func extractionHasFlacFiles(files []string) bool {
+	for _, p := range files {
+		if strings.HasSuffix(strings.ToLower(p), ".flac") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// importSplitFlacTracks runs in a goroutine after a Lidarr FLAC+CUE split extraction completes.
+// It asks Lidarr for the manual import list for the extract folder and sends the ManualImport command
+// so Lidarr imports the split track files.
+func (u *Unpackerr) importSplitFlacTracks(item *Extract, server *LidarrConfig) {
+	if server == nil {
+		u.Printf("[Lidarr] No Lidarr server found for manual import, this might be a bug: %s", item.Path)
+		return
+	}
+
+	downloadID, _ := item.IDs["downloadId"].(string)
+	artistID, _ := item.IDs["artistId"].(int64)
+
+	params := &lidarr.ManualImportParams{
+		Folder:               item.Path,
+		DownloadID:           downloadID,
+		ArtistID:             artistID,
+		FilterExistingFiles:  false,
+		ReplaceExistingFiles: true,
+	}
+
+	outputs, err := server.ManualImport(params)
+	if err != nil {
+		u.Errorf("[Lidarr] Manual import list failed for %s: %v", item.Path, err)
+		return
+	}
+
+	if len(outputs) == 0 {
+		u.Printf("[Lidarr] No files returned for manual import (folder: %s); import manually in Lidarr", item.Path)
+		return
+	}
+
+	cmd := lidarr.ManualImportCommandFromOutputs(outputs, true)
+	if cmd == nil {
+		u.Printf("[Lidarr] No importable files for manual import: %s", item.Path)
+		return
+	}
+
+	_, err = server.SendManualImportCommand(cmd)
+	if err != nil {
+		u.Errorf("[Lidarr] Manual import command failed for %s: %v", item.Path, err)
+		return
+	}
+
+	u.Printf("[Lidarr] Manual import triggered for %d files: %s", len(cmd.Files), item.Path)
 }

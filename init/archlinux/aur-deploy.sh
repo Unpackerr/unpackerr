@@ -22,7 +22,8 @@ push_it() {
 
 set -e
 
-KEY_FILE=$(mktemp -u "$HOME"/.ssh/XXXXX)
+mkdir -p "${HOME}/.ssh"
+KEY_FILE=$(mktemp -u "${HOME}/.ssh/aur-deploy-key.XXXXX")
 echo "${DEPLOY_KEY}" > "${KEY_FILE}"
 chmod 600 "${KEY_FILE}"
 # Configure ssh to use this secret.

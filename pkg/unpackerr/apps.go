@@ -23,7 +23,12 @@ import (
 const DefaultQueuePageSize = 2000
 
 const (
-	defaultProtocol = "torrent"
+	// defaultProtocol includes both torrent and usenet so that the common cases
+	// work out of the box without requiring users to set the protocols field.
+	// Lidarr (and other Starr apps) may return either value depending on the
+	// download client configured; omitting either one silently causes all
+	// completed downloads of that protocol to be skipped.
+	defaultProtocol = "torrent,usenet"
 	apiKeyLength    = 32
 )
 

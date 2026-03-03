@@ -23,7 +23,11 @@ import (
 const DefaultQueuePageSize = 2000
 
 const (
-	defaultProtocol = "torrent"
+	// defaultProtocol covers both the legacy "torrent" string and the newer
+	// "TorrentDownloadProtocol" class name that Starr apps now emit in their
+	// queue API responses. Both strings must be present so that torrents are
+	// always processed regardless of which Starr app version is in use.
+	defaultProtocol = "torrent,TorrentDownloadProtocol"
 	apiKeyLength    = 32
 )
 

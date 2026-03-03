@@ -483,13 +483,22 @@ sections:
           Used as fallback if the path the Starr app reports does not exist or is not accessible.
       - name: protocols
         envvar: PROTOCOLS
-        default: torrent
+        default: torrent,TorrentDownloadProtocol
         recommend:
+          - value: torrent,TorrentDownloadProtocol
+          - value: torrent,TorrentDownloadProtocol,usenet,UsenetDownloadProtocol
           - value: torrent
           - value: torrent,usenet
           - value: usenet
-        short: 'Protocols to process. Alt: `torrent,usenet`'
-        desc: 'Default protocols is torrent. Alternative: "torrent,usenet"'
+          - value: UsenetDownloadProtocol
+        short: 'Protocols to process. Newer Starr apps use class-name strings.'
+        desc: |
+          Protocols to process from the download queue. Starr apps historically
+          used "torrent" and "usenet" as the protocol strings, but newer versions
+          emit the full class names "TorrentDownloadProtocol" and
+          "UsenetDownloadProtocol" instead. List every string your app may return,
+          separated by commas. The default covers both the legacy and new torrent
+          strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
       - name: timeout
         envvar: TIMEOUT
         default: 10s

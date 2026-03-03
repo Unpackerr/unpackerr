@@ -6,7 +6,7 @@
 OS="$(uname -s)"
 
 logdir='/var/log/unpackerr'
-[[ "$(uname -s)" = "Linux" ]] || logdir='/usr/local/var/log/unpackerr'
+[ "${OS}" = "Linux" ] || logdir='/usr/local/var/log/unpackerr'
 
 if [ ! -d "${logdir}" ]; then
   mkdir "${logdir}"

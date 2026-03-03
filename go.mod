@@ -6,7 +6,7 @@ go 1.26.0
 replace github.com/kdomanski/iso9660 => github.com/Unpackerr/iso9660 v0.0.1
 
 require (
-	code.cloudfoundry.org/bytefmt v0.64.0
+	code.cloudfoundry.org/bytefmt v0.65.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
@@ -78,7 +78,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golift.io/udf v0.0.1 // indirect

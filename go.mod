@@ -22,7 +22,7 @@ require (
 	golift.io/cnfg v0.2.5
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
-	golift.io/starr v1.3.1-0.20260303230114-71e1a6ca261f
+	golift.io/starr v1.3.1-0.20260304003111-8fd76a648604
 	golift.io/version v0.0.2
 	golift.io/xtractr v0.3.1-0.20260303223111-379595ddbc52
 	gopkg.in/yaml.v3 v3.0.1

@@ -2,9 +2,6 @@ module github.com/Unpackerr/unpackerr
 
 go 1.26.0
 
-// we need to use our own iso9660 package until we fix the issue with the original package.
-replace github.com/kdomanski/iso9660 => github.com/Unpackerr/iso9660 v0.0.1
-
 require (
 	code.cloudfoundry.org/bytefmt v0.65.0
 	github.com/BurntSushi/toml v1.6.0
@@ -22,13 +19,14 @@ require (
 	golift.io/cnfg v0.2.5
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
-	golift.io/starr v1.3.1-0.20260304003111-8fd76a648604
+	golift.io/starr v1.3.1-0.20260304004613-cdd72e927793
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.3.1-0.20260303223111-379595ddbc52
+	golift.io/xtractr v0.3.1-0.20260304025452-40959934f4a6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	github.com/Unpackerr/iso9660 v0.0.3 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
@@ -49,7 +47,6 @@ require (
 	github.com/gopherjs/gopherjs v1.20.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/icza/bitio v1.1.0 // indirect
-	github.com/kdomanski/iso9660 v0.4.0 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/lestrrat-go/strftime v1.1.1 // indirect
 	github.com/mewkiz/flac v1.0.13 // indirect

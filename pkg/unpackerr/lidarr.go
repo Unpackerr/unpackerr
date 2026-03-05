@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -161,6 +162,31 @@ func extractionHasFlacFiles(files []string) bool {
 	return false
 }
 
+// filterManualImportToSplitTracks returns only outputs whose path is in the extract's NewFiles
+// (the split track files). This excludes the original FLAC file we split from, which Lidarr
+// would otherwise try and fail to import.
+func filterManualImportToSplitTracks(outputs []*lidarr.ManualImportOutput, item *Extract) []*lidarr.ManualImportOutput {
+	if item == nil || item.Resp == nil || len(item.Resp.NewFiles) == 0 {
+		return outputs
+	}
+
+	splitPaths := make(map[string]struct{}, len(item.Resp.NewFiles))
+	for _, p := range item.Resp.NewFiles {
+		splitPaths[filepath.Clean(p)] = struct{}{}
+	}
+
+	filtered := outputs[:0]
+	for _, out := range outputs {
+		if out != nil && out.Path != "" {
+			if _, ok := splitPaths[filepath.Clean(out.Path)]; ok {
+				filtered = append(filtered, out)
+			}
+		}
+	}
+
+	return filtered
+}
+
 // importSplitFlacTracks runs in a goroutine after a Lidarr FLAC+CUE split extraction completes.
 // It asks Lidarr for the manual import list for the extract folder and sends the ManualImport command
 // so Lidarr imports the split track files.
@@ -192,11 +218,23 @@ func (u *Unpackerr) importSplitFlacTracks(item *Extract, server *LidarrConfig) {
 		return
 	}
 
+	// Exclude the original FLAC we split from; only import the split track files (item.Resp.NewFiles).
+	// Lidarr returns every file in the folder including the source file, which will never import.
+	outputs = filterManualImportToSplitTracks(outputs, item)
+
+	if len(outputs) == 0 {
+		u.Printf("[Lidarr] No split track files to import (folder: %s); original FLAC excluded", item.Path)
+		return
+	}
+
 	cmd := lidarr.ManualImportCommandFromOutputs(outputs, true)
 	if cmd == nil {
 		u.Printf("[Lidarr] No importable files for manual import: %s", item.Path)
 		return
 	}
+
+	u.Debugf("[Lidarr] Sending manual import command: replaceExisting=%v, importMode=%q, files=%d: %v",
+		cmd.ReplaceExistingFiles, cmd.ImportMode, len(cmd.Files), cmd.Files)
 
 	_, err = server.SendManualImportCommand(cmd)
 	if err != nil {

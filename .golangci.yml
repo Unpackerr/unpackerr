@@ -10,6 +10,7 @@ linters:
     - tagliatelle
     - cyclop
     - testpackage
+    - wsl
     #fix this
     - staticcheck
     - embeddedstructfieldcheck # this is a trash rule.

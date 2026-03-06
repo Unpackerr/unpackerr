@@ -175,7 +175,8 @@ func filterManualImportToSplitTracks(outputs []*lidarr.ManualImportOutput, item 
 		splitPaths[filepath.Clean(p)] = struct{}{}
 	}
 
-	filtered := outputs[:0]
+	filtered := outputs[:0] // reusable memory
+
 	for _, out := range outputs {
 		if out != nil && out.Path != "" {
 			if _, ok := splitPaths[filepath.Clean(out.Path)]; ok {

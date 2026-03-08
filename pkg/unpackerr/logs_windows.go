@@ -1,24 +1,17 @@
+//go:build windows
+
 package unpackerr
 
 /* The purpose of this code is to log stderr (application panics) to a log file. */
 
 import (
 	"os"
-	"syscall"
+
+	winsys "golang.org/x/sys/windows"
 )
 
-//nolint:gochecknoglobals // These can be reused if needed.
-var (
-	kernel    = syscall.MustLoadDLL("kernel32.dll")
-	setHandle = kernel.MustFindProc("SetStdHandle")
-)
-
-//nolint:errcheck
 func redirectStderr(file *os.File) {
 	os.Stderr = file
-	stderr := syscall.STD_ERROR_HANDLE //nolint:nosnakecase
-
-	const noIdeaWhatThisIs = 2
-	//nolint:staticcheck // I have no idea how to do this with syscallN. :( but we need to...
-	syscall.Syscall(setHandle.Addr(), noIdeaWhatThisIs, uintptr(stderr), file.Fd(), 0)
+	// Use the typed Windows API; Handle is the correct type for Fd on Windows (no uintptr/Syscall).
+	_ = winsys.SetStdHandle(winsys.STD_ERROR_HANDLE, winsys.Handle(file.Fd()))
 }

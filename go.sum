@@ -127,6 +127,8 @@ github.com/peterebden/ar v0.0.0-20241106141004-20dc11b778e8 h1:27L3dHkYbeWGU3/5N
 github.com/peterebden/ar v0.0.0-20241106141004-20dc11b778e8/go.mod h1:hpFkyhCgB5Rm8FK+ISypOE+9UyrCuL6MNcjPMB1s1ec=
 github.com/pierrec/lz4/v4 v4.1.25 h1:kocOqRffaIbU5djlIBr7Wh+cx82C0vtFb0fOurZHqD0=
 github.com/pierrec/lz4/v4 v4.1.25/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
+github.com/pierrec/lz4/v4 v4.1.26 h1:GrpZw1gZttORinvzBdXPUXATeqlJjqUG/D87TKMnhjY=
+github.com/pierrec/lz4/v4 v4.1.26/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
@@ -256,6 +258,8 @@ golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=
 golift.io/version v0.0.2/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
 golift.io/xtractr v0.3.1-0.20260304025452-40959934f4a6 h1:225AQDhFs6xcDfHolAgDEMDCvW4OHcn9DfFUq2/YGs8=
 golift.io/xtractr v0.3.1-0.20260304025452-40959934f4a6/go.mod h1:eBMTpgtnCZYbEDDMyqEERs+z9bGUdOIJf+7Qy1qJBOo=
+golift.io/xtractr v0.3.1-0.20260307181321-199640a208dd h1:NXnY/29XQyPJ6XGZDiyytwbHe92vq+kf/CiQeTMBpsI=
+golift.io/xtractr v0.3.1-0.20260307181321-199640a208dd/go.mod h1:X3IQQIiYgwDmAuqeRSBfQqvo6KIWrFzCADTx3yFmt7o=
 google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
 google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/Knetic/govaluate.v3 v3.0.0/go.mod h1:csKLBORsPbafmSCGTEh3U7Ozmsuq8ZSIlKk1bcqph0E=

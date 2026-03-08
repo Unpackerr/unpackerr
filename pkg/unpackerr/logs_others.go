@@ -12,5 +12,5 @@ import (
 func redirectStderr(file *os.File) {
 	os.Stderr = file
 	// This works on darwin and freebsd, maybe others.
-	_ = syscall.Dup2(int(file.Fd()), syscall.Stderr)
+	_ = syscall.Dup2(int(file.Fd()), syscall.Stderr) //nolint:gosec // not much we can do here.
 }

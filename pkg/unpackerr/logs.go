@@ -127,8 +127,6 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
 		durafmt.Parse(now.Sub(version.Started)).LimitFirstN(3).Format(durafmtUnits)) //nolint:mnd
-
-	//nolint:gosec
 	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 

@@ -9,5 +9,5 @@ import (
 
 func redirectStderr(file *os.File) {
 	os.Stderr = file
-	_ = syscall.Dup3(int(file.Fd()), syscall.Stderr, 0)
+	_ = syscall.Dup3(int(file.Fd()), syscall.Stderr, 0) //nolint:gosec // not much we can do here.
 }

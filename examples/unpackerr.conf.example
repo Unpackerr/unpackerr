@@ -129,8 +129,13 @@ passwords = []
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrent. Alternative: "torrent,usenet"
-# protocols = "torrent"
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
@@ -150,8 +155,13 @@ passwords = []
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrent. Alternative: "torrent,usenet"
-# protocols = "torrent"
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
@@ -169,8 +179,13 @@ passwords = []
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrent. Alternative: "torrent,usenet"
-# protocols = "torrent"
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
@@ -191,8 +206,13 @@ passwords = []
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrent. Alternative: "torrent,usenet"
-# protocols = "torrent"
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
@@ -210,8 +230,13 @@ passwords = []
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
-## Default protocols is torrent. Alternative: "torrent,usenet"
-# protocols = "torrent"
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
@@ -318,4 +343,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 18 FEB 2026 06:53 UTC
+## => Content Auto Generated, 08 MAR 2026 18:55 UTC

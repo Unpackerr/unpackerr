@@ -1,7 +1,7 @@
 pkgbase = unpackerr
 	pkgdesc = {{Desc}}
 	pkgver = {{VERSION}}
-	pkgrel = {{Iter}}
+	pkgrel = 1
 	url = https://unpackerr.zip
 	arch = x86_64
 	arch = arm
@@ -19,7 +19,7 @@ pkgbase = unpackerr
 	optdepends = deluge: torrent downloader
 	optdepends = rtorrent: torrent downloader
 	backup = etc/unpackerr/unpackerr.conf
-	source = unpackerr-{{VERSION}}.tar.gz::{{SOURCE_PATH}}
+	source = ${pkgname}-${pkgver}.tar.gz::https://github.com/Unpackerr/unpackerr/archive/v${pkgver}.tar.gz
 	sha512sums = {{SHA}}
 
 pkgname = unpackerr

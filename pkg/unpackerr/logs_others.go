@@ -5,12 +5,16 @@ package unpackerr
 /* The purpose of this code is to log stderr (application panics) to a log file. */
 
 import (
+	"math"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func redirectStderr(file *os.File) {
 	os.Stderr = file
-	// This works on darwin and freebsd, maybe others.
-	_ = syscall.Dup2(int(file.Fd()), syscall.Stderr) //nolint:gosec // not much we can do here.
+
+	if fd := file.Fd(); fd <= uintptr(math.MaxInt) {
+		_ = unix.Dup2(int(fd), unix.Stderr)
+	}
 }

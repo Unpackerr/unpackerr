@@ -19,7 +19,7 @@ pkgbase = unpackerr
 	optdepends = deluge: torrent downloader
 	optdepends = rtorrent: torrent downloader
 	backup = etc/unpackerr/unpackerr.conf
-	source = ${pkgname}-${pkgver}.tar.gz::https://github.com/Unpackerr/unpackerr/archive/v${pkgver}.tar.gz
+	source=("${pkgname}-${pkgver}.tar.gz::{{SOURCE_PATH}}")
 	sha512sums = {{SHA}}
 
 pkgname = unpackerr

@@ -42,6 +42,7 @@ sed -e "s/{{VERSION}}/${VERSION}/g" \
     -e "s/{{Iter}}/${ITERATION}/g" \
     -e "s/{{SHA}}/${SHA}/g" \
     -e "s/{{Desc}}/${DESC}/g" \
+    -e "s%{{SOURCE_PATH}}%${SOURCE_PATH}%g" \
     init/archlinux/SRCINFO.template | tee release_repo/.SRCINFO
 
 [ "$1" != "" ] || push_it

@@ -12,10 +12,15 @@ jobs:
         os: [ubuntu, macos, windows]
     runs-on: ${{ matrix.os }}-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: checkout PR head (pull_request_target)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v6
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: checkout branch (push)
+        if: github.event_name == 'push'
+        uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: 'stable'
@@ -35,10 +40,15 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - name: checkout PR head (pull_request_target)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v6
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: checkout branch (push)
+        if: github.event_name == 'push'
+        uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: 'stable'
@@ -59,10 +69,15 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - name: checkout PR head (pull_request_target)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v6
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: checkout branch (push)
+        if: github.event_name == 'push'
+        uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: 'stable'

@@ -1,7 +1,7 @@
 pkgbase = unpackerr
 	pkgdesc = {{Desc}}
 	pkgver = {{VERSION}}
-	pkgrel = {{Iter}}
+	pkgrel = 1
 	url = https://unpackerr.zip
 	arch = x86_64
 	arch = arm

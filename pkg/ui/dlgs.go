@@ -27,21 +27,21 @@ func Warning(title, msg string) (bool, error) {
 }
 
 // Error wraps an error dialog.
-func Error(title, msg string, v ...any) (bool, error) {
+func Error(title, msg string, args ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
 
-	return dialogResult(zenity.Error(fmt.Sprintf(msg, v...), zenity.Title(title)))
+	return dialogResult(zenity.Error(fmt.Sprintf(msg, args...), zenity.Title(title)))
 }
 
 // Info wraps an info dialog.
-func Info(title, msg string, v ...any) (bool, error) {
+func Info(title, msg string, args ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
 
-	return dialogResult(zenity.Info(fmt.Sprintf(msg, v...), zenity.Title(title)))
+	return dialogResult(zenity.Info(fmt.Sprintf(msg, args...), zenity.Title(title)))
 }
 
 // Entry wraps a text-entry dialog.
@@ -54,12 +54,15 @@ func Entry(title, msg, val string) (string, bool, error) {
 	if errors.Is(err, zenity.ErrCanceled) {
 		return val, false, nil
 	}
+	if err != nil {
+		return entry, false, fmt.Errorf("zenity entry: %w", err)
+	}
 
-	return entry, err == nil, err
+	return entry, true, nil
 }
 
 // Question wraps a question dialog.
-func Question(title string, defaultCancel bool, text string, v ...any) (bool, error) {
+func Question(title string, defaultCancel bool, text string, args ...any) (bool, error) {
 	if !HasGUI() {
 		return true, nil
 	}
@@ -69,5 +72,5 @@ func Question(title string, defaultCancel bool, text string, v ...any) (bool, er
 		opts = append(opts, zenity.DefaultCancel())
 	}
 
-	return dialogResult(zenity.Question(fmt.Sprintf(text, v...), opts...))
+	return dialogResult(zenity.Question(fmt.Sprintf(text, args...), opts...))
 }

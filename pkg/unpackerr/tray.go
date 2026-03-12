@@ -13,7 +13,7 @@ import (
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/Unpackerr/unpackerr/pkg/update"
-	"github.com/getlantern/systray"
+	"github.com/energye/systray"
 	"github.com/hako/durafmt"
 	"golift.io/version"
 )

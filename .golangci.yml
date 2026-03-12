@@ -30,7 +30,7 @@ linters:
             - github.com/Unpackerr/unpackerr
             - github.com/lestrrat-go/apache-logformat
             - github.com/ncruces/zenity
-            - github.com/getlantern/systray
+            - github.com/energye/systray
             - github.com/hako/durafmt
             - github.com/mitchellh/go-homedir
             - github.com/fsnotify/fsnotify

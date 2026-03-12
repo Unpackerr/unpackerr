@@ -29,7 +29,7 @@ linters:
             - $gostd
             - github.com/Unpackerr/unpackerr
             - github.com/lestrrat-go/apache-logformat
-            - github.com/gen2brain/dlgs
+            - github.com/ncruces/zenity
             - github.com/getlantern/systray
             - github.com/hako/durafmt
             - github.com/mitchellh/go-homedir

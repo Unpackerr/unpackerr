@@ -3,7 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.26.0
 
 require (
-	code.cloudfoundry.org/bytefmt v0.65.0
+	code.cloudfoundry.org/bytefmt v0.67.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/getlantern/systray v1.2.2
@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
-	golang.org/x/mod v0.33.0
+	golang.org/x/mod v0.34.0
 	golang.org/x/sys v0.42.0
 	golift.io/cnfg v0.2.5
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
@@ -78,10 +78,10 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
-	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/image v0.23.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golift.io/udf v0.0.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

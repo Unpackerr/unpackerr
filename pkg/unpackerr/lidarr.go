@@ -155,7 +155,6 @@ func (u *Unpackerr) lidarrServerByURL(url string) *LidarrConfig {
 	return nil
 }
 
-
 // crossPlatformBase returns the filename from a path that may use either forward slashes
 // or backslashes as separators. On Linux, filepath.Base does not split on backslashes,
 // so Windows/UNC paths from Starr apps would return the entire path instead of the filename.
@@ -211,7 +210,9 @@ func filterManualImportToNumberedTracks(outputs []*lidarr.ManualImportOutput) []
 // filterSplitOutputs filters ManualImport outputs to only include split track files.
 // First tries matching against NewFiles (basename comparison), then falls back to the
 // CUE-split naming pattern (NN - Title.flac) when NewFiles is unavailable.
-func (u *Unpackerr) filterSplitOutputs(outputs []*lidarr.ManualImportOutput, item *Extract) []*lidarr.ManualImportOutput {
+func (u *Unpackerr) filterSplitOutputs(
+	outputs []*lidarr.ManualImportOutput, item *Extract,
+) []*lidarr.ManualImportOutput {
 	allOutputs := make([]*lidarr.ManualImportOutput, len(outputs))
 	copy(allOutputs, outputs)
 

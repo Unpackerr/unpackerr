@@ -79,9 +79,9 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/image v0.23.0 // indirect
+	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golift.io/udf v0.0.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

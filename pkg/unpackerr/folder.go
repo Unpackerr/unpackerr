@@ -582,6 +582,11 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 				folder.config.Path, folder.retries, u.MaxRetries, elapsed.Round(time.Second))
 		case EXTRACTFAILED == folder.status && folder.retries < u.MaxRetries:
 			// This empty block is to avoid deleting an item that needs more retries.
+		case EXTRACTFAILED == folder.status && u.MaxRetries > 0 && folder.retries >= u.MaxRetries:
+			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			delete(u.folders.Folders, name)
+			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.MaxRetries, name)
 		case folder.status > EXTRACTING && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)

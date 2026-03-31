@@ -18,7 +18,8 @@ type Extract struct {
 	Syncthing   bool
 	SplitFlac   bool
 	Retries     uint
-	Path        string
+	Path        string // Local path (resolved for extraction on this host).
+	OutputPath  string // Original path from Starr app (may be UNC/remote — used for ManualImport).
 	App         starr.App
 	URL         string
 	Updated     time.Time
@@ -237,8 +238,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 
-		if item != nil && item.App == starr.Lidarr && item.SplitFlac &&
-			extractionHasFlacFiles(resp.NewFiles) {
+		if item != nil && item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}
@@ -264,8 +264,25 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	// Print the errors for each user-provided path.
 	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
 
+	// The title often differs from the actual folder name (e.g. torrent names include genre tags).
+	// Try the folder name from outputPath against configured paths — the folder name is the real
+	// directory on disk. This also handles cross-platform setups where outputPath is a UNC/Windows
+	// path but the configured paths are local Linux mounts of the same share.
 	if outputPath != "" {
+		outputFolder := filepath.Base(filepath.FromSlash(strings.ReplaceAll(outputPath, `\`, `/`)))
+		if outputFolder != "" && outputFolder != "." && outputFolder != title {
+			for _, path := range paths {
+				candidate := filepath.Join(path, outputFolder)
+
+				if _, err := os.Stat(candidate); err == nil {
+					u.Debugf("%s: Resolved via outputPath folder name: %s -> %s", app, outputPath, candidate)
+					return candidate
+				}
+			}
+		}
+
 		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", app, outputPath)
+
 		return outputPath
 	}
 

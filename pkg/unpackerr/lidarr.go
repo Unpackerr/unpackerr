@@ -168,7 +168,7 @@ func crossPlatformBase(path string) string {
 // host (e.g. Linux) may use different paths than the Starr app (e.g. Windows).
 func filterManualImportToSplitTracks(outputs []*lidarr.ManualImportOutput, item *Extract) []*lidarr.ManualImportOutput {
 	if item == nil || item.Resp == nil || len(item.Resp.NewFiles) == 0 {
-		return outputs
+		return nil // Signal that we couldn't filter; caller should try fallback.
 	}
 
 	splitFiles := make(map[string]struct{}, len(item.Resp.NewFiles))

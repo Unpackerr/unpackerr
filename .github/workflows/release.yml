@@ -154,7 +154,7 @@ jobs:
         with:
           name: ${{ matrix.files }}
       - name: Publish ${{ matrix.files }} artifacts to github
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             *.rpm

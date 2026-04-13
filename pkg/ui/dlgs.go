@@ -50,15 +50,16 @@ func Entry(title, msg, val string) (string, bool, error) {
 		return val, true, nil
 	}
 
-	entry, err := zenity.Entry(msg, zenity.Title(title), zenity.EntryText(val))
+	value, err := zenity.Entry(msg, zenity.Title(title), zenity.EntryText(val))
 	if errors.Is(err, zenity.ErrCanceled) {
 		return val, false, nil
 	}
+
 	if err != nil {
-		return entry, false, fmt.Errorf("zenity entry: %w", err)
+		return value, false, fmt.Errorf("show entry dialog: %w", err)
 	}
 
-	return entry, true, nil
+	return value, true, nil
 }
 
 // Question wraps a question dialog.

@@ -54,6 +54,7 @@ func Entry(title, msg, val string) (string, bool, error) {
 	if errors.Is(err, zenity.ErrCanceled) {
 		return val, false, nil
 	}
+
 	if err != nil {
 		return value, false, fmt.Errorf("show entry dialog: %w", err)
 	}

@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
-	golang.org/x/mod v0.33.0
+	golang.org/x/mod v0.35.0
 	golang.org/x/sys v0.42.0
 	golift.io/cnfg v0.2.5
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48

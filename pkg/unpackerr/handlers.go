@@ -192,6 +192,18 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				item.App, elapsed.Round(time.Second), item.Retries, u.MaxRetries, name)
+		case item.Status == EXTRACTFAILED && u.MaxRetries > 0 && item.Retries >= u.MaxRetries:
+			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
+				item.App, item.Retries, u.MaxRetries, name)
+		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
+			elapsed >= staleItemTimeout:
+			// Safety net: items stuck at intermediate states for too long are cleaned up
+			// to prevent unbounded map growth (e.g. Starr app never imports the item).
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			u.Printf("[%s] Stale item removed after %v at status %s: %v",
+				item.App, elapsed.Round(time.Second), item.Status.Desc(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 

@@ -288,7 +288,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, app, conf.URL)
 	}
 
-	if len(conf.APIKey) != apiKeyLength {
+	if len(conf.APIKey) < apiKeyMinLength {
 		return fmt.Errorf("%s (%s) %w, your key length: %d",
 			app, conf.URL, ErrInvalidKey, len(conf.APIKey))
 	}

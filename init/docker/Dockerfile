@@ -55,7 +55,7 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 
 COPY --from=builder /tmp/unpackerr /unpackerr
 # Make sure we have an ssl cert chain and timezone data.
-RUN apk add --no-cache openssl tzdata
+RUN apk add --no-cache openssl tzdata curl jq
 
 ENV TZ=UTC
 

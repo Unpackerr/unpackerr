@@ -64,7 +64,7 @@ jobs:
         run: |
           sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
           sudo gem install --no-document fpm
-          echo "${GPG_SIGNING_KEY}" | gpg --import -
+          if [ -n "${GPG_SIGNING_KEY}" ]; then echo "${GPG_SIGNING_KEY}" | gpg --import -; fi
           make release
           source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
       - name: upload artifacts

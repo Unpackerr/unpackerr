@@ -28,7 +28,7 @@ const (
 	// queue API responses. Both strings must be present so that torrents are
 	// always processed regardless of which Starr app version is in use.
 	defaultProtocol = "torrent,TorrentDownloadProtocol"
-	apiKeyLength    = 32
+	apiKeyMinLength = 32
 )
 
 // These are the names used to identify each app.
@@ -39,7 +39,7 @@ const (
 // Application validation errors.
 var (
 	ErrInvalidURL = errors.New("provided application URL is invalid")
-	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be %d characters", apiKeyLength)
+	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
 )
 
 // Config defines the configuration data used to start the application.

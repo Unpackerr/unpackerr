@@ -8,13 +8,12 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/Unpackerr/unpackerr/pkg/update"
+	"github.com/dromara/carbon/v2"
 	"github.com/energye/systray"
-	"github.com/hako/durafmt"
 	"golift.io/version"
 )
 
@@ -231,9 +230,7 @@ func (u *Unpackerr) checkForUpdate() {
 		return
 	}
 
-	const limitUnit = 3
-
-	ago := durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(limitUnit).Format(durafmtUnits)
+	ago := carbon.CreateFromStdTime(update.RelDate).DiffAbsInString()
 
 	if !update.Outdate {
 		_, _ = ui.Info("Unpackerr", "You're up to date! Version: %s\nUpdated: %s (%s ago)",

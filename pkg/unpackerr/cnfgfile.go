@@ -9,11 +9,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Unpackerr/unpackerr/examples"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
-	"github.com/hako/durafmt"
+	"github.com/dromara/carbon/v2"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -78,9 +77,9 @@ func (f *Flags) ConfigFileWithAge() string {
 		return f.ConfigFile + ", unknown age"
 	}
 
-	age := durafmt.Parse(time.Since(stat.ModTime())).LimitFirstN(3) //nolint:mnd
+	age := carbon.CreateFromStdTime(stat.ModTime()).DiffAbsInString()
 
-	return f.ConfigFile + ", age: " + age.Format(durafmtUnits)
+	return f.ConfigFile + ", age: " + age
 }
 
 func configFileLocactions() (string, []string) {

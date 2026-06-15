@@ -72,13 +72,13 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		default:
 			fallthrough
 		case showValue:
-			buf.WriteString(fmt.Sprintf("%s%s = %s\n", space, param.Name, param.Value()))
+			fmt.Fprintf(&buf, "%s%s = %s\n", space, param.Name, param.Value())
 		case param.Example != nil:
 			// If example is not empty, use that commented out, otherwise use the default.
 			fallthrough
 		case h.Kind == list:
 			// If the 'kind' is a 'list', we comment all the parameters.
-			buf.WriteString(fmt.Sprintf("#%s%s = %s\n", space, param.Name, param.Value()))
+			fmt.Fprintf(&buf, "#%s%s = %s\n", space, param.Name, param.Value())
 		}
 	}
 

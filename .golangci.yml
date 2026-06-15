@@ -11,8 +11,6 @@ linters:
     - cyclop
     - testpackage
     - wsl
-    #fix this
-    - staticcheck
     - embeddedstructfieldcheck # this is a trash rule.
     - funcorder # also lame.
     - noinlineerr # I like inline errors.

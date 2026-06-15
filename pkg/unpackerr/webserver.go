@@ -72,7 +72,7 @@ func (u *Unpackerr) startWebServer() {
 	// Make a multiplexer because websockets can't use apache log.
 	smx := http.NewServeMux()
 	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.Logger.HTTP.Writer())))
+	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
@@ -82,7 +82,7 @@ func (u *Unpackerr) startWebServer() {
 		ReadHeaderTimeout: defaultTimeout,
 		WriteTimeout:      0,
 		IdleTimeout:       defaultTimeout,
-		ErrorLog:          u.Logger.Error,
+		ErrorLog:          u.Error,
 	}
 
 	go u.runWebServer()

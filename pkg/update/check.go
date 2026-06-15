@@ -84,9 +84,10 @@ func FillUpdate(release *GitHubReleasesLatest, version string) *Update {
 	}
 
 	arch := runtime.GOARCH
-	if arch == "arm" {
+	switch arch {
+	case "arm":
 		arch = "armhf"
-	} else if arch == "386" {
+	case "386":
 		arch = "i386"
 	}
 

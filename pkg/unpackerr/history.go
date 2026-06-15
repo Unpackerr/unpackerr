@@ -30,16 +30,16 @@ func (u *Unpackerr) updateHistory(item string) {
 		u.menu[histNone].Hide()
 	}
 
-	u.History.Items[0] = item
+	u.Items[0] = item
 
 	// Do not process 0; this isn't an `intrange`.
-	for idx := len(u.History.Items) - 1; idx > 0; idx-- {
+	for idx := len(u.Items) - 1; idx > 0; idx-- {
 		// u.History.Items is a slice with a set (identical) length and capacity.
-		switch u.History.Items[idx] = u.History.Items[idx-1]; {
+		switch u.Items[idx] = u.Items[idx-1]; {
 		case !ui.HasGUI():
 			continue
-		case u.History.Items[idx] != "":
-			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.History.Items[idx])
+		case u.Items[idx] != "":
+			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.Items[idx])
 			u.menu[hist+strconv.Itoa(idx)].Show()
 		default:
 			u.menu[hist+strconv.Itoa(idx)].Hide()

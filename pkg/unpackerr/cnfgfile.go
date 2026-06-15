@@ -33,7 +33,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	// Load up the default file path and a list of alternate paths.
 	def, cfl := configFileLocactions()
 	// Search for one, starting with the default.
-	for _, configFile = range append([]string{u.Flags.ConfigFile}, cfl...) {
+	for _, configFile = range append([]string{u.ConfigFile}, cfl...) {
 		configFile = expandHomedir(configFile)
 		if _, err := os.Stat(configFile); err == nil {
 			break // found one, bail out.
@@ -46,20 +46,20 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	msg = msgNoConfigFile
 
 	if configFile != "" {
-		u.Flags.ConfigFile, _ = filepath.Abs(configFile)
-		msg = msgConfigFound + u.Flags.ConfigFileWithAge()
+		u.ConfigFile, _ = filepath.Abs(configFile)
+		msg = msgConfigFound + u.ConfigFileWithAge()
 
-		if err := cnfgfile.Unmarshal(u.Config, u.Flags.ConfigFile); err != nil {
+		if err := cnfgfile.Unmarshal(u.Config, u.ConfigFile); err != nil {
 			return 0, 0, msg, fmt.Errorf("config file: %w", err)
 		}
 	} else if f, err := u.createConfigFile(def); err != nil {
 		msg = msgConfigFailed + err.Error()
 	} else if f != "" {
-		u.Flags.ConfigFile = f
-		msg = msgConfigCreate + u.Flags.ConfigFileWithAge()
+		u.ConfigFile = f
+		msg = msgConfigCreate + u.ConfigFileWithAge()
 	}
 
-	if _, err := cnfg.UnmarshalENV(u.Config, u.Flags.EnvPrefix); err != nil {
+	if _, err := cnfg.UnmarshalENV(u.Config, u.EnvPrefix); err != nil {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
 	}
 
@@ -178,7 +178,7 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 	}
 
 	if u.KeepHistory != 0 {
-		u.History.Items = make([]string, u.KeepHistory)
+		u.Items = make([]string, u.KeepHistory)
 	}
 
 	return fileMode, dirMode
@@ -317,7 +317,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		conf.Protocols = defaultProtocol
 	}
 
-	conf.Config.Client = &http.Client{
+	conf.Client = &http.Client{
 		Timeout: conf.Timeout.Duration,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: !conf.ValidSSL}, //nolint:gosec

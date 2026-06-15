@@ -95,7 +95,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 // extractCompletedDownload checks if a completed starr download needs to be queued for extraction.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
-	if d := u.Config.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
+	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name, d.Round(time.Second))
 		return
 	}
@@ -316,7 +316,7 @@ func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos st
 
 // added for https://github.com/Unpackerr/unpackerr/issues/235
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
-	files, _ := u.Xtractr.GetFileList(dirPath)
+	files, _ := u.GetFileList(dirPath)
 	for _, file := range files {
 		if strings.HasSuffix(file, ".tmp") {
 			return file

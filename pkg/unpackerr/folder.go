@@ -495,7 +495,7 @@ func (f *Folders) handleFileEvent(name, operation string) {
 // processEvent is here to process the event in the `*Unpackerr` scope before sending it back to the `*Folders` scope.
 func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 	// Do not watch our own log file.
-	if event.file == u.Config.LogFile || event.file == u.Config.Webserver.LogFile {
+	if event.file == u.LogFile || event.file == u.Webserver.LogFile {
 		return
 	}
 

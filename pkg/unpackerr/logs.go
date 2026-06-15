@@ -133,24 +133,24 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 // setupLogging splits log write into a file and/or stdout.
 func (u *Unpackerr) setupLogging() {
 	if u.Config.Debug {
-		u.Logger.Info.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-		u.Logger.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+		u.Info.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+		u.Error.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
 	}
 
-	u.Config.LogFile = getLogFilePath(u.Config.LogFile, "unpackerr.log")
+	u.LogFile = getLogFilePath(u.LogFile, "unpackerr.log")
 	fileMode, _ := strconv.ParseUint(u.LogFileMode, bits8, base32)
 	rotate := &rotatorr.Config{
-		Filepath: u.Config.LogFile,                     // log file name.
-		FileSize: int64(u.Config.LogFileMb) * megabyte, // megabytes
+		Filepath: u.LogFile,                     // log file name.
+		FileSize: int64(u.LogFileMb) * megabyte, // megabytes
 		Rotatorr: &timerotator.Layout{
-			FileCount:  u.Config.LogFiles,
+			FileCount:  u.LogFiles,
 			PostRotate: u.postLogRotate,
 		}, // number of files to keep.
 		DirMode:  logsDirMode,
 		FileMode: os.FileMode(fileMode),
 	}
 
-	if u.Config.LogFile != "" {
+	if u.LogFile != "" {
 		var err error
 
 		u.rotatorr, err = rotatorr.New(rotate)
@@ -167,12 +167,12 @@ func (u *Unpackerr) setupLogging() {
 		stderr = os.Stderr
 	}
 
-	useLogFile := u.Config.LogFile != "" && u.rotatorr != nil
+	useLogFile := u.LogFile != "" && u.rotatorr != nil
 
 	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && useLogFile:
+	case !u.Quiet && useLogFile:
 		u.updateLogOutput(io.MultiWriter(u.rotatorr, os.Stdout), io.MultiWriter(u.rotatorr, stderr))
-	case !u.Config.Quiet && !useLogFile:
+	case !u.Quiet && !useLogFile:
 		u.updateLogOutput(os.Stdout, stderr)
 	case !useLogFile:
 		u.updateLogOutput(io.Discard, io.Discard) // default is "nothing"
@@ -198,7 +198,7 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
 	} else {
-		u.Logger.HTTP.SetOutput(writer)
+		u.HTTP.SetOutput(writer)
 	}
 
 	if u.Config.Debug {
@@ -206,8 +206,8 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	}
 
 	log.SetOutput(errors) // catch out-of-scope garbage
-	u.Logger.Info.SetOutput(writer)
-	u.Logger.Error.SetOutput(errors)
+	u.Info.SetOutput(writer)
+	u.Error.SetOutput(errors)
 	u.postLogRotate("", "")
 }
 
@@ -221,14 +221,14 @@ func (u *Unpackerr) setupHTTPLogging() {
 	}
 
 	switch { // only use MultiWriter if we have > 1 writer.
-	case !u.Config.Quiet && u.Webserver.LogFile != "":
-		u.Logger.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
-	case !u.Config.Quiet && u.Webserver.LogFile == "":
-		u.Logger.HTTP.SetOutput(os.Stdout)
-	case u.Config.Quiet && u.Webserver.LogFile == "":
-		u.Logger.HTTP.SetOutput(io.Discard)
+	case !u.Quiet && u.Webserver.LogFile != "":
+		u.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+	case !u.Quiet && u.Webserver.LogFile == "":
+		u.HTTP.SetOutput(os.Stdout)
+	case u.Quiet && u.Webserver.LogFile == "":
+		u.HTTP.SetOutput(io.Discard)
 	default: // u.Config.Quiet && u.Webserver.LogFile != ""
-		u.Logger.HTTP.SetOutput(rotatorr.NewMust(rotate))
+		u.HTTP.SetOutput(rotatorr.NewMust(rotate))
 	}
 }
 
@@ -258,23 +258,23 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 	u.logReadarr()
 	u.logWhisparr()
 	u.logFolders()
-	u.Printf(" => Parallel: %d", u.Config.Parallel)
-	u.Printf(" => Passwords: %d (rar/7z)", len(u.Config.Passwords))
-	u.Printf(" => Interval / Progress: %s/%s", u.Config.Interval.String(), u.Config.Progress.String())
-	u.Printf(" => Start/Delete Delay: %s/%s", u.Config.StartDelay.String(), u.Config.DeleteDelay.String())
-	u.Printf(" => Retry Delay: %v, max: %d", u.Config.RetryDelay, u.Config.MaxRetries)
+	u.Printf(" => Parallel: %d", u.Parallel)
+	u.Printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
+	u.Printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())
+	u.Printf(" => Start/Delete Delay: %s/%s", u.StartDelay.String(), u.DeleteDelay.String())
+	u.Printf(" => Retry Delay: %v, max: %d", u.RetryDelay, u.MaxRetries)
 	u.Printf(" => GUI / StdErr: %v / %v", ui.HasGUI(), u.ErrorStdErr)
-	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Config.Quiet)
-	u.Printf(" => Activity / Queues: %v / %s", u.Config.Activity, u.Config.LogQueues.String())
+	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Quiet)
+	u.Printf(" => Activity / Queues: %v / %s", u.Activity, u.LogQueues.String())
 
 	if runtime.GOOS != windows {
-		u.Printf(" => Directory & File Modes: %s & %s", u.Config.DirMode, u.Config.FileMode)
+		u.Printf(" => Directory & File Modes: %s & %s", u.DirMode, u.FileMode)
 	}
 
-	if u.Config.LogFile != "" {
+	if u.LogFile != "" {
 		msg := "no rotation"
-		if u.Config.LogFiles > 0 {
-			msg = fmt.Sprintf("%d @ %dMb", u.Config.LogFiles, u.Config.LogFileMb)
+		if u.LogFiles > 0 {
+			msg = fmt.Sprintf("%d @ %dMb", u.LogFiles, u.LogFileMb)
 		}
 
 		u.Printf(" => Log File: %s (%s, mode: %s)", u.LogFile, msg, u.LogFileMode)

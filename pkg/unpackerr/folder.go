@@ -141,6 +141,7 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
+
 	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
 	// Setting an interval of any value less than 5 milliseconds
@@ -154,6 +155,7 @@ func (u *Unpackerr) PollFolders() {
 			u.Errorf("Folder poller stopped: %v", err)
 		}
 	}()
+
 	u.Printf("[Folder] Polling @ %s: %s", u.Folder.Interval.String(), strings.Join(flist, ", "))
 }
 
@@ -597,7 +599,7 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 	}
 }
 
-//nolint:wsl
+//nolint:wsl_v5
 func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folder) {
 	var webhook bool
 	// Folder reached delete delay (after extraction), nuke it.

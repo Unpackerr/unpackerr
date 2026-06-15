@@ -39,6 +39,8 @@ func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect satisfies the Prometheus custom metrics collector.
+//
+//nolint:wsl_v5
 func (c *MetricsCollector) Collect(metrics chan<- prometheus.Metric) {
 	stats := c.stats()
 	newMetric := prometheus.MustNewConstMetric

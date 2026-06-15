@@ -272,7 +272,7 @@ func (u *Unpackerr) logWebhook() {
 		prefix = " => Webhook Config: 1 URL"
 	} else {
 		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
-		prefix = " =>    URL" //nolint:wsl
+		prefix = " =>    URL" //nolint:wsl_v5
 	}
 
 	for _, hook := range u.Webhook {

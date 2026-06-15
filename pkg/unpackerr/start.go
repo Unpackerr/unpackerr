@@ -191,6 +191,7 @@ func Start() error {
 	}
 
 	go unpackerr.watchDeleteChannel()
+
 	unpackerr.startWebServer()
 	unpackerr.watchWorkThread()
 	unpackerr.startTray() // runs tray or waits for exit depending on hasGUI.

@@ -209,7 +209,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 
 			if item.DeleteOrig {
 				u.delChan <- &fileDeleteReq{Paths: []string{item.Path}}
-				webhook = true
+				webhook = true //nolint:wsl_v5
 			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
 				// Delete extracted files and purge empty parents up to and including the download path.
 				u.delChan <- &fileDeleteReq{
@@ -217,7 +217,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 					PurgeEmptyParent: true,
 					PurgeEmptyRoot:   item.Path,
 				}
-				webhook = true
+				webhook = true //nolint:wsl_v5
 			}
 
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)

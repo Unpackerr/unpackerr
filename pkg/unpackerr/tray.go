@@ -232,11 +232,13 @@ func (u *Unpackerr) checkForUpdate() {
 	}
 
 	const limitUnit = 3
+
 	ago := durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(limitUnit).Format(durafmtUnits)
 
 	if !update.Outdate {
 		_, _ = ui.Info("Unpackerr", "You're up to date! Version: %s\nUpdated: %s (%s ago)",
 			update.Version, update.RelDate.Format("Jan 2, 2006"), ago)
+
 		return
 	}
 

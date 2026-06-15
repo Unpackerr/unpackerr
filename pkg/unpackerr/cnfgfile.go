@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Unpackerr/unpackerr/examples"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
-	"github.com/dromara/carbon/v2"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -77,7 +77,7 @@ func (f *Flags) ConfigFileWithAge() string {
 		return f.ConfigFile + ", unknown age"
 	}
 
-	age := carbon.CreateFromStdTime(stat.ModTime()).DiffAbsInString()
+	age := formatDuration(time.Since(stat.ModTime()))
 
 	return f.ConfigFile + ", age: " + age
 }

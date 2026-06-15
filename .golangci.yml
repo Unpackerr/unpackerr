@@ -29,7 +29,6 @@ linters:
             - github.com/lestrrat-go/apache-logformat
             - github.com/ncruces/zenity
             - github.com/energye/systray
-            - github.com/dromara/carbon/v2
             - github.com/mitchellh/go-homedir
             - github.com/fsnotify/fsnotify
             - github.com/radovskyb/watcher

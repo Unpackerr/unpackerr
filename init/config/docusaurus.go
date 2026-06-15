@@ -138,7 +138,7 @@ func (h *Header) makeDocsTable(prefix string) string {
 			}
 		}
 
-		buf.WriteString(fmt.Sprintf(tableFormat, param.Name, envVar, def, param.Short))
+		fmt.Fprintf(&buf, tableFormat, param.Name, envVar, def, param.Short)
 	}
 
 	return buf.String()

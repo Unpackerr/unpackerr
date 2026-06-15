@@ -141,6 +141,7 @@ func (u *Unpackerr) PollFolders() {
 	}
 
 	go u.folders.watchFSNotify()
+
 	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
 
 	// Setting an interval of any value less than 5 milliseconds
@@ -154,6 +155,7 @@ func (u *Unpackerr) PollFolders() {
 			u.Errorf("Folder poller stopped: %v", err)
 		}
 	}()
+
 	u.Printf("[Folder] Polling @ %s: %s", u.Folder.Interval.String(), strings.Join(flist, ", "))
 }
 
@@ -495,7 +497,7 @@ func (f *Folders) handleFileEvent(name, operation string) {
 // processEvent is here to process the event in the `*Unpackerr` scope before sending it back to the `*Folders` scope.
 func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 	// Do not watch our own log file.
-	if event.file == u.Config.LogFile || event.file == u.Config.Webserver.LogFile {
+	if event.file == u.LogFile || event.file == u.Webserver.LogFile {
 		return
 	}
 
@@ -582,6 +584,11 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 				folder.config.Path, folder.retries, u.MaxRetries, elapsed.Round(time.Second))
 		case EXTRACTFAILED == folder.status && folder.retries < u.MaxRetries:
 			// This empty block is to avoid deleting an item that needs more retries.
+		case EXTRACTFAILED == folder.status && u.MaxRetries > 0 && folder.retries >= u.MaxRetries:
+			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			delete(u.folders.Folders, name)
+			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.MaxRetries, name)
 		case folder.status > EXTRACTING && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)
@@ -592,7 +599,7 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 	}
 }
 
-//nolint:wsl
+//nolint:wsl_v5
 func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folder) {
 	var webhook bool
 	// Folder reached delete delay (after extraction), nuke it.

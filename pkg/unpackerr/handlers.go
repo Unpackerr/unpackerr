@@ -95,7 +95,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 // extractCompletedDownload checks if a completed starr download needs to be queued for extraction.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
-	if d := u.Config.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
+	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name, d.Round(time.Second))
 		return
 	}
@@ -192,12 +192,24 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				item.App, elapsed.Round(time.Second), item.Retries, u.MaxRetries, name)
+		case item.Status == EXTRACTFAILED && u.MaxRetries > 0 && item.Retries >= u.MaxRetries:
+			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
+				item.App, item.Retries, u.MaxRetries, name)
+		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
+			elapsed >= staleItemTimeout:
+			// Safety net: items stuck at intermediate states for too long are cleaned up
+			// to prevent unbounded map growth (e.g. Starr app never imports the item).
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			u.Printf("[%s] Stale item removed after %v at status %s: %v",
+				item.App, elapsed.Round(time.Second), item.Status.Desc(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 
 			if item.DeleteOrig {
 				u.delChan <- &fileDeleteReq{Paths: []string{item.Path}}
-				webhook = true
+				webhook = true //nolint:wsl_v5
 			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
 				// Delete extracted files and purge empty parents up to and including the download path.
 				u.delChan <- &fileDeleteReq{
@@ -205,7 +217,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 					PurgeEmptyParent: true,
 					PurgeEmptyRoot:   item.Path,
 				}
-				webhook = true
+				webhook = true //nolint:wsl_v5
 			}
 
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
@@ -304,7 +316,7 @@ func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos st
 
 // added for https://github.com/Unpackerr/unpackerr/issues/235
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
-	files, _ := u.Xtractr.GetFileList(dirPath)
+	files, _ := u.GetFileList(dirPath)
 	for _, file := range files {
 		if strings.HasSuffix(file, ".tmp") {
 			return file

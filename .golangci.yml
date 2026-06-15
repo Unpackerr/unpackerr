@@ -11,13 +11,11 @@ linters:
     - cyclop
     - testpackage
     - wsl
-    #fix this
-    - staticcheck
     - embeddedstructfieldcheck # this is a trash rule.
     - funcorder # also lame.
     - noinlineerr # I like inline errors.
-    - wsl_v5 # this one sucks compared to wsl, and lacks configurability.
-    - gomoddirectives # we need to use our own iso9660 package until we fix the issue with the original package.
+    - goconst # noisy af.
+    - gomodguard # deprecated.
 
   settings:
     depguard:
@@ -31,7 +29,7 @@ linters:
             - github.com/lestrrat-go/apache-logformat
             - github.com/ncruces/zenity
             - github.com/energye/systray
-            - github.com/hako/durafmt
+            - github.com/dromara/carbon/v2
             - github.com/mitchellh/go-homedir
             - github.com/fsnotify/fsnotify
             - github.com/radovskyb/watcher

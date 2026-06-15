@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"path"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 
 type WebServer struct {
 	Metrics    bool        `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
+	Pprof      bool        `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
 	LogFiles   int         `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
 	LogFileMb  int         `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
 	ListenAddr string      `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
@@ -70,7 +72,7 @@ func (u *Unpackerr) startWebServer() {
 	// Make a multiplexer because websockets can't use apache log.
 	smx := http.NewServeMux()
 	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.Logger.HTTP.Writer())))
+	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
@@ -80,7 +82,7 @@ func (u *Unpackerr) startWebServer() {
 		ReadHeaderTimeout: defaultTimeout,
 		WriteTimeout:      0,
 		IdleTimeout:       defaultTimeout,
-		ErrorLog:          u.Logger.Error,
+		ErrorLog:          u.Error,
 	}
 
 	go u.runWebServer()
@@ -88,6 +90,11 @@ func (u *Unpackerr) startWebServer() {
 
 func (u *Unpackerr) webRoutes() {
 	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
+
+	if u.Webserver.Pprof {
+		u.registerPprof()
+		u.Printf(" => WARNING: pprof debug endpoints enabled at /debug/pprof/")
+	}
 
 	if !u.Webserver.Metrics {
 		return
@@ -100,6 +107,25 @@ func (u *Unpackerr) webRoutes() {
 		// Metrics get served from both paths.
 		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), promhttp.Handler())
 	}
+}
+
+// registerPprof adds Go's built-in pprof handlers for runtime profiling.
+// Access heap profiles at /debug/pprof/heap, goroutine dumps at /debug/pprof/goroutine, etc.
+func (u *Unpackerr) registerPprof() {
+	wrap := func(h http.HandlerFunc) httprouter.Handle {
+		return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+			h(w, r)
+		}
+	}
+
+	u.Webserver.router.GET("/debug/pprof/", wrap(pprof.Index))
+	u.Webserver.router.GET("/debug/pprof/cmdline", wrap(pprof.Cmdline))
+	u.Webserver.router.GET("/debug/pprof/profile", wrap(pprof.Profile))
+	u.Webserver.router.GET("/debug/pprof/symbol", wrap(pprof.Symbol))
+	u.Webserver.router.GET("/debug/pprof/trace", wrap(pprof.Trace))
+	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/heap", pprof.Handler("heap"))
+	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/allocs", pprof.Handler("allocs"))
 }
 
 // runWebServer starts the http or https listener.

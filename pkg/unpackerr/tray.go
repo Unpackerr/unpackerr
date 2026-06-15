@@ -8,13 +8,12 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/Unpackerr/unpackerr/pkg/update"
+	"github.com/dromara/carbon/v2"
 	"github.com/energye/systray"
-	"github.com/hako/durafmt"
 	"golift.io/version"
 )
 
@@ -33,7 +32,7 @@ func (u *Unpackerr) startTray() {
 }
 
 func (u *Unpackerr) exitTray() {
-	u.Xtractr.Stop() // stop and wait for extractions.
+	u.Stop() // stop and wait for extractions.
 	// because systray wants to control the exit code? no..
 	os.Exit(0)
 }
@@ -105,8 +104,8 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["conf"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["edit"].Clicked():
-			u.Printf("User Editing Config File: %s", u.Flags.ConfigFile)
-			_ = ui.OpenFile(u.Flags.ConfigFile)
+			u.Printf("User Editing Config File: %s", u.ConfigFile)
+			_ = ui.OpenFile(u.ConfigFile)
 		case <-u.menu["link"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["info"].Clicked():
@@ -118,8 +117,8 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["logs"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["logs_view"].Clicked():
-			u.Printf("User Viewing Log File: %s", u.Config.LogFile)
-			_ = ui.OpenLog(u.Config.LogFile)
+			u.Printf("User Viewing Log File: %s", u.LogFile)
+			_ = ui.OpenLog(u.LogFile)
 		case <-u.menu["logs_rotate"].Clicked():
 			u.rotateLogs()
 		case <-u.menu["update"].Clicked():
@@ -231,12 +230,12 @@ func (u *Unpackerr) checkForUpdate() {
 		return
 	}
 
-	const limitUnit = 3
-	ago := durafmt.Parse(time.Since(update.RelDate)).LimitFirstN(limitUnit).Format(durafmtUnits)
+	ago := carbon.CreateFromStdTime(update.RelDate).DiffAbsInString()
 
 	if !update.Outdate {
 		_, _ = ui.Info("Unpackerr", "You're up to date! Version: %s\nUpdated: %s (%s ago)",
 			update.Version, update.RelDate.Format("Jan 2, 2006"), ago)
+
 		return
 	}
 

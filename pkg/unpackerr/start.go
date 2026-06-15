@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
-	"github.com/hako/durafmt"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -33,6 +32,7 @@ const (
 	defaultStartDelay  = time.Minute
 	minimumDeleteDelay = time.Second
 	defaultDeleteDelay = 5 * time.Minute
+	staleItemTimeout   = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
 	defaultHistory     = 10             // items kept in history.
 	suffix             = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf      = 100            // Size of xtractr callback update channels.
@@ -45,9 +45,6 @@ const (
 	bits8              = 8
 	base32             = 32
 )
-
-//nolint:gochecknoglobals
-var durafmtUnits, _ = durafmt.DefaultUnitsCoder.Decode("year,week,day,hour,min,sec,ms:ms,µs:µs")
 
 // Unpackerr stores all the running data.
 type Unpackerr struct {
@@ -139,7 +136,7 @@ func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
 	unpackerr := New().ParseFlags() // Grab CLI args (like config file location).
-	if unpackerr.Flags.verReq {
+	if unpackerr.verReq {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 		return nil                              // don't run anything else.
 	}
@@ -173,8 +170,8 @@ func Start() error {
 
 	unpackerr.logStartupInfo(msg, output)
 
-	if unpackerr.Flags.webhook > 0 {
-		return unpackerr.sampleWebhook(ExtractStatus(unpackerr.Flags.webhook))
+	if unpackerr.webhook > 0 {
+		return unpackerr.sampleWebhook(ExtractStatus(unpackerr.webhook))
 	}
 
 	unpackerr.Xtractr = xtractr.NewQueue(&xtractr.Config{
@@ -190,6 +187,7 @@ func Start() error {
 	}
 
 	go unpackerr.watchDeleteChannel()
+
 	unpackerr.startWebServer()
 	unpackerr.watchWorkThread()
 	unpackerr.startTray() // runs tray or waits for exit depending on hasGUI.
@@ -313,11 +311,11 @@ func dirIsEmpty(path string) bool {
 
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for hook := range u.hookChan {
-		if hook.WebhookConfig.URL != "" {
+		if hook.URL != "" {
 			u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 		}
 
-		if hook.WebhookConfig.Command != "" {
+		if hook.Command != "" {
 			u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 		}
 	}
@@ -330,10 +328,10 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 		flag.PrintDefaults()
 	}
 
-	flag.StringVarP(&u.Flags.ConfigFile, "config", "c", os.Getenv("UN_CONFIG_FILE"), "Poller Config File (TOML Format)")
-	flag.StringVarP(&u.Flags.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
-	flag.UintVarP(&u.Flags.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
-	flag.BoolVarP(&u.Flags.verReq, "version", "v", false, "Print the version and exit.")
+	flag.StringVarP(&u.ConfigFile, "config", "c", os.Getenv("UN_CONFIG_FILE"), "Poller Config File (TOML Format)")
+	flag.StringVarP(&u.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
+	flag.UintVarP(&u.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
+	flag.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
 	flag.Parse()
 
 	return u // so you can chain into ParseConfig.
@@ -342,11 +340,11 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 // Run starts the loop that does the work.
 func (u *Unpackerr) Run() {
 	var (
-		poller   = time.NewTicker(u.Config.Interval.Duration)   // poll apps at configured interval.
-		cleaner  = time.NewTicker(cleanerInterval)              // clean at a fast interval.
-		xtractr  = time.NewTicker(u.Config.StartDelay.Duration) // Check if an extract needs to start.
-		progress = time.NewTicker(u.Config.Progress.Duration)   // Progress update for extractions.
-		now      = version.Started                              // Used for file system event time stamps.
+		poller   = time.NewTicker(u.Interval.Duration)   // poll apps at configured interval.
+		cleaner  = time.NewTicker(cleanerInterval)       // clean at a fast interval.
+		xtractr  = time.NewTicker(u.StartDelay.Duration) // Check if an extract needs to start.
+		progress = time.NewTicker(u.Progress.Duration)   // Progress update for extractions.
+		now      = version.Started                       // Used for file system event time stamps.
 	)
 
 	// Only start the queue/totals log timer when at least one app or folder is configured.

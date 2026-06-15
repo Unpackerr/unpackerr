@@ -31,6 +31,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dchest/jsmin v1.0.0 h1:Y2hWXmGZiRxtl+VcTksyucgTlYxnhPzTozCwx9gy9zI=
 github.com/dchest/jsmin v1.0.0/go.mod h1:AVBIund7Mr7lKXT70hKT2YgL3XEXUaUk5iw9DZ8b0Uc=
+github.com/dromara/carbon/v2 v2.6.16 h1:AbxrnW1kJhR3KHdS8G96NFmxDwPFyre+t+xSiJIUD1I=
+github.com/dromara/carbon/v2 v2.6.16/go.mod h1:NGo3reeV5vhWCYWcSqbJRZm46MEwyfYI5EJRdVFoLJo=
 github.com/dsnet/compress v0.0.1 h1:PlZu0n3Tuv04TzpfPbrnI0HW/YwodEXDS+oPKahKF0Q=
 github.com/dsnet/compress v0.0.1/go.mod h1:Aw8dCMJ7RioblQeTqt88akK31OvO8Dhf5JflhBbQEHo=
 github.com/energye/systray v1.0.3 h1:XnyjJCeRU5z00bpNOic2fGTKz/7yHZMZjWiGIVXDS+4=
@@ -49,8 +51,6 @@ github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/pprof v0.0.0-20260604005048-7023385849c0 h1:h1QTMDl6q9wDvDCJVpKQSjgleGFYnd2fOxmg2K+6BGE=
 github.com/google/pprof v0.0.0-20260604005048-7023385849c0/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
-github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b h1:wDUNC2eKiL35DbLvsDhiblTUXHxcOPwQSCzi7xpQUN4=
-github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b/go.mod h1:VzxiSdG6j1pi7rwGm/xYI5RbtpBgM8sARDXlvEvxlu0=
 github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k=
 github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/icza/bitio v1.1.0 h1:ysX4vtldjdi3Ygai5m1cWy4oLkhWTAi+SyO6HC8L9T0=

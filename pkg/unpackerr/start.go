@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
-	"github.com/hako/durafmt"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
@@ -46,9 +45,6 @@ const (
 	bits8              = 8
 	base32             = 32
 )
-
-//nolint:gochecknoglobals
-var durafmtUnits, _ = durafmt.DefaultUnitsCoder.Decode("year,week,day,hour,min,sec,ms:ms,µs:µs")
 
 // Unpackerr stores all the running data.
 type Unpackerr struct {

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
-	"github.com/dromara/carbon/v2"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
 	"golift.io/rotatorr/timerotator"
@@ -126,7 +125,7 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
 		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
-		carbon.CreateFromStdTime(version.Started).DiffAbsInString(carbon.CreateFromStdTime(now)))
+		formatDuration(now.Sub(version.Started)))
 	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
 }
 

@@ -13,8 +13,8 @@ const (
 	hoursPerDay        = 24
 )
 
-func formatDuration(d time.Duration) string {
-	d = d.Abs()
+func formatDuration(duration time.Duration) string {
+	duration = duration.Abs()
 	units := []struct {
 		name     string
 		duration time.Duration
@@ -30,7 +30,7 @@ func formatDuration(d time.Duration) string {
 	}
 
 	parts := make([]string, 0, durationPartsLimit)
-	remaining := d
+	remaining := duration
 
 	for _, unit := range units {
 		count := int64(remaining / unit.duration)

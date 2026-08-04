@@ -248,6 +248,30 @@ passwords = []
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
 
+#[[sportarr]]
+# url = "http://127.0.0.1:1867"
+# api_key = "0123456789abcdef0123456789abcdef"
+## List of paths where content is downloaded for this app.
+## Used as fallback if the path the Starr app reports does not exist or is not accessible.
+# paths = ['/downloads']
+## Protocols to process from the download queue. Starr apps historically
+## used "torrent" and "usenet" as the protocol strings, but newer versions
+## emit the full class names "TorrentDownloadProtocol" and
+## "UsenetDownloadProtocol" instead. List every string your app may return,
+## separated by commas. The default covers both the legacy and new torrent
+## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
+# protocols = "torrent,TorrentDownloadProtocol"
+## How long to wait for a reply from the backend.
+# timeout = "10s"
+## How long to wait after import before deleting the extracted items.
+# delete_delay = "5m"
+## If you use this app with NZB you may wish to delete archives after extraction.
+## General recommendation is: do not enable this for torrent use.
+## Setting this to true deletes the entire original download folder after import.
+# delete_orig = false
+## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+# syncthing = false
+
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
 ### Only using Starr apps? The things above. The below configs are OPTIONAL. ### #
@@ -343,4 +367,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 08 MAR 2026 18:55 UTC
+## => Content Auto Generated, 04 AUG 2026 02:53 UTC

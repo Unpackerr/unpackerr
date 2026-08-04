@@ -253,6 +253,7 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 	}
 
 	u.logSonarr()
+	u.logSportarr()
 	u.logRadarr()
 	u.logLidarr()
 	u.logReadarr()

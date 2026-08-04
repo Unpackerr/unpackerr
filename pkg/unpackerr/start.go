@@ -349,7 +349,7 @@ func (u *Unpackerr) Run() {
 
 	// Only start the queue/totals log timer when at least one app or folder is configured.
 	var logger <-chan time.Time
-	if len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr)+len(u.Folders) > 0 {
+	if len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Sportarr)+len(u.Whisparr)+len(u.Folders) > 0 {
 		logger = time.NewTicker(u.Config.LogQueues.Duration).C
 	} else {
 		u.Printf("No Starr apps or folders configured. Shut down and add some apps or folders to your config file.")

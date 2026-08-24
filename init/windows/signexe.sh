@@ -38,6 +38,10 @@ function sign() {
   fi
 
   bin="$(pick_codesign)" || {
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "Skipped signing ${FILE} (codesign CLI not on PATH; Action signs later) .." >&2
+      exit 0
+    fi
     echo "CODESIGN_URL is set but golift codesign CLI not found (set CODESIGN_BIN)" >&2
     exit 1
   }

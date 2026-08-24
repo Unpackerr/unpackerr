@@ -66,6 +66,10 @@ jobs:
           go-version-file: 'go.mod'
       - name: make-release
         id: release
+        env:
+          # Job-level CODESIGN_URL is only for the codesign step's if.
+          # Make must not see it: signexe.sh would fail before the Action installs the CLI.
+          CODESIGN_URL: ""
         run: |
           sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
           sudo gem install --no-document fpm

@@ -14,14 +14,14 @@ jobs:
     steps:
       - name: checkout PR head (pull_request_target)
         if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
       - name: checkout branch (push)
         if: github.event_name == 'push'
-        uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+        uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: 'stable'
       - name: go-generate
@@ -42,14 +42,14 @@ jobs:
     steps:
       - name: checkout PR head (pull_request_target)
         if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
       - name: checkout branch (push)
         if: github.event_name == 'push'
-        uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+        uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
       - name: go-generate
@@ -57,7 +57,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12
+          version: v2.13
 
   golangci-linux:
     # description: "Runs golangci-lint on linux against linux and windows."
@@ -71,14 +71,14 @@ jobs:
     steps:
       - name: checkout PR head (pull_request_target)
         if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
       - name: checkout branch (push)
         if: github.event_name == 'push'
-        uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+        uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
       - name: go-generate
@@ -86,4 +86,4 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12
+          version: v2.13

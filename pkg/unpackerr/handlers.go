@@ -130,17 +130,15 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	}
 
 	queueSize, _ := u.Extract(&xtractr.Xtract{
-		Password:  u.getPasswordFromPath(item.Path),
-		Passwords: u.Passwords,
-		Name:      name,
-		Filter: xtractr.Filter{
-			Path:          item.Path,
-			ExcludeSuffix: xtractr.AllExcept(archiveTypes...),
-		},
-		TempFolder: false,
-		DeleteOrig: false,
-		CBChannel:  u.updates,
-		Progress:   u.progressUpdateCallback(item),
+		Password:      u.getPasswordFromPath(item.Path),
+		Passwords:     u.Passwords,
+		Name:          name,
+		Path:          item.Path,
+		ExcludeSuffix: xtractr.AllExcept(archiveTypes...),
+		TempFolder:    false,
+		DeleteOrig:    false,
+		CBChannel:     u.updates,
+		Progress:      u.progressUpdateCallback(item),
 	})
 
 	u.logQueuedDownload(queueSize, item, files)

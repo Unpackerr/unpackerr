@@ -100,6 +100,15 @@ services:
     - UN_WHISPARR_0_DELETE_DELAY=5m
     - UN_WHISPARR_0_DELETE_ORIG=false
     - UN_WHISPARR_0_SYNCTHING=false
+    ## Sportarr Settings
+    - UN_SPORTARR_0_URL=http://sportarr:1867
+    - UN_SPORTARR_0_API_KEY=0123456789abcdef0123456789abcdef
+    - UN_SPORTARR_0_PATHS_0=/downloads
+    - UN_SPORTARR_0_PROTOCOLS=torrent,TorrentDownloadProtocol
+    - UN_SPORTARR_0_TIMEOUT=10s
+    - UN_SPORTARR_0_DELETE_DELAY=5m
+    - UN_SPORTARR_0_DELETE_ORIG=false
+    - UN_SPORTARR_0_SYNCTHING=false
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
     - UN_FOLDER_0_EXTRACT_PATH=
@@ -138,4 +147,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 08 MAR 2026 18:55 UTC
+## => Content Auto Generated, 04 AUG 2026 02:53 UTC

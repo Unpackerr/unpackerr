@@ -73,6 +73,7 @@ type Config struct {
 	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"      xml:"whisparr"      yaml:"whisparr,omitempty"`
 	Readarr     []*ReadarrConfig `json:"readarr,omitempty"  toml:"readarr"       xml:"readarr"       yaml:"readarr,omitempty"`
 	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty"   toml:"sonarr"        xml:"sonarr"        yaml:"sonarr,omitempty"`
+	Sportarr    []*SonarrConfig  `json:"sportarr,omitempty" toml:"sportarr"      xml:"sportarr"      yaml:"sportarr,omitempty"`
 	Folders     []*FolderConfig  `json:"folder,omitempty"   toml:"folder"        xml:"folder"        yaml:"folder,omitempty"`
 	Webhook     []*WebhookConfig `json:"webhook,omitempty"  toml:"webhook"       xml:"webhook"       yaml:"webhook,omitempty"`
 	Cmdhook     []*WebhookConfig `json:"cmdhook,omitempty"  toml:"cmdhook"       xml:"cmdhook"       yaml:"cmdhook,omitempty"`
@@ -86,7 +87,7 @@ type FoldersConfig struct {
 
 func (u *Unpackerr) watchWorkThread() {
 	// 1 worker for each app, so they poll quickly.
-	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr) {
+	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Sportarr) + len(u.Whisparr) {
 		go func() {
 			for funcs := range u.workChan {
 				for _, fn := range funcs {
@@ -101,7 +102,7 @@ func (u *Unpackerr) watchWorkThread() {
 // Then calls the check methods to scan their queue contents for changes.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	wait := sync.WaitGroup{}
-	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
+	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Sportarr) + len(u.Whisparr))
 	// Run each app's getQueue method in a go routine as a waitgroup.
 	for _, server := range u.Lidarr {
 		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wait.Done}
@@ -119,6 +120,10 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wait.Done}
 	}
 
+	for _, server := range u.Sportarr {
+		u.workChan <- []func(){func() { u.getSportarrQueue(server, now) }, wait.Done}
+	}
+
 	for _, server := range u.Whisparr {
 		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wait.Done}
 	}
@@ -129,6 +134,7 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	u.checkRadarrQueue(now)
 	u.checkReadarrQueue(now)
 	u.checkSonarrQueue(now)
+	u.checkSportarrQueue(now)
 	u.checkWhisparrQueue(now)
 }
 
@@ -139,6 +145,7 @@ func (u *Unpackerr) validateApps() error {
 		u.validateRadarr,
 		u.validateReadarr,
 		u.validateSonarr,
+		u.validateSportarr,
 		u.validateWhisparr,
 		u.validateFolders,
 	} {
@@ -169,6 +176,8 @@ func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 		return u.haveReadarrQitem(name)
 	case starr.Sonarr:
 		return u.haveSonarrQitem(name)
+	case Sportarr:
+		return u.haveSportarrQitem(name)
 	case starr.Whisparr:
 		return u.haveWhisparrQitem(name)
 	default:

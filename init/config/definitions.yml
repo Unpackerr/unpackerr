@@ -17,6 +17,7 @@ def_order:
     - lidarr
     - readarr
     - whisparr
+    - sportarr
 recommendations:
   apps: &APPS
     - name: Sonarr
@@ -29,6 +30,8 @@ recommendations:
       value: readarr
     - name: Whisparr
       value: whisparr
+    - name: Sportarr
+      value: sportarr
     - name: Folder
       value: folder
   on_off: &BOOLEAN
@@ -194,6 +197,14 @@ defs:
         url: http://whisparr:6969
       examples:
         url: http://127.0.0.1:6969
+    sportarr:
+      title: Sportarr Settings
+      prefix: SPORTARR_
+      comment: true
+      docker_example:
+        url: http://sportarr:1867
+      examples:
+        url: http://127.0.0.1:1867
 
 sections:
   global:

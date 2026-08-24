@@ -4,6 +4,7 @@ linters:
   disable:
     # unused
     - exhaustruct
+    - exhaustruct_v5
     - exhaustive
     - dupl
     - nlreturn

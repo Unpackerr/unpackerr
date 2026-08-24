@@ -54,6 +54,8 @@ jobs:
       id-token: write
     env:
       GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+      # Map first: secrets cannot be referenced in steps.if.
+      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -71,7 +73,7 @@ jobs:
           make release WINDOWS_ZIP=0
           source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
       - uses: golift/codesign@v1
-        if: ${{ secrets.CODESIGN_URL != '' }}
+        if: env.CODESIGN_URL != ''
         with:
           files: unpackerr.amd64.exe
           url: ${{ secrets.CODESIGN_URL }}

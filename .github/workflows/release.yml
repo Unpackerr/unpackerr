@@ -114,12 +114,17 @@ jobs:
           name: ${{ matrix.files }}
       - name: Upload files to unstable.golift.io
         run: >-
+          set -euo pipefail;
           for file in *.{zip,dmg,gz}; do
             [ -f "$file" ] || continue;
             echo "Uploading: ${file}";
-            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
+            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
+            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
+            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
             versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
-            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
+            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
+            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
+            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
           done
 
   deploy-unstable-packagecloud:

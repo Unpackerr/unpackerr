@@ -49,8 +49,13 @@ jobs:
       version: ${{ steps.release.outputs.version }}
     name: Make Release Assets
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+      # Map first: secrets cannot be referenced in steps.if.
+      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -61,12 +66,30 @@ jobs:
           go-version-file: 'go.mod'
       - name: make-release
         id: release
+        env:
+          # Job-level CODESIGN_URL is only for the codesign step's if.
+          # Make must not see it: signexe.sh would fail before the Action installs the CLI.
+          CODESIGN_URL: ""
         run: |
           sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
           sudo gem install --no-document fpm
           echo "${GPG_SIGNING_KEY}" | gpg --import -
-          make release
+          make release WINDOWS_ZIP=0
           source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
+      - uses: golift/codesign@v1
+        if: env.CODESIGN_URL != ''
+        with:
+          files: unpackerr.amd64.exe
+          url: ${{ secrets.CODESIGN_URL }}
+          client-cert: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          client-key: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          name: Unpackerr
+          website: https://unpackerr.zip
+      - name: Zip Windows exe
+        run: |
+          make windows_zip
+          rm -f release/checksums.sha256.txt
+          openssl dgst -r -sha256 release/* | sed 's#release/##' | tee release/checksums.sha256.txt
       - name: upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -91,12 +114,17 @@ jobs:
           name: ${{ matrix.files }}
       - name: Upload files to unstable.golift.io
         run: >-
+          set -euo pipefail;
           for file in *.{zip,dmg,gz}; do
             [ -f "$file" ] || continue;
             echo "Uploading: ${file}";
-            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
+            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
+            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
+            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
             versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
-            curl -sSH "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}" "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
+            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
+            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
+            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
           done
 
   deploy-unstable-packagecloud:

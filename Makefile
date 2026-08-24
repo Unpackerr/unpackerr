@@ -48,6 +48,10 @@ VERSION_LDFLAGS:= -X \"golift.io/version.Branch=$(BRANCH) ($(COMMIT))\" \
 
 WINDOWS_LDFLAGS:= -H=windowsgui
 
+# CI sets WINDOWS_ZIP=0 so golift/codesign@v1 can Authenticode-sign the exe
+# before this zip loop deletes it. Local `make release` still zips.
+WINDOWS_ZIP ?= 1
+
 # Makefile targets follow.
 
 all: clean build
@@ -62,7 +66,9 @@ release: clean linux_packages freebsd_packages windows
 	mkdir -p $@
 	mv unpackerr.*.linux unpackerr.*.freebsd $@/
 	gzip -9r $@/
+ifneq ($(WINDOWS_ZIP),0)
 	for i in unpackerr*.exe ; do zip -9qj $@/$$i.zip $$i examples/*.example *.html; rm -f $$i;done
+endif
 	mv *.rpm *.deb *.txz *.zst *.sig $@/
 	# Generating File Hashes
 	openssl dgst -r -sha256 $@/* | sed 's#release/##' | tee $@/checksums.sha256.txt
@@ -167,6 +173,16 @@ windows: unpackerr.amd64.exe
 unpackerr.amd64.exe: generate rsrc.syso main.go
 	# Building windows 64-bit x86 binary.
 	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o $@ -ldflags "-w -s $(VERSION_LDFLAGS) $(EXTRA_LDFLAGS) $(WINDOWS_LDFLAGS)"
+	bash init/windows/signexe.sh $@
+
+# Zip Windows exe after Authenticode (used by CI when WINDOWS_ZIP=0).
+windows_zip:
+	mkdir -p release
+	for i in unpackerr*.exe ; do \
+		[ -f $$i ] || continue; \
+		zip -9qj release/$$i.zip $$i examples/*.example *.html; \
+		rm -f $$i; \
+	done
 
 ####################
 ##### Packages #####

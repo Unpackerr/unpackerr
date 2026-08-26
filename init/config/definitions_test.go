@@ -87,9 +87,9 @@ func TestMDXAdmonitionTitleNeedsBrackets(t *testing.T) {
 		t.Fatal(":::note Title must be flagged; that form fails Docusaurus MDX v2 compile")
 	}
 
-	ok := mdxProblems(":::note[Metrics]\nhello\n:::\n", "fixture")
-	if len(ok) != 0 {
-		t.Fatalf(":::note[Title] should be accepted: %v", ok)
+	accepted := mdxProblems(":::note[Metrics]\nhello\n:::\n", "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf(":::note[Title] should be accepted: %v", accepted)
 	}
 }
 
@@ -101,8 +101,82 @@ func TestMDXUnescapedBrace(t *testing.T) {
 		t.Fatal("bare {name} must be flagged; MDX treats { as JSX")
 	}
 
-	ok := mdxProblems("template value `{{name}}` here", "fixture")
-	if len(ok) != 0 {
-		t.Fatalf("braces inside backticks should be accepted: %v", ok)
+	accepted := mdxProblems("template value `{{name}}` here", "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf("braces inside backticks should be accepted: %v", accepted)
+	}
+
+	accepted = mdxProblems(`<font style={{'float': 'right', 'font-style': 'italic'}}>`, "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf("complete {{ JSX }} should be accepted: %v", accepted)
+	}
+
+	mixed := mdxProblems("{{name}} and {broken", "fixture")
+	if len(mixed) == 0 {
+		t.Fatal("a bare { after a valid {{ }} span must still be flagged")
+	}
+
+	mixed = mdxProblems("{/* comment */} and {broken", "fixture")
+	if len(mixed) == 0 {
+		t.Fatal("a bare { after a comment span must still be flagged")
+	}
+}
+
+func TestValidateDuplicateOrder(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Order = append(config.Order, config.Order[0])
+
+	if err := config.validate(); err == nil {
+		t.Fatal("duplicate order entries must fail validation")
+	}
+}
+
+func TestValidateDefsNeedOrder(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.DefOrder["starr"] = nil
+
+	if err := config.validate(); err == nil {
+		t.Fatal("defs without a non-empty def_order must fail validation")
+	}
+}
+
+func TestValidateImportIdent(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	header := config.Sections["webserver"]
+	delete(config.Sections, "webserver")
+	config.Sections["web-server"] = header
+
+	for idx, name := range config.Order {
+		if name == "webserver" {
+			config.Order[idx] = "web-server"
+		}
+	}
+
+	if err := config.validate(); err == nil {
+		t.Fatal("section web-server must fail; generated import would not compile")
+	}
+}
+
+func TestValidateTitleMDX(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Sections["global"].Title = "Hello {world}"
+
+	if err := config.validate(); err == nil {
+		t.Fatal("section title with a bare brace must fail validation")
+	}
+
+	config = loadTestConfig(t)
+	config.Defs["starr"]["radarr"].Title = "Radarr {app}"
+
+	if err := config.validate(); err == nil {
+		t.Fatal("defined title with a bare brace must fail validation")
 	}
 }

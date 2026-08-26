@@ -24,7 +24,31 @@ func (c *Config) validate() error {
 		errs = append(errs, "order is empty")
 	}
 
+	errs = append(errs, c.validateOrder()...)
+	errs = append(errs, c.validateDefs()...)
+
+	for _, name := range c.generatedImportNames() {
+		if !validImportIdent(name) {
+			errs = append(errs, name+": not a valid JS import identifier (website will not compile)")
+		}
+	}
+
+	return fmtErrs(errs)
+}
+
+func (c *Config) validateOrder() []string {
+	var errs []string
+
+	seen := make(map[section]struct{}, len(c.Order))
+
 	for _, name := range c.Order {
+		if _, dup := seen[name]; dup {
+			errs = append(errs, string(name)+": duplicated in order (generated MDX imports would collide)")
+			continue
+		}
+
+		seen[name] = struct{}{}
+
 		header := c.Sections[name]
 		if header == nil {
 			errs = append(errs, string(name)+": in order, but missing from sections")
@@ -32,6 +56,26 @@ func (c *Config) validate() error {
 		}
 
 		errs = append(errs, header.validate(name)...)
+	}
+
+	return errs
+}
+
+func (c *Config) validateDefs() []string {
+	var errs []string
+
+	for defName, defs := range c.Defs {
+		if len(c.DefOrder[defName]) == 0 {
+			errs = append(errs, string(defName)+": in defs, but def_order is missing or empty")
+		}
+
+		for item, def := range defs {
+			if def == nil {
+				continue
+			}
+
+			errs = append(errs, mdxProblems(def.Title, string(defName)+"."+string(item)+" title")...)
+		}
 	}
 
 	for defName, order := range c.DefOrder {
@@ -51,12 +95,13 @@ func (c *Config) validate() error {
 		}
 	}
 
-	return fmtErrs(errs)
+	return errs
 }
 
 func (h *Header) validate(name section) []string {
 	var errs []string
 
+	errs = append(errs, mdxProblems(h.Title, string(name)+" title")...)
 	errs = append(errs, mdxProblems(h.Docs, string(name)+" docs")...)
 	errs = append(errs, mdxProblems(h.Notes, string(name)+" notes")...)
 	errs = append(errs, mdxProblems(h.Tail, string(name)+" tail")...)
@@ -103,13 +148,47 @@ func mdxProblems(content, where string) []string {
 	stripped = stripInlineCode(stripped)
 
 	for line := range strings.SplitSeq(stripped, "\n") {
-		if strings.Contains(line, "{") && !strings.Contains(line, "{{") && !strings.Contains(line, "{/*") {
+		if strings.Contains(stripAllowedBraces(line), "{") {
 			errs = append(errs, where+": unescaped { breaks MDX (wrap in backticks or use {{ )")
 			break
 		}
 	}
 
 	return errs
+}
+
+// stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
+// Leftover { characters are MDX compile breakers.
+func stripAllowedBraces(line string) string {
+	var out strings.Builder
+
+	for idx := 0; idx < len(line); {
+		rest := line[idx:]
+
+		switch {
+		case strings.HasPrefix(rest, "{/*"):
+			end := strings.Index(rest, "*/}")
+			if end < 0 {
+				out.WriteString(rest)
+				return out.String()
+			}
+
+			idx += end + len("*/}")
+		case strings.HasPrefix(rest, "{{"):
+			end := strings.Index(rest[len("{{"):], "}}")
+			if end < 0 {
+				out.WriteString(rest)
+				return out.String()
+			}
+
+			idx += len("{{") + end + len("}}")
+		default:
+			out.WriteByte(line[idx])
+			idx++
+		}
+	}
+
+	return out.String()
 }
 
 func stripFencedCode(content string) string {

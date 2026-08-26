@@ -383,7 +383,7 @@ sections:
   webserver:
     title: Web Server
     docs: |
-      :::note Metrics
+      :::note[Metrics]
       The web server currently only provides prometheus metrics, which you can display in
       [Grafana](https://grafana.com/grafana/dashboards/18817-unpackerr/).
       It provides no UI. This may change in the future. The web server was added in v0.12.0.
@@ -394,7 +394,7 @@ sections:
         envvar: METRICS
         default: false
         recommend: *BOOLEAN
-        short: Extracted folders are written with this mode
+        short: Enable the Prometheus metrics endpoint.
         desc: The web server currently only supports metrics; set this to true if you wish to use it.
       - name: listen_addr
         envvar: LISTEN_ADDR
@@ -576,7 +576,7 @@ sections:
       ##################################################################################
     docs: |
       Folders are a way to watch a folder for things to extract. You can use this to
-      monitor your download client's "move to" path if you're not using it with an Starr app.
+      monitor your download client's "move to" path if you're not using it with a Starr app.
     envvar_prefix: FOLDER_
     kind: list
     params:
@@ -606,7 +606,8 @@ sections:
         short: Delete requested files after this duration; `0` disables.
         desc: |
           Delete extracted or original files this long after extraction.
-          The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
+          The default is 10m. Set to 0 to disable all deletes. Deletes also
+          require `delete_files` and/or `delete_original`. Uses Go Duration.
       - name: disable_recursion
         envvar: DISABLE_RECURSION
         default: false
@@ -629,7 +630,7 @@ sections:
         envvar: DISABLE_LOG
         default: false
         recommend: *BOOLEAN
-        short: Turns off creation of extraction logs files for this folder.
+        short: Turns off creation of extraction log files for this folder.
         desc: Disable extraction log (unpackerred.txt) file creation?
       - name: move_back
         envvar: MOVE_BACK
@@ -645,7 +646,7 @@ sections:
         desc: Set this to true if you want this app to extract ISO files with .iso extension.
 
   webhook:
-    title: Web Hooks
+    title: Webhooks
     text: |
       ################
       ### Webhooks ###

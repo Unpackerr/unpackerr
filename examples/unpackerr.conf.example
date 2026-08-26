@@ -268,7 +268,8 @@ passwords = []
 ## Path to extract files to. The default (leaving this blank) is the same as `path` (above).
 # extract_path = ''
 ## Delete extracted or original files this long after extraction.
-## The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
+## The default is 10m. Set to 0 to disable all deletes. Deletes also
+## require `delete_files` and/or `delete_original`. Uses Go Duration.
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
@@ -343,4 +344,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 08 MAR 2026 18:55 UTC
+## => Content Auto Generated, 26 AUG 2026 08:51 UTC

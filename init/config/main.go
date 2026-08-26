@@ -99,6 +99,10 @@ func main() {
 		log.Fatalln(err) //nolint:gocritic
 	}
 
+	if err = config.validate(); err != nil {
+		log.Fatalln(err)
+	}
+
 	for _, builder := range flags.Type {
 		switch builder {
 		case "doc", "docs", "documentation", "docusaurus":

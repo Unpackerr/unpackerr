@@ -49,12 +49,15 @@ jobs:
   split:
     needs: channel
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         goos: [linux, windows, freebsd]
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # golift/codesign fetches a GitHub OIDC token (audience = CODESIGN_URL).
+      # Without this, signerd returns 401 unauthorized.
+      id-token: write
     env:
       CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
@@ -126,6 +129,13 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    env:
+      # Map first: secrets cannot be referenced in steps.if.
+      MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+      MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+      MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -139,13 +149,21 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Import signing certificate and notary credentials
-        env:
-          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
-          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
-          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
-          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
-          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        if: >-
+          env.MACOS_SIGN_P12 != '' &&
+          env.MACOS_SIGN_PASSWORD != '' &&
+          env.MACOS_NOTARY_KEY != '' &&
+          env.MACOS_NOTARY_KEY_ID != '' &&
+          env.MACOS_NOTARY_ISSUER_ID != ''
         run: bash .github/scripts/macos_keychain.sh
+      - name: Skip Apple signing
+        if: >-
+          env.MACOS_SIGN_P12 == '' ||
+          env.MACOS_SIGN_PASSWORD == '' ||
+          env.MACOS_NOTARY_KEY == '' ||
+          env.MACOS_NOTARY_KEY_ID == '' ||
+          env.MACOS_NOTARY_ISSUER_ID == ''
+        run: echo '::warning::macOS signing/notary secrets incomplete; building an unsigned DMG. Grant MACOS_SIGN_P12, MACOS_SIGN_PASSWORD, and MACOS_NOTARY_* to this repository.'
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro
@@ -162,6 +180,7 @@ jobs:
           MACOS_SIGN_IDENTITY: ${{ env.MACOS_SIGN_IDENTITY }}
           MACOS_NOTARY_PROFILE_NAME: ${{ env.MACOS_NOTARY_PROFILE_NAME }}
       - name: Staple notarized DMG
+        if: env.KEYCHAIN_PATH != ''
         run: |
           set -euo pipefail
           found=0

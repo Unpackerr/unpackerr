@@ -4,12 +4,12 @@
 set -euo pipefail
 
 if [ -z "${MACOS_SIGN_P12:-}" ] || [ -z "${MACOS_SIGN_PASSWORD:-}" ]; then
-  echo "MACOS_SIGN_P12 / MACOS_SIGN_PASSWORD unset" >&2
-  exit 1
+  echo "MACOS_SIGN_P12 / MACOS_SIGN_PASSWORD unset; skipping keychain import" >&2
+  exit 0
 fi
 if [ -z "${MACOS_NOTARY_KEY:-}" ] || [ -z "${MACOS_NOTARY_KEY_ID:-}" ] || [ -z "${MACOS_NOTARY_ISSUER_ID:-}" ]; then
-  echo "MACOS_NOTARY_KEY / MACOS_NOTARY_KEY_ID / MACOS_NOTARY_ISSUER_ID unset" >&2
-  exit 1
+  echo "MACOS_NOTARY_KEY / MACOS_NOTARY_KEY_ID / MACOS_NOTARY_ISSUER_ID unset; skipping keychain import" >&2
+  exit 0
 fi
 
 tmp="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"

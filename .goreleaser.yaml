@@ -181,7 +181,8 @@ archives:
   - id: default
     ids: [unpackerr, unpackerr-darwin, unpackerr-windows]
     formats: [tar.gz]
-    wrap_in_directory: true
+    # Flat so the Homebrew cask can find binary/conf/manpage without a rename.
+    wrap_in_directory: false
     files:
       - LICENSE
       - README.md
@@ -306,8 +307,6 @@ dockers_v2:
       org.opencontainers.image.source: "{{ .GitURL }}"
       org.opencontainers.image.vendor: Go Lift
       org.opencontainers.image.licenses: MIT
-    # Repo-scoped Hub PATs cannot pull docker/buildkit-syft-scanner.
-    sbom: false
   - id: unpackerr-release-hub
     disable: '{{ or (ne .Env.CHANNEL "release") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -322,7 +321,6 @@ dockers_v2:
       - "{{ .Major }}"
     platforms: *docker_platforms
     labels: *docker_labels
-    sbom: false
   - id: unpackerr-unstable
     disable: '{{ ne .Env.CHANNEL "unstable" }}'
     dockerfile: init/docker/Dockerfile
@@ -333,7 +331,6 @@ dockers_v2:
       - unstable
     platforms: *docker_platforms
     labels: *docker_labels
-    sbom: false
   - id: unpackerr-unstable-hub
     disable: '{{ or (ne .Env.CHANNEL "unstable") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -344,7 +341,6 @@ dockers_v2:
       - unstable
     platforms: *docker_platforms
     labels: *docker_labels
-    sbom: false
   - id: unpackerr-nightly
     disable: '{{ ne .Env.CHANNEL "nightly" }}'
     dockerfile: init/docker/Dockerfile
@@ -355,7 +351,6 @@ dockers_v2:
       - nightly
     platforms: *docker_platforms
     labels: *docker_labels
-    sbom: false
   - id: unpackerr-nightly-hub
     disable: '{{ or (ne .Env.CHANNEL "nightly") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -366,7 +361,6 @@ dockers_v2:
       - nightly
     platforms: *docker_platforms
     labels: *docker_labels
-    sbom: false
 
 aur_sources:
   - name: unpackerr
@@ -425,9 +419,13 @@ aur_sources:
       echo 'u unpackerr - "unpackerr daemon"' > unpackerr.sysusers
       install -D -m 644 unpackerr.sysusers "${pkgdir}/usr/lib/sysusers.d/unpackerr.conf"
 
-brews:
+homebrew_casks:
   - name: unpackerr
     ids: [default]
+    binaries:
+      - unpackerr
+    manpages:
+      - unpackerr.1.gz
     skip_upload: "{{ .IsNightly }}"
     repository:
       owner: golift
@@ -437,32 +435,69 @@ brews:
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Formula
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Casks
     homepage: https://unpackerr.zip
     description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
     license: MIT
-    url_template: "https://github.com/Unpackerr/unpackerr/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    test: assert_match "#{name} v#{version}", shell_output("#{bin}/#{name} -v 2>&1", 2)
-    extra_install: |
-      (etc/"unpackerr").mkpath
-      conf_example = etc/"unpackerr/unpackerr.conf.example"
-      FileUtils.cp "unpackerr.conf.example", conf_example
-      FileUtils.cp "unpackerr.conf.example", etc/"unpackerr/unpackerr.conf" unless (etc/"unpackerr/unpackerr.conf").exist?
-      (var/"log").mkpath
-      touch var/"log/unpackerr.log"
-    service: |
-      run [opt_bin/"unpackerr", "--config", etc/"unpackerr/unpackerr.conf"]
-      keep_alive true
-      log_path var/"log/unpackerr.log"
-      error_log_path var/"log/unpackerr.log"
+    url:
+      template: "https://github.com/Unpackerr/unpackerr/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+      verified: github.com/Unpackerr/unpackerr
+    # Do not set `service:` — cask `service` is ~/Library/Services (Automator), not LaunchAgents.
+    # Install a LaunchAgent in postflight; brew services is formula-only.
+    hooks:
+      post:
+        install: |
+          conf_dir = HOMEBREW_PREFIX/"etc/unpackerr"
+          conf_dir.mkpath
+          FileUtils.cp "#{staged_path}/unpackerr.conf.example", conf_dir/"unpackerr.conf.example"
+          had_conf = (conf_dir/"unpackerr.conf").exist?
+          FileUtils.cp "#{staged_path}/unpackerr.conf.example", conf_dir/"unpackerr.conf" unless had_conf
+          (HOMEBREW_PREFIX/"var/log").mkpath
+          label = "io.golift.unpackerr"
+          agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
+          agent.dirname.mkpath
+          binary = HOMEBREW_PREFIX/"bin/unpackerr"
+          conf = conf_dir/"unpackerr.conf"
+          log = HOMEBREW_PREFIX/"var/log/unpackerr.log"
+          agent.write <<~XML
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>Label</key><string>#{label}</string>
+              <key>ProgramArguments</key>
+              <array>
+                <string>#{binary}</string>
+                <string>--config</string>
+                <string>#{conf}</string>
+              </array>
+              <key>RunAtLoad</key><true/>
+              <key>KeepAlive</key><true/>
+              <key>WorkingDirectory</key><string>#{HOMEBREW_PREFIX}</string>
+              <key>StandardOutPath</key><string>#{log}</string>
+              <key>StandardErrorPath</key><string>#{log}</string>
+            </dict>
+            </plist>
+          XML
+          if had_conf
+            uid = Process.uid
+            system "/bin/launchctl", "bootout", "gui/#{uid}/#{label}"
+            system "/bin/launchctl", "bootstrap", "gui/#{uid}", agent.to_s
+          end
+        uninstall: |
+          label = "io.golift.unpackerr"
+          agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
+          system "/bin/launchctl", "bootout", "gui/#{Process.uid}/#{label}"
+          agent.delete if agent.exist?
     caveats: |
-      Edit the config file at #{etc}/unpackerr/unpackerr.conf then start unpackerr with
-      brew services start unpackerr ~ log file: #{var}/log/unpackerr.log
+      First install: edit #{HOMEBREW_PREFIX}/etc/unpackerr/unpackerr.conf then:
+        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.golift.unpackerr.plist
+      Upgrades restart the LaunchAgent when that config already exists.
+      Restart: launchctl kickstart -k gui/$(id -u)/io.golift.unpackerr
+      Stop:    launchctl bootout gui/$(id -u)/io.golift.unpackerr
+      (brew services does not manage casks.)
       The manual explains the config file options: man unpackerr
-    install: |
-      bin.install "unpackerr"
-      man1.install "unpackerr.1.gz"
 
 checksum:
   name_template: checksums.sha256.txt

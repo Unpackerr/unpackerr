@@ -47,11 +47,18 @@ builds:
       - -X "golift.io/version.BuildUser={{.Env.USER}}"
       - -X "golift.io/version.Revision={{.Env.REVISION}}"
       - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+  # energye/systray's Darwin backend is Objective-C (Cocoa). CGO_ENABLED=0
+  # drops those symbols (undefined: nativeLoop, setInternalLoop, ...).
+  # Linux CI sets OSX_CROSS and uses osxcross (o64-clang / oa64-clang);
+  # local macOS snapshots keep the host clang.
   - id: unpackerr-darwin
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
       - CGO_LDFLAGS=-mmacosx-version-min=10.8
       - CGO_CFLAGS=-mmacosx-version-min=10.8
+      - MACOSX_DEPLOYMENT_TARGET=10.8
+      - 'CC={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang{{ else }}oa64-clang{{ end }}{{ else }}clang{{ end }}'
+      - 'CXX={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang++{{ else }}oa64-clang++{{ end }}{{ else }}clang++{{ end }}'
     goos:
       - darwin
     goarch:

@@ -54,7 +54,7 @@ jobs:
           echo "CHANNEL=${channel}" >> "${GITHUB_ENV}"
           echo "args=${args}" >> "${GITHUB_OUTPUT}"
       - name: Install package tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm genisoimage
+        run: sudo apt-get update && sudo apt-get install -y rpm genisoimage clang llvm
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
@@ -101,6 +101,19 @@ jobs:
           go install golift.io/codesign/cmd/codesign@v1.0.3
           echo "${GOBIN}" >> "${GITHUB_PATH}"
           echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+      # energye/systray needs CGO on Darwin. Copy osxcross from goreleaser-cross
+      # so ubuntu-latest can compile the Cocoa backend (o64-clang / oa64-clang).
+      - name: Install Darwin CGO toolchain
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/goreleaser/goreleaser-cross:v1.27.0-1
+          cid="$(docker create ghcr.io/goreleaser/goreleaser-cross:v1.27.0-1)"
+          sudo docker cp "${cid}:/usr/local/osxcross" /usr/local/osxcross
+          docker rm "${cid}"
+          test -x /usr/local/osxcross/bin/o64-clang
+          test -x /usr/local/osxcross/bin/oa64-clang
+          echo /usr/local/osxcross/bin >> "${GITHUB_PATH}"
+          echo OSX_CROSS=1 >> "${GITHUB_ENV}"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro
@@ -108,6 +121,7 @@ jobs:
           args: ${{ steps.channel.outputs.args }}
         env:
           CHANNEL: ${{ steps.channel.outputs.channel }}
+          OSX_CROSS: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

@@ -1,30 +1,185 @@
 #!/usr/bin/env bash
-# Upload zip/dmg/gz artifacts to unstable.golift.io (same as the old Actions loop).
+# Publish auto-update artifacts to unstable.golift.io with stable names.
+#
+# GoReleaser writes versioned archives (unpackerr_0.15.3-1037_linux_amd64.tar.gz).
+# Auto-update URLs cannot include that version; it lives in a sibling .txt.
+# The payload is a gzipped (or zipped) *binary*, matching the old Makefile
+# `gzip -9r` / `zip … $exe` layout — not a tar.gz (gunzip of a tar is a tar).
+#
+#   Unpackerr.dmg
+#   unpackerr.amd64.exe.zip
+#   unpackerr.{amd64,386,arm,arm64}.linux.gz
+#   unpackerr.{amd64,i386,armhf,arm64}.freebsd.gz
+#
+# Sidecar: plain VERSION-REVISION (same as the pre-GoReleaser workflow).
 set -euo pipefail
 
 dir="${1:-dist}"
-if [ -z "${UNSTABLE_UPLOAD_KEY:-}" ]; then
-  echo "UNSTABLE_UPLOAD_KEY unset; skipping unstable.golift.io upload" >&2
-  exit 0
+artifacts="${dir}/artifacts.json"
+metadata="${dir}/metadata.json"
+
+if [ ! -f "${artifacts}" ]; then
+  echo "missing ${artifacts}; GoReleaser did not produce artifacts.json" >&2
+  exit 1
+fi
+if ! command -v jq >/dev/null; then
+  echo "jq is required to read ${artifacts}" >&2
+  exit 1
+fi
+
+version="${VERSION:-}"
+if [ -z "${version}" ] && [ -f "${metadata}" ]; then
+  version="$(jq -r '.version // empty' "${metadata}")"
+fi
+if [ -z "${version}" ] || [ "${version}" = "unknown" ] || [ "${version}" = "unstable" ]; then
+  echo "refusing to upload with VERSION=${version:-<empty>} (need dist/metadata.json or VERSION=0.15.3-1234)" >&2
+  exit 1
+fi
+
+stage="${UNSTABLE_STAGE_DIR:-}"
+owned_stage=0
+if [ -z "${stage}" ]; then
+  stage="$(mktemp -d "${TMPDIR:-/tmp}/unpackerr-unstable.XXXXXX")"
+  owned_stage=1
+fi
+if [ "${owned_stage}" -eq 1 ]; then
+  trap 'rm -rf "${stage}"' EXIT
+fi
+mkdir -p "${stage}"
+
+resolve_path() {
+  local p=$1
+  if [ -f "${p}" ]; then
+    printf '%s' "${p}"
+    return
+  fi
+  if [ -f "${dir}/${p}" ]; then
+    printf '%s' "${dir}/${p}"
+    return
+  fi
+  echo "artifact missing: ${p}" >&2
+  return 1
+}
+
+# Historical names: linux uses GOARCH; freebsd 386/arm used i386/armhf.
+dest_name() {
+  local os=$1 arch=$2
+  case "${os}" in
+    windows)
+      printf 'unpackerr.%s.exe.zip' "${arch}"
+      ;;
+    linux)
+      printf 'unpackerr.%s.linux.gz' "${arch}"
+      ;;
+    freebsd)
+      case "${arch}" in
+        386) printf 'unpackerr.i386.freebsd.gz' ;;
+        arm) printf 'unpackerr.armhf.freebsd.gz' ;;
+        *) printf 'unpackerr.%s.freebsd.gz' "${arch}" ;;
+      esac
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+zip_exe() {
+  local src=$1 dest=$2
+  python3 - "${src}" "${dest}" <<'PY'
+import sys, zipfile
+src, dest = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    zf.write(src, arcname="unpackerr.exe")
+PY
+}
+
+# Prefer GOARM 7 over 6 when both exist (same dest name).
+while IFS=$'\t' read -r os arch goarm path; do
+  [ -n "${path}" ] || continue
+  if [ "${arch}" = arm ] && [ "${goarm}" = 6 ]; then
+    continue
+  fi
+  src="$(resolve_path "${path}")" || exit 1
+  dest="$(dest_name "${os}" "${arch}")" || continue
+  out="${stage}/${dest}"
+  case "${os}" in
+    windows)
+      zip_exe "${src}" "${out}" </dev/null
+      ;;
+    *)
+      gzip -9nc "${src}" > "${out}" </dev/null
+      ;;
+  esac
+  echo "staged ${dest} from ${src}"
+done < <(jq -r '
+  .[]
+  | select(.type == "Binary")
+  | select(.goos == "linux" or .goos == "freebsd" or .goos == "windows")
+  | [.goos, .goarch, (.goarm // "-"), .path]
+  | @tsv
+' "${artifacts}")
+
+dmg=""
+while IFS= read -r path; do
+  [ -n "${path}" ] || continue
+  src="$(resolve_path "${path}")" || continue
+  dmg="${src}"
+done < <(jq -r '.[] | select(.type == "DMG") | .path' "${artifacts}")
+if [ -z "${dmg}" ]; then
+  shopt -s nullglob
+  dmgs=("${dir}"/*.dmg)
+  shopt -u nullglob
+  if [ ${#dmgs[@]} -gt 0 ]; then
+    dmg="${dmgs[0]}"
+  else
+    while IFS= read -r path; do
+      [ -n "${path}" ] || continue
+      dmg="${path}"
+      break
+    done < <(find "${dir}" -type f -name '*.dmg' | sort)
+  fi
+fi
+if [ -n "${dmg}" ]; then
+  cp -f "${dmg}" "${stage}/Unpackerr.dmg"
+  echo "staged Unpackerr.dmg from ${dmg}"
+elif [ "${CHANNEL:-}" = nightly ]; then
+  echo "warning: no DMG in ${dir} (nightly skips darwin)" >&2
+else
+  echo "Unpackerr.dmg missing from ${dir}; darwin split/notarize did not produce a DMG" >&2
+  exit 1
 fi
 
 shopt -s nullglob
-files=("${dir}"/*.zip "${dir}"/*.dmg "${dir}"/*.gz)
-if [ ${#files[@]} -eq 0 ]; then
-  echo "no zip/dmg/gz artifacts in ${dir}" >&2
-  exit 0
+staged=("${stage}"/*)
+shopt -u nullglob
+if [ ${#staged[@]} -eq 0 ]; then
+  echo "no unstable artifacts staged from ${artifacts}" >&2
+  exit 1
 fi
 
-version="${VERSION:-unknown}"
-for file in "${files[@]}"; do
-  [ -f "$file" ] || continue
-  name="$(basename "$file")"
-  echo "Uploading ${name}"
+upload() {
+  local file=$1
+  local name
+  name="$(basename "${file}")"
+  echo "Uploading ${name} (${version})"
   curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2 \
     -H "X-API-KEY: ${UNSTABLE_UPLOAD_KEY}" \
-    "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}"
+    "https://unstable.golift.io/upload.php?folder=unpackerr" \
+    -F "file=@${file};filename=${name}"
   curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2 \
     -H "X-API-KEY: ${UNSTABLE_UPLOAD_KEY}" \
     "https://unstable.golift.io/upload.php?folder=unpackerr" \
     -F "file=${version};filename=${name}.txt;type=text/plain"
+}
+
+if [ -z "${UNSTABLE_UPLOAD_KEY:-}" ]; then
+  echo "UNSTABLE_UPLOAD_KEY unset; staged without uploading:" >&2
+  ls -l "${stage}"
+  exit 0
+fi
+
+for file in "${staged[@]}"; do
+  [ -f "${file}" ] || continue
+  upload "${file}"
 done

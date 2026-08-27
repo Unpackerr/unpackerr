@@ -9,9 +9,11 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleVersion</key>
-	<string>{{ .Version }}</string>
+	<string>{{ .Env.REVISION }}</string>
 	<key>CFBundleShortVersionString</key>
-	<string>{{ .Version }}</string>
+	<string>{{ trimSuffix (printf "-%s" .Env.REVISION) .Version }}</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
 	<key>CFBundleExecutable</key>
 	<string>{{ .BinaryName }}</string>
 	<key>NSAppTransportSecurity</key>

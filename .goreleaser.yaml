@@ -54,8 +54,8 @@ builds:
       - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
   # energye/systray's Darwin backend is Objective-C (Cocoa). CGO_ENABLED=0
   # drops those symbols (undefined: nativeLoop, setInternalLoop, ...).
-  # Linux CI sets OSX_CROSS and uses osxcross (o64-clang / oa64-clang);
-  # local macOS snapshots keep the host clang.
+  # CI builds this on macos-latest (host clang). OSX_CROSS is only for a
+  # local Linux snapshot with osxcross (o64-clang / oa64-clang).
   - id: unpackerr-darwin
     env:
       - CGO_ENABLED=1
@@ -138,22 +138,23 @@ universal_binaries:
     replace: true
     name_template: unpackerr
 
-# Sign + notarize darwin (quill; works on Linux CI).
-# Enabled only when MACOS_SIGN_P12 is set so local snapshots still work.
+# Quill (Linux) can only sign/notarize the raw binary. A Gatekeeper-valid
+# .app inside a DMG has to be codesign'd + notarytool'd on macOS.
+# Enabled when the Darwin split job imported the P12 into a keychain.
 notarize:
-  macos:
-    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+  macos_native:
+    - enabled: '{{ isEnvSet "KEYCHAIN_PATH" }}'
       ids:
         - unpackerr-darwin
+      use: dmg
       sign:
-        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
-        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+        keychain: "{{ .Env.KEYCHAIN_PATH }}"
+        identity: "{{ .Env.MACOS_SIGN_IDENTITY }}"
+        options: [runtime]
+        entitlements: init/macos/entitlements.plist
       notarize:
-        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
-        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
-        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+        profile_name: "{{ .Env.MACOS_NOTARY_PROFILE_NAME }}"
         wait: true
-        timeout: 20m
 
 app_bundles:
   - id: unpackerr-app

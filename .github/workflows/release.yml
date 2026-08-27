@@ -12,49 +12,206 @@ on:
 permissions:
   contents: write
   packages: write
+
+# Darwin App/DMG notarization needs xcrun/codesign (macOS). Linux/Windows/FreeBSD
+# split on ubuntu; merge publishes Docker, GitHub, Homebrew, AUR, packagecloud.
 jobs:
-  release:
+  channel:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
-    env:
-      # Map first: secrets cannot be referenced in steps.if.
-      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
-      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+    outputs:
+      channel: ${{ steps.channel.outputs.channel }}
+      extra: ${{ steps.channel.outputs.extra }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          # Scheduled runs always build main, even if GitHub starts the workflow from another ref.
-          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
-      - run: git fetch --force --tags
       - name: Choose release channel
         id: channel
         run: |
           set -euo pipefail
+          extra=
           if [[ "${GITHUB_EVENT_NAME}" == schedule ]]; then
             channel=nightly
-            args='release --nightly --clean --timeout 60m'
+            extra=--nightly
           elif [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch && "${GITHUB_REF}" == refs/heads/main ]]; then
             channel=nightly
-            args='release --nightly --clean --timeout 60m'
+            extra=--nightly
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             channel=release
-            args='release --clean --timeout 60m'
           elif [[ "${GITHUB_REF}" == refs/heads/unstable ]]; then
             channel=unstable
-            args='release --nightly --clean --timeout 60m'
+            extra=--nightly
           else
             echo "refusing to release from ${GITHUB_REF} (${GITHUB_EVENT_NAME})" >&2
             exit 1
           fi
           echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
-          echo "CHANNEL=${channel}" >> "${GITHUB_ENV}"
-          echo "args=${args}" >> "${GITHUB_OUTPUT}"
+          echo "extra=${extra}" >> "${GITHUB_OUTPUT}"
+          echo "CHANNEL=${channel} extra=${extra}"
+
+  split:
+    needs: channel
+    strategy:
+      fail-fast: true
+      matrix:
+        goos: [linux, windows, freebsd]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - name: Save iteration in Revision
+        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
       - name: Install package tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm genisoimage clang llvm
+        if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
+      - name: Create GPG_SIGNING_KEY file
+        run: echo '${{ secrets.GPG_SIGNING_KEY }}' > /tmp/key.gpg
+      - name: Install golift codesign
+        if: matrix.goos == 'windows' && env.CODESIGN_URL != ''
+        env:
+          GOBIN: ${{ runner.temp }}/codesign-bin
+        run: |
+          set -euo pipefail
+          mkdir -p "${GOBIN}"
+          go install golift.io/codesign/cmd/codesign@v1.0.3
+          echo "${GOBIN}" >> "${GITHUB_PATH}"
+          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          # GGOOS filters targets without leaking GOOS into before-hook `go run`.
+          GGOOS: ${{ matrix.goos }}
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ env.REVISION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          GPG_SIGNING_KEY: /tmp/key.gpg
+          GPG_SIGNING_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          CODESIGN_NAME: Unpackerr
+          CODESIGN_WEBSITE: https://unpackerr.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.goos }}
+          path: dist/${{ matrix.goos }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  split-darwin:
+    needs: channel
+    # Nightly is Docker-only; skip Apple notarization.
+    if: needs.channel.outputs.channel != 'nightly'
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - name: Save iteration in Revision
+        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Import signing certificate and notary credentials
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: bash .github/scripts/macos_keychain.sh
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          GGOOS: darwin
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ env.REVISION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          KEYCHAIN_PATH: ${{ env.KEYCHAIN_PATH }}
+          MACOS_SIGN_IDENTITY: ${{ env.MACOS_SIGN_IDENTITY }}
+          MACOS_NOTARY_PROFILE_NAME: ${{ env.MACOS_NOTARY_PROFILE_NAME }}
+      - name: Staple notarized DMG
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r dmg; do
+            found=1
+            echo "stapling ${dmg}"
+            xcrun stapler staple "${dmg}"
+          done < <(find dist/darwin -type f -name '*.dmg' | sort)
+          if [ "${found}" -eq 0 ]; then
+            echo "no DMG under dist/darwin" >&2
+            find dist/darwin -type f >&2 || true
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-darwin
+          path: dist/darwin
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    needs: [channel, split, split-darwin]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.channel.result == 'success' &&
+      needs.split.result == 'success' &&
+      (needs.split-darwin.result == 'success' || needs.split-darwin.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    env:
+      CHANNEL: ${{ needs.channel.outputs.channel }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - name: Save iteration in Revision
+        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
@@ -79,71 +236,48 @@ jobs:
       - name: Skip Docker Hub
         if: env.DOCKERHUB_PASSWORD == ''
         run: echo '::warning::DOCKERHUB_PASSWORD is empty; skipping Docker Hub login and Hub image publish. Grant the org secret to this public repository (or add a repo secret) to resume golift/unpackerr pushes.'
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+      - uses: actions/download-artifact@v4
         with:
-          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
-      - name: Create GPG_SIGNING_KEY file
-        run: echo '${{ secrets.GPG_SIGNING_KEY }}' > /tmp/key.gpg
-      - name: Save iteration in Revision
-        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+          name: dist-linux
+          path: dist/linux
+      - uses: actions/download-artifact@v4
         with:
-          go-version-file: go.mod
-          cache: true
-      - name: Install golift codesign
-        env:
-          GOBIN: ${{ runner.temp }}/codesign-bin
-        run: |
-          set -euo pipefail
-          mkdir -p "${GOBIN}"
-          go install golift.io/codesign/cmd/codesign@v1.0.3
-          echo "${GOBIN}" >> "${GITHUB_PATH}"
-          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
-      # energye/systray needs CGO on Darwin. Copy osxcross from goreleaser-cross
-      # so ubuntu-latest can compile the Cocoa backend (o64-clang / oa64-clang).
-      - name: Install Darwin CGO toolchain
-        run: |
-          set -euo pipefail
-          docker pull ghcr.io/goreleaser/goreleaser-cross:v1.27.0-1
-          cid="$(docker create ghcr.io/goreleaser/goreleaser-cross:v1.27.0-1)"
-          sudo docker cp "${cid}:/usr/local/osxcross" /usr/local/osxcross
-          docker rm "${cid}"
-          test -x /usr/local/osxcross/bin/o64-clang
-          test -x /usr/local/osxcross/bin/oa64-clang
-          echo /usr/local/osxcross/bin >> "${GITHUB_PATH}"
-          echo OSX_CROSS=1 >> "${GITHUB_ENV}"
+          name: dist-windows
+          path: dist/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-freebsd
+          path: dist/freebsd
+      - uses: actions/download-artifact@v4
+        if: needs.split-darwin.result == 'success'
+        with:
+          name: dist-darwin
+          path: dist/darwin
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro
           version: "~> v2"
-          args: ${{ steps.channel.outputs.args }}
+          args: continue --merge --timeout 60m
         env:
-          CHANNEL: ${{ steps.channel.outputs.channel }}
-          # GITHUB_ENV alone is not enough: goreleaser-action only forwards
-          # this map, and nightly.version_template needs REVISION.
+          CHANNEL: ${{ needs.channel.outputs.channel }}
           REVISION: ${{ env.REVISION }}
-          OSX_CROSS: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           USER: github-actions
-          GPG_SIGNING_KEY: /tmp/key.gpg
-          GPG_SIGNING_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
-          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
-          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
-          CODESIGN_NAME: Unpackerr
-          CODESIGN_WEBSITE: https://unpackerr.zip
-          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
-          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
-          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
-          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
-          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
           AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+      - name: Flatten Linux packages for packagecloud
+        if: env.CHANNEL != 'nightly'
+        run: |
+          set -euo pipefail
+          find dist -type f \( -name '*.deb' -o -name '*.rpm' \) -print0 |
+            while IFS= read -r -d '' f; do
+              base="$(basename "$f")"
+              if [ ! -e "dist/${base}" ]; then
+                cp "$f" "dist/${base}"
+              fi
+            done
       - uses: golift/upload-packagecloud@eb0067369b59340b04dce218010960ebe74720b2 # v1.1.1
         if: env.CHANNEL != 'nightly'
         with:
@@ -156,5 +290,5 @@ jobs:
         if: env.CHANNEL == 'unstable'
         env:
           UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
-          VERSION: ${{ github.ref_name }}
+          CHANNEL: unstable
         run: bash .github/scripts/unstable_upload.sh dist

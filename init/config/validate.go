@@ -35,7 +35,11 @@ func (c *Config) validate() error {
 		}
 	}
 
-	errs = append(errs, c.validateGeneratedDocs()...)
+	// Rendering panics on structurally invalid params (e.g. a nil Default).
+	// Return those errors instead of crashing.
+	if len(errs) == 0 {
+		errs = append(errs, c.validateGeneratedDocs()...)
+	}
 
 	return fmtErrs(errs)
 }
@@ -241,13 +245,11 @@ func (h *Header) validate(name section) []string {
 func mdxProblems(content, where string) []string {
 	var errs []string
 
-	stripped := stripFencedCode(content)
+	stripped := stripInlineCode(stripFencedCode(content))
 
 	if admonitionSpace.MatchString(stripped) {
 		errs = append(errs, where+": use :::note[Title] (MDX v2); :::note Title fails Docusaurus compile")
 	}
-
-	stripped = stripInlineCode(stripped)
 
 	for line := range strings.SplitSeq(stripped, "\n") {
 		if hasUnescapedBrace(line) {
@@ -270,19 +272,23 @@ func hasUnescapedBrace(line string) bool {
 			continue
 		}
 
-		// Count the backslashes immediately before this brace.
-		slashes := 0
-		for j := idx - 1; j >= 0 && stripped[j] == '\\'; j-- {
-			slashes++
-		}
-
-		// An odd number of backslashes means the brace is escaped.
-		if slashes%2 == 0 {
+		if !oddEscapes(stripped, idx) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// oddEscapes reports whether idx is preceded by an odd number of backslashes,
+// meaning the character is escaped in CommonMark.
+func oddEscapes(content string, idx int) bool {
+	slashes := 0
+	for j := idx - 1; j >= 0 && content[j] == '\\'; j-- {
+		slashes++
+	}
+
+	return slashes%2 == 1
 }
 
 // stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
@@ -386,6 +392,11 @@ func fenceOpener(line string) (byte, int, bool) {
 		return 0, 0, false
 	}
 
+	// CommonMark: a backtick fence's info string cannot contain backticks.
+	if char == '`' && strings.ContainsRune(line[length:], '`') {
+		return 0, 0, false
+	}
+
 	return char, length, true
 }
 
@@ -410,7 +421,7 @@ func stripInlineCode(content string) string {
 	var out strings.Builder
 
 	for idx := 0; idx < len(content); {
-		if content[idx] != '`' {
+		if content[idx] != '`' || oddEscapes(content, idx) {
 			out.WriteByte(content[idx])
 			idx++
 
@@ -443,7 +454,7 @@ func stripInlineCode(content string) string {
 // run does not close the span, so it is skipped over rather than matched.
 func findClosingBacktickRun(content string, from, run int) int {
 	for idx := from; idx < len(content); {
-		if content[idx] != '`' {
+		if content[idx] != '`' || oddEscapes(content, idx) {
 			idx++
 			continue
 		}

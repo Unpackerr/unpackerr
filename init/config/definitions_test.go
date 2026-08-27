@@ -79,6 +79,33 @@ func TestDefinitionsFile(t *testing.T) {
 	}
 }
 
+func TestMDXAdmonitionInInlineCode(t *testing.T) {
+	t.Parallel()
+
+	accepted := mdxProblems("`code\n:::note Title\nmore`", "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf(":::note Title inside a multiline code span is code: %v", accepted)
+	}
+}
+
+func TestMDXBacktickFenceInfoString(t *testing.T) {
+	t.Parallel()
+
+	problems := mdxProblems("```go`\n{broken}\n```\n", "fixture")
+	if len(problems) == 0 {
+		t.Fatal("a backtick in a backtick-fence info string is not a fence; { must be flagged")
+	}
+}
+
+func TestMDXEscapedBackticks(t *testing.T) {
+	t.Parallel()
+
+	problems := mdxProblems("\\`{\\`", "fixture")
+	if len(problems) == 0 {
+		t.Fatal("escaped backticks are not a code span; { must be flagged")
+	}
+}
+
 func TestMDXAdmonitionTitleNeedsBrackets(t *testing.T) {
 	t.Parallel()
 
@@ -285,6 +312,17 @@ func TestValidateNilParam(t *testing.T) {
 
 	if err := config.validate(); err == nil {
 		t.Fatal("a null param must fail validation, not panic")
+	}
+}
+
+func TestValidateMissingDefaultDoesNotPanic(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Sections["global"].Params[0].Default = nil
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a missing default must fail validation, not panic")
 	}
 }
 

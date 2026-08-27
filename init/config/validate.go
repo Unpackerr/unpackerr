@@ -40,6 +40,22 @@ func (c *Config) validate() error {
 	return fmtErrs(errs)
 }
 
+// definedListValid reports whether a defined section can be rendered: it must
+// have a base section, a defs map, and a def_order whose entries all exist.
+func (c *Config) definedListValid(name section) bool {
+	if c.Sections[name] == nil || c.Defs[name] == nil {
+		return false
+	}
+
+	for _, item := range c.DefOrder[name] {
+		if c.Defs[name][item] == nil {
+			return false
+		}
+	}
+
+	return true
+}
+
 // validateGeneratedDocs renders every docusaurus document and checks it for MDX
 // compile breakers before any file is written. This catches problems in values
 // that are interpolated but not individually validated (prefixes, table cells).
@@ -55,7 +71,14 @@ func (c *Config) validateGeneratedDocs() []string {
 		}
 
 		var data string
+
 		if c.Defs[name] != nil {
+			// Rendering panics on a nil def; the structural validator already
+			// recorded that error, so skip rendering this broken list.
+			if !c.definedListValid(name) {
+				continue
+			}
+
 			data = header.makeDefinedDocs(c.Prefix, c.Defs[name], c.DefOrder[name])
 		} else {
 			data = header.makeDocs(c.Prefix, name)
@@ -297,8 +320,9 @@ func stripAllowedBraces(line string) string {
 }
 
 // stripFencedCode removes fenced code blocks. A fence opens with a run of 3+
-// backticks or tildes and closes only with the same marker character and a run
-// at least as long (CommonMark). Info strings are ignored.
+// backticks or tildes (indented at most three spaces) and closes only with the
+// same marker character, a run at least as long, and whitespace-only trailing
+// text (CommonMark). Info strings on the opening fence are ignored.
 func stripFencedCode(content string) string {
 	var out strings.Builder
 
@@ -307,12 +331,16 @@ func stripFencedCode(content string) string {
 	fenceLen := 0
 
 	for line := range strings.SplitSeq(content, "\n") {
+		// CommonMark allows up to 3 leading spaces; more makes it indented code.
+		indent := len(line) - len(strings.TrimLeft(line, " "))
 		trimmed := strings.TrimSpace(line)
 
 		if !inFence {
-			if char, length, ok := fenceMarker(trimmed); ok {
-				inFence, fenceChar, fenceLen = true, char, length
-				continue
+			if indent <= maxFenceIndent {
+				if char, length, isOpen := fenceOpener(trimmed); isOpen {
+					inFence, fenceChar, fenceLen = true, char, length
+					continue
+				}
 			}
 
 			out.WriteString(line)
@@ -321,8 +349,8 @@ func stripFencedCode(content string) string {
 			continue
 		}
 
-		// Inside a fence: close only on a compatible marker (same char, run >= opener).
-		if char, length, ok := fenceMarker(trimmed); ok && char == fenceChar && length >= fenceLen {
+		// Inside a fence: close on a compatible marker with only trailing spaces.
+		if char, length, isClose := fenceCloser(trimmed); isClose && char == fenceChar && length >= fenceLen {
 			inFence = false
 		}
 	}
@@ -331,11 +359,15 @@ func stripFencedCode(content string) string {
 }
 
 // minFenceLen is the minimum run length that opens a CommonMark code fence.
-const minFenceLen = 3
+// maxFenceIndent is the maximum leading spaces before a fence becomes indented code.
+const (
+	minFenceLen    = 3
+	maxFenceIndent = 3
+)
 
-// fenceMarker reports whether a trimmed line is a code fence marker (``` or ~~~,
-// 3 or more of the same character), returning the marker char and run length.
-func fenceMarker(line string) (byte, int, bool) {
+// fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same
+// backtick or tilde. An optional info string may follow the run.
+func fenceOpener(line string) (byte, int, bool) {
 	if len(line) < minFenceLen {
 		return 0, 0, false
 	}
@@ -357,8 +389,23 @@ func fenceMarker(line string) (byte, int, bool) {
 	return char, length, true
 }
 
+// fenceCloser reports whether a trimmed line closes a code fence: 3+ of the same
+// backtick or tilde with only whitespace after the run (no info string).
+func fenceCloser(line string) (byte, int, bool) {
+	char, length, ok := fenceOpener(line)
+	if !ok {
+		return 0, 0, false
+	}
+
+	if strings.Trim(line[length:], " \t") != "" {
+		return 0, 0, false
+	}
+
+	return char, length, true
+}
+
 // stripInlineCode removes markdown code spans. A span opens with a run of
-// backticks and closes only with a run of the same length.
+// backticks and closes only with a run of exactly the same length (CommonMark).
 func stripInlineCode(content string) string {
 	var out strings.Builder
 
@@ -375,22 +422,46 @@ func stripInlineCode(content string) string {
 			run++
 		}
 
-		closer := strings.Repeat("`", run)
-
-		end := strings.Index(content[idx+run:], closer)
-		if end < 0 {
+		closer := findClosingBacktickRun(content, idx+run, run)
+		if closer < 0 {
 			// No matching closer; not a code span. Keep the backticks as text.
-			out.WriteString(closer)
+			out.WriteString(strings.Repeat("`", run))
 
 			idx += run
 
 			continue
 		}
 
-		idx += run + end + run
+		idx = closer + run
 	}
 
 	return out.String()
+}
+
+// findClosingBacktickRun returns the index of the first backtick run whose
+// length is exactly `run` at or after `from`, or -1 if none exists. A longer
+// run does not close the span, so it is skipped over rather than matched.
+func findClosingBacktickRun(content string, from, run int) int {
+	for idx := from; idx < len(content); {
+		if content[idx] != '`' {
+			idx++
+			continue
+		}
+
+		length := 0
+		for idx+length < len(content) && content[idx+length] == '`' {
+			length++
+		}
+
+		if length == run {
+			return idx
+		}
+
+		// Skip past this mismatched run so a longer run is not partially matched.
+		idx += length
+	}
+
+	return -1
 }
 
 func validImportIdent(name string) bool {

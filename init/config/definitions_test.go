@@ -317,4 +317,44 @@ func TestMDXTildeAndLongFence(t *testing.T) {
 	if len(tilde) != 0 {
 		t.Fatalf("content inside a ~~~ fence is code and should be accepted: %v", tilde)
 	}
+
+	// A marker indented four spaces is indented code, not a fence opener. The
+	// braces on that line are therefore MDX and must be flagged.
+	indented := mdxProblems("    ```{broken}\n", "fixture")
+	if len(indented) == 0 {
+		t.Fatal("a four-space-indented ``` is indented code, not a fence; the { must be flagged")
+	}
+
+	// A closing fence with trailing text does not close the block.
+	notClose := mdxProblems("```\n```not-a-close\n{inside}\n```\n", "fixture")
+	if len(notClose) != 0 {
+		t.Fatalf("a fence line with trailing text must not close the block: %v", notClose)
+	}
+}
+
+func TestMDXExactBacktickRunCloses(t *testing.T) {
+	t.Parallel()
+
+	// `` opens a span; a later ``` run must NOT close it, so {broken} is MDX.
+	mismatched := mdxProblems("`` {broken} ```", "fixture")
+	if len(mismatched) == 0 {
+		t.Fatal("a longer backtick run must not close the span; { must be flagged")
+	}
+
+	// But an exact matching run does close it.
+	matched := mdxProblems("`` {ok} ``", "fixture")
+	if len(matched) != 0 {
+		t.Fatalf("an exact backtick run closes the span: %v", matched)
+	}
+}
+
+func TestValidateNilDefRendering(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Defs["starr"]["radarr"] = nil
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a null def entry must fail validation, not panic")
+	}
 }

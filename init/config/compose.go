@@ -76,6 +76,10 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 	}
 
 	for _, param := range h.Params {
+		if param == nil {
+			continue
+		}
+
 		if h.Kind == list {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {

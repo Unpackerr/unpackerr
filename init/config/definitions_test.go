@@ -265,3 +265,56 @@ func TestValidateTitleMDX(t *testing.T) {
 		t.Fatal("defined title with a bare brace must fail validation")
 	}
 }
+
+func TestValidatePrefixMDX(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Prefix = "BAD{"
+
+	if err := config.validate(); err == nil {
+		t.Fatal("envvar_prefix with a bare brace must fail validation")
+	}
+}
+
+func TestValidateNilParam(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Sections["global"].Params = append(config.Sections["global"].Params, nil)
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a null param must fail validation, not panic")
+	}
+}
+
+func TestMDXEscapedBrace(t *testing.T) {
+	t.Parallel()
+
+	accepted := mdxProblems(`literal \{name\} here`, "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf("backslash-escaped braces should be accepted: %v", accepted)
+	}
+
+	// Even backslashes escape the backslash, leaving the brace bare.
+	problems := mdxProblems(`literal \\{name`, "fixture")
+	if len(problems) == 0 {
+		t.Fatal("an even backslash run leaves { unescaped and must be flagged")
+	}
+}
+
+func TestMDXTildeAndLongFence(t *testing.T) {
+	t.Parallel()
+
+	// A four-backtick fence containing a triple-backtick line stays code.
+	fenced := mdxProblems("````\n```\n{notFlagged}\n````\n", "fixture")
+	if len(fenced) != 0 {
+		t.Fatalf("braces inside a longer fence should be accepted: %v", fenced)
+	}
+
+	// A tilde fence is also valid code fencing.
+	tilde := mdxProblems("~~~md\n:::note Title\n~~~\n", "fixture")
+	if len(tilde) != 0 {
+		t.Fatalf("content inside a ~~~ fence is code and should be accepted: %v", tilde)
+	}
+}

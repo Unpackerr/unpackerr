@@ -20,6 +20,8 @@ func (c *Config) validate() error {
 		errs = append(errs, "envvar_prefix is required")
 	}
 
+	errs = append(errs, mdxProblems(c.Prefix, "envvar_prefix")...)
+
 	if len(c.Order) == 0 {
 		errs = append(errs, "order is empty")
 	}
@@ -33,7 +35,51 @@ func (c *Config) validate() error {
 		}
 	}
 
+	errs = append(errs, c.validateGeneratedDocs()...)
+
 	return fmtErrs(errs)
+}
+
+// validateGeneratedDocs renders every docusaurus document and checks it for MDX
+// compile breakers before any file is written. This catches problems in values
+// that are interpolated but not individually validated (prefixes, table cells).
+func (c *Config) validateGeneratedDocs() []string {
+	var errs []string
+
+	errs = append(errs, checkGeneratedMDX("index.md", c.makeIndexDocs())...)
+
+	for _, name := range c.Order {
+		header := c.Sections[name]
+		if header == nil || len(header.Params) < 1 {
+			continue
+		}
+
+		var data string
+		if c.Defs[name] != nil {
+			data = header.makeDefinedDocs(c.Prefix, c.Defs[name], c.DefOrder[name])
+		} else {
+			data = header.makeDocs(c.Prefix, name)
+		}
+
+		errs = append(errs, checkGeneratedMDX(string(name)+".md", data)...)
+	}
+
+	return errs
+}
+
+// makeIndexDocs renders the generated index.md content (without the front matter).
+func (c *Config) makeIndexDocs() string {
+	var first, second strings.Builder
+
+	for _, name := range c.Order {
+		header := c.Sections[name]
+		if header != nil && len(header.Params) > 0 && name != "global" {
+			first.WriteString("import G" + string(name) + " from './" + string(name) + ".md';\n")
+			second.WriteString("<G" + string(name) + "/>\n")
+		}
+	}
+
+	return first.String() + "\n" + second.String()
 }
 
 func (c *Config) validateOrder() []string {
@@ -87,6 +133,7 @@ func (c *Config) validateDefs() []string {
 			}
 
 			if def == nil {
+				errs = append(errs, string(defName)+"."+string(item)+": definition is empty (null)")
 				continue
 			}
 
@@ -130,8 +177,14 @@ func (h *Header) validate(name section) []string {
 	errs = append(errs, mdxProblems(h.Docs, string(name)+" docs")...)
 	errs = append(errs, mdxProblems(h.Notes, string(name)+" notes")...)
 	errs = append(errs, mdxProblems(h.Tail, string(name)+" tail")...)
+	errs = append(errs, mdxProblems(h.Prefix, string(name)+" envvar_prefix")...)
 
 	for _, param := range h.Params {
+		if param == nil {
+			errs = append(errs, string(name)+": param is empty (null)")
+			continue
+		}
+
 		if param.Name == "" {
 			errs = append(errs, string(name)+": param missing name")
 		}
@@ -174,13 +227,39 @@ func mdxProblems(content, where string) []string {
 	stripped = stripInlineCode(stripped)
 
 	for line := range strings.SplitSeq(stripped, "\n") {
-		if strings.ContainsAny(stripAllowedBraces(line), "{}") {
+		if hasUnescapedBrace(line) {
 			errs = append(errs, where+": unescaped { or } breaks MDX (wrap in backticks or use {{ )")
 			break
 		}
 	}
 
 	return errs
+}
+
+// hasUnescapedBrace reports whether a line contains a { or } that MDX will
+// parse as JSX. Complete {{...}} and {/*...*/} spans are removed first, then
+// backslash-escaped braces (\{, \}, and \\{) are ignored.
+func hasUnescapedBrace(line string) bool {
+	stripped := stripAllowedBraces(line)
+
+	for idx := range len(stripped) {
+		if stripped[idx] != '{' && stripped[idx] != '}' {
+			continue
+		}
+
+		// Count the backslashes immediately before this brace.
+		slashes := 0
+		for j := idx - 1; j >= 0 && stripped[j] == '\\'; j-- {
+			slashes++
+		}
+
+		// An odd number of backslashes means the brace is escaped.
+		if slashes%2 == 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
@@ -217,24 +296,65 @@ func stripAllowedBraces(line string) string {
 	return out.String()
 }
 
+// stripFencedCode removes fenced code blocks. A fence opens with a run of 3+
+// backticks or tildes and closes only with the same marker character and a run
+// at least as long (CommonMark). Info strings are ignored.
 func stripFencedCode(content string) string {
 	var out strings.Builder
 
 	inFence := false
+	fenceChar := byte(0)
+	fenceLen := 0
 
 	for line := range strings.SplitSeq(content, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "```") {
-			inFence = !inFence
+		trimmed := strings.TrimSpace(line)
+
+		if !inFence {
+			if char, length, ok := fenceMarker(trimmed); ok {
+				inFence, fenceChar, fenceLen = true, char, length
+				continue
+			}
+
+			out.WriteString(line)
+			out.WriteByte('\n')
+
 			continue
 		}
 
-		if !inFence {
-			out.WriteString(line)
-			out.WriteByte('\n')
+		// Inside a fence: close only on a compatible marker (same char, run >= opener).
+		if char, length, ok := fenceMarker(trimmed); ok && char == fenceChar && length >= fenceLen {
+			inFence = false
 		}
 	}
 
 	return out.String()
+}
+
+// minFenceLen is the minimum run length that opens a CommonMark code fence.
+const minFenceLen = 3
+
+// fenceMarker reports whether a trimmed line is a code fence marker (``` or ~~~,
+// 3 or more of the same character), returning the marker char and run length.
+func fenceMarker(line string) (byte, int, bool) {
+	if len(line) < minFenceLen {
+		return 0, 0, false
+	}
+
+	char := line[0]
+	if char != '`' && char != '~' {
+		return 0, 0, false
+	}
+
+	length := 0
+	for length < len(line) && line[length] == char {
+		length++
+	}
+
+	if length < minFenceLen {
+		return 0, 0, false
+	}
+
+	return char, length, true
 }
 
 // stripInlineCode removes markdown code spans. A span opens with a run of

@@ -31,6 +31,17 @@ func (u *Unpackerr) startTray() {
 	systray.Run(u.readyTray, u.exitTray)
 }
 
+// showTrayMenu pops the tray menu. energye/systray does not attach the menu to
+// the status item the way getlantern did, so a click does nothing unless we
+// call ShowMenu. Windows left-click has the same requirement.
+func showTrayMenu(menu systray.IMenu) {
+	if menu == nil {
+		return
+	}
+
+	_ = menu.ShowMenu()
+}
+
 func (u *Unpackerr) exitTray() {
 	u.Stop() // stop and wait for extractions.
 	// because systray wants to control the exit code? no..
@@ -41,6 +52,8 @@ func (u *Unpackerr) exitTray() {
 func (u *Unpackerr) readyTray() {
 	systray.SetTemplateIcon(bindata.SystrayIcon, bindata.SystrayIcon)
 	systray.SetTooltip("Unpackerr" + " v" + version.Version)
+	systray.SetOnClick(showTrayMenu)
+	systray.SetOnRClick(showTrayMenu)
 	u.makeChannels()
 
 	u.menu["info"].Disable()

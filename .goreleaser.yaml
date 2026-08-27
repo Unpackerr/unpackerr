@@ -161,8 +161,8 @@ dmg:
     ids: [unpackerr-app]
     use: appbundle
     extra_files:
-      - src: init/macos/background.png
-        dst: background.png
+      - glob: init/macos/background.png
+        name_template: background.png
 
 source:
   enabled: true

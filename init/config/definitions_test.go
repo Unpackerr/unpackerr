@@ -401,6 +401,41 @@ func TestMDXTildeAndLongFence(t *testing.T) {
 	}
 }
 
+func TestMDXIndentedCodeContext(t *testing.T) {
+	t.Parallel()
+
+	// CommonMark: indented code cannot interrupt a paragraph.
+	continuation := mdxProblems("text\n    {broken", "fixture")
+	if len(continuation) == 0 {
+		t.Fatal("an indented line continuing a paragraph is MDX; { must be flagged")
+	}
+
+	afterBlank := mdxProblems("text\n\n    {ok}\n", "fixture")
+	if len(afterBlank) != 0 {
+		t.Fatalf("indented code after a blank line is code: %v", afterBlank)
+	}
+
+	afterFence := mdxProblems("```\ncode\n```\n    {ok}\n", "fixture")
+	if len(afterFence) != 0 {
+		t.Fatalf("indented code after a fence is code: %v", afterFence)
+	}
+
+	tabbed := mdxProblems("\t{ok}\n", "fixture")
+	if len(tabbed) != 0 {
+		t.Fatalf("a tab-indented line is indented code: %v", tabbed)
+	}
+
+	tabCloser := mdxProblems("```\n\t```\n{stillCode}\n```\n", "fixture")
+	if len(tabCloser) != 0 {
+		t.Fatalf("a tab-indented closer must not end the fence: %v", tabCloser)
+	}
+
+	tabOpener := mdxProblems("\t```\n{broken}\n```\n", "fixture")
+	if len(tabOpener) == 0 {
+		t.Fatal("a tab-indented ``` is indented code, not a fence; later { must be flagged")
+	}
+}
+
 func TestMDXExactBacktickRunCloses(t *testing.T) {
 	t.Parallel()
 

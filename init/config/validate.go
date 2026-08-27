@@ -306,7 +306,7 @@ func isSeq(val any) bool {
 func mdxProblems(content, where string) []string {
 	var errs []string
 
-	stripped := stripInlineCode(stripIndentedCode(stripFencedCode(content)))
+	stripped := stripInlineCode(stripCodeBlocks(content))
 
 	if admonitionSpace.MatchString(stripped) {
 		errs = append(errs, where+": use :::note[Title] (MDX v2); :::note Title fails Docusaurus compile")
@@ -482,74 +482,106 @@ func skipJSBlockComment(content string, pos int) int {
 	return pos + 2 + end + len("*/")
 }
 
-// stripFencedCode removes fenced code blocks. A fence opens with a run of 3+
-// backticks or tildes (indented at most three spaces) and closes only with the
-// same marker character, a run at least as long, and whitespace-only trailing
-// text (CommonMark). Info strings on the opening fence are ignored.
-func stripFencedCode(content string) string {
-	var out strings.Builder
+// minFenceLen is the minimum run length that opens a CommonMark code fence.
+// maxFenceIndent is the maximum leading columns before a fence becomes indented code.
+// tabWidth is the CommonMark tab-stop width used when measuring indentation.
+const (
+	minFenceLen    = 3
+	maxFenceIndent = 3
+	tabWidth       = 4
+)
 
-	inFence := false
-	fenceChar := byte(0)
-	fenceLen := 0
+// stripCodeBlocks removes fenced and indented code. A fence opens with a run of
+// 3+ backticks or tildes (indented at most three columns) and closes only with
+// the same marker character, a run at least as long, and whitespace-only
+// trailing text (CommonMark). Info strings on the opening fence are ignored.
+// Indented code (4+ columns, including tabs) cannot interrupt a paragraph.
+func stripCodeBlocks(content string) string {
+	var (
+		out              strings.Builder
+		inFence          bool
+		fenceChar        byte
+		fenceLen         int
+		inIndented       bool
+		canStartIndented = true
+	)
 
 	for line := range strings.SplitSeq(content, "\n") {
-		// CommonMark allows up to 3 leading spaces; more makes it indented code.
-		indent := leadingSpaces(line)
+		indent := leadingIndent(line)
 		trimmed := strings.TrimSpace(line)
 
-		if !inFence {
-			if indent <= maxFenceIndent {
-				if char, length, isOpen := fenceOpener(trimmed); isOpen {
-					inFence, fenceChar, fenceLen = true, char, length
-					continue
-				}
+		if inFence {
+			if fenceClosed(indent, trimmed, fenceChar, fenceLen) {
+				inFence = false
+				canStartIndented = true
 			}
-
-			out.WriteString(line)
-			out.WriteByte('\n')
 
 			continue
 		}
 
-		// Inside a fence: close on a compatible marker with at most three leading
-		// spaces and only trailing whitespace after the run.
 		if indent <= maxFenceIndent {
-			if char, length, isClose := fenceCloser(trimmed); isClose && char == fenceChar && length >= fenceLen {
-				inFence = false
+			if char, length, isOpen := fenceOpener(trimmed); isOpen {
+				inFence, fenceChar, fenceLen = true, char, length
+				inIndented = false
+				canStartIndented = true
+
+				continue
 			}
 		}
-	}
 
-	return out.String()
-}
+		if trimmed == "" {
+			out.WriteString(line)
+			out.WriteByte('\n')
 
-// stripIndentedCode removes CommonMark indented code lines (4+ leading spaces).
-func stripIndentedCode(content string) string {
-	var out strings.Builder
+			inIndented = false
+			canStartIndented = true
 
-	for line := range strings.SplitSeq(content, "\n") {
-		if leadingSpaces(line) > maxFenceIndent {
+			continue
+		}
+
+		if indent > maxFenceIndent && (canStartIndented || inIndented) {
+			inIndented = true
 			continue
 		}
 
 		out.WriteString(line)
 		out.WriteByte('\n')
+
+		inIndented = false
+		canStartIndented = false
 	}
 
 	return out.String()
 }
 
-func leadingSpaces(line string) int {
-	return len(line) - len(strings.TrimLeft(line, " "))
+func fenceClosed(indent int, trimmed string, fenceChar byte, fenceLen int) bool {
+	if indent > maxFenceIndent {
+		return false
+	}
+
+	char, length, isClose := fenceCloser(trimmed)
+
+	return isClose && char == fenceChar && length >= fenceLen
 }
 
-// minFenceLen is the minimum run length that opens a CommonMark code fence.
-// maxFenceIndent is the maximum leading spaces before a fence becomes indented code.
-const (
-	minFenceLen    = 3
-	maxFenceIndent = 3
-)
+// leadingIndent returns the visual column of the first non-whitespace rune.
+// CommonMark tabs advance to the next tab stop.
+func leadingIndent(line string) int {
+	col := 0
+
+	for _, r := range line {
+		switch r {
+		case ' ':
+			col++
+		case '\t':
+			col += tabWidth - col%tabWidth
+		default:
+			return col
+		}
+	}
+
+	return col
+}
 
 // fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same
 // backtick or tilde. An optional info string may follow the run.

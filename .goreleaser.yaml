@@ -9,11 +9,11 @@ project_name: unpackerr
 #   nightly  = daily cron from main
 #   release  = v* tags
 nightly:
-  # Include REVISION (git rev-list count) so packagecloud accepts every
-  # unstable/nightly push. nfpms.release is not templated by GoReleaser
-  # (passed through as-is, so "{{ .Env.REVISION }}" becomes an invalid
-  # Debian Version). Uniqueness has to live on this template.
-  version_template: "{{ incpatch .Version }}-{{ .Env.CHANNEL }}.{{ .Env.REVISION }}"
+  # REVISION (git rev-list count) makes every --nightly cut unique for
+  # packagecloud. nfpms.release is not templated by GoReleaser. CHANNEL is
+  # only the Docker tag / repo (golift/unstable); it does not belong in the
+  # package version.
+  version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:
   hooks:

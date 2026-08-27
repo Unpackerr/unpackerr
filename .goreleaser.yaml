@@ -54,9 +54,10 @@ builds:
   - id: unpackerr-darwin
     env:
       - CGO_ENABLED=1
-      - CGO_LDFLAGS=-mmacosx-version-min=10.8
-      - CGO_CFLAGS=-mmacosx-version-min=10.8
-      - MACOSX_DEPLOYMENT_TARGET=10.8
+      # Go 1.27's darwin objects are macOS 13; a lower min just makes ld warn.
+      - CGO_LDFLAGS=-mmacosx-version-min=13.0
+      - CGO_CFLAGS=-mmacosx-version-min=13.0
+      - MACOSX_DEPLOYMENT_TARGET=13.0
       - 'CC={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang{{ else }}oa64-clang{{ end }}{{ else }}clang{{ end }}'
       - 'CXX={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang++{{ else }}oa64-clang++{{ end }}{{ else }}clang++{{ end }}'
     goos:
@@ -305,6 +306,8 @@ dockers_v2:
       org.opencontainers.image.source: "{{ .GitURL }}"
       org.opencontainers.image.vendor: Go Lift
       org.opencontainers.image.licenses: MIT
+    # Repo-scoped Hub PATs cannot pull docker/buildkit-syft-scanner.
+    sbom: false
   - id: unpackerr-release-hub
     disable: '{{ or (ne .Env.CHANNEL "release") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -319,6 +322,7 @@ dockers_v2:
       - "{{ .Major }}"
     platforms: *docker_platforms
     labels: *docker_labels
+    sbom: false
   - id: unpackerr-unstable
     disable: '{{ ne .Env.CHANNEL "unstable" }}'
     dockerfile: init/docker/Dockerfile
@@ -329,6 +333,7 @@ dockers_v2:
       - unstable
     platforms: *docker_platforms
     labels: *docker_labels
+    sbom: false
   - id: unpackerr-unstable-hub
     disable: '{{ or (ne .Env.CHANNEL "unstable") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -339,6 +344,7 @@ dockers_v2:
       - unstable
     platforms: *docker_platforms
     labels: *docker_labels
+    sbom: false
   - id: unpackerr-nightly
     disable: '{{ ne .Env.CHANNEL "nightly" }}'
     dockerfile: init/docker/Dockerfile
@@ -349,6 +355,7 @@ dockers_v2:
       - nightly
     platforms: *docker_platforms
     labels: *docker_labels
+    sbom: false
   - id: unpackerr-nightly-hub
     disable: '{{ or (ne .Env.CHANNEL "nightly") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
@@ -359,6 +366,7 @@ dockers_v2:
       - nightly
     platforms: *docker_platforms
     labels: *docker_labels
+    sbom: false
 
 aur_sources:
   - name: unpackerr

@@ -274,6 +274,32 @@ dockers_v2:
     ids: [unpackerr]
     images:
       - ghcr.io/unpackerr/unpackerr
+    tags:
+      - latest
+      - "{{ .Version }}"
+      - "v{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+    platforms: &docker_platforms
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v7
+    labels: &docker_labels
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.title: Unpackerr
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.documentation: https://unpackerr.zip/docs/install/docker
+      org.opencontainers.image.description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
+      org.opencontainers.image.url: https://unpackerr.zip
+      org.opencontainers.image.source: "{{ .GitURL }}"
+      org.opencontainers.image.vendor: Go Lift
+      org.opencontainers.image.licenses: MIT
+  - id: unpackerr-release-hub
+    disable: '{{ or .IsNightly (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
       - docker.io/golift/unpackerr
     tags:
       - latest
@@ -281,45 +307,28 @@ dockers_v2:
       - "v{{ .Version }}"
       - "{{ .Major }}.{{ .Minor }}"
       - "{{ .Major }}"
-    platforms:
-      - linux/amd64
-      - linux/arm64
-      - linux/arm/v7
-    labels:
-      org.opencontainers.image.created: "{{ .Date }}"
-      org.opencontainers.image.title: Unpackerr
-      org.opencontainers.image.revision: "{{ .FullCommit }}"
-      org.opencontainers.image.version: "{{ .Version }}"
-      org.opencontainers.image.documentation: https://unpackerr.zip/docs/install/docker
-      org.opencontainers.image.description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
-      org.opencontainers.image.url: https://unpackerr.zip
-      org.opencontainers.image.source: "{{ .GitURL }}"
-      org.opencontainers.image.vendor: Go Lift
-      org.opencontainers.image.licenses: MIT
+    platforms: *docker_platforms
+    labels: *docker_labels
   - id: unpackerr-nightly
     disable: "{{ not .IsNightly }}"
     dockerfile: init/docker/Dockerfile
     ids: [unpackerr]
     images:
       - ghcr.io/unpackerr/unpackerr
+    tags:
+      - unstable
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-nightly-hub
+    disable: '{{ or (not .IsNightly) (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
       - docker.io/golift/unpackerr
     tags:
       - unstable
-    platforms:
-      - linux/amd64
-      - linux/arm64
-      - linux/arm/v7
-    labels:
-      org.opencontainers.image.created: "{{ .Date }}"
-      org.opencontainers.image.title: Unpackerr
-      org.opencontainers.image.revision: "{{ .FullCommit }}"
-      org.opencontainers.image.version: "{{ .Version }}"
-      org.opencontainers.image.documentation: https://unpackerr.zip/docs/install/docker
-      org.opencontainers.image.description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
-      org.opencontainers.image.url: https://unpackerr.zip
-      org.opencontainers.image.source: "{{ .GitURL }}"
-      org.opencontainers.image.vendor: Go Lift
-      org.opencontainers.image.licenses: MIT
+    platforms: *docker_platforms
+    labels: *docker_labels
 
 aur_sources:
   - name: unpackerr

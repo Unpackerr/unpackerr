@@ -18,6 +18,7 @@ jobs:
     env:
       # Map first: secrets cannot be referenced in steps.if.
       CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,10 +39,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Log into Docker Hub
+        if: env.DOCKERHUB_PASSWORD != ''
         uses: docker/login-action@v4
         with:
           username: golift
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Enable Docker Hub publish
+        if: env.DOCKERHUB_PASSWORD != ''
+        run: echo DOCKERHUB_PUBLISH=1 >> "$GITHUB_ENV"
+      - name: Skip Docker Hub
+        if: env.DOCKERHUB_PASSWORD == ''
+        run: echo '::warning::DOCKERHUB_PASSWORD is empty; skipping Docker Hub login and Hub image publish. Grant the org secret to this public repository (or add a repo secret) to resume golift/unpackerr pushes.'
       - name: Import GPG key
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0

@@ -4,9 +4,12 @@ pro: true
 
 project_name: unpackerr
 
-# Nightly (push to unstable): version is for packages/ldflags; Docker tag stays `unstable`.
+# GoReleaser --nightly is "not a tagged GitHub release". CHANNEL picks the Docker tag:
+#   unstable = push to the unstable branch (manual)
+#   nightly  = daily cron from main
+#   release  = v* tags
 nightly:
-  version_template: "{{ incpatch .Version }}-unstable"
+  version_template: "{{ incpatch .Version }}-{{ .Env.CHANNEL }}"
 
 before:
   hooks:
@@ -269,7 +272,7 @@ nfpms:
 
 dockers_v2:
   - id: unpackerr-release
-    disable: "{{ .IsNightly }}"
+    disable: '{{ ne .Env.CHANNEL "release" }}'
     dockerfile: init/docker/Dockerfile
     ids: [unpackerr]
     images:
@@ -296,7 +299,7 @@ dockers_v2:
       org.opencontainers.image.vendor: Go Lift
       org.opencontainers.image.licenses: MIT
   - id: unpackerr-release-hub
-    disable: '{{ or .IsNightly (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    disable: '{{ or (ne .Env.CHANNEL "release") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
     ids: [unpackerr]
     images:
@@ -309,8 +312,8 @@ dockers_v2:
       - "{{ .Major }}"
     platforms: *docker_platforms
     labels: *docker_labels
-  - id: unpackerr-nightly
-    disable: "{{ not .IsNightly }}"
+  - id: unpackerr-unstable
+    disable: '{{ ne .Env.CHANNEL "unstable" }}'
     dockerfile: init/docker/Dockerfile
     ids: [unpackerr]
     images:
@@ -319,14 +322,34 @@ dockers_v2:
       - unstable
     platforms: *docker_platforms
     labels: *docker_labels
-  - id: unpackerr-nightly-hub
-    disable: '{{ or (not .IsNightly) (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+  - id: unpackerr-unstable-hub
+    disable: '{{ or (ne .Env.CHANNEL "unstable") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
     dockerfile: init/docker/Dockerfile
     ids: [unpackerr]
     images:
       - docker.io/golift/unpackerr
     tags:
       - unstable
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-nightly
+    disable: '{{ ne .Env.CHANNEL "nightly" }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - ghcr.io/unpackerr/unpackerr
+    tags:
+      - nightly
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-nightly-hub
+    disable: '{{ or (ne .Env.CHANNEL "nightly") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - docker.io/golift/unpackerr
+    tags:
+      - nightly
     platforms: *docker_platforms
     labels: *docker_labels
 

@@ -65,11 +65,21 @@ func (c *Config) validateDefs() []string {
 	var errs []string
 
 	for defName, defs := range c.Defs {
-		if len(c.DefOrder[defName]) == 0 {
+		order := c.DefOrder[defName]
+		if len(order) == 0 {
 			errs = append(errs, string(defName)+": in defs, but def_order is missing or empty")
 		}
 
+		ordered := make(map[section]struct{}, len(order))
+		for _, item := range order {
+			ordered[item] = struct{}{}
+		}
+
 		for item, def := range defs {
+			if _, ok := ordered[item]; !ok {
+				errs = append(errs, string(defName)+"."+string(item)+": in defs, but missing from def_order")
+			}
+
 			if def == nil {
 				continue
 			}
@@ -88,7 +98,16 @@ func (c *Config) validateDefs() []string {
 			continue
 		}
 
+		seen := make(map[section]struct{}, len(order))
+
 		for _, item := range order {
+			if _, dup := seen[item]; dup {
+				errs = append(errs, string(defName)+": def_order duplicates "+string(item))
+				continue
+			}
+
+			seen[item] = struct{}{}
+
 			if c.Defs[defName][item] == nil {
 				errs = append(errs, string(defName)+": def_order lists "+string(item)+" missing from defs")
 			}
@@ -140,11 +159,12 @@ func (h *Header) validate(name section) []string {
 func mdxProblems(content, where string) []string {
 	var errs []string
 
-	if admonitionSpace.MatchString(content) {
+	stripped := stripFencedCode(content)
+
+	if admonitionSpace.MatchString(stripped) {
 		errs = append(errs, where+": use :::note[Title] (MDX v2); :::note Title fails Docusaurus compile")
 	}
 
-	stripped := stripFencedCode(content)
 	stripped = stripInlineCode(stripped)
 
 	for line := range strings.SplitSeq(stripped, "\n") {
@@ -243,7 +263,7 @@ func (c *Config) generatedImportNames() []string {
 			continue
 		}
 
-		names = append(names, string(section))
+		names = append(names, "G"+string(section))
 	}
 
 	return names
@@ -259,9 +279,9 @@ func checkGeneratedMDX(filename, content string) []string {
 			continue
 		}
 
-		ident := strings.TrimPrefix(strings.Fields(line)[1], "G")
+		ident := strings.Fields(line)[1]
 		if !validImportIdent(ident) {
-			errs = append(errs, filename+": import G"+ident+" is not a valid JS identifier")
+			errs = append(errs, filename+": import "+ident+" is not a valid JS identifier")
 		}
 	}
 

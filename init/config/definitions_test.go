@@ -122,6 +122,15 @@ func TestMDXUnescapedBrace(t *testing.T) {
 	}
 }
 
+func TestMDXAdmonitionInFenceIsCode(t *testing.T) {
+	t.Parallel()
+
+	fenced := mdxProblems("```md\n:::note Metrics\n```\n", "fixture")
+	if len(fenced) != 0 {
+		t.Fatalf(":::note Title inside a code fence is code and should be accepted: %v", fenced)
+	}
+}
+
 func TestValidateDuplicateOrder(t *testing.T) {
 	t.Parallel()
 
@@ -144,6 +153,29 @@ func TestValidateDefsNeedOrder(t *testing.T) {
 	}
 }
 
+func TestValidateDuplicateDefOrder(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.DefOrder["starr"] = append(config.DefOrder["starr"], config.DefOrder["starr"][0])
+
+	if err := config.validate(); err == nil {
+		t.Fatal("duplicate def_order entries must fail validation")
+	}
+}
+
+func TestValidateDefMissingFromOrder(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	order := config.DefOrder["starr"]
+	config.DefOrder["starr"] = order[:len(order)-1]
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a defs entry missing from def_order must fail validation")
+	}
+}
+
 func TestValidateImportIdent(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +192,25 @@ func TestValidateImportIdent(t *testing.T) {
 
 	if err := config.validate(); err == nil {
 		t.Fatal("section web-server must fail; generated import would not compile")
+	}
+}
+
+func TestValidateNumericImportIdent(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	header := config.Sections["webserver"]
+	delete(config.Sections, "webserver")
+	config.Sections["1starr"] = header
+
+	for idx, name := range config.Order {
+		if name == "webserver" {
+			config.Order[idx] = "1starr"
+		}
+	}
+
+	if err := config.validate(); err != nil {
+		t.Fatalf("section 1starr yields valid identifier G1starr and must pass: %v", err)
 	}
 }
 

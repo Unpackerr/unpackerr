@@ -143,6 +143,21 @@ func TestMDXUnescapedBrace(t *testing.T) {
 		t.Fatalf("nested {{ JSX }} objects should be accepted: %v", nested)
 	}
 
+	quoted := mdxProblems(`<X value={{text: "}"}} />`, "fixture")
+	if len(quoted) != 0 {
+		t.Fatalf("braces inside JS strings should be accepted: %v", quoted)
+	}
+
+	quoted = mdxProblems(`<X value={{text: "{"}} />`, "fixture")
+	if len(quoted) != 0 {
+		t.Fatalf("an opening brace inside a JS string should be accepted: %v", quoted)
+	}
+
+	commented := mdxProblems("{{a: 1 /* } */}}", "fixture")
+	if len(commented) != 0 {
+		t.Fatalf("braces inside JS comments should be accepted: %v", commented)
+	}
+
 	escapedOpen := mdxProblems(`\{{x}}`, "fixture")
 	if len(escapedOpen) == 0 {
 		t.Fatal(`\{{x}} is an escaped { plus leftover braces and must be flagged`)

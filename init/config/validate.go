@@ -390,31 +390,96 @@ func stripAllowedBraces(line string) string {
 }
 
 // balancedBraceEnd returns the index after a complete brace group starting at
-// idx, counting nested unescaped { and }. idx must point at an unescaped '{'.
+// idx, counting nested unescaped { and }. Braces inside JavaScript strings and
+// comments are ignored. idx must point at an unescaped '{'.
 func balancedBraceEnd(content string, idx int) int {
 	depth := 0
 
-	for pos := idx; pos < len(content); pos++ {
-		if content[pos] != '{' && content[pos] != '}' {
+	for pos := idx; pos < len(content); {
+		if skip, next := skipJSLexical(content, pos); skip {
+			if next < 0 {
+				return -1
+			}
+
+			pos = next
+
 			continue
 		}
 
 		if oddEscapes(content, pos) {
+			pos++
 			continue
 		}
 
-		if content[pos] == '{' {
+		switch content[pos] {
+		case '{':
 			depth++
-			continue
+		case '}':
+			depth--
+			if depth == 0 {
+				return pos + 1
+			}
 		}
 
-		depth--
-		if depth == 0 {
-			return pos + 1
+		pos++
+	}
+
+	return -1
+}
+
+// skipJSLexical reports whether pos starts a JS string or comment and, if so,
+// the index after that construct (or -1 if a string is unterminated).
+func skipJSLexical(content string, pos int) (bool, int) {
+	if pos >= len(content) {
+		return false, pos
+	}
+
+	switch content[pos] {
+	case '"', '\'', '`':
+		return true, skipJSString(content, pos)
+	case '/':
+		if pos+1 >= len(content) {
+			return false, pos
+		}
+
+		switch content[pos+1] {
+		case '/':
+			return true, skipJSLineComment(content, pos)
+		case '*':
+			return true, skipJSBlockComment(content, pos)
+		}
+	}
+
+	return false, pos
+}
+
+func skipJSString(content string, pos int) int {
+	quote := content[pos]
+
+	for idx := pos + 1; idx < len(content); idx++ {
+		if content[idx] == quote && !oddEscapes(content, idx) {
+			return idx + 1
 		}
 	}
 
 	return -1
+}
+
+func skipJSLineComment(content string, pos int) int {
+	if nl := strings.IndexByte(content[pos:], '\n'); nl >= 0 {
+		return pos + nl
+	}
+
+	return len(content)
+}
+
+func skipJSBlockComment(content string, pos int) int {
+	end := strings.Index(content[pos+2:], "*/")
+	if end < 0 {
+		return len(content)
+	}
+
+	return pos + 2 + end + len("*/")
 }
 
 // stripFencedCode removes fenced code blocks. A fence opens with a run of 3+

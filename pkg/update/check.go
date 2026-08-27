@@ -18,7 +18,7 @@ import (
 var OSsuffixMap = map[string]string{ //nolint:gochecknoglobals
 	"darwin":  ".dmg",
 	"windows": ".exe.zip",
-	"freebsd": ".txz",
+	"freebsd": ".tar.xz",
 	"linux":   "", // too many variants right now.
 }
 

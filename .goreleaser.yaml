@@ -89,8 +89,8 @@ builds:
       - arm
       - arm64
       - '386'
+    # One ARM (v7) so the archive name can stay armhf for check.go / install.sh.
     goarm:
-      - '6'
       - '7'
     flags:
       - -trimpath
@@ -195,12 +195,16 @@ archives:
         dst: unpackerr-manual.html
         info:
           mode: 0644
+    # check.go looks for a Windows asset ending in .exe.zip.
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ if eq .Os "windows" }}.exe{{ end }}'
     format_overrides:
       - goos: windows
         formats: [zip]
   - id: freebsd
     ids: [unpackerr-freebsd]
     formats: [tar.xz]
+    # Match pkg/update and init/install.sh: amd64/arm64/i386/armhf + .tar.xz
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ if eq .Arch "386" }}i386{{ else if eq .Arch "arm" }}armhf{{ else }}{{ .Arch }}{{ end }}'
     wrap_in_directory: false
     files:
       - src: examples/unpackerr.conf.example

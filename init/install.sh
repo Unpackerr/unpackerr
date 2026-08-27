@@ -12,7 +12,7 @@
 # - If you're on RedHat/CentOS/Fedora, installs the latest rpm package.
 # - If you're on Debian/Ubuntu/Knoppix, installs the latest deb package.
 # - If you're on Arch Linux, installs the latest zst (pacman) package.
-# - If you're on FreeBSD, installs the latest txz package.
+# - If you're on FreeBSD, extracts the latest .tar.xz into /.
 ##########################################################################################
 
 
@@ -57,8 +57,9 @@ else
   exit 1
 fi
 
-if [[ $1 = deb ]] || [[ $1 = rpm ]] || [[ $1 = txz ]] || [[ $1 = zst ]] || [[ $1 = pkg.tar.zst ]]; then
+if [[ $1 = deb ]] || [[ $1 = rpm ]] || [[ $1 = txz ]] || [[ $1 = tar.xz ]] || [[ $1 = zst ]] || [[ $1 = pkg.tar.zst ]]; then
   [[ $1 = zst ]] && FILE=pkg.tar.zst || FILE="$1"
+  [[ $1 = txz ]] && FILE=tar.xz
 elif pacman --version > /dev/null 2>&1 && [[ $ID = arch ]] ; then
   FILE=pkg.tar.zst
 elif rpm --version > /dev/null 2>&1 && [[ $ID != debian ]] && [[ $ID_LIKE != debian ]]; then
@@ -66,7 +67,7 @@ elif rpm --version > /dev/null 2>&1 && [[ $ID != debian ]] && [[ $ID_LIKE != deb
 elif dpkg --version > /dev/null 2>&1; then
   FILE=deb
 elif pkg --version > /dev/null 2>&1; then
-  FILE=txz
+  FILE=tar.xz
 fi
 
 if [[ -z ${FILE} ]]; then
@@ -110,9 +111,10 @@ case "${FILE}" in
     dpkg -s "${PACKAGE}" 2>/dev/null | grep -qE 'Status.*installed' || INSTALLED=""
     INSTALLER="dpkg --force-confdef --force-confold --install"
     ;;
-  "txz")
-    INSTALLER="pkg install --yes"
-    INSTALLED=$(pkg info" ${PACKAGE}" 2>/dev/null | grep Version | cut -d: -f2 | cut -d- -f1 | awk '{print $1}')
+  "txz"|"tar.xz")
+    # GoReleaser ships a FreeBSD root tarball (usr/local/...), not a pkg(8) .txz.
+    INSTALLER="tar -xJ -C / -f"
+    INSTALLED=""
     ;;
   "pkg.tar.zst")
     INSTALLER="pacman --noconfirm --upgrade"

@@ -9,9 +9,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleVersion</key>
-	<string>{{ .Version }}</string>
+	<string>{{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ with .Env.REVISION }}.{{ . }}{{ end }}</string>
 	<key>CFBundleShortVersionString</key>
-	<string>{{ .Version }}</string>
+	<string>{{ .Major }}.{{ .Minor }}.{{ .Patch }}</string>
 	<key>CFBundleExecutable</key>
 	<string>{{ .BinaryName }}</string>
 	<key>NSAppTransportSecurity</key>

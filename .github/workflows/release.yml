@@ -153,5 +153,7 @@ jobs:
         if: env.CHANNEL == 'unstable'
         env:
           UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
-          VERSION: ${{ github.ref_name }}
-        run: bash .github/scripts/unstable_upload.sh dist
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version dist/metadata.json)"
+          VERSION="${version}-${REVISION}" bash .github/scripts/unstable_upload.sh dist

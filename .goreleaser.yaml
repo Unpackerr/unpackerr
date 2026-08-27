@@ -9,7 +9,10 @@ project_name: unpackerr
 #   nightly  = daily cron from main
 #   release  = v* tags
 nightly:
-  version_template: "{{ incpatch .Version }}-{{ .Env.CHANNEL }}"
+  # Include REVISION (git rev-list count) so packagecloud accepts every
+  # unstable/nightly push. Without it the Debian filename is reused
+  # (e.g. unpackerr_0.15.3~unstable+git_amd64.deb) and the upload fails.
+  version_template: "{{ incpatch .Version }}-{{ .Env.CHANNEL }}.{{ .Env.REVISION }}"
 
 before:
   hooks:
@@ -220,6 +223,11 @@ archives:
 nfpms:
   - id: unpackerr-packages
     ids: [unpackerr]
+    # nFPM maps both GOARM 6 and 7 to Debian armhf. Uploading both to
+    # packagecloud fails: "filename has already been taken". Keep GOARM=6
+    # only, matching the old Makefile armhf package (archives/docker still
+    # build both).
+    if: '{{ not (and (eq .Arch "arm") (eq .Arm "7")) }}'
     vendor: Go Lift
     homepage: https://unpackerr.zip
     maintainer: David Newhall II <captain at golift dot io>

@@ -5,290 +5,99 @@ on:
       - unstable
     tags:
       - v*
-  pull_request:
-    branches:
-    - main
 permissions:
-  contents: read
+  contents: write
+  packages: write
 jobs:
-  macapp-test:
-    # description: "Builds and signs a macOS app then packages it in a notarized DMG."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    name: Make macOS DMG
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # we need the whole thing so we can count commits.
-          fetch-depth: '0'
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-      - name: go-generate
-        run: go generate ./...
-      - name: make-signdmg
-        env:
-          APPLE_SIGNING_KEY: ${{ secrets.APPLE_SIGNING_KEY }}
-          AC_USERNAME: ${{ secrets.AC_USERNAME }}
-          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
-          AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
-        id: release
-        run: |
-          brew install Bearer/tap/gon
-          make signdmg
-      - name: upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: dmg-release
-          path: release
-
-  release-test:
-    # description: "Builds all the application client binaries and packages for a release."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable' || github.ref == 'refs/heads/main'
-    outputs:
-      version: ${{ steps.release.outputs.version }}
-    name: Make Release Assets
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      packages: write
       id-token: write
     env:
-      GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
       # Map first: secrets cannot be referenced in steps.if.
       CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # we need the whole thing so we can count commits.
-          fetch-depth: '0'
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-      - name: make-release
-        id: release
-        env:
-          # Job-level CODESIGN_URL is only for the codesign step's if.
-          # Make must not see it: signexe.sh would fail before the Action installs the CLI.
-          CODESIGN_URL: ""
-        run: |
-          sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
-          sudo gem install --no-document fpm
-          echo "${GPG_SIGNING_KEY}" | gpg --import -
-          make release WINDOWS_ZIP=0
-          source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
-      - uses: golift/codesign@v1
-        if: env.CODESIGN_URL != ''
-        with:
-          files: unpackerr.amd64.exe
-          url: ${{ secrets.CODESIGN_URL }}
-          client-cert: ${{ secrets.CODESIGN_CLIENT_CERT }}
-          client-key: ${{ secrets.CODESIGN_CLIENT_KEY }}
-          name: Unpackerr
-          website: https://unpackerr.zip
-      - name: Zip Windows exe
-        run: |
-          make windows_zip
-          rm -f release/checksums.sha256.txt
-          openssl dgst -r -sha256 release/* | sed 's#release/##' | tee release/checksums.sha256.txt
-      - name: upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: release
-          path: release
-
-  deploy-unstable-unstable:
-    # description: "Uploads pre-built binaries to unstable.golift.io."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    strategy:
-      matrix:
-        files: [release, dmg-release]
-    needs:
-      - release-test
-      - macapp-test
-    name: Deploy Unstable.app
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Download files: ${{ matrix.files }}"
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.files }}
-      - name: Upload files to unstable.golift.io
-        run: >-
-          set -euo pipefail;
-          for file in *.{zip,dmg,gz}; do
-            [ -f "$file" ] || continue;
-            echo "Uploading: ${file}";
-            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
-            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
-            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
-            versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
-            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
-            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
-            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
-          done
-
-  deploy-unstable-packagecloud:
-    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
-    if: github.ref == 'refs/heads/unstable'
-    needs: release-test
-    name: Deploy Unstable PackageCloud
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release files
-        uses: actions/download-artifact@v8
-        with:
-          name: release
-      - uses: golift/upload-packagecloud@v1
-        with:
-          userrepo: golift/unstable
-          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          packages: .
-          rpmdists: el/6
-          debdists: ubuntu/focal
-
-  deploy-packagecloud:
-    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: release-test
-    name: Deploy Release PackageCloud
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release files
-        uses: actions/download-artifact@v8
-        with:
-          name: release
-      - uses: golift/upload-packagecloud@v1
-        with:
-          userrepo: golift/pkgs
-          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          packages: .
-          rpmdists: el/6
-          debdists: ubuntu/focal
-
-  deploy-github-release:
-    # description: uploads all the built release assets to the GitHub Release.
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-    needs: [release-test, macapp-test]
-    strategy:
-      matrix:
-        files: [release, dmg-release]
-    name: Deploy GitHub Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download ${{ matrix.files }} Files
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.files }}
-      - name: Publish ${{ matrix.files }} artifacts to github
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            *.rpm
-            *.deb
-            *.txz
-            *.zip
-            *.dmg
-            *.gz
-            *.txt
-            *.zst
-            *.sig
-
-  archlinux-aur:
-    # description: creates and uploads and aur file to the golift/aur repo for arch linux.
-    needs: deploy-github-release
-    name: Deploy ArchLinux AUR
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: '0'
-      - name: Deploy Arch AUR
-        run: bash init/archlinux/aur-deploy.sh
-        env:
-          DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
-
-  docker-ghcr-build-push:
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    name: Deploy GHCR Container
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
+          fetch-depth: 0
+      - run: git fetch --force --tags
+      - name: Install package tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm genisoimage
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
-          platforms: 'arm64'
-
-      # Workaround: https://github.com/docker/build-push-action/issues/461
-      - name: Setup Docker buildx
+          platforms: arm64,arm
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ghcr.io
-        if: github.event_name != 'pull_request'
+      - name: Log into GHCR
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
+      - name: Log into Docker Hub
+        uses: docker/login-action@v4
         with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern=v{{version}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=ref,enable=true,event=branch
-
-      - name: Set docker build-args
-        run: >-
-          git fetch --force --tags;
-          source ./settings.sh;
-          for item in DATE COMMIT VERSION ITERATION BRANCH LICENSE DESC VENDOR MAINT SOURCE_URL; do
-            eval echo "settings.sh build-arg: ${item}=\$${item}";
-            eval echo "${item}=\$${item}" >> $GITHUB_ENV;
-          done
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v7
+          username: golift
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
-          platforms: |-
-            linux/amd64
-            linux/arm64
-          context: .
-          file: init/docker/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILD_DATE=${{ env.DATE }}
-            COMMIT=${{ env.COMMIT }}
-            VERSION=${{ env.VERSION }}
-            ITERATION=${{ env.ITERATION }}
-            BRANCH=${{ env.BRANCH }}
-            LICENSE=${{ env.LICENSE }}
-            DESC=${{ env.DESC }}
-            VENDOR=${{ env.VENDOR }}
-            AUTHOR=${{ env.MAINT }}
-            SOURCE_URL=${{ env.SOURCE_URL }}
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
+      - name: Create GPG_SIGNING_KEY file
+        run: echo '${{ secrets.GPG_SIGNING_KEY }}' > /tmp/key.gpg
+      - name: Save iteration in Revision
+        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install golift codesign
+        env:
+          GOBIN: ${{ runner.temp }}/codesign-bin
+        run: |
+          set -euo pipefail
+          mkdir -p "${GOBIN}"
+          go install golift.io/codesign/cmd/codesign@v1.0.3
+          echo "${GOBIN}" >> "${GITHUB_PATH}"
+          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: ${{ github.ref == 'refs/heads/unstable' && 'release --nightly --clean --timeout 60m' || 'release --clean --timeout 60m' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          USER: github-actions
+          GPG_SIGNING_KEY: /tmp/key.gpg
+          GPG_SIGNING_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          CODESIGN_NAME: Unpackerr
+          CODESIGN_WEBSITE: https://unpackerr.zip
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+      - uses: golift/upload-packagecloud@eb0067369b59340b04dce218010960ebe74720b2 # v1.1.1
+        with:
+          userrepo: ${{ github.ref == 'refs/heads/unstable' && 'golift/unstable' || 'golift/pkgs' }}
+          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          packages: dist/
+          rpmdists: el/6
+          debdists: ubuntu/focal
+      - name: Upload to unstable.golift.io
+        env:
+          UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
+          VERSION: ${{ github.ref_name }}
+        run: bash scripts/unstable_upload.sh dist

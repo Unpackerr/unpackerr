@@ -138,6 +138,16 @@ func TestMDXUnescapedBrace(t *testing.T) {
 		t.Fatalf("complete {{ JSX }} should be accepted: %v", accepted)
 	}
 
+	nested := mdxProblems("{{a: {b: 1}}}", "fixture")
+	if len(nested) != 0 {
+		t.Fatalf("nested {{ JSX }} objects should be accepted: %v", nested)
+	}
+
+	escapedOpen := mdxProblems(`\{{x}}`, "fixture")
+	if len(escapedOpen) == 0 {
+		t.Fatal(`\{{x}} is an escaped { plus leftover braces and must be flagged`)
+	}
+
 	mixed := mdxProblems("{{name}} and {broken", "fixture")
 	if len(mixed) == 0 {
 		t.Fatal("a bare { after a valid {{ }} span must still be flagged")
@@ -356,11 +366,17 @@ func TestMDXTildeAndLongFence(t *testing.T) {
 		t.Fatalf("content inside a ~~~ fence is code and should be accepted: %v", tilde)
 	}
 
-	// A marker indented four spaces is indented code, not a fence opener. The
-	// braces on that line are therefore MDX and must be flagged.
+	// A marker indented four spaces is indented code, not a fence opener, so
+	// braces on that line are also code and must not be flagged.
 	indented := mdxProblems("    ```{broken}\n", "fixture")
-	if len(indented) == 0 {
-		t.Fatal("a four-space-indented ``` is indented code, not a fence; the { must be flagged")
+	if len(indented) != 0 {
+		t.Fatalf("a four-space-indented line is indented code: %v", indented)
+	}
+
+	// A closing fence indented four spaces does not close; later braces stay code.
+	indentedClose := mdxProblems("```\n    ```\n{stillCode}\n```\n", "fixture")
+	if len(indentedClose) != 0 {
+		t.Fatalf("a four-space-indented closer must not end the fence: %v", indentedClose)
 	}
 
 	// A closing fence with trailing text does not close the block.
@@ -394,5 +410,55 @@ func TestValidateNilDefRendering(t *testing.T) {
 
 	if err := config.validate(); err == nil {
 		t.Fatal("a null def entry must fail validation, not panic")
+	}
+}
+
+func TestValidateListKindScalar(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	found := false
+
+	for _, param := range config.Sections["global"].Params {
+		if param != nil && param.Kind == list {
+			param.Default = "not-a-list"
+			found = true
+
+			break
+		}
+	}
+
+	if !found {
+		t.Fatal("fixture missing a list param")
+	}
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a scalar default on a list param must fail validation, not panic")
+	}
+}
+
+func TestValidateListKindOverride(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+
+	def := config.Defs["starr"]["radarr"]
+	if def.Defaults == nil {
+		def.Defaults = map[string]any{}
+	}
+
+	def.Defaults["paths"] = "/downloads"
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a scalar list override must fail validation, not panic")
+	}
+}
+
+func TestComposeListScalarDoesNotPanic(t *testing.T) {
+	t.Parallel()
+
+	param := &Param{Kind: list, EnvVar: "X", Default: "not-a-list"}
+	if got := param.Compose("UN_"); got != "" {
+		t.Fatalf("scalar list compose should emit nothing, got %q", got)
 	}
 }

@@ -165,6 +165,7 @@ func (c *Config) validateDefs() []string {
 			}
 
 			errs = append(errs, mdxProblems(def.Title, string(defName)+"."+string(item)+" title")...)
+			errs = append(errs, c.validateDefListOverrides(defName, item, def)...)
 		}
 	}
 
@@ -230,6 +231,8 @@ func (h *Header) validate(name section) []string {
 			errs = append(errs, string(name)+"."+param.Name+": unknown kind "+param.Kind)
 		}
 
+		errs = append(errs, param.validateListValues(string(name)+"."+param.Name)...)
+
 		where := string(name) + "." + param.Name + " short"
 		errs = append(errs, mdxProblems(param.Short, where)...)
 
@@ -241,11 +244,69 @@ func (h *Header) validate(name section) []string {
 	return errs
 }
 
+func (p *Param) validateListValues(where string) []string {
+	if p.Kind != list && p.Kind != "conlist" {
+		return nil
+	}
+
+	var errs []string
+
+	for _, item := range []struct {
+		label string
+		val   any
+	}{
+		{"default", p.Default},
+		{"example", p.Example},
+		{"docker", p.Docker},
+	} {
+		if item.val != nil && !isSeq(item.val) {
+			errs = append(errs, where+": "+p.Kind+" "+item.label+" must be a list")
+		}
+	}
+
+	return errs
+}
+
+func (c *Config) validateDefListOverrides(defName, item section, def *Def) []string {
+	header := c.Sections[defName]
+	if header == nil {
+		return nil
+	}
+
+	var errs []string
+
+	for _, param := range header.Params {
+		if param == nil || (param.Kind != list && param.Kind != "conlist") {
+			continue
+		}
+
+		where := string(defName) + "." + string(item) + "." + param.Name
+		if val, ok := def.Defaults[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" default override must be a list")
+		}
+
+		if val, ok := def.Examples[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" example override must be a list")
+		}
+
+		if val, ok := def.DockerExample[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" docker override must be a list")
+		}
+	}
+
+	return errs
+}
+
+func isSeq(val any) bool {
+	_, ok := val.([]any)
+	return ok
+}
+
 // mdxProblems finds Docusaurus MDX v2 compile breakers in generated website markdown.
 func mdxProblems(content, where string) []string {
 	var errs []string
 
-	stripped := stripInlineCode(stripFencedCode(content))
+	stripped := stripInlineCode(stripIndentedCode(stripFencedCode(content)))
 
 	if admonitionSpace.MatchString(stripped) {
 		errs = append(errs, where+": use :::note[Title] (MDX v2); :::note Title fails Docusaurus compile")
@@ -263,7 +324,7 @@ func mdxProblems(content, where string) []string {
 
 // hasUnescapedBrace reports whether a line contains a { or } that MDX will
 // parse as JSX. Complete {{...}} and {/*...*/} spans are removed first, then
-// backslash-escaped braces (\{, \}, and \\{) are ignored.
+// braces preceded by an odd number of backslashes are ignored.
 func hasUnescapedBrace(line string) bool {
 	stripped := stripAllowedBraces(line)
 
@@ -292,6 +353,7 @@ func oddEscapes(content string, idx int) bool {
 }
 
 // stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
+// JSX spans are depth-balanced so nested objects like {{a: {b: 1}}} match.
 // Leftover { or } characters are MDX compile breakers.
 func stripAllowedBraces(line string) string {
 	var out strings.Builder
@@ -300,7 +362,7 @@ func stripAllowedBraces(line string) string {
 		rest := line[idx:]
 
 		switch {
-		case strings.HasPrefix(rest, "{/*"):
+		case strings.HasPrefix(rest, "{/*") && !oddEscapes(line, idx):
 			end := strings.Index(rest, "*/}")
 			if end < 0 {
 				out.WriteString(rest)
@@ -308,14 +370,16 @@ func stripAllowedBraces(line string) string {
 			}
 
 			idx += end + len("*/}")
-		case strings.HasPrefix(rest, "{{"):
-			end := strings.Index(rest[len("{{"):], "}}")
+		case strings.HasPrefix(rest, "{{") && !oddEscapes(line, idx):
+			end := balancedBraceEnd(line, idx)
 			if end < 0 {
-				out.WriteString(rest)
-				return out.String()
+				out.WriteByte(line[idx])
+				idx++
+
+				continue
 			}
 
-			idx += len("{{") + end + len("}}")
+			idx = end
 		default:
 			out.WriteByte(line[idx])
 			idx++
@@ -323,6 +387,34 @@ func stripAllowedBraces(line string) string {
 	}
 
 	return out.String()
+}
+
+// balancedBraceEnd returns the index after a complete brace group starting at
+// idx, counting nested unescaped { and }. idx must point at an unescaped '{'.
+func balancedBraceEnd(content string, idx int) int {
+	depth := 0
+
+	for pos := idx; pos < len(content); pos++ {
+		if content[pos] != '{' && content[pos] != '}' {
+			continue
+		}
+
+		if oddEscapes(content, pos) {
+			continue
+		}
+
+		if content[pos] == '{' {
+			depth++
+			continue
+		}
+
+		depth--
+		if depth == 0 {
+			return pos + 1
+		}
+	}
+
+	return -1
 }
 
 // stripFencedCode removes fenced code blocks. A fence opens with a run of 3+
@@ -338,7 +430,7 @@ func stripFencedCode(content string) string {
 
 	for line := range strings.SplitSeq(content, "\n") {
 		// CommonMark allows up to 3 leading spaces; more makes it indented code.
-		indent := len(line) - len(strings.TrimLeft(line, " "))
+		indent := leadingSpaces(line)
 		trimmed := strings.TrimSpace(line)
 
 		if !inFence {
@@ -355,13 +447,36 @@ func stripFencedCode(content string) string {
 			continue
 		}
 
-		// Inside a fence: close on a compatible marker with only trailing spaces.
-		if char, length, isClose := fenceCloser(trimmed); isClose && char == fenceChar && length >= fenceLen {
-			inFence = false
+		// Inside a fence: close on a compatible marker with at most three leading
+		// spaces and only trailing whitespace after the run.
+		if indent <= maxFenceIndent {
+			if char, length, isClose := fenceCloser(trimmed); isClose && char == fenceChar && length >= fenceLen {
+				inFence = false
+			}
 		}
 	}
 
 	return out.String()
+}
+
+// stripIndentedCode removes CommonMark indented code lines (4+ leading spaces).
+func stripIndentedCode(content string) string {
+	var out strings.Builder
+
+	for line := range strings.SplitSeq(content, "\n") {
+		if leadingSpaces(line) > maxFenceIndent {
+			continue
+		}
+
+		out.WriteString(line)
+		out.WriteByte('\n')
+	}
+
+	return out.String()
+}
+
+func leadingSpaces(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " "))
 }
 
 // minFenceLen is the minimum run length that opens a CommonMark code fence.

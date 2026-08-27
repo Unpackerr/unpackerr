@@ -58,6 +58,12 @@ func (c *Config) validateOrder() []string {
 		errs = append(errs, header.validate(name)...)
 	}
 
+	for name := range c.Sections {
+		if _, ok := seen[name]; !ok {
+			errs = append(errs, string(name)+": in sections, but missing from order")
+		}
+	}
+
 	return errs
 }
 
@@ -168,8 +174,8 @@ func mdxProblems(content, where string) []string {
 	stripped = stripInlineCode(stripped)
 
 	for line := range strings.SplitSeq(stripped, "\n") {
-		if strings.Contains(stripAllowedBraces(line), "{") {
-			errs = append(errs, where+": unescaped { breaks MDX (wrap in backticks or use {{ )")
+		if strings.ContainsAny(stripAllowedBraces(line), "{}") {
+			errs = append(errs, where+": unescaped { or } breaks MDX (wrap in backticks or use {{ )")
 			break
 		}
 	}
@@ -178,7 +184,7 @@ func mdxProblems(content, where string) []string {
 }
 
 // stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
-// Leftover { characters are MDX compile breakers.
+// Leftover { or } characters are MDX compile breakers.
 func stripAllowedBraces(line string) string {
 	var out strings.Builder
 
@@ -231,20 +237,37 @@ func stripFencedCode(content string) string {
 	return out.String()
 }
 
+// stripInlineCode removes markdown code spans. A span opens with a run of
+// backticks and closes only with a run of the same length.
 func stripInlineCode(content string) string {
 	var out strings.Builder
 
-	inCode := false
+	for idx := 0; idx < len(content); {
+		if content[idx] != '`' {
+			out.WriteByte(content[idx])
+			idx++
 
-	for _, char := range content {
-		if char == '`' {
-			inCode = !inCode
 			continue
 		}
 
-		if !inCode {
-			out.WriteRune(char)
+		run := 0
+		for idx+run < len(content) && content[idx+run] == '`' {
+			run++
 		}
+
+		closer := strings.Repeat("`", run)
+
+		end := strings.Index(content[idx+run:], closer)
+		if end < 0 {
+			// No matching closer; not a code span. Keep the backticks as text.
+			out.WriteString(closer)
+
+			idx += run
+
+			continue
+		}
+
+		idx += run + end + run
 	}
 
 	return out.String()

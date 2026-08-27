@@ -131,6 +131,40 @@ func TestMDXAdmonitionInFenceIsCode(t *testing.T) {
 	}
 }
 
+func TestMDXClosingBrace(t *testing.T) {
+	t.Parallel()
+
+	problems := mdxProblems("text } more", "fixture")
+	if len(problems) == 0 {
+		t.Fatal("a lone } must be flagged; MDX treats it as JSX")
+	}
+}
+
+func TestMDXDoubleBacktickSpan(t *testing.T) {
+	t.Parallel()
+
+	accepted := mdxProblems("value ``{name}`` here", "fixture")
+	if len(accepted) != 0 {
+		t.Fatalf("braces inside a double-backtick span should be accepted: %v", accepted)
+	}
+
+	problems := mdxProblems("unmatched ` backtick then {broken", "fixture")
+	if len(problems) == 0 {
+		t.Fatal("an unmatched backtick must not hide a later bare brace")
+	}
+}
+
+func TestValidateSectionMissingFromOrder(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	config.Sections["extra"] = config.Sections["global"]
+
+	if err := config.validate(); err == nil {
+		t.Fatal("a section missing from order must fail validation")
+	}
+}
+
 func TestValidateDuplicateOrder(t *testing.T) {
 	t.Parallel()
 

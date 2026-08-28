@@ -40,7 +40,9 @@ So:
 4. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
 5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
 
-`REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` still need the count. nFPM `release` is `${PKG_RELEASE}` (GoReleaser does not template that field): tags get `0.15.3-REVISION`, `--nightly` keeps release `1` because uniqueness is already in `.Version`. Do not put `CHANNEL` in the package version. Do not set nFPM `version_metadata` (that produced `0.15.3~1056+git` on Debian). Tagged FreeBSD packages are `unpackerr-0.15.3_REVISION.amd64.txz`.
+`REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` still need the count.
+
+nFPM `release` is **not** templated and **not** `${ENV}`-expanded (GoReleaser constructs `nfpm.Info` in-process; nFPM only expands env in its CLI YAML). The Linux split runs `.github/scripts/nfpm_release.sh`: tags insert `release: REVISION` so debs/rpms are `0.15.3-REVISION` like v0.15.2; `--nightly` leaves the key unset so uniqueness stays in `.Version`. A literal `${PKG_RELEASE}` became Debian `Version: 0.15.3~1081-${PKG_RELEASE}` and Packagecloud refused the package. nFPM `file_name_template` is `{{ replace "~" "-" .ConventionalFileName }}` (`unpackerr_0.15.2-960_i386.deb`, not `…_linux_386.deb`). Do not put `CHANNEL` in the package version. Do not set nFPM `version_metadata` (that produced `0.15.3~1056+git` on Debian). Tagged FreeBSD packages are `unpackerr-0.15.3_REVISION.amd64.txz`.
 
 ## Darwin signing
 
@@ -64,7 +66,7 @@ So:
 | `unpackerr.{amd64,386,arm,arm64}.linux.gz` | gzipped binary |
 | `unpackerr.{amd64,i386,armhf,arm64}.freebsd.gz` | gzipped binary |
 
-Linux nFPM arches are amd64, arm64, i386, armv7 (one `armhf`). Darwin min macOS 13. Windows is `-H=windowsgui`. Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
+Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr-0.15.3-1081.x86_64.rpm`). Arches: amd64, arm64, i386, armv7 (one `armhf` / RPM `armv7hl`). Darwin min macOS 13. Windows is `-H=windowsgui`. Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
 
 ## Secrets
 

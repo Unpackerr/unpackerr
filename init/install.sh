@@ -44,9 +44,11 @@ fi
 if [[ $ARCH = x86_64 ]] || [[ $ARCH = amd64 ]]; then
   ARCH="x86_64|amd64"
 elif [[ $ARCH = *386* ]] || [[ $ARCH = *686* ]]; then
-  ARCH="i386"
+  # Deb: i386. Arch pkg.tar.zst: i686.
+  ARCH="i386|i686"
 elif [[ $ARCH = *arm64* ]] || [[ $ARCH = *armv8* ]] || [[ $ARCH = *aarch64* ]]; then
-  ARCH="arm64"
+  # Deb: arm64. RPM/Arch: aarch64.
+  ARCH="arm64|aarch64"
 elif [[ $ARCH = *armv6* ]] || [[ $ARCH = *armv7* ]]; then
   # Deb/old rpm/freebsd: armhf. RPM: armv7hl. Arch: armv7h. Old zst: arm7hf.
   ARCH="armv7hl|armv7h|armhf|arm7hf|armv7"

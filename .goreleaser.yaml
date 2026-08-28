@@ -13,7 +13,7 @@ nightly:
   # though {{ .Version }} already includes it on --nightly: this template is
   # what *creates* that version. Tagged builds keep .Version as the semver
   # tag; ldflags Revision and Darwin CFBundleVersion still need the count.
-  # nFPM release is ${PKG_RELEASE}: REVISION on tags, 1 on --nightly.
+  # nFPM release is baked in the Linux split (GoReleaser does not template it).
   version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:
@@ -226,14 +226,18 @@ archives:
 nfpms:
   - id: unpackerr-packages
     ids: [unpackerr]
+    # Default is unpackerr_VERSION_linux_386.deb. Conventional names match
+    # v0.15.2 (unpackerr_0.15.2-960_i386.deb). nFPM uses ~ for semver
+    # prerelease; GitHub replaces tilde with a dot, so swap it for a hyphen.
+    file_name_template: '{{ replace "~" "-" .ConventionalFileName }}'
     vendor: Go Lift
     homepage: https://unpackerr.zip
     maintainer: David Newhall II <captain at golift dot io>
     description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
     license: MIT
-    # GoReleaser does not template this field; nFPM expands ${PKG_RELEASE}.
-    # Tags: 0.15.3-REVISION. --nightly: .Version already has REVISION, release 1.
-    release: "${PKG_RELEASE}"
+    # GoReleaser copies nfpms.release into nFPM with no templates and no ${ENV}
+    # expand. --nightly leaves it unset: .Version is already 0.15.3-REVISION.
+    # nfpm-release: Linux split inserts `release: REVISION` on tags only.
     formats:
       - deb
       - rpm
@@ -555,7 +559,9 @@ signs:
   # embedded signatures; pacman wants a sidecar.
   - id: archlinux
     artifacts: package
-    if: '{{ or (hasSuffix .Name "pkg.tar.zst") (hasSuffix .Path "pkg.tar.zst") }}'
+    # Merge artifact filters do not load sprig (hasSuffix is undefined there).
+    # eq is a Go template builtin; Extra.Format is archlinux/deb/rpm.
+    if: '{{ eq .Format "archlinux" }}'
 
 release:
   disable: "{{ .IsNightly }}"

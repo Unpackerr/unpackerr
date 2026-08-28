@@ -456,6 +456,39 @@ func TestMDXIndentedCodeContext(t *testing.T) {
 	}
 }
 
+func TestMDXJSXPostfixDivision(t *testing.T) {
+	t.Parallel()
+
+	plus := mdxProblems("{{n: i++ / 2}}", "fixture")
+	if len(plus) != 0 {
+		t.Fatalf("division after postfix ++ is not a regex: %v", plus)
+	}
+
+	minus := mdxProblems("{{n: i-- / 2}}", "fixture")
+	if len(minus) != 0 {
+		t.Fatalf("division after postfix -- is not a regex: %v", minus)
+	}
+}
+
+func TestMDXSetextAndIndentedHeading(t *testing.T) {
+	t.Parallel()
+
+	indentedHeading := mdxProblems("text\n    # still paragraph\n    {broken", "fixture")
+	if len(indentedHeading) == 0 {
+		t.Fatal("an indented # line continues the paragraph; later { must be flagged")
+	}
+
+	setext := mdxProblems("Title\n-\n    {ok}\n", "fixture")
+	if len(setext) != 0 {
+		t.Fatalf("indented code after a one-dash setext heading is code: %v", setext)
+	}
+
+	notSetext := mdxProblems("--\n    {broken", "fixture")
+	if len(notSetext) == 0 {
+		t.Fatal("a standalone -- is a paragraph, not a setext underline; { must be flagged")
+	}
+}
+
 func TestMDXExactBacktickRunCloses(t *testing.T) {
 	t.Parallel()
 

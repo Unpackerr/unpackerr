@@ -395,16 +395,28 @@ func stripAllowedBraces(line string) string {
 func balancedBraceEnd(content string, idx int) int {
 	depth := 0
 
-	var prev byte
+	var (
+		punct    jsPunct
+		adjacent bool
+	)
 
 	for pos := idx; pos < len(content); {
-		if skip, next := skipJSLexical(content, pos, prev); skip {
+		if skip, next := skipJSLexical(content, pos, punct.canStartRegex()); skip {
 			if next < 0 {
 				return -1
 			}
 
-			prev = jsLexicalPrev(content, pos, next, prev)
+			punct.afterLexical(content, pos, next)
+
+			adjacent = false
 			pos = next
+
+			continue
+		}
+
+		if isJSSpace(content[pos]) {
+			adjacent = false
+			pos++
 
 			continue
 		}
@@ -417,18 +429,20 @@ func balancedBraceEnd(content string, idx int) int {
 		switch content[pos] {
 		case '{':
 			depth++
-			prev = '{'
+
+			punct.saw('{', adjacent)
+			adjacent = true
 		case '}':
 			depth--
 			if depth == 0 {
 				return pos + 1
 			}
 
-			prev = '}'
+			punct.saw('}', adjacent)
+			adjacent = true
 		default:
-			if content[pos] != ' ' && content[pos] != '\t' && content[pos] != '\n' && content[pos] != '\r' {
-				prev = content[pos]
-			}
+			punct.saw(content[pos], adjacent)
+			adjacent = true
 		}
 
 		pos++
@@ -437,9 +451,54 @@ func balancedBraceEnd(content string, idx int) int {
 	return -1
 }
 
+type jsPunct struct {
+	prev, before byte
+}
+
+func (punct *jsPunct) saw(char byte, adjacent bool) {
+	if adjacent {
+		punct.before = punct.prev
+	} else {
+		punct.before = 0
+	}
+
+	punct.prev = char
+}
+
+func (punct *jsPunct) canStartRegex() bool {
+	if punct.prev == '+' && punct.before == '+' {
+		return false
+	}
+
+	if punct.prev == '-' && punct.before == '-' {
+		return false
+	}
+
+	return canStartJSRegex(punct.prev)
+}
+
+func (punct *jsPunct) afterLexical(content string, start, end int) {
+	if start >= len(content) {
+		return
+	}
+
+	if content[start] == '/' && start+1 < len(content) && (content[start+1] == '/' || content[start+1] == '*') {
+		return
+	}
+
+	if end > start {
+		punct.prev = content[end-1]
+		punct.before = 0
+	}
+}
+
+func isJSSpace(char byte) bool {
+	return char == ' ' || char == '\t' || char == '\n' || char == '\r'
+}
+
 // skipJSLexical reports whether pos starts a JS string, comment, or regex
 // literal and, if so, the index after that construct (or -1 if unterminated).
-func skipJSLexical(content string, pos int, prev byte) (bool, int) {
+func skipJSLexical(content string, pos int, startRegex bool) (bool, int) {
 	if pos >= len(content) {
 		return false, pos
 	}
@@ -459,32 +518,12 @@ func skipJSLexical(content string, pos int, prev byte) (bool, int) {
 			return true, skipJSBlockComment(content, pos)
 		}
 
-		if canStartJSRegex(prev) {
+		if startRegex {
 			return true, skipJSRegex(content, pos)
 		}
 	}
 
 	return false, pos
-}
-
-func jsLexicalPrev(content string, start, end int, prev byte) byte {
-	if start >= len(content) || content[start] != '/' {
-		if end > start {
-			return content[end-1]
-		}
-
-		return prev
-	}
-
-	if start+1 < len(content) && (content[start+1] == '/' || content[start+1] == '*') {
-		return prev
-	}
-
-	if end > start {
-		return content[end-1]
-	}
-
-	return prev
 }
 
 func canStartJSRegex(prev byte) bool {
@@ -576,7 +615,6 @@ const (
 	minFenceLen    = 3
 	maxFenceIndent = 3
 	tabWidth       = 4
-	minSetextDash  = 2
 )
 
 // stripCodeBlocks removes fenced and indented code. A fence opens with a run of
@@ -592,6 +630,7 @@ func stripCodeBlocks(content string) string {
 		fenceLen         int
 		inIndented       bool
 		canStartIndented = true
+		lastWasParagraph bool
 	)
 
 	for line := range strings.SplitSeq(content, "\n") {
@@ -601,7 +640,7 @@ func stripCodeBlocks(content string) string {
 		if inFence {
 			if fenceClosed(indent, trimmed, fenceChar, fenceLen) {
 				inFence = false
-				canStartIndented = true
+				canStartIndented, lastWasParagraph = true, false
 			}
 
 			continue
@@ -610,8 +649,7 @@ func stripCodeBlocks(content string) string {
 		if indent <= maxFenceIndent {
 			if char, length, isOpen := fenceOpener(trimmed); isOpen {
 				inFence, fenceChar, fenceLen = true, char, length
-				inIndented = false
-				canStartIndented = true
+				inIndented, canStartIndented, lastWasParagraph = false, true, false
 
 				continue
 			}
@@ -621,14 +659,15 @@ func stripCodeBlocks(content string) string {
 			out.WriteString(line)
 			out.WriteByte('\n')
 
-			inIndented = false
-			canStartIndented = true
+			inIndented, canStartIndented, lastWasParagraph = false, true, false
 
 			continue
 		}
 
 		if indent > maxFenceIndent && (canStartIndented || inIndented) {
 			inIndented = true
+			lastWasParagraph = false
+
 			continue
 		}
 
@@ -636,7 +675,8 @@ func stripCodeBlocks(content string) string {
 		out.WriteByte('\n')
 
 		inIndented = false
-		canStartIndented = leafBlockLine(trimmed)
+		canStartIndented = indent <= maxFenceIndent && leafBlockLine(trimmed, lastWasParagraph)
+		lastWasParagraph = !canStartIndented
 	}
 
 	return out.String()
@@ -671,12 +711,21 @@ func leadingIndent(line string) int {
 	return col
 }
 
-// leafBlockLine reports whether trimmed is a CommonMark leaf block that ends
-// a paragraph: an ATX heading, thematic break, or setext underline. Indented
-// code may start on the next line. List items and other containers still hold
-// a paragraph, so they do not qualify.
-func leafBlockLine(trimmed string) bool {
-	return atxHeading(trimmed) || thematicBreak(trimmed) || setextUnderline(trimmed)
+// leafBlockLine reports whether trimmed is a CommonMark leaf that ends a
+// paragraph so indented code may start on the next line. ATX headings always
+// qualify. Setext underlines only qualify after a paragraph. Thematic breaks
+// qualify when they are not a setext underline (after a paragraph, dashes are
+// setext; stars and underscores are still thematic).
+func leafBlockLine(trimmed string, lastWasParagraph bool) bool {
+	if atxHeading(trimmed) {
+		return true
+	}
+
+	if lastWasParagraph {
+		return setextUnderline(trimmed) || thematicBreak(trimmed)
+	}
+
+	return thematicBreak(trimmed)
 }
 
 func atxHeading(trimmed string) bool {
@@ -747,12 +796,11 @@ func setextUnderline(trimmed string) bool {
 		count++
 	}
 
-	if marker == '=' {
+	if marker == '=' || marker == '-' {
 		return count >= 1
 	}
 
-	// A single dash is a list marker, not a setext underline.
-	return count >= minSetextDash
+	return false
 }
 
 // fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same

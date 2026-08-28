@@ -173,13 +173,33 @@ else
   exit 1
 fi
 
+# Stable URLs keep the previous file if we skip an arch. Require the full set.
+required=(
+  unpackerr.amd64.exe.zip
+  unpackerr.amd64.linux.gz
+  unpackerr.386.linux.gz
+  unpackerr.arm.linux.gz
+  unpackerr.arm64.linux.gz
+  unpackerr.amd64.freebsd.gz
+  unpackerr.i386.freebsd.gz
+  unpackerr.armhf.freebsd.gz
+  unpackerr.arm64.freebsd.gz
+)
+if [ "${CHANNEL:-}" != nightly ]; then
+  required+=(Unpackerr.dmg)
+fi
+missing=()
+for name in "${required[@]}"; do
+  [ -f "${stage}/${name}" ] || missing+=("${name}")
+done
+if [ ${#missing[@]} -ne 0 ]; then
+  echo "unstable upload missing: ${missing[*]}" >&2
+  ls -la "${stage}" >&2 || true
+  exit 1
+fi
 shopt -s nullglob
 staged=("${stage}"/*)
 shopt -u nullglob
-if [ ${#staged[@]} -eq 0 ]; then
-  echo "no unstable artifacts staged from ${artifacts}" >&2
-  exit 1
-fi
 
 upload() {
   local file=$1

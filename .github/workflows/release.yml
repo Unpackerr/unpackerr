@@ -9,9 +9,9 @@ on:
       - unstable
     tags:
       - v*
+# Jobs that publish (GitHub Release, GHCR) set write on the job. The rest only checkout.
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 # Darwin App/DMG notarization needs xcrun/codesign (macOS). Linux/Windows/FreeBSD
 # split on ubuntu; merge publishes Docker, GitHub, Homebrew, AUR, packagecloud.

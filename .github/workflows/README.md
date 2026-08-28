@@ -52,7 +52,7 @@ So:
 - **Homebrew** — `homebrew_casks` → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly`.
 - **AUR** — `aur_sources` over SSH. Skip on `--nightly`.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
-- **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1045`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh`. Upload overwrites by name.
+- **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1045`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh` (reads `dist/$GOOS/artifacts.json` after split/merge). Upload overwrites by name.
 
 | Stable name | Payload |
 |---|---|

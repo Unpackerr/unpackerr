@@ -14,17 +14,38 @@
 # Sidecar: plain VERSION-REVISION (same as the pre-GoReleaser workflow).
 set -euo pipefail
 
+if ! command -v jq >/dev/null; then
+  echo "jq is required to read artifacts.json" >&2
+  exit 1
+fi
+
 dir="${1:-dist}"
 artifacts="${dir}/artifacts.json"
 metadata="${dir}/metadata.json"
+combined=""
 
+# Split/merge writes dist/$GOOS/artifacts.json. A single-job release writes dist/artifacts.json.
 if [ ! -f "${artifacts}" ]; then
-  echo "missing ${artifacts}; GoReleaser did not produce artifacts.json" >&2
-  exit 1
+  shopt -s nullglob
+  parts=("${dir}"/*/artifacts.json)
+  shopt -u nullglob
+  if [ ${#parts[@]} -eq 0 ]; then
+    echo "missing ${artifacts} and ${dir}/*/artifacts.json" >&2
+    find "${dir}" -name artifacts.json -o -name metadata.json >&2 || true
+    exit 1
+  fi
+  combined="$(mktemp "${TMPDIR:-/tmp}/unpackerr-artifacts.XXXXXX")"
+  jq -s 'add' "${parts[@]}" > "${combined}"
+  artifacts="${combined}"
+  echo "merged ${#parts[@]} split artifacts.json files"
 fi
-if ! command -v jq >/dev/null; then
-  echo "jq is required to read ${artifacts}" >&2
-  exit 1
+if [ ! -f "${metadata}" ]; then
+  shopt -s nullglob
+  metas=("${dir}"/*/metadata.json)
+  shopt -u nullglob
+  if [ ${#metas[@]} -gt 0 ]; then
+    metadata="${metas[0]}"
+  fi
 fi
 
 version="${VERSION:-}"
@@ -43,7 +64,9 @@ if [ -z "${stage}" ]; then
   owned_stage=1
 fi
 if [ "${owned_stage}" -eq 1 ]; then
-  trap 'rm -rf "${stage}"' EXIT
+  trap 'rm -rf "${stage}"; [ -n "${combined}" ] && rm -f "${combined}"' EXIT
+elif [ -n "${combined}" ]; then
+  trap 'rm -f "${combined}"' EXIT
 fi
 mkdir -p "${stage}"
 

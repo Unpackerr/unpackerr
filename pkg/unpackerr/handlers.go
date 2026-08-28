@@ -80,6 +80,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.App, name)
 			data.Status = WAITING
 			data.Updated = now
+			data.PreFiles = nil // new cycle; snapshot again on the next extract.
 		}
 
 		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
@@ -125,9 +126,9 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		}
 	}
 
-	// Snapshot top-level names before extraction so refused dests can be
-	// classified as download content vs leftovers from an interrupted extract.
-	item.PreFiles = snapshotDir(item.Path)
+	// Snapshot once per queue item. Retries must not fold leftovers that
+	// failed to clear into download content.
+	item.PreFiles = keepDirSnapshot(item.PreFiles, item.Path)
 	item.Status = QUEUED
 	item.Updated = now
 	// This queues the extraction. Which may start right away.
@@ -244,6 +245,8 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+	case u.handleStarrRefused(item, resp, now):
+		return
 	case resp.Error != nil:
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
@@ -254,35 +257,58 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 
-		if item != nil && len(resp.Refused) > 0 {
-			restart, fail := u.applyRefused(item.PreFiles, []string{item.Path}, resp, item.Retries)
-			if restart {
-				u.Retries++
-				item.Retries++
-				item.Status = WAITING
-				item.Updated = now
-				item.Resp = resp
-				u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s",
-					item.App, resp.X.Name)
-
-				return // do not mark EXTRACTED; the main loop re-queues WAITING items.
-			}
-
-			if fail {
-				u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s",
-					item.App, resp.X.Name)
-				u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
-
-				return
-			}
-		}
-
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 
 		if item != nil && item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}
+}
+
+// handleStarrRefused applies remnant_action on any terminal response that
+// reported occupied destinations, including those that also carry an error.
+// Returns true when the item's status was fully handled.
+func (u *Unpackerr) handleStarrRefused(item *Extract, resp *xtractr.Response, now time.Time) bool {
+	if item == nil || len(resp.Refused) == 0 {
+		return false
+	}
+
+	restart, fail := u.applyRefused(item.PreFiles, []string{item.Path}, resp, item.Retries)
+	switch {
+	case fail:
+		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s",
+			item.App, resp.X.Name)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
+
+		return true
+	case restart && resp.Error != nil:
+		u.Printf("[%s] Cleared interrupted-extraction remnant(s); extraction still failed: %s",
+			item.App, resp.X.Name)
+
+		return false // EXTRACTFAILED from the original error; remnants are already gone.
+	case restart:
+		u.Retries++
+		item.Retries++
+		item.Status = WAITING
+		item.Updated = now
+		item.Resp = resp
+		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s",
+			item.App, resp.X.Name)
+
+		return true
+	default:
+		return false
+	}
+}
+
+// keepDirSnapshot returns the first pre-extraction listing for this item.
+// Retries must not recapture leftovers that failed to clear.
+func keepDirSnapshot(existing map[string]os.FileInfo, path string) map[string]os.FileInfo {
+	if existing != nil {
+		return existing
+	}
+
+	return snapshotDir(path)
 }
 
 func snapshotDir(path string) map[string]os.FileInfo {
@@ -383,8 +409,8 @@ func (u *Unpackerr) refusedRemnants(
 }
 
 // applyRefused classifies Response.Refused against the pre-extraction snapshot.
-// The first bool is restart (remnants were cleared; re-queue). The second is
-// fail (remnants remain; do not report EXTRACTED).
+// The first bool is restart (every remnant was cleared; re-queue). The second is
+// fail (any remnant remains; do not report EXTRACTED).
 func (u *Unpackerr) applyRefused(
 	preFiles map[string]os.FileInfo,
 	destRoots []string,
@@ -413,7 +439,7 @@ func (u *Unpackerr) applyRefused(
 			}
 		}
 
-		if cleared > 0 {
+		if cleared == len(remnants) {
 			return true, false
 		}
 	}

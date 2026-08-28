@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
+
+var errRenameAfterRefuse = errors.New("rename failed after refuse")
 
 func TestSnapshotDir(t *testing.T) {
 	t.Parallel()
@@ -31,6 +34,80 @@ func TestSnapshotDir(t *testing.T) {
 
 	if got["a"] == nil || got["b"] == nil {
 		t.Fatal("snapshotDir: missing file info")
+	}
+}
+
+func occupyRemnantNames(t *testing.T, path string) {
+	t.Helper()
+
+	for n := range maxRemnantCopies {
+		candidate := path + remnantSuffix
+		if n > 0 {
+			candidate = fmt.Sprintf("%s%s.%d", path, remnantSuffix, n)
+		}
+
+		if err := os.WriteFile(candidate, []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", candidate, err)
+		}
+	}
+}
+
+func TestKeepDirSnapshot(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	keep := filepath.Join(dir, "file_id.diz")
+	if err := os.WriteFile(keep, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	first := keepDirSnapshot(nil, dir)
+	if first["file_id.diz"] == nil {
+		t.Fatal("first snapshot missing download file")
+	}
+
+	remnant := filepath.Join(dir, "movie.mkv")
+	if err := os.WriteFile(remnant, []byte("leftover"), 0o600); err != nil {
+		t.Fatalf("write remnant: %v", err)
+	}
+
+	second := keepDirSnapshot(first, dir)
+	if _, ok := second["movie.mkv"]; ok {
+		t.Fatal("retry snapshot must not add leftovers")
+	}
+}
+
+func TestApplyRefusedPartialClear(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	cleared := filepath.Join(dir, "a.mkv")
+	blocked := filepath.Join(dir, "b.mkv")
+
+	for _, path := range []string{cleared, blocked} {
+		if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+
+	occupyRemnantNames(t, blocked)
+
+	unpack := New()
+	restart, fail := unpack.applyRefused(nil, []string{dir}, &xtractr.Response{
+		Refused: []xtractr.RefusedFile{{Dest: cleared}, {Dest: blocked}},
+	}, 0)
+
+	if restart || !fail {
+		t.Fatalf("applyRefused partial: restart=%v fail=%v, want fail", restart, fail)
+	}
+
+	if _, err := os.Stat(cleared); err == nil {
+		t.Fatal("cleared remnant should have been renamed")
+	}
+
+	if _, err := os.Stat(blocked); err != nil {
+		t.Fatalf("blocked remnant should remain: %v", err)
 	}
 }
 
@@ -505,5 +582,148 @@ func TestFolderXtractrCallbackRetriesExhausted(t *testing.T) {
 
 	if _, err := os.Stat(file); err != nil {
 		t.Fatalf("dest should remain when retries are exhausted: %v", err)
+	}
+}
+
+func TestHandleXtractrCallbackRetryAfterFailedCleanup(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	keep := filepath.Join(dir, "file_id.diz")
+	remnant := filepath.Join(dir, "movie.mkv")
+
+	if err := os.WriteFile(keep, []byte("from torrent"), 0o600); err != nil {
+		t.Fatalf("write keep: %v", err)
+	}
+
+	unpack := New()
+	item := &Extract{
+		Path:     dir,
+		App:      starr.Sonarr,
+		Status:   EXTRACTING,
+		PreFiles: snapshotDir(dir),
+	}
+	unpack.Map["item"] = item
+
+	if err := os.WriteFile(remnant, []byte("truncated"), 0o600); err != nil {
+		t.Fatalf("write remnant: %v", err)
+	}
+
+	occupyRemnantNames(t, remnant)
+
+	resp := &xtractr.Response{
+		Done:    true,
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "item", Path: dir},
+		Refused: []xtractr.RefusedFile{{Dest: remnant}},
+	}
+	unpack.handleXtractrCallback(resp)
+
+	if item.Status != EXTRACTFAILED {
+		t.Fatalf("first status = %s, want EXTRACTFAILED", item.Status.Desc())
+	}
+
+	item.PreFiles = keepDirSnapshot(item.PreFiles, dir)
+	if _, ok := item.PreFiles["movie.mkv"]; ok {
+		t.Fatal("retry must not add the leftover to PreFiles")
+	}
+
+	if err := os.Remove(remnant + remnantSuffix); err != nil {
+		t.Fatalf("free remnant name: %v", err)
+	}
+
+	item.Status = EXTRACTING
+
+	unpack.handleXtractrCallback(resp)
+
+	if item.Status != WAITING {
+		t.Fatalf("second status = %s, want WAITING", item.Status.Desc())
+	}
+
+	if _, err := os.Stat(remnant); err == nil {
+		t.Fatal("remnant dest should have been renamed on retry")
+	}
+}
+
+func TestHandleXtractrCallbackRefusedWithError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "movie.mkv")
+
+	if err := os.WriteFile(file, []byte("truncated"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	unpack := New()
+	item := &Extract{
+		Path:   dir,
+		App:    starr.Sonarr,
+		Status: EXTRACTING,
+	}
+	unpack.Map["item"] = item
+
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Error:   errRenameAfterRefuse,
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "item", Path: dir},
+		Refused: []xtractr.RefusedFile{{Dest: file}},
+	})
+
+	if item.Status != EXTRACTFAILED {
+		t.Fatalf("status = %s, want EXTRACTFAILED", item.Status.Desc())
+	}
+
+	if item.Retries != 0 {
+		t.Fatalf("retries = %d, want 0 (error path, not remnant restart)", item.Retries)
+	}
+
+	if _, err := os.Stat(file + remnantSuffix); err != nil {
+		t.Fatalf("expected remnant cleared despite extract error: %v", err)
+	}
+}
+
+func TestFolderXtractrCallbackRefusedWithError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	output := dir + suffix
+
+	if err := os.Mkdir(output, 0o750); err != nil {
+		t.Fatalf("mkdir output: %v", err)
+	}
+
+	file := filepath.Join(output, "movie.mkv")
+	if err := os.WriteFile(file, []byte("truncated"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	unpack := New()
+	unpack.folders = &Folders{
+		Folders: map[string]*Folder{
+			dir: {
+				status: EXTRACTING,
+				config: &FolderConfig{Path: dir},
+			},
+		},
+	}
+	unpack.Map[dir] = &Extract{Path: dir, App: FolderString, Status: EXTRACTING, IDs: map[string]any{"title": dir}}
+
+	unpack.folderXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Error:   errRenameAfterRefuse,
+		Started: time.Now(),
+		Output:  output,
+		X:       &xtractr.Xtract{Name: dir, Path: dir},
+		Refused: []xtractr.RefusedFile{{Dest: file}},
+	})
+
+	if unpack.folders.Folders[dir].status != EXTRACTFAILED {
+		t.Fatalf("folder status = %s, want EXTRACTFAILED", unpack.folders.Folders[dir].status.Desc())
+	}
+
+	if _, err := os.Stat(file + remnantSuffix); err != nil {
+		t.Fatalf("expected remnant cleared despite extract error: %v", err)
 	}
 }

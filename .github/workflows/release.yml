@@ -23,7 +23,6 @@ jobs:
       channel: ${{ steps.channel.outputs.channel }}
       extra: ${{ steps.channel.outputs.extra }}
       revision: ${{ steps.revision.outputs.revision }}
-      pkg_release: ${{ steps.channel.outputs.pkg_release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,19 +53,9 @@ jobs:
             echo "refusing to release from ${GITHUB_REF} (${GITHUB_EVENT_NAME})" >&2
             exit 1
           fi
-          # Tagged debs/rpms are 0.15.3-REVISION (nFPM release, baked into yaml
-          # because GoReleaser copies that field verbatim). --nightly already
-          # puts REVISION in .Version; leave pkg_release empty so it is not
-          # doubled as 0.15.3~REVISION-REVISION (or left as ${PKG_RELEASE}).
-          if [[ ${channel} == release ]]; then
-            pkg_release=${REVISION}
-          else
-            pkg_release=
-          fi
           echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
           echo "extra=${extra}" >> "${GITHUB_OUTPUT}"
-          echo "pkg_release=${pkg_release}" >> "${GITHUB_OUTPUT}"
-          echo "CHANNEL=${channel} extra=${extra} pkg_release=${pkg_release}"
+          echo "CHANNEL=${channel} extra=${extra}"
 
   require-secrets:
     name: require secrets
@@ -132,11 +121,18 @@ jobs:
         env:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
         run: printf '%s\n' "${GPG_SIGNING_KEY}" > /tmp/key.gpg
-      - name: Bake nFPM release
-        if: matrix.goos == 'linux'
+      - name: Set tagged nFPM release
+        if: matrix.goos == 'linux' && needs.channel.outputs.channel == 'release'
         env:
-          PKG_RELEASE: ${{ needs.channel.outputs.pkg_release }}
-        run: bash .github/scripts/nfpm_release.sh .goreleaser.yaml
+          REVISION: ${{ needs.channel.outputs.revision }}
+        run: |
+          set -euo pipefail
+          [[ ${REVISION} =~ ^[0-9]+$ ]]
+          awk -v r="${REVISION}" '
+            { print }
+            /nfpm-release:/ { print "    release: " r }
+          ' .goreleaser.yaml > .goreleaser.yaml.nfpm
+          mv .goreleaser.yaml.nfpm .goreleaser.yaml
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro

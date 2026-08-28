@@ -13,7 +13,6 @@ nightly:
   # though {{ .Version }} already includes it on --nightly: this template is
   # what *creates* that version. Tagged builds keep .Version as the semver
   # tag; ldflags Revision and Darwin CFBundleVersion still need the count.
-  # nFPM release is baked in the Linux split (GoReleaser does not template it).
   version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:
@@ -235,9 +234,9 @@ nfpms:
     maintainer: David Newhall II <captain at golift dot io>
     description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
     license: MIT
-    # GoReleaser copies nfpms.release into nFPM with no templates and no ${ENV}
-    # expand. --nightly leaves it unset: .Version is already 0.15.3-REVISION.
-    # nfpm-release: Linux split inserts `release: REVISION` on tags only.
+    # GoReleaser does not template nfpms.release. Tagged linux split inserts
+    # `release: REVISION` after this marker. --nightly leaves it unset.
+    # nfpm-release:
     formats:
       - deb
       - rpm

@@ -139,4 +139,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 28 AUG 2026 05:57 UTC
+## => Content Auto Generated, 28 AUG 2026 06:53 UTC

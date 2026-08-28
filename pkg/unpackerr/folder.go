@@ -68,9 +68,9 @@ type Folder struct {
 	files    []string
 	retries  uint
 	archives xtractr.ArchiveList
-	// preFiles is the set of top-level basenames present at the move dest
-	// before extraction; distinguishes download content from remnants.
-	preFiles map[string]struct{}
+	// preFiles is the set of top-level names present at the move dest before
+	// extraction. Empty when the dest is Unpackerr's own temp/output folder.
+	preFiles map[string]os.FileInfo
 }
 
 type eventData struct {
@@ -331,7 +331,11 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 
 	exclude := folderExcludeSuffixes(name, folder.config)
 
-	folder.preFiles = sliceToSet(fileList(folderMoveDest(name)))
+	folder.preFiles = nil
+
+	if folder.config.MoveBack {
+		folder.preFiles = snapshotDir(folderMoveDest(name))
+	}
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -378,9 +382,20 @@ func folderExcludeSuffixes(path string, cfg *FolderConfig) []string {
 	return append(exclude, xtractr.SupportedExtensions()...)
 }
 
-// folderMoveDest is the directory xtractr moveFiles writes into for this item.
-// Directories extract in place. Archive files extract to the path with one
-// extension stripped (that folder may not exist yet).
+// folderOutputPath is the xtractr temp/output folder (Path + suffix, optionally
+// rebased onto extract_path).
+func folderOutputPath(name string, cfg *FolderConfig) string {
+	output := strings.TrimRight(name, `/\`) + suffix
+	if cfg != nil && cfg.ExtractPath != "" {
+		output = filepath.Join(cfg.ExtractPath, filepath.Base(output))
+	}
+
+	return output
+}
+
+// folderMoveDest is the directory xtractr moveFiles writes into when MoveBack
+// is true. Directories extract in place. Archive files extract to the path
+// with one extension stripped (that folder may not exist yet).
 func folderMoveDest(name string) string {
 	info, err := os.Stat(name)
 	if err == nil && !info.IsDir() && xtractr.IsArchiveFile(name) {
@@ -388,6 +403,49 @@ func folderMoveDest(name string) string {
 	}
 
 	return name
+}
+
+// folderTempFinalDest mirrors xtractr getTempFolderFinalName: when the temp
+// folder is kept, it may still be renamed onto the unsuffixed path, stripping
+// one or two archive extensions (tar.gz).
+func folderTempFinalDest(name string, cfg *FolderConfig) string {
+	newName := strings.TrimSuffix(strings.TrimRight(folderOutputPath(name, cfg), `/\`), suffix)
+	if xtractr.IsArchiveFile(name) {
+		newName = strings.TrimSuffix(newName, filepath.Ext(newName))
+	}
+
+	if xtractr.IsArchiveFile(newName) {
+		newName = strings.TrimSuffix(newName, filepath.Ext(newName))
+	}
+
+	return newName
+}
+
+func folderDestRoots(name string, cfg *FolderConfig, output string) []string {
+	seen := make(map[string]struct{})
+
+	var roots []string
+
+	add := func(path string) {
+		if path == "" {
+			return
+		}
+
+		path = filepath.Clean(path)
+		if _, ok := seen[path]; ok {
+			return
+		}
+
+		seen[path] = struct{}{}
+		roots = append(roots, path)
+	}
+
+	add(folderOutputPath(name, cfg))
+	add(folderMoveDest(name))
+	add(folderTempFinalDest(name, cfg))
+	add(output)
+
+	return roots
 }
 
 func getFileList(path string) []os.FileInfo {
@@ -439,16 +497,29 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
 			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 
-		if len(resp.Refused) > 0 && (u.MaxRetries == 0 || folder.retries < u.MaxRetries) {
-			if repaired := u.repairRemnants(folder.preFiles, folderMoveDest(resp.X.Name), resp); repaired > 0 {
-				u.Printf("[Folder] Cleared %d interrupted-extraction remnant(s), restarting extraction: %s",
-					repaired, resp.X.Name)
+		if len(resp.Refused) > 0 {
+			restart, fail := u.applyRefused(
+				folder.preFiles,
+				folderDestRoots(resp.X.Name, folder.config, resp.Output),
+				resp,
+				folder.retries,
+			)
+			switch {
+			case restart:
+				u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s",
+					resp.X.Name)
 
 				folder.status = EXTRACTFAILED
-			}
-		}
+			case fail:
+				u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
 
-		if folder.status != EXTRACTFAILED {
+				folder.status = EXTRACTFAILED
+			default:
+				folder.archives = resp.Archives
+				folder.status = EXTRACTED
+				folder.files = resp.NewFiles
+			}
+		} else {
 			folder.archives = resp.Archives
 			folder.status = EXTRACTED
 			folder.files = resp.NewFiles

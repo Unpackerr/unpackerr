@@ -61,13 +61,16 @@ retry_delay = "5m"
 ## How many times to retry a failed extraction. Pauses retry_delay between attempts.
 max_retries = 3
 
-## When an extracted file cannot be moved into place because the destination
-## already exists, Unpackerr checks whether that name was present before
-## extraction. Names that arrived with the download are kept. Names that were
-## not (leftovers from an interrupted extraction) are handled by this setting.
-## `rename` (default) moves the leftover to a sibling named with a `.remnant`
-## suffix and retries the extract. `delete` removes it and retries. `off` logs
-## a warning and does not retry. Bounded by max_retries.
+## Applies to Starr apps and watched folders. When an extracted file cannot
+## be moved into place because the destination already exists, Unpackerr
+## checks whether that name was present before extraction. Names that arrived
+## with the download (or, for folders with move_back, with the watched item)
+## are kept. Names that were not (leftovers from an interrupted extraction)
+## are handled by this setting. `rename` (default) moves the leftover to a
+## sibling named with a `.remnant` suffix and retries the extract. `delete`
+## removes it and retries. `off` logs a warning and does not retry. Bounded
+## by max_retries. If retries are exhausted, leftover remnants fail the
+## extract instead of reporting success.
 remnant_action = "rename"
 
 ## How many files may be extracted in parallel. 1 works fine.
@@ -353,4 +356,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 28 AUG 2026 05:57 UTC
+## => Content Auto Generated, 28 AUG 2026 06:53 UTC

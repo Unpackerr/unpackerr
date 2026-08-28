@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,21 +12,37 @@ import (
 	"golift.io/xtractr"
 )
 
-func TestSliceToSet(t *testing.T) {
+func TestSnapshotDir(t *testing.T) {
 	t.Parallel()
 
-	got := sliceToSet([]string{"a", "b", "a"})
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a"), []byte("x"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "b"), []byte("y"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	got := snapshotDir(dir)
 	if len(got) != 2 {
-		t.Fatalf("sliceToSet: expected 2 keys, got %d", len(got))
+		t.Fatalf("snapshotDir: expected 2 keys, got %d", len(got))
 	}
 
-	if _, ok := got["a"]; !ok {
-		t.Fatal("sliceToSet: missing a")
+	if got["a"] == nil || got["b"] == nil {
+		t.Fatal("snapshotDir: missing file info")
+	}
+}
+
+func testPreFiles(t *testing.T, path string) map[string]os.FileInfo {
+	t.Helper()
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatalf("lstat %s: %v", path, err)
 	}
 
-	if _, ok := got["b"]; !ok {
-		t.Fatal("sliceToSet: missing b")
-	}
+	return map[string]os.FileInfo{filepath.Base(path): info}
 }
 
 func TestValidateRemnantAction(t *testing.T) {
@@ -92,8 +109,7 @@ func TestRepairRemnants(t *testing.T) {
 		},
 	}
 
-	pre := sliceToSet([]string{filepath.Base(keep)})
-	got := unpack.repairRemnants(pre, dir, resp)
+	got := unpack.repairRemnants(testPreFiles(t, keep), []string{dir}, resp)
 
 	if got != 1 {
 		t.Fatalf("repairRemnants: cleared %d, want 1", got)
@@ -113,6 +129,38 @@ func TestRepairRemnants(t *testing.T) {
 
 	if _, err := os.Stat(outside); err != nil {
 		t.Fatalf("non-child dest should remain: %v", err)
+	}
+}
+
+func TestRepairRemnantsSameFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	keep := filepath.Join(dir, "Movie.mkv")
+	alias := filepath.Join(dir, "alias.mkv")
+
+	if err := os.WriteFile(keep, []byte("from torrent"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if err := os.Link(keep, alias); err != nil {
+		t.Skipf("hardlink not supported: %v", err)
+	}
+
+	unpack := New()
+	unpack.RemnantAction = remnantActionDelete
+	got := unpack.repairRemnants(
+		testPreFiles(t, keep),
+		[]string{dir},
+		&xtractr.Response{Refused: []xtractr.RefusedFile{{Dest: alias}}},
+	)
+
+	if got != 0 {
+		t.Fatalf("SameFile dest should be kept, cleared %d", got)
+	}
+
+	if _, err := os.Stat(alias); err != nil {
+		t.Fatalf("hard-link dest should remain: %v", err)
 	}
 }
 
@@ -140,7 +188,7 @@ func TestRepairRemnantsDelete(t *testing.T) {
 		},
 	}
 
-	got := unpack.repairRemnants(nil, dir, resp)
+	got := unpack.repairRemnants(nil, []string{dir}, resp)
 	if got != 2 {
 		t.Fatalf("repairRemnants delete: cleared %d, want 2", got)
 	}
@@ -168,7 +216,7 @@ func TestRepairRemnantsOff(t *testing.T) {
 	unpack.RemnantAction = remnantActionOff
 	resp := &xtractr.Response{Refused: []xtractr.RefusedFile{{Dest: file}}}
 
-	got := unpack.repairRemnants(nil, dir, resp)
+	got := unpack.repairRemnants(nil, []string{dir}, resp)
 	if got != 0 {
 		t.Fatalf("repairRemnants off: cleared %d, want 0", got)
 	}
@@ -195,7 +243,7 @@ func TestRepairRemnantsNumericSuffix(t *testing.T) {
 
 	unpack := New()
 	unpack.RemnantAction = remnantActionRename
-	got := unpack.repairRemnants(nil, dir, &xtractr.Response{Refused: []xtractr.RefusedFile{{Dest: file}}})
+	got := unpack.repairRemnants(nil, []string{dir}, &xtractr.Response{Refused: []xtractr.RefusedFile{{Dest: file}}})
 
 	if got != 1 {
 		t.Fatalf("repairRemnants numeric: cleared %d, want 1", got)
@@ -263,7 +311,7 @@ func TestHandleXtractrCallbackKeepsTorrentFile(t *testing.T) {
 		Path:     dir,
 		App:      starr.Sonarr,
 		Status:   EXTRACTING,
-		PreFiles: sliceToSet([]string{"movie.mkv"}),
+		PreFiles: snapshotDir(dir),
 	}
 	unpack.Map["item"] = item
 
@@ -314,8 +362,8 @@ func TestHandleXtractrCallbackRetriesExhausted(t *testing.T) {
 		Refused: []xtractr.RefusedFile{{Dest: file}},
 	})
 
-	if item.Status != EXTRACTED {
-		t.Fatalf("status = %s, want EXTRACTED", item.Status.Desc())
+	if item.Status != EXTRACTFAILED {
+		t.Fatalf("status = %s, want EXTRACTFAILED", item.Status.Desc())
 	}
 
 	if _, err := os.Stat(file); err != nil {
@@ -323,22 +371,47 @@ func TestHandleXtractrCallbackRetriesExhausted(t *testing.T) {
 	}
 }
 
-func TestFolderMoveDest(t *testing.T) {
+func TestFolderDestRoots(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	if got := folderMoveDest(dir); got != dir {
-		t.Fatalf("dir dest: got %s, want %s", got, dir)
+	extract := t.TempDir()
+
+	cfg := &FolderConfig{MoveBack: false, ExtractPath: extract}
+	output := folderOutputPath(dir, cfg)
+	wantPrefix := filepath.Join(extract, filepath.Base(dir)+suffix)
+
+	if output != wantPrefix {
+		t.Fatalf("folderOutputPath: got %s, want %s", output, wantPrefix)
 	}
 
-	archive := filepath.Join(dir, "movie.rar")
+	roots := folderDestRoots(dir, cfg, "")
+	foundOutput := false
+
+	for _, root := range roots {
+		if root == output {
+			foundOutput = true
+		}
+	}
+
+	if !foundOutput {
+		t.Fatalf("folderDestRoots missing output %s in %v", output, roots)
+	}
+
+	archive := filepath.Join(dir, "movie.tar.gz")
 	if err := os.WriteFile(archive, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write archive: %v", err)
 	}
 
-	want := filepath.Join(dir, "movie")
-	if got := folderMoveDest(archive); got != want {
-		t.Fatalf("archive dest: got %s, want %s", got, want)
+	if got := folderMoveDest(archive); got != strings.TrimSuffix(archive, ".gz") {
+		t.Fatalf("folderMoveDest archive: got %s", got)
+	}
+
+	final := folderTempFinalDest(archive, &FolderConfig{})
+	// movie.tar.gz -> strip suffix from output (name+suffix) then two archive exts -> movie
+	wantFinal := filepath.Join(dir, "movie")
+	if final != wantFinal {
+		t.Fatalf("folderTempFinalDest: got %s, want %s", final, wantFinal)
 	}
 }
 
@@ -346,8 +419,13 @@ func TestFolderXtractrCallbackClearsRemnant(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	file := filepath.Join(dir, "movie.mkv")
+	output := dir + suffix
 
+	if err := os.Mkdir(output, 0o750); err != nil {
+		t.Fatalf("mkdir output: %v", err)
+	}
+
+	file := filepath.Join(output, "movie.mkv")
 	if err := os.WriteFile(file, []byte("truncated"), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -366,6 +444,7 @@ func TestFolderXtractrCallbackClearsRemnant(t *testing.T) {
 	unpack.folderXtractrCallback(&xtractr.Response{
 		Done:    true,
 		Started: time.Now(),
+		Output:  output,
 		X:       &xtractr.Xtract{Name: dir, Path: dir},
 		Refused: []xtractr.RefusedFile{{Dest: file}},
 	})
@@ -381,5 +460,50 @@ func TestFolderXtractrCallbackClearsRemnant(t *testing.T) {
 
 	if _, err := os.Stat(file + remnantSuffix); err != nil {
 		t.Fatalf("expected renamed remnant: %v", err)
+	}
+}
+
+func TestFolderXtractrCallbackRetriesExhausted(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	output := dir + suffix
+
+	if err := os.Mkdir(output, 0o750); err != nil {
+		t.Fatalf("mkdir output: %v", err)
+	}
+
+	file := filepath.Join(output, "movie.mkv")
+	if err := os.WriteFile(file, []byte("truncated"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	unpack := New()
+	unpack.MaxRetries = 3
+	unpack.folders = &Folders{
+		Folders: map[string]*Folder{
+			dir: {
+				status:  EXTRACTING,
+				retries: 3,
+				config:  &FolderConfig{Path: dir},
+			},
+		},
+	}
+	unpack.Map[dir] = &Extract{Path: dir, App: FolderString, Status: EXTRACTING, IDs: map[string]any{"title": dir}}
+
+	unpack.folderXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Started: time.Now(),
+		Output:  output,
+		X:       &xtractr.Xtract{Name: dir, Path: dir},
+		Refused: []xtractr.RefusedFile{{Dest: file}},
+	})
+
+	if unpack.folders.Folders[dir].status != EXTRACTFAILED {
+		t.Fatalf("folder status = %s, want EXTRACTFAILED", unpack.folders.Folders[dir].status.Desc())
+	}
+
+	if _, err := os.Stat(file); err != nil {
+		t.Fatalf("dest should remain when retries are exhausted: %v", err)
 	}
 }

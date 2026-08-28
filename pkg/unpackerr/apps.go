@@ -148,11 +148,8 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
-	if err := u.validateRemnantAction(); err != nil {
-		return err
-	}
-
 	for _, validate := range []func() error{
+		u.validateRemnantAction,
 		u.validateLidarr,
 		u.validateRadarr,
 		u.validateReadarr,

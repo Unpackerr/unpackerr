@@ -449,10 +449,15 @@ type jsPunct struct {
 	prev, before byte
 	ident        string
 	keyword      bool
+	member       bool
 }
 
 func (punct *jsPunct) saw(char byte, adjacent bool) {
 	if isJSIdentChar(char, punct.ident != "") {
+		if punct.ident == "" {
+			punct.member = punct.prev == '.'
+		}
+
 		punct.ident += string(char)
 		punct.sawPunct(char, adjacent)
 
@@ -478,8 +483,9 @@ func (punct *jsPunct) finishIdent() {
 		return
 	}
 
-	punct.keyword = jsRegexKeyword(punct.ident)
+	punct.keyword = !punct.member && jsRegexKeyword(punct.ident)
 	punct.ident = ""
+	punct.member = false
 }
 
 func (punct *jsPunct) brace(char byte, depth int, adjacent bool) (bool, int, bool) {
@@ -530,6 +536,7 @@ func (punct *jsPunct) afterLexical(content string, start, end int) {
 
 	punct.ident = ""
 	punct.keyword = false
+	punct.member = false
 
 	if end > start {
 		punct.prev = content[end-1]
@@ -729,13 +736,8 @@ func (scan *mdScan) line(line string) {
 		rel = indent
 	}
 
-	if rel <= maxFenceIndent {
-		if char, length, isOpen := fenceOpener(trimmed); isOpen {
-			scan.inFence, scan.fenceChar, scan.fenceLen, scan.fenceBase = true, char, length, scan.contentIndent
-			scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
-
-			return
-		}
+	if scan.openFence(indent, rel, trimmed) {
+		return
 	}
 
 	if trimmed == "" {
@@ -762,8 +764,8 @@ func (scan *mdScan) syncList(indent int, trimmed string) {
 		return
 	}
 
-	if pad, ok := listMarkerPad(trimmed); ok {
-		scan.contentIndent = indent + pad
+	if col, _, ok := listItemSplit(indent, trimmed); ok {
+		scan.contentIndent = col
 		return
 	}
 
@@ -776,13 +778,46 @@ func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel in
 
 	scan.inIndented = false
 	if !scan.lastWasParagraph || !setextUnderline(trimmed) {
-		if pad, ok := listMarkerPad(trimmed); ok && rel <= maxFenceIndent {
-			scan.contentIndent = indent + pad
+		if col, _, ok := listItemSplit(indent, trimmed); ok && rel <= maxFenceIndent {
+			scan.contentIndent = col
 		}
 	}
 
 	scan.canStartIndented = rel <= maxFenceIndent && leafBlockLine(trimmed, scan.lastWasParagraph)
 	scan.lastWasParagraph = !scan.canStartIndented
+}
+
+func (scan *mdScan) openFence(indent, rel int, trimmed string) bool {
+	if rel <= maxFenceIndent {
+		if char, length, isOpen := fenceOpener(trimmed); isOpen {
+			scan.startFence(char, length, scan.contentIndent)
+
+			return true
+		}
+	}
+
+	if scan.lastWasParagraph && setextUnderline(trimmed) {
+		return false
+	}
+
+	col, rest, ok := listItemSplit(indent, trimmed)
+	if !ok {
+		return false
+	}
+
+	if char, length, isOpen := fenceOpener(strings.TrimSpace(rest)); isOpen {
+		scan.contentIndent = col
+		scan.startFence(char, length, col)
+
+		return true
+	}
+
+	return false
+}
+
+func (scan *mdScan) startFence(char byte, length, base int) {
+	scan.inFence, scan.fenceChar, scan.fenceLen, scan.fenceBase = true, char, length, base
+	scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
 }
 
 func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
@@ -795,37 +830,60 @@ func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
 	return isClose && char == fenceChar && length >= fenceLen
 }
 
-// listMarkerPad reports the width of a CommonMark list marker plus its
-// following padding (1-4 spaces). The caller adds the line's indent to get
-// the list item's content column.
-func listMarkerPad(trimmed string) (int, bool) {
+// listItemSplit reports the content column of a CommonMark list item and the
+// remainder of the line after the marker and padding. Tabs in the padding
+// advance to the next tab stop from the marker's ending column.
+func listItemSplit(indent int, trimmed string) (int, string, bool) {
 	end, ok := consumeListMarker(trimmed)
 	if !ok {
-		return 0, false
+		return 0, "", false
 	}
 
+	col := indent + end
 	if end == len(trimmed) {
-		return end + 1, true
+		return col + 1, "", true
 	}
 
 	if trimmed[end] != ' ' && trimmed[end] != '\t' {
-		return 0, false
+		return 0, "", false
 	}
 
-	pad := 0
-	for end+pad < len(trimmed) && pad < tabWidth && trimmed[end+pad] == ' ' {
-		pad++
+	start := col
+	idx := end
+
+	for idx < len(trimmed) {
+		var advance int
+
+		switch trimmed[idx] {
+		case ' ':
+			advance = 1
+		case '\t':
+			advance = tabWidth - col%tabWidth
+		default:
+			if col == start {
+				return 0, "", false
+			}
+
+			return col, trimmed[idx:], true
+		}
+
+		if col-start+advance > tabWidth {
+			return start + 1, trimmed[end+1:], true
+		}
+
+		col += advance
+		idx++
+
+		if col-start >= tabWidth {
+			return col, trimmed[idx:], true
+		}
 	}
 
-	if pad == 0 {
-		pad = 1
+	if col == start {
+		return 0, "", false
 	}
 
-	if pad == tabWidth && end+pad < len(trimmed) && trimmed[end+pad] == ' ' {
-		pad = 1
-	}
-
-	return end + pad, true
+	return col, "", true
 }
 
 func consumeListMarker(trimmed string) (int, bool) {

@@ -478,6 +478,11 @@ func TestMDXJSXKeywordRegex(t *testing.T) {
 	if len(thr) != 0 {
 		t.Fatalf("a regex after throw should be accepted: %v", thr)
 	}
+
+	prop := mdxProblems("{{value: obj.return / 2}}", "fixture")
+	if len(prop) != 0 {
+		t.Fatalf("division after a .return property is not a regex: %v", prop)
+	}
 }
 
 func TestMDXJSXPostfixDivision(t *testing.T) {
@@ -510,6 +515,20 @@ func TestMDXSetextAndIndentedHeading(t *testing.T) {
 	notSetext := mdxProblems("--\n    {broken", "fixture")
 	if len(notSetext) == 0 {
 		t.Fatal("a standalone -- is a paragraph, not a setext underline; { must be flagged")
+	}
+}
+
+func TestMDXListFenceAndTabPad(t *testing.T) {
+	t.Parallel()
+
+	tabPad := mdxProblems("-\titem\n\n      {broken", "fixture")
+	if len(tabPad) == 0 {
+		t.Fatal("a tab after - pads to column 4; six spaces is still a list paragraph")
+	}
+
+	listFence := mdxProblems("- ```\n  code\n  ```\n{broken", "fixture")
+	if len(listFence) == 0 {
+		t.Fatal("a fence starting after a list marker must close; later { must be flagged")
 	}
 }
 

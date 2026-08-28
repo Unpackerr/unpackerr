@@ -89,4 +89,6 @@ Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo). `.g
 
 ## Action pins
 
-`release.yml` pins `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used there.
+`release.yml` and `codetests.yml` pin `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used.
+
+The Docker base image in `init/docker/Dockerfile` is pinned as `alpine:<tag>@sha256:<digest>`. Renovate keeps Action and Dockerfile digest pins current (`helpers:pinGitHubActionDigestsToSemver`; Dockerfile `pinDigests`). Compose examples stay unpinned.

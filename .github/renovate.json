@@ -1,6 +1,15 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:base",
+    "default:automergeDigest",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  "packageRules": [
+    {
+      "description": "Pin Dockerfile base image digests; leave compose examples unpinned",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    }
   ]
 }

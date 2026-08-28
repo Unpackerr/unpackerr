@@ -40,11 +40,7 @@ const (
 var (
 	ErrInvalidURL = errors.New("provided application URL is invalid")
 	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
-	// ErrInvalidRemnantAction is returned when remnant_action is not rename, delete, or off.
-	ErrInvalidRemnantAction = errors.New("invalid remnant_action")
 )
-
-var errNoRemnantName = errors.New("no unused remnant name")
 
 // Config defines the configuration data used to start the application.
 //
@@ -161,30 +157,6 @@ func (u *Unpackerr) validateApps() error {
 			u.Errorf("Config Warning: %v", err)
 		}
 	}
-
-	return nil
-}
-
-// remnantAction normalizes remnant_action. Empty and unknown values become
-// "rename"; validateRemnantAction rejects the unknowns at startup.
-func remnantAction(s string) string {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "delete":
-		return "delete"
-	case "off":
-		return "off"
-	default:
-		return "rename"
-	}
-}
-
-func (u *Unpackerr) validateRemnantAction() error {
-	s := strings.TrimSpace(u.RemnantAction)
-	if s != "" && remnantAction(s) != strings.ToLower(s) {
-		return fmt.Errorf("%w: %q (want rename, delete, or off)", ErrInvalidRemnantAction, u.RemnantAction)
-	}
-
-	u.RemnantAction = remnantAction(s)
 
 	return nil
 }

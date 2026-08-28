@@ -29,6 +29,12 @@ type Extract struct {
 	IDs         map[string]any
 	Resp        *xtractr.Response
 	XProg       *ExtractProgress
+	// PreFiles maps top-level basenames present in Path before extraction to
+	// their Lstat info (nil when the stat failed). It distinguishes download
+	// content from interrupted-extraction remnants, including case-only name
+	// differences on case-insensitive filesystems (via os.SameFile). Snapshot
+	// once per queue item; retries must not fold in leftovers that failed to clear.
+	PreFiles map[string]os.FileInfo
 }
 
 // StarrConfig is the shared config items for all starr apps.
@@ -121,6 +127,9 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	}
 
 	// This updates the item in the map.
+	// Snapshot once per queue item: retries must not recapture leftovers that
+	// failed to clear into download content.
+	item.PreFiles = keepDirSnapshot(item.PreFiles, item.Path)
 	item.Status = QUEUED
 	item.Updated = now
 	// This queues the extraction. Which may start right away.
@@ -233,10 +242,26 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 	}
 
+	var remnants remnantResult
+	if resp.Done && item != nil {
+		remnants = u.handleRemnants(resp, item.PreFiles, item.Retries)
+	}
+
 	switch now := resp.Started.Add(resp.Elapsed); {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+	case remnants == remnantRestart:
+		// Every blocker was cleared; re-extract into the empty destination.
+		u.Retries++
+		item.Retries++
+		item.Status = WAITING
+		item.Updated = now
+		item.Resp = resp
+		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
+	case remnants == remnantFailed:
+		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
@@ -252,6 +277,251 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}
+}
+
+// remnantResult is what handleRemnants wants the caller to do.
+type remnantResult int
+
+const (
+	// remnantNone: no actionable remnant — proceed normally.
+	remnantNone remnantResult = iota
+	// remnantRestart: every remnant was cleared — re-extract into the empty dest.
+	remnantRestart
+	// remnantFailed: a remnant remains (action off, clear error, or retries
+	// exhausted) — fail the extract instead of reporting success.
+	remnantFailed
+)
+
+// keepDirSnapshot returns the first pre-extraction listing for this item.
+// Retries must not recapture leftovers that failed to clear.
+func keepDirSnapshot(existing map[string]os.FileInfo, path string) map[string]os.FileInfo {
+	if existing != nil {
+		return existing
+	}
+
+	names := fileList(path)
+	out := make(map[string]os.FileInfo, len(names))
+
+	for _, name := range names {
+		info, err := os.Lstat(filepath.Join(path, name))
+		if err != nil {
+			out[name] = nil
+
+			continue
+		}
+
+		out[name] = info
+	}
+
+	return out
+}
+
+// isDownloadContent reports whether dest was present before extraction, by
+// basename or by same-file identity (case-only differences on case-insensitive
+// filesystems).
+func isDownloadContent(preFiles map[string]os.FileInfo, dest string) bool {
+	if _, ok := preFiles[filepath.Base(dest)]; ok {
+		return true
+	}
+
+	destInfo, err := os.Lstat(dest)
+	if err != nil {
+		return false
+	}
+
+	for _, info := range preFiles {
+		if info != nil && os.SameFile(info, destInfo) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func underFinalDests(path string, dests map[string]string) bool {
+	if path == "" || len(dests) == 0 {
+		return false
+	}
+
+	path = filepath.Clean(path)
+
+	for _, dest := range dests {
+		if dest == "" {
+			continue
+		}
+
+		dest = filepath.Clean(dest)
+		if path == dest || strings.HasPrefix(path, dest+string(filepath.Separator)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// handleRemnants classifies Response.Refused against the pre-extraction
+// snapshot of each FinalDests value. snapshot must come from keepDirSnapshot
+// at queue time. It clears non-snapshot blockers per remnant_action and also
+// rolls back sibling NewFiles when a restart will re-extract into them. It
+// does not run when the action is off, FinalDests is empty, or every refusal
+// is download content (or lives outside the reported destinations).
+func (u *Unpackerr) handleRemnants(
+	resp *xtractr.Response,
+	snapshot map[string]os.FileInfo,
+	retries uint,
+) remnantResult {
+	if resp == nil || len(resp.Refused) == 0 || len(resp.FinalDests) == 0 {
+		return remnantNone
+	}
+
+	remnants := u.classifyRemnants(resp, snapshot)
+	if len(remnants) == 0 {
+		return remnantNone
+	}
+
+	if u.RemnantAction == remnantActionOff {
+		for _, dest := range remnants {
+			u.Printf("Interrupted-extraction remnant left in place (remnant_action=off): %s", dest)
+		}
+
+		return remnantFailed
+	}
+
+	if u.MaxRetries != 0 && retries >= u.MaxRetries {
+		return remnantFailed
+	}
+
+	if u.clearRemnants(remnants) != len(remnants) {
+		return remnantFailed
+	}
+
+	// Every blocker is gone and we are about to re-extract. Refused files were
+	// never moved (xtractr discarded them), but sibling outputs from a partial
+	// move are still in place and would refuse on the next attempt — remove the
+	// ones that were not part of the download so the restart extracts cleanly.
+	for _, newFile := range resp.NewFiles {
+		if !underFinalDests(newFile, resp.FinalDests) || isDownloadContent(snapshot, newFile) {
+			continue
+		}
+
+		if err := os.RemoveAll(newFile); err != nil {
+			u.Errorf("Removing partial-move output %s before re-extract: %v", newFile, err)
+		}
+	}
+
+	return remnantRestart
+}
+
+func (u *Unpackerr) classifyRemnants(resp *xtractr.Response, snapshot map[string]os.FileInfo) []string {
+	var remnants []string
+
+	seen := make(map[string]struct{}, len(resp.Refused))
+
+	for _, refused := range resp.Refused {
+		if _, dup := seen[refused.Dest]; dup {
+			continue
+		}
+
+		seen[refused.Dest] = struct{}{}
+
+		if !underFinalDests(refused.Dest, resp.FinalDests) {
+			u.Debugf("Ignoring refused path outside extract dest: %s", refused.Dest)
+			continue
+		}
+
+		if isDownloadContent(snapshot, refused.Dest) {
+			u.Debugf("Keeping download file that blocked extraction: %s", refused.Dest)
+			continue
+		}
+
+		remnants = append(remnants, refused.Dest)
+	}
+
+	return remnants
+}
+
+// clearRemnants removes or renames each remnant and returns the count cleared.
+func (u *Unpackerr) clearRemnants(remnants []string) int {
+	cleared := 0
+
+	for _, dest := range remnants {
+		if u.clearRemnant(dest) {
+			cleared++
+		}
+	}
+
+	return cleared
+}
+
+// clearRemnant removes or renames a file that blocked extraction and did not
+// arrive with the download. Returns false if the blocker remains.
+func (u *Unpackerr) clearRemnant(dest string) bool {
+	info, err := os.Lstat(dest)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true // already gone; the retry extracts into the empty dest.
+		}
+
+		u.Errorf("Checking interrupted-extraction remnant %s: %v", dest, err)
+
+		return false
+	}
+
+	if u.RemnantAction == remnantActionDelete {
+		remove := os.Remove
+		if info.IsDir() {
+			remove = os.RemoveAll
+		}
+
+		if err := remove(dest); err != nil {
+			u.Errorf("Removing interrupted-extraction remnant %s: %v", dest, err)
+			return false
+		}
+
+		u.Printf("Removed interrupted-extraction remnant: %s", dest)
+
+		return true
+	}
+
+	target, err := unusedRemnantPath(dest)
+	if err != nil {
+		u.Errorf("Renaming interrupted-extraction remnant %s: %v", dest, err)
+		return false
+	}
+
+	if err := os.Rename(dest, target); err != nil {
+		u.Errorf("Renaming interrupted-extraction remnant %s -> %s: %v", dest, target, err)
+		return false
+	}
+
+	u.Printf("Renamed interrupted-extraction remnant: %s -> %s (you may delete it)", dest, target)
+
+	return true
+}
+
+const (
+	remnantSuffix    = ".remnant"
+	maxRemnantCopies = 999
+)
+
+func unusedRemnantPath(path string) (string, error) {
+	for n := range maxRemnantCopies {
+		candidate := path + remnantSuffix
+		if n > 0 {
+			candidate = fmt.Sprintf("%s%s.%d", path, remnantSuffix, n)
+		}
+
+		_, err := os.Lstat(candidate)
+		if os.IsNotExist(err) {
+			return candidate, nil
+		}
+
+		if err != nil {
+			return "", fmt.Errorf("os.Lstat: %w", err)
+		}
+	}
+
+	return "", fmt.Errorf("%w: %s", errNoRemnantName, path)
 }
 
 // Looking for a message that looks like:

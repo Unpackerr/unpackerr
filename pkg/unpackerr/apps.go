@@ -36,47 +36,59 @@ const (
 	FolderString = "Folder"
 )
 
+// Remnant-action values for Config.RemnantAction.
+const (
+	remnantActionRename = "rename"
+	remnantActionDelete = "delete"
+	remnantActionOff    = "off"
+)
+
 // Application validation errors.
 var (
 	ErrInvalidURL = errors.New("provided application URL is invalid")
 	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
+	// ErrInvalidRemnantAction is returned when remnant_action is not rename, delete, or off.
+	ErrInvalidRemnantAction = errors.New("invalid remnant_action")
 )
+
+var errNoRemnantName = errors.New("no unused remnant name")
 
 // Config defines the configuration data used to start the application.
 //
 //nolint:lll
 type Config struct {
-	Debug       bool             `json:"debug"              toml:"debug"         xml:"debug"         yaml:"debug"`
-	Quiet       bool             `json:"quiet"              toml:"quiet"         xml:"quiet"         yaml:"quiet"`
-	Activity    bool             `json:"activity"           toml:"activity"      xml:"activity"      yaml:"activity"`
-	Parallel    uint             `json:"parallel"           toml:"parallel"      xml:"parallel"      yaml:"parallel"`
-	ErrorStdErr bool             `json:"errorStderr"        toml:"error_stderr"  xml:"error_stderr"  yaml:"errorStderr"`
-	LogFile     string           `json:"logFile"            toml:"log_file"      xml:"log_file"      yaml:"logFile"`
-	LogFiles    int              `json:"logFiles"           toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
-	LogFileMb   int              `json:"logFileMb"          toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
-	LogFileMode string           `json:"logFileMode"        toml:"log_file_mode" xml:"log_file_mode" yaml:"logFileMode"`
-	MaxRetries  uint             `json:"maxRetries"         toml:"max_retries"   xml:"max_retries"   yaml:"maxRetries"`
-	FileMode    string           `json:"fileMode"           toml:"file_mode"     xml:"file_mode"     yaml:"fileMode"`
-	DirMode     string           `json:"dirMode"            toml:"dir_mode"      xml:"dir_mode"      yaml:"dirMode"`
-	LogQueues   cnfg.Duration    `json:"logQueues"          toml:"log_queues"    xml:"log_queues"    yaml:"logQueues"`
-	Interval    cnfg.Duration    `json:"interval"           toml:"interval"      xml:"interval"      yaml:"interval"`
-	Timeout     cnfg.Duration    `json:"timeout"            toml:"timeout"       xml:"timeout"       yaml:"timeout"`
-	DeleteDelay cnfg.Duration    `json:"deleteDelay"        toml:"delete_delay"  xml:"delete_delay"  yaml:"deleteDelay"`
-	StartDelay  cnfg.Duration    `json:"startDelay"         toml:"start_delay"   xml:"start_delay"   yaml:"startDelay"`
-	RetryDelay  cnfg.Duration    `json:"retryDelay"         toml:"retry_delay"   xml:"retry_delay"   yaml:"retryDelay"`
-	Progress    cnfg.Duration    `json:"progress"           toml:"progress"      xml:"progress"      yaml:"progress"`
-	KeepHistory uint             `json:"keepHistory"        toml:"keep_history"  xml:"keep_history"  yaml:"keepHistory"` // undocumented.
-	Passwords   StringSlice      `json:"passwords"          toml:"passwords"     xml:"password"      yaml:"passwords"`
-	Webserver   *WebServer       `json:"webserver"          toml:"webserver"     xml:"webserver"     yaml:"webserver"`
-	Lidarr      []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"        xml:"lidarr"        yaml:"lidarr,omitempty"`
-	Radarr      []*RadarrConfig  `json:"radarr,omitempty"   toml:"radarr"        xml:"radarr"        yaml:"radarr,omitempty"`
-	Whisparr    []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"      xml:"whisparr"      yaml:"whisparr,omitempty"`
-	Readarr     []*ReadarrConfig `json:"readarr,omitempty"  toml:"readarr"       xml:"readarr"       yaml:"readarr,omitempty"`
-	Sonarr      []*SonarrConfig  `json:"sonarr,omitempty"   toml:"sonarr"        xml:"sonarr"        yaml:"sonarr,omitempty"`
-	Folders     []*FolderConfig  `json:"folder,omitempty"   toml:"folder"        xml:"folder"        yaml:"folder,omitempty"`
-	Webhook     []*WebhookConfig `json:"webhook,omitempty"  toml:"webhook"       xml:"webhook"       yaml:"webhook,omitempty"`
-	Cmdhook     []*WebhookConfig `json:"cmdhook,omitempty"  toml:"cmdhook"       xml:"cmdhook"       yaml:"cmdhook,omitempty"`
-	Folder      FoldersConfig    `json:"folders"            toml:"folders"       xml:"folders"       yaml:"folders"` // undocumented.
+	Debug         bool             `json:"debug"              toml:"debug"          xml:"debug"          yaml:"debug"`
+	Quiet         bool             `json:"quiet"              toml:"quiet"          xml:"quiet"          yaml:"quiet"`
+	Activity      bool             `json:"activity"           toml:"activity"       xml:"activity"       yaml:"activity"`
+	Parallel      uint             `json:"parallel"           toml:"parallel"       xml:"parallel"       yaml:"parallel"`
+	ErrorStdErr   bool             `json:"errorStderr"        toml:"error_stderr"   xml:"error_stderr"   yaml:"errorStderr"`
+	LogFile       string           `json:"logFile"            toml:"log_file"       xml:"log_file"       yaml:"logFile"`
+	LogFiles      int              `json:"logFiles"           toml:"log_files"      xml:"log_files"      yaml:"logFiles"`
+	LogFileMb     int              `json:"logFileMb"          toml:"log_file_mb"    xml:"log_file_mb"    yaml:"logFileMb"`
+	LogFileMode   string           `json:"logFileMode"        toml:"log_file_mode"  xml:"log_file_mode"  yaml:"logFileMode"`
+	MaxRetries    uint             `json:"maxRetries"         toml:"max_retries"    xml:"max_retries"    yaml:"maxRetries"`
+	RemnantAction string           `json:"remnantAction"      toml:"remnant_action" xml:"remnant_action" yaml:"remnantAction"`
+	FileMode      string           `json:"fileMode"           toml:"file_mode"      xml:"file_mode"      yaml:"fileMode"`
+	DirMode       string           `json:"dirMode"            toml:"dir_mode"       xml:"dir_mode"       yaml:"dirMode"`
+	LogQueues     cnfg.Duration    `json:"logQueues"          toml:"log_queues"     xml:"log_queues"     yaml:"logQueues"`
+	Interval      cnfg.Duration    `json:"interval"           toml:"interval"       xml:"interval"       yaml:"interval"`
+	Timeout       cnfg.Duration    `json:"timeout"            toml:"timeout"        xml:"timeout"        yaml:"timeout"`
+	DeleteDelay   cnfg.Duration    `json:"deleteDelay"        toml:"delete_delay"   xml:"delete_delay"   yaml:"deleteDelay"`
+	StartDelay    cnfg.Duration    `json:"startDelay"         toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
+	RetryDelay    cnfg.Duration    `json:"retryDelay"         toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
+	Progress      cnfg.Duration    `json:"progress"           toml:"progress"       xml:"progress"       yaml:"progress"`
+	KeepHistory   uint             `json:"keepHistory"        toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"` // undocumented.
+	Passwords     StringSlice      `json:"passwords"          toml:"passwords"      xml:"password"       yaml:"passwords"`
+	Webserver     *WebServer       `json:"webserver"          toml:"webserver"      xml:"webserver"      yaml:"webserver"`
+	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
+	Radarr        []*RadarrConfig  `json:"radarr,omitempty"   toml:"radarr"         xml:"radarr"         yaml:"radarr,omitempty"`
+	Whisparr      []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"       xml:"whisparr"       yaml:"whisparr,omitempty"`
+	Readarr       []*ReadarrConfig `json:"readarr,omitempty"  toml:"readarr"        xml:"readarr"        yaml:"readarr,omitempty"`
+	Sonarr        []*SonarrConfig  `json:"sonarr,omitempty"   toml:"sonarr"         xml:"sonarr"         yaml:"sonarr,omitempty"`
+	Folders       []*FolderConfig  `json:"folder,omitempty"   toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
+	Webhook       []*WebhookConfig `json:"webhook,omitempty"  toml:"webhook"        xml:"webhook"        yaml:"webhook,omitempty"`
+	Cmdhook       []*WebhookConfig `json:"cmdhook,omitempty"  toml:"cmdhook"        xml:"cmdhook"        yaml:"cmdhook,omitempty"`
+	Folder        FoldersConfig    `json:"folders"            toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
 }
 
 type FoldersConfig struct {
@@ -135,6 +147,7 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
 	for _, validate := range []func() error{
+		u.validateRemnantAction,
 		u.validateLidarr,
 		u.validateRadarr,
 		u.validateReadarr,
@@ -154,6 +167,19 @@ func (u *Unpackerr) validateApps() error {
 		if err := validate(); err != nil {
 			u.Errorf("Config Warning: %v", err)
 		}
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) validateRemnantAction() error {
+	switch action := strings.ToLower(strings.TrimSpace(u.RemnantAction)); action {
+	case "", remnantActionRename:
+		u.RemnantAction = remnantActionRename
+	case remnantActionDelete, remnantActionOff:
+		u.RemnantAction = action
+	default:
+		return fmt.Errorf("%w: %q (want rename, delete, or off)", ErrInvalidRemnantAction, u.RemnantAction)
 	}
 
 	return nil

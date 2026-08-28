@@ -68,6 +68,10 @@ type Folder struct {
 	files    []string
 	retries  uint
 	archives xtractr.ArchiveList
+	// preFiles is the snapshot of the move destination before extraction
+	// (MoveBack only; it is the watched item's own contents). Kept across
+	// retries so failed cleanups are not recaptured as download content.
+	preFiles map[string]os.FileInfo
 }
 
 type eventData struct {
@@ -328,6 +332,11 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 
 	exclude := folderExcludeSuffixes(name, folder.config)
 
+	if folder.config.MoveBack {
+		// With MoveBack the destination is the watched item's own path.
+		folder.preFiles = keepDirSnapshot(folder.preFiles, name)
+	}
+
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Password:         u.getPasswordFromPath(name),
@@ -410,25 +419,49 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
 		folder.status = EXTRACTEDNOTHING
 		u.Printf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
-	case resp.Error != nil:
-		folder.archives = resp.Archives
-		folder.status = EXTRACTFAILED
-		u.Errorf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
-		u.updateMetrics(resp, FolderString, folder.config.Path)
 	default: // this runs in a go routine
-		u.updateMetrics(resp, FolderString, folder.config.Path)
-		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
-			"extra archives: %d, files extracted: %d, written: %sB",
-			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
-			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
-
-		folder.archives = resp.Archives
-		folder.status = EXTRACTED
-		folder.files = resp.NewFiles
+		u.finishFolderExtract(folder, resp)
 	}
 
 	folder.updated = resp.Started.Add(resp.Elapsed)
 	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
+}
+
+// finishFolderExtract classifies refusals on any terminal response (success or
+// error), then keeps EXTRACTFAILED when remnants remain or the original error
+// still requires a retry. Cleared remnants restart via the existing
+// EXTRACTFAILED retry path (folders have no WAITING poller).
+func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) {
+	if resp.Error != nil {
+		folder.archives = resp.Archives
+		u.Errorf("[Folder] %s: %s: %v", EXTRACTFAILED.Desc(), resp.X.Name, resp.Error)
+	} else {
+		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
+			"extra archives: %d, files extracted: %d, written: %sB",
+			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
+			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
+	}
+
+	u.updateMetrics(resp, FolderString, folder.config.Path)
+
+	switch u.handleRemnants(resp, folder.preFiles, folder.retries) {
+	case remnantRestart:
+		u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
+
+		folder.status = EXTRACTFAILED
+	case remnantFailed:
+		u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
+
+		folder.status = EXTRACTFAILED
+	case remnantNone:
+		if resp.Error != nil {
+			folder.status = EXTRACTFAILED
+		} else {
+			folder.archives = resp.Archives
+			folder.status = EXTRACTED
+			folder.files = resp.NewFiles
+		}
+	}
 }
 
 // watchFSNotify reads file system events from a channel and processes them.

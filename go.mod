@@ -22,7 +22,7 @@ require (
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	golift.io/starr v1.3.1
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.5.0
+	golift.io/xtractr v0.5.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -43,7 +43,6 @@ require (
 	github.com/icza/bitio v1.1.0 // indirect
 	github.com/josephspurrier/goversioninfo v1.7.0 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lestrrat-go/strftime v1.2.0 // indirect
 	github.com/mewkiz/flac v1.0.14 // indirect
 	github.com/mewkiz/pkg v0.0.0-20260703220044-4fb89b18cc87 // indirect

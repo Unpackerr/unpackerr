@@ -493,6 +493,16 @@ func TestMDXJSXKeywordRegex(t *testing.T) {
 	if len(ctrl) != 0 {
 		t.Fatalf("a regex after if (x) should be accepted: %v", ctrl)
 	}
+
+	inOp := mdxProblems(`{{ok: "x" in /}/}}`, "fixture")
+	if len(inOp) != 0 {
+		t.Fatalf("a regex after in should be accepted: %v", inOp)
+	}
+
+	inst := mdxProblems("{{ok: x instanceof /}/}}", "fixture")
+	if len(inst) != 0 {
+		t.Fatalf("a regex after instanceof should be accepted: %v", inst)
+	}
 }
 
 func TestMDXJSXPostfixDivision(t *testing.T) {
@@ -559,6 +569,21 @@ func TestMDXListFenceAndTabPad(t *testing.T) {
 	rootFence := mdxProblems("- ```\n  inner\n```\n{ok}\n", "fixture")
 	if len(rootFence) != 0 {
 		t.Fatalf("a dedented fence after a list item opens a new fence: %v", rootFence)
+	}
+
+	nested := mdxProblems("- outer\n  - inner\n  outer\n\n    {broken", "fixture")
+	if len(nested) == 0 {
+		t.Fatal("dedenting to the outer list keeps its indent; { must be flagged")
+	}
+
+	ordered := mdxProblems("text\n2. ~~~\n   {broken}\n   ~~~", "fixture")
+	if len(ordered) == 0 {
+		t.Fatal("a 2. marker cannot interrupt a paragraph; { must be flagged")
+	}
+
+	one := mdxProblems("text\n1. ~~~\n   {ok}\n   ~~~\n", "fixture")
+	if len(one) != 0 {
+		t.Fatalf("a 1. list can interrupt a paragraph with a fence: %v", one)
 	}
 }
 

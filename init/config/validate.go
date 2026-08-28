@@ -594,7 +594,8 @@ func isJSIdentChar(char byte, cont bool) bool {
 func jsRegexKeyword(ident string) bool {
 	switch ident {
 	case "return", "throw", "case", "else", "do",
-		"typeof", "delete", "void", "new", "yield", "await":
+		"typeof", "delete", "void", "new", "yield", "await",
+		"in", "instanceof":
 		return true
 	default:
 		return false
@@ -752,6 +753,7 @@ func stripCodeBlocks(content string) string {
 
 type mdScan struct {
 	out              strings.Builder
+	listIndents      []int
 	inFence          bool
 	fenceChar        byte
 	fenceLen         int
@@ -801,16 +803,29 @@ func (scan *mdScan) line(line string) {
 }
 
 func (scan *mdScan) syncList(indent int, trimmed string) {
-	if trimmed == "" || indent >= scan.contentIndent {
+	if trimmed == "" {
 		return
 	}
 
-	if col, _, ok := listItemSplit(indent, trimmed); ok {
-		scan.contentIndent = col
+	scan.popLists(indent)
+}
+
+func (scan *mdScan) pushList(col int) {
+	scan.listIndents = append(scan.listIndents, col)
+	scan.contentIndent = col
+}
+
+func (scan *mdScan) popLists(indent int) {
+	for len(scan.listIndents) > 0 && indent < scan.listIndents[len(scan.listIndents)-1] {
+		scan.listIndents = scan.listIndents[:len(scan.listIndents)-1]
+	}
+
+	if len(scan.listIndents) == 0 {
+		scan.contentIndent = 0
 		return
 	}
 
-	scan.contentIndent = 0
+	scan.contentIndent = scan.listIndents[len(scan.listIndents)-1]
 }
 
 func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel int) {
@@ -819,8 +834,8 @@ func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel in
 
 	scan.inIndented = false
 	if !scan.lastWasParagraph || !setextUnderline(trimmed) {
-		if col, _, ok := listItemSplit(indent, trimmed); ok && rel <= maxFenceIndent {
-			scan.contentIndent = col
+		if col, _, ok := listItemSplit(indent, trimmed); ok && rel <= maxFenceIndent && scan.allowListItem(trimmed) {
+			scan.pushList(col)
 		}
 	}
 
@@ -841,7 +856,7 @@ func (scan *mdScan) continueFence(indent int, trimmed string) bool {
 	}
 
 	scan.inFence = false
-	scan.contentIndent = 0
+	scan.popLists(indent)
 	scan.canStartIndented, scan.lastWasParagraph = true, false
 
 	return false
@@ -863,12 +878,12 @@ func (scan *mdScan) openFence(indent, rel int, trimmed string) bool {
 	}
 
 	col, rest, ok := listItemSplit(indent, trimmed)
-	if !ok {
+	if !ok || !scan.allowListItem(trimmed) {
 		return false
 	}
 
 	if char, length, isOpen := fenceOpener(strings.TrimSpace(rest)); isOpen {
-		scan.contentIndent = col
+		scan.pushList(col)
 		scan.startFence(char, length, col)
 
 		return true
@@ -896,7 +911,7 @@ func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
 // remainder of the line after the marker and padding. Tabs in the padding
 // advance to the next tab stop from the marker's ending column.
 func listItemSplit(indent int, trimmed string) (int, string, bool) {
-	end, ok := consumeListMarker(trimmed)
+	end, _, ok := consumeListMarker(trimmed)
 	if !ok {
 		return 0, "", false
 	}
@@ -948,26 +963,49 @@ func listItemSplit(indent int, trimmed string) (int, string, bool) {
 	return col, "", true
 }
 
-func consumeListMarker(trimmed string) (int, bool) {
+// bulletStart is consumeListMarker's start value for -, *, and +. Ordered
+// markers return the parsed number, which is never negative.
+const (
+	bulletStart = -1
+	decimalBase = 10
+)
+
+func consumeListMarker(trimmed string) (int, int, bool) {
 	if trimmed == "" {
-		return 0, false
+		return 0, 0, false
 	}
 
 	switch trimmed[0] {
 	case '-', '*', '+':
-		return 1, true
+		return 1, bulletStart, true
 	}
 
 	digits := 0
+	start := 0
+
 	for digits < len(trimmed) && digits < 9 && trimmed[digits] >= '0' && trimmed[digits] <= '9' {
+		start = start*decimalBase + int(trimmed[digits]-'0')
 		digits++
 	}
 
 	if digits == 0 || digits >= len(trimmed) || (trimmed[digits] != '.' && trimmed[digits] != ')') {
-		return 0, false
+		return 0, 0, false
 	}
 
-	return digits + 1, true
+	return digits + 1, start, true
+}
+
+func (scan *mdScan) allowListItem(trimmed string) bool {
+	if !scan.lastWasParagraph {
+		return true
+	}
+
+	_, start, ok := consumeListMarker(trimmed)
+	if !ok {
+		return false
+	}
+
+	return start == bulletStart || start == 1
 }
 
 // leadingIndent returns the visual column of the first non-whitespace rune.

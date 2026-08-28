@@ -107,10 +107,15 @@ while IFS='|' read -r goarch goarm path; do
   rm -rf "${tmp}"
   fix_pkg "${dest}" "FreeBSD:*:${cpu}"
   echo "wrote ${dest##*/}" >&2
-  jq --arg name "${dest##*/}" --arg goarch "${goarch}" --arg goarm "${goarm}" \
-    '. + [{name:$name, path:$name, goos:"freebsd", goarch:$goarch,
+  # Merge unmarshals Type from internal_type (int), not type (string).
+  # UploadableArchive = 1. Path must be repo-relative so checksum/GitHub can open it.
+  relpath=${dest#"${REPO}/"}
+  jq --arg name "${dest##*/}" --arg path "${relpath}" --arg goarch "${goarch}" \
+    --arg goarm "${goarm}" --argjson itype 1 \
+    '. + [{name:$name, path:$path, goos:"freebsd", goarch:$goarch,
       goarm: (if $goarm == "" then null else $goarm end),
-      type:"Archive", extra:{ID:"freebsd-pkg", Format:"txz"}}]' \
+      type:"Archive", internal_type:$itype,
+      extra:{ID:"freebsd-pkg", Format:"txz", Ext:".txz"}}]' \
     "${extra}" > "${extra}.n" && mv "${extra}.n" "${extra}"
 done < <(jq -r '.[] | select(.type=="Binary" and .goos=="freebsd") | [.goarch, (.goarm // ""), .path] | join("|")' "${artifacts}")
 

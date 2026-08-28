@@ -168,6 +168,10 @@ app_bundles:
     extra_files:
       - src: init/macos/Unpackerr.app/Contents/Resources/terminal-notifier.app
         dst: Contents/Resources/terminal-notifier.app
+      - src: examples/unpackerr.conf.example
+        dst: Contents/Resources/unpackerr.conf.example
+      - src: unpackerr.1.gz
+        dst: Contents/Resources/unpackerr.1.gz
     templated_extra_files:
       - src: init/macos/Info.plist.tmpl
         dst: Contents/Info.plist
@@ -187,7 +191,7 @@ archives:
   - id: default
     ids: [unpackerr, unpackerr-darwin]
     formats: [tar.gz]
-    # Flat so the Homebrew cask can find binary/conf/manpage without a rename.
+    # Flat tarball for GitHub. Homebrew installs the notarized DMG, not this archive.
     wrap_in_directory: false
     files:
       - LICENSE
@@ -445,11 +449,12 @@ aur_sources:
 
 homebrew_casks:
   - name: unpackerr
-    ids: [default]
+    # Notarized DMG (macos_native signs unpackerr-app / unpackerr-dmg). The
+    # unsigned darwin tar.gz (ids: default) is GitHub-only; Gatekeeper rejects it.
+    ids: [unpackerr-dmg]
+    app: Unpackerr.app
     binaries:
-      - unpackerr
-    manpages:
-      - unpackerr.1.gz
+      - '#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr'
     skip_upload: "{{ .IsNightly }}"
     repository:
       owner: golift
@@ -472,16 +477,21 @@ homebrew_casks:
     hooks:
       post:
         install: |
+          staged_app = "#{staged_path}/Unpackerr.app"
+          conf_src = "#{staged_app}/Contents/Resources/unpackerr.conf.example"
           conf_dir = HOMEBREW_PREFIX/"etc/unpackerr"
           conf_dir.mkpath
-          FileUtils.cp "#{staged_path}/unpackerr.conf.example", conf_dir/"unpackerr.conf.example"
+          FileUtils.cp conf_src, conf_dir/"unpackerr.conf.example"
           had_conf = (conf_dir/"unpackerr.conf").exist?
-          FileUtils.cp "#{staged_path}/unpackerr.conf.example", conf_dir/"unpackerr.conf" unless had_conf
+          FileUtils.cp conf_src, conf_dir/"unpackerr.conf" unless had_conf
+          man1 = HOMEBREW_PREFIX/"share/man/man1"
+          man1.mkpath
+          FileUtils.cp "#{staged_app}/Contents/Resources/unpackerr.1.gz", man1/"unpackerr.1.gz"
           (HOMEBREW_PREFIX/"var/log").mkpath
           label = "io.golift.unpackerr"
           agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
           agent.dirname.mkpath
-          binary = HOMEBREW_PREFIX/"bin/unpackerr"
+          binary = "#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr"
           conf = conf_dir/"unpackerr.conf"
           log = HOMEBREW_PREFIX/"var/log/unpackerr.log"
           agent.write <<~XML
@@ -514,6 +524,8 @@ homebrew_casks:
           agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
           system "/bin/launchctl", "bootout", "gui/#{Process.uid}/#{label}"
           agent.delete if agent.exist?
+          man = HOMEBREW_PREFIX/"share/man/man1/unpackerr.1.gz"
+          man.delete if man.exist?
     caveats: |
       First install: edit #{HOMEBREW_PREFIX}/etc/unpackerr/unpackerr.conf then:
         launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.golift.unpackerr.plist
@@ -521,6 +533,8 @@ homebrew_casks:
       Restart: launchctl kickstart -k gui/$(id -u)/io.golift.unpackerr
       Stop:    launchctl bootout gui/$(id -u)/io.golift.unpackerr
       (brew services does not manage casks.)
+      Menu bar: open Unpackerr.app (do not also run the LaunchAgent).
+      The LaunchAgent runs the signed CLI inside the app (no menu bar).
       The manual explains the config file options: man unpackerr
 
 checksum:

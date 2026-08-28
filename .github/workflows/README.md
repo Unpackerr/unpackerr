@@ -52,7 +52,7 @@ So:
 
 - **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
 - **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`.
-- **Homebrew** — `homebrew_casks` → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly`.
+- **Homebrew** — notarized `Unpackerr.app` from the `unpackerr-dmg` DMG → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly` (and that channel has no Darwin job).
 - **AUR** — `aur_sources` over SSH. Skip on `--nightly`.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
 - **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1056`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh` (reads `dist/$GOOS/artifacts.json` after split/merge). Upload overwrites by name. Empty `UNSTABLE_UPLOAD_KEY` fails in GitHub Actions.

@@ -396,7 +396,7 @@ aur_sources:
     build: |
       cd "${pkgname}-${pkgver}"
       export GOFLAGS="-buildmode=pie -trimpath -modcacherw"
-      go build -o unpackerr -ldflags "-w -s -X golift.io/version.Version=${pkgver} -X golift.io/version.Revision=${pkgrel}" .
+      go build -o unpackerr -ldflags "-w -s -X golift.io/version.Version=${pkgver} -X golift.io/version.Revision=${pkgrel} -X \"golift.io/version.Branch=${pkgver} [aur]\"" .
       go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "${pkgver}" --date "$(date -u +%Y-%m-%d)" examples/MANUAL.md
       gzip -9nf examples/MANUAL
       mv examples/MANUAL.gz unpackerr.1.gz

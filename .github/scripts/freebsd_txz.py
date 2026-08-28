@@ -26,14 +26,20 @@ DESC = "Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
 MAINTAINER = "David Newhall II <captain at golift dot io>"
 ORIGIN = "https://github.com/Unpackerr/unpackerr"
 WWW = "https://unpackerr.zip"
-OSVERSION = "13"
+# pkg ABI is os:version:arch. Version * matches any FreeBSD major; pkg add
+# accepts it (jordansissel/fpm#2064). CPU stays real so amd64 is not
+# installable on aarch64. FreeBSD 13 is EOL; do not pin 13.
+OSVERSION = "*"
+CONFIG_FILES = {
+    "usr/local/etc/unpackerr/unpackerr.conf",
+}
 
-# Filename arch (install.sh / check.go) and pkgng ABI arch.
+# Filename arch (install.sh / check.go) and pkgng ABI arch (uname -p).
 ARCH_MAP = {
     "amd64": ("amd64", "amd64"),
     "386": ("i386", "i386"),
-    "arm": ("armhf", "arm"),
-    "arm64": ("arm64", "arm64"),
+    "arm": ("armhf", "armv7"),
+    "arm64": ("arm64", "aarch64"),
 }
 
 
@@ -136,7 +142,11 @@ def write_manifests(
 ) -> None:
     checksums = {}
     for rel in members:
-        checksums["/" + rel] = sha256(staging / rel)
+        digest = sha256(staging / rel)
+        if rel in CONFIG_FILES:
+            checksums["/" + rel] = {"sum": digest, "config": True}
+        else:
+            checksums["/" + rel] = digest
 
     pkgdata = {
         "arch": f"FreeBSD:{OSVERSION}:{abi_arch}",
@@ -196,6 +206,9 @@ def pack_txz(staging: Path, members: list[str], dest: Path) -> None:
         subprocess.run(
             [
                 tar,
+                "--owner=0",
+                "--group=0",
+                "--numeric-owner",
                 "-Jcf",
                 str(dest),
                 "-C",

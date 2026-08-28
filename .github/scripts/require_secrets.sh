@@ -21,6 +21,8 @@ need() {
 
 need GORELEASER_PRO_KEY
 need GPG_SIGNING_KEY
+# Hub is part of every channel (GHCR + golift/unpackerr). Absence used to
+# skip login and still go green; that is no longer allowed.
 need DOCKERHUB_PASSWORD
 need CODESIGN_URL
 need CODESIGN_CLIENT_CERT

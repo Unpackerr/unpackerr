@@ -158,6 +158,11 @@ func TestMDXUnescapedBrace(t *testing.T) {
 		t.Fatalf("braces inside JS comments should be accepted: %v", commented)
 	}
 
+	regex := mdxProblems(`<X value={{re: /[}]/}} />`, "fixture")
+	if len(regex) != 0 {
+		t.Fatalf("braces inside JS regex character classes should be accepted: %v", regex)
+	}
+
 	escapedOpen := mdxProblems(`\{{x}}`, "fixture")
 	if len(escapedOpen) == 0 {
 		t.Fatal(`\{{x}} is an escaped { plus leftover braces and must be flagged`)
@@ -434,6 +439,21 @@ func TestMDXIndentedCodeContext(t *testing.T) {
 	if len(tabOpener) == 0 {
 		t.Fatal("a tab-indented ``` is indented code, not a fence; later { must be flagged")
 	}
+
+	afterHeading := mdxProblems("# Heading\n    {ok}\n", "fixture")
+	if len(afterHeading) != 0 {
+		t.Fatalf("indented code after an ATX heading is code: %v", afterHeading)
+	}
+
+	afterBreak := mdxProblems("---\n    {ok}\n", "fixture")
+	if len(afterBreak) != 0 {
+		t.Fatalf("indented code after a thematic break is code: %v", afterBreak)
+	}
+
+	afterList := mdxProblems("- item\n    {broken", "fixture")
+	if len(afterList) == 0 {
+		t.Fatal("an indented line continuing a list paragraph is MDX; { must be flagged")
+	}
 }
 
 func TestMDXExactBacktickRunCloses(t *testing.T) {
@@ -507,8 +527,10 @@ func TestValidateListKindOverride(t *testing.T) {
 func TestComposeListScalarDoesNotPanic(t *testing.T) {
 	t.Parallel()
 
-	param := &Param{Kind: list, EnvVar: "X", Default: "not-a-list"}
-	if got := param.Compose("UN_"); got != "" {
-		t.Fatalf("scalar list compose should emit nothing, got %q", got)
+	for _, kind := range []string{list, "conlist"} {
+		param := &Param{Kind: kind, EnvVar: "X", Default: "not-a-list"}
+		if got := param.Compose("UN_"); got != "" {
+			t.Fatalf("%s scalar compose should emit nothing, got %q", kind, got)
+		}
 	}
 }

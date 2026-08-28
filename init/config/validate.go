@@ -390,17 +390,20 @@ func stripAllowedBraces(line string) string {
 }
 
 // balancedBraceEnd returns the index after a complete brace group starting at
-// idx, counting nested unescaped { and }. Braces inside JavaScript strings and
-// comments are ignored. idx must point at an unescaped '{'.
+// idx, counting nested unescaped { and }. Braces inside JavaScript strings,
+// comments, and regex literals are ignored. idx must point at an unescaped '{'.
 func balancedBraceEnd(content string, idx int) int {
 	depth := 0
 
+	var prev byte
+
 	for pos := idx; pos < len(content); {
-		if skip, next := skipJSLexical(content, pos); skip {
+		if skip, next := skipJSLexical(content, pos, prev); skip {
 			if next < 0 {
 				return -1
 			}
 
+			prev = jsLexicalPrev(content, pos, next, prev)
 			pos = next
 
 			continue
@@ -414,10 +417,17 @@ func balancedBraceEnd(content string, idx int) int {
 		switch content[pos] {
 		case '{':
 			depth++
+			prev = '{'
 		case '}':
 			depth--
 			if depth == 0 {
 				return pos + 1
+			}
+
+			prev = '}'
+		default:
+			if content[pos] != ' ' && content[pos] != '\t' && content[pos] != '\n' && content[pos] != '\r' {
+				prev = content[pos]
 			}
 		}
 
@@ -427,9 +437,9 @@ func balancedBraceEnd(content string, idx int) int {
 	return -1
 }
 
-// skipJSLexical reports whether pos starts a JS string or comment and, if so,
-// the index after that construct (or -1 if a string is unterminated).
-func skipJSLexical(content string, pos int) (bool, int) {
+// skipJSLexical reports whether pos starts a JS string, comment, or regex
+// literal and, if so, the index after that construct (or -1 if unterminated).
+func skipJSLexical(content string, pos int, prev byte) (bool, int) {
 	if pos >= len(content) {
 		return false, pos
 	}
@@ -448,9 +458,86 @@ func skipJSLexical(content string, pos int) (bool, int) {
 		case '*':
 			return true, skipJSBlockComment(content, pos)
 		}
+
+		if canStartJSRegex(prev) {
+			return true, skipJSRegex(content, pos)
+		}
 	}
 
 	return false, pos
+}
+
+func jsLexicalPrev(content string, start, end int, prev byte) byte {
+	if start >= len(content) || content[start] != '/' {
+		if end > start {
+			return content[end-1]
+		}
+
+		return prev
+	}
+
+	if start+1 < len(content) && (content[start+1] == '/' || content[start+1] == '*') {
+		return prev
+	}
+
+	if end > start {
+		return content[end-1]
+	}
+
+	return prev
+}
+
+func canStartJSRegex(prev byte) bool {
+	switch prev {
+	case 0, '(', '[', '{', ',', '=', ':', ';', '!', '&', '|', '?', '+', '-', '*', '%', '^', '~', '<', '>':
+		return true
+	default:
+		return false
+	}
+}
+
+func skipJSRegex(content string, pos int) int {
+	inClass := false
+
+	for idx := pos + 1; idx < len(content); idx++ {
+		if content[idx] == '\n' {
+			return -1
+		}
+
+		if oddEscapes(content, idx) {
+			continue
+		}
+
+		switch {
+		case inClass:
+			if content[idx] == ']' {
+				inClass = false
+			}
+		case content[idx] == '[':
+			inClass = true
+		case content[idx] == '/':
+			return skipJSRegexpFlags(content, idx+1)
+		}
+	}
+
+	return -1
+}
+
+func skipJSRegexpFlags(content string, pos int) int {
+	for pos < len(content) && isJSRegexpFlag(content[pos]) {
+		pos++
+	}
+
+	return pos
+}
+
+func isJSRegexpFlag(char byte) bool {
+	switch char {
+	case 'd', 'g', 'i', 'm', 's', 'u', 'v', 'y':
+		return true
+	default:
+		return false
+	}
 }
 
 func skipJSString(content string, pos int) int {
@@ -489,6 +576,7 @@ const (
 	minFenceLen    = 3
 	maxFenceIndent = 3
 	tabWidth       = 4
+	minSetextDash  = 2
 )
 
 // stripCodeBlocks removes fenced and indented code. A fence opens with a run of
@@ -548,7 +636,7 @@ func stripCodeBlocks(content string) string {
 		out.WriteByte('\n')
 
 		inIndented = false
-		canStartIndented = false
+		canStartIndented = leafBlockLine(trimmed)
 	}
 
 	return out.String()
@@ -581,6 +669,90 @@ func leadingIndent(line string) int {
 	}
 
 	return col
+}
+
+// leafBlockLine reports whether trimmed is a CommonMark leaf block that ends
+// a paragraph: an ATX heading, thematic break, or setext underline. Indented
+// code may start on the next line. List items and other containers still hold
+// a paragraph, so they do not qualify.
+func leafBlockLine(trimmed string) bool {
+	return atxHeading(trimmed) || thematicBreak(trimmed) || setextUnderline(trimmed)
+}
+
+func atxHeading(trimmed string) bool {
+	hashes := 0
+	for hashes < len(trimmed) && trimmed[hashes] == '#' {
+		hashes++
+	}
+
+	if hashes < 1 || hashes > 6 {
+		return false
+	}
+
+	if hashes == len(trimmed) {
+		return true
+	}
+
+	return trimmed[hashes] == ' ' || trimmed[hashes] == '\t'
+}
+
+func thematicBreak(trimmed string) bool {
+	var marker byte
+
+	count := 0
+
+	for idx := range len(trimmed) {
+		char := trimmed[idx]
+		if char == ' ' || char == '\t' {
+			continue
+		}
+
+		if char != '-' && char != '*' && char != '_' {
+			return false
+		}
+
+		if marker == 0 {
+			marker = char
+		} else if char != marker {
+			return false
+		}
+
+		count++
+	}
+
+	return count >= minFenceLen
+}
+
+func setextUnderline(trimmed string) bool {
+	var marker byte
+
+	count := 0
+
+	for idx := range len(trimmed) {
+		char := trimmed[idx]
+		if char == ' ' || char == '\t' {
+			continue
+		}
+
+		if char != '=' && char != '-' {
+			return false
+		}
+
+		if marker == 0 {
+			marker = char
+		} else if char != marker {
+			return false
+		}
+
+		count++
+	}
+
+	if marker == '=' {
+		return count >= 1
+	}
+
+	// A single dash is a list marker, not a setext underline.
+	return count >= minSetextDash
 }
 
 // fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same

@@ -68,6 +68,9 @@ type Folder struct {
 	files    []string
 	retries  uint
 	archives xtractr.ArchiveList
+	// preFiles is the set of top-level basenames present at the move dest
+	// before extraction; distinguishes download content from remnants.
+	preFiles map[string]struct{}
 }
 
 type eventData struct {
@@ -328,6 +331,8 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 
 	exclude := folderExcludeSuffixes(name, folder.config)
 
+	folder.preFiles = sliceToSet(fileList(folderMoveDest(name)))
+
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Password:         u.getPasswordFromPath(name),
@@ -371,6 +376,18 @@ func folderExcludeSuffixes(path string, cfg *FolderConfig) []string {
 	}
 
 	return append(exclude, xtractr.SupportedExtensions()...)
+}
+
+// folderMoveDest is the directory xtractr moveFiles writes into for this item.
+// Directories extract in place. Archive files extract to the path with one
+// extension stripped (that folder may not exist yet).
+func folderMoveDest(name string) string {
+	info, err := os.Stat(name)
+	if err == nil && !info.IsDir() && xtractr.IsArchiveFile(name) {
+		return strings.TrimSuffix(name, filepath.Ext(name))
+	}
+
+	return name
 }
 
 func getFileList(path string) []os.FileInfo {
@@ -422,9 +439,20 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 			resp.X.Name, resp.Elapsed.Round(time.Second), resp.Archives.Count(),
 			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 
-		folder.archives = resp.Archives
-		folder.status = EXTRACTED
-		folder.files = resp.NewFiles
+		if len(resp.Refused) > 0 && (u.MaxRetries == 0 || folder.retries < u.MaxRetries) {
+			if repaired := u.repairRemnants(folder.preFiles, folderMoveDest(resp.X.Name), resp); repaired > 0 {
+				u.Printf("[Folder] Cleared %d interrupted-extraction remnant(s), restarting extraction: %s",
+					repaired, resp.X.Name)
+
+				folder.status = EXTRACTFAILED
+			}
+		}
+
+		if folder.status != EXTRACTFAILED {
+			folder.archives = resp.Archives
+			folder.status = EXTRACTED
+			folder.files = resp.NewFiles
+		}
 	}
 
 	folder.updated = resp.Started.Add(resp.Elapsed)

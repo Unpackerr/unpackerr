@@ -183,11 +183,33 @@ jobs:
         if: env.KEYCHAIN_PATH != ''
         run: |
           set -euo pipefail
+          app="$(find dist/darwin -type d -name 'Unpackerr.app' | head -n 1 || true)"
+          if [ -z "${app}" ]; then
+            echo "Unpackerr.app missing under dist/darwin" >&2
+            find dist/darwin -type f >&2 || true
+            exit 1
+          fi
+          if ! codesign -dv --verbose=2 "${app}" 2>&1 | tee /tmp/codesign-app.txt | grep -q "Developer ID Application"; then
+            echo "Unpackerr.app is not Developer ID signed; macos_native skipped or failed" >&2
+            cat /tmp/codesign-app.txt >&2
+            exit 1
+          fi
           found=0
           while IFS= read -r dmg; do
             found=1
             echo "stapling ${dmg}"
-            xcrun stapler staple "${dmg}"
+            ok=0
+            for attempt in 1 2 3 4 5; do
+              if xcrun stapler staple "${dmg}"; then
+                ok=1
+                break
+              fi
+              echo "stapler attempt ${attempt} failed; waiting for Apple ticket"
+              sleep 20
+            done
+            if [ "${ok}" -ne 1 ]; then
+              exit 1
+            fi
           done < <(find dist/darwin -type f -name '*.dmg' | sort)
           if [ "${found}" -eq 0 ]; then
             echo "no DMG under dist/darwin" >&2

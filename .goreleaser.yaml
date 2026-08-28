@@ -144,8 +144,11 @@ universal_binaries:
 notarize:
   macos_native:
     - enabled: '{{ isEnvSet "KEYCHAIN_PATH" }}'
+      # These pipes match Extra.ID on the .app / .dmg, not the Darwin build id.
+      # unpackerr-darwin made both skip: "no app bundles found" / "no artifacts found".
       ids:
-        - unpackerr-darwin
+        - unpackerr-app
+        - unpackerr-dmg
       use: dmg
       sign:
         keychain: "{{ .Env.KEYCHAIN_PATH }}"

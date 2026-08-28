@@ -35,7 +35,7 @@ So:
 1. **channel** — compute `CHANNEL` + extra args. Nothing else.
 2. **Build: linux / windows / freebsd** (`split` on ubuntu) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS.
 3. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
-4. **release** — download `dist-*` artifacts, `continue --merge`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
+4. **release** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
 
 `REVISION` is `git rev-list --count --all`. It must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). Nightly/unstable versions are `{{ incpatch .Version }}-{{ .Env.REVISION }}` (example `0.15.3-1045`). nFPM `release` is not templated; uniqueness is that version string. Do not put `CHANNEL` in the package version.
 

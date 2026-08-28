@@ -6,7 +6,9 @@ set -e -o pipefail
 # GoReleaser calls this from builds.hooks.post on windows binaries, after the
 # CLI is installed into a temp GOBIN (never /usr/bin/codesign).
 #
-# Skip when CODESIGN_URL is unset so local snapshots still work.
+# Local snapshots skip when CODESIGN_URL is unset. GitHub Actions must fail
+# closed — the release contract is an Authenticode-signed Windows binary.
+#
 # Prefer CODESIGN_BIN, then GOBIN/codesign, then GOPATH/bin, then PATH
 # entries that are not Apple's /usr/bin/codesign.
 
@@ -36,6 +38,10 @@ function pick_codesign() {
 
 function sign() {
   if [ -z "${CODESIGN_URL:-}" ]; then
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "CODESIGN_URL unset; refusing to ship an unsigned Windows binary in CI" >&2
+      exit 1
+    fi
     echo "Skipped signing ${FILE} (CODESIGN_URL unset) .." >&2
     exit 0
   fi

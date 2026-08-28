@@ -197,6 +197,10 @@ upload() {
 }
 
 if [ -z "${UNSTABLE_UPLOAD_KEY:-}" ]; then
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "UNSTABLE_UPLOAD_KEY unset; refusing to skip unstable.golift.io upload in CI" >&2
+    exit 1
+  fi
   echo "UNSTABLE_UPLOAD_KEY unset; staged without uploading:" >&2
   ls -l "${stage}"
   exit 0

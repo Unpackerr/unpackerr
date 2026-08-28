@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
-      - name: Save iteration in Revision
+      - name: Count git revisions
         id: revision
         run: echo "revision=$(git rev-list --count --all || echo 0)" >> "${GITHUB_OUTPUT}"
       - name: Choose release channel
@@ -55,9 +55,38 @@ jobs:
           echo "extra=${extra}" >> "${GITHUB_OUTPUT}"
           echo "CHANNEL=${channel} extra=${extra}"
 
+  require-secrets:
+    name: require secrets
+    needs: channel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - name: Fail if publishing secrets are missing
+        env:
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          GORELEASER_PRO_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+          UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
+        run: bash .github/scripts/require_secrets.sh
+
   split:
     name: "Build: ${{ matrix.goos }}"
-    needs: channel
+    needs: [channel, require-secrets]
     strategy:
       fail-fast: false
       matrix:
@@ -76,8 +105,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
       - run: git fetch --force --tags
-      - name: Save iteration in Revision
-        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -93,7 +120,7 @@ jobs:
       - name: Create GPG_SIGNING_KEY file
         run: echo '${{ secrets.GPG_SIGNING_KEY }}' > /tmp/key.gpg
       - name: Install golift codesign
-        if: matrix.goos == 'windows' && env.CODESIGN_URL != ''
+        if: matrix.goos == 'windows'
         env:
           GOBIN: ${{ runner.temp }}/codesign-bin
         run: |
@@ -111,7 +138,7 @@ jobs:
           # GGOOS filters targets without leaking GOOS into before-hook `go run`.
           GGOOS: ${{ matrix.goos }}
           CHANNEL: ${{ needs.channel.outputs.channel }}
-          REVISION: ${{ env.REVISION }}
+          REVISION: ${{ needs.channel.outputs.revision }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           USER: github-actions
@@ -123,6 +150,9 @@ jobs:
           CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
           CODESIGN_NAME: Unpackerr
           CODESIGN_WEBSITE: https://unpackerr.zip
+      - name: Build FreeBSD pkgng txz
+        if: matrix.goos == 'freebsd'
+        run: python3 .github/scripts/freebsd_txz.py dist/freebsd
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-${{ matrix.goos }}
@@ -134,7 +164,7 @@ jobs:
 
   split-darwin:
     name: "Build: darwin"
-    needs: channel
+    needs: [channel, require-secrets]
     # Nightly is Docker-only; skip Apple notarization.
     if: needs.channel.outputs.channel != 'nightly'
     runs-on: macos-latest
@@ -147,8 +177,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
       - run: git fetch --force --tags
-      - name: Save iteration in Revision
-        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -169,7 +197,7 @@ jobs:
         env:
           GGOOS: darwin
           CHANNEL: ${{ needs.channel.outputs.channel }}
-          REVISION: ${{ env.REVISION }}
+          REVISION: ${{ needs.channel.outputs.revision }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           USER: github-actions
@@ -199,11 +227,12 @@ jobs:
 
   release:
     name: "release ${{ needs.channel.outputs.revision }}"
-    needs: [channel, split, split-darwin]
+    needs: [channel, require-secrets, split, split-darwin]
     if: >-
       always() &&
       !cancelled() &&
       needs.channel.result == 'success' &&
+      needs.require-secrets.result == 'success' &&
       needs.split.result == 'success' &&
       (needs.split-darwin.result == 'success' || needs.split-darwin.result == 'skipped')
     runs-on: ubuntu-latest
@@ -214,15 +243,12 @@ jobs:
       id-token: write
     env:
       CHANNEL: ${{ needs.channel.outputs.channel }}
-      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
       - run: git fetch --force --tags
-      - name: Save iteration in Revision
-        run: echo REVISION=$(git rev-list --count --all || echo 0) >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -245,17 +271,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Log into Docker Hub
-        if: env.DOCKERHUB_PASSWORD != ''
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: golift
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Enable Docker Hub publish
-        if: env.DOCKERHUB_PASSWORD != ''
         run: echo DOCKERHUB_PUBLISH=1 >> "$GITHUB_ENV"
-      - name: Skip Docker Hub
-        if: env.DOCKERHUB_PASSWORD == ''
-        run: echo '::warning::DOCKERHUB_PASSWORD is empty; skipping Docker Hub login and Hub image publish. Grant the org secret to this public repository (or add a repo secret) to resume golift/unpackerr pushes.'
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: dist-linux
@@ -268,6 +289,13 @@ jobs:
         with:
           name: dist-freebsd
           path: dist/freebsd
+      - name: Verify FreeBSD txz packages
+        run: |
+          set -euo pipefail
+          ls -l dist/freebsd/unpackerr-*.txz
+          for arch in amd64 i386 armhf arm64; do
+            ls dist/freebsd/unpackerr-*."${arch}".txz
+          done
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         if: needs.split-darwin.result == 'success'
         with:
@@ -287,7 +315,7 @@ jobs:
           args: continue --merge --timeout 60m
         env:
           CHANNEL: ${{ needs.channel.outputs.channel }}
-          REVISION: ${{ env.REVISION }}
+          REVISION: ${{ needs.channel.outputs.revision }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

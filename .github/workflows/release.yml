@@ -22,7 +22,15 @@ jobs:
     outputs:
       channel: ${{ steps.channel.outputs.channel }}
       extra: ${{ steps.channel.outputs.extra }}
+      revision: ${{ steps.revision.outputs.revision }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - name: Save iteration in Revision
+        id: revision
+        run: echo "revision=$(git rev-list --count --all || echo 0)" >> "${GITHUB_OUTPUT}"
       - name: Choose release channel
         id: channel
         run: |
@@ -190,6 +198,7 @@ jobs:
           ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: "5"
 
   release:
+    name: "release ${{ needs.channel.outputs.revision }}"
     needs: [channel, split, split-darwin]
     if: >-
       always() &&

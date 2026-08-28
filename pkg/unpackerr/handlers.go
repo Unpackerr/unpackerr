@@ -242,16 +242,19 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 	}
 
-	var remnants remnantResult
+	var (
+		remnantStatus ExtractStatus
+		remnants      bool
+	)
 	if resp.Done && item != nil {
-		remnants = u.handleRemnants(resp, item.PreFiles, item.Retries)
+		remnantStatus, remnants = u.handleRemnants(resp, item.PreFiles, item.Retries)
 	}
 
 	switch now := resp.Started.Add(resp.Elapsed); {
 	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
-	case remnants == remnantRestart:
+	case remnants && remnantStatus == WAITING:
 		// Every blocker was cleared; re-extract into the empty destination.
 		u.Retries++
 		item.Retries++
@@ -259,7 +262,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		item.Updated = now
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
-	case remnants == remnantFailed:
+	case remnants:
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
@@ -278,19 +281,6 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		}
 	}
 }
-
-// remnantResult is what handleRemnants wants the caller to do.
-type remnantResult int
-
-const (
-	// remnantNone: no actionable remnant — proceed normally.
-	remnantNone remnantResult = iota
-	// remnantRestart: every remnant was cleared — re-extract into the empty dest.
-	remnantRestart
-	// remnantFailed: a remnant remains (action off, clear error, or retries
-	// exhausted) — fail the extract instead of reporting success.
-	remnantFailed
-)
 
 // keepDirSnapshot returns the first pre-extraction listing for this item.
 // Retries must not recapture leftovers that failed to clear.
@@ -365,34 +355,38 @@ func underFinalDests(path string, dests map[string]string) bool {
 // rolls back sibling NewFiles when a restart will re-extract into them. It
 // does not run when the action is off, FinalDests is empty, or every refusal
 // is download content (or lives outside the reported destinations).
+//
+// ok is false when remnants do not change the normal success/error path.
+// When ok is true, WAITING means restart the extract and EXTRACTFAILED means
+// a remnant still blocks.
 func (u *Unpackerr) handleRemnants(
 	resp *xtractr.Response,
 	snapshot map[string]os.FileInfo,
 	retries uint,
-) remnantResult {
+) (ExtractStatus, bool) {
 	if resp == nil || len(resp.Refused) == 0 || len(resp.FinalDests) == 0 {
-		return remnantNone
+		return 0, false
 	}
 
 	remnants := u.classifyRemnants(resp, snapshot)
 	if len(remnants) == 0 {
-		return remnantNone
+		return 0, false
 	}
 
-	if u.RemnantAction == remnantActionOff {
+	if remnantAction(u.RemnantAction) == "off" {
 		for _, dest := range remnants {
 			u.Printf("Interrupted-extraction remnant left in place (remnant_action=off): %s", dest)
 		}
 
-		return remnantFailed
+		return EXTRACTFAILED, true
 	}
 
 	if u.MaxRetries != 0 && retries >= u.MaxRetries {
-		return remnantFailed
+		return EXTRACTFAILED, true
 	}
 
 	if u.clearRemnants(remnants) != len(remnants) {
-		return remnantFailed
+		return EXTRACTFAILED, true
 	}
 
 	// Every blocker is gone and we are about to re-extract. Refused files were
@@ -409,7 +403,7 @@ func (u *Unpackerr) handleRemnants(
 		}
 	}
 
-	return remnantRestart
+	return WAITING, true
 }
 
 func (u *Unpackerr) classifyRemnants(resp *xtractr.Response, snapshot map[string]os.FileInfo) []string {
@@ -467,7 +461,7 @@ func (u *Unpackerr) clearRemnant(dest string) bool {
 		return false
 	}
 
-	if u.RemnantAction == remnantActionDelete {
+	if remnantAction(u.RemnantAction) == "delete" {
 		remove := os.Remove
 		if info.IsDir() {
 			remove = os.RemoveAll

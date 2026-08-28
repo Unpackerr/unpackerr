@@ -36,13 +36,6 @@ const (
 	FolderString = "Folder"
 )
 
-// Remnant-action values for Config.RemnantAction.
-const (
-	remnantActionRename = "rename"
-	remnantActionDelete = "delete"
-	remnantActionOff    = "off"
-)
-
 // Application validation errors.
 var (
 	ErrInvalidURL = errors.New("provided application URL is invalid")
@@ -172,15 +165,26 @@ func (u *Unpackerr) validateApps() error {
 	return nil
 }
 
-func (u *Unpackerr) validateRemnantAction() error {
-	switch action := strings.ToLower(strings.TrimSpace(u.RemnantAction)); action {
-	case "", remnantActionRename:
-		u.RemnantAction = remnantActionRename
-	case remnantActionDelete, remnantActionOff:
-		u.RemnantAction = action
+// remnantAction normalizes remnant_action. Empty and unknown values become
+// "rename"; validateRemnantAction rejects the unknowns at startup.
+func remnantAction(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "delete":
+		return "delete"
+	case "off":
+		return "off"
 	default:
+		return "rename"
+	}
+}
+
+func (u *Unpackerr) validateRemnantAction() error {
+	s := strings.TrimSpace(u.RemnantAction)
+	if s != "" && remnantAction(s) != strings.ToLower(s) {
 		return fmt.Errorf("%w: %q (want rename, delete, or off)", ErrInvalidRemnantAction, u.RemnantAction)
 	}
+
+	u.RemnantAction = remnantAction(s)
 
 	return nil
 }

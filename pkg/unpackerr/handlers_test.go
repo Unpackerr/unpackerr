@@ -32,9 +32,9 @@ func TestHandleRemnantsRenamesAndRestarts(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: filepath.Join(dest+"_x", "movie.mkv"), Dest: blocker}},
 	}
 
-	got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0)
-	if got != remnantRestart {
-		t.Fatalf("expected restart, got %v", got)
+	got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0)
+	if !ok || got != WAITING {
+		t.Fatalf("expected restart, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); !os.IsNotExist(err) {
@@ -50,7 +50,7 @@ func TestHandleRemnantsDeletes(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.RemnantAction = remnantActionDelete
+	unpack.RemnantAction = "delete"
 	dest := t.TempDir()
 	blocker := writeRemnant(t, dest, "movie.mkv")
 
@@ -59,8 +59,8 @@ func TestHandleRemnantsDeletes(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); got != remnantRestart {
-		t.Fatalf("expected restart, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != WAITING {
+		t.Fatalf("expected restart, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); !os.IsNotExist(err) {
@@ -82,8 +82,8 @@ func TestHandleRemnantsKeepsDownloadContent(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got := unpack.handleRemnants(resp, snapshot, 0); got != remnantNone {
-		t.Fatalf("download content should not be touched, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, snapshot, 0); ok {
+		t.Fatalf("download content should not be touched, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -107,11 +107,11 @@ func TestHandleRemnantsCaseInsensitiveSnapshot(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: filepath.Join(dest, "movie.mkv")}},
 	}
 
-	got := unpack.handleRemnants(resp, snapshot, 0)
-	// On a case-insensitive FS (macOS default) SameFile matches → remnantNone.
+	got, ok := unpack.handleRemnants(resp, snapshot, 0)
+	// On a case-insensitive FS (macOS default) SameFile matches → no override.
 	// On a case-sensitive FS "movie.mkv" does not exist → not download content,
-	// and the file is renamed (restart). Either is correct; assert it is not Failed.
-	if got == remnantFailed {
+	// and the file is renamed (WAITING). Either is correct; assert it is not Failed.
+	if ok && got == EXTRACTFAILED {
 		t.Fatalf("case-variant download file should not fail, got %v", got)
 	}
 }
@@ -120,7 +120,7 @@ func TestHandleRemnantsOffLeavesInPlaceAndFails(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.RemnantAction = remnantActionOff
+	unpack.RemnantAction = "off"
 	dest := t.TempDir()
 	blocker := writeRemnant(t, dest, "movie.mkv")
 
@@ -129,8 +129,8 @@ func TestHandleRemnantsOffLeavesInPlaceAndFails(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); got != remnantFailed {
-		t.Fatalf("off should leave the blocker and fail, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != EXTRACTFAILED {
+		t.Fatalf("off should leave the blocker and fail, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -150,9 +150,9 @@ func TestHandleRemnantsRetriesExhausted(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, unpack.MaxRetries)
-	if got != remnantFailed {
-		t.Fatalf("exhausted retries should fail, got %v", got)
+	got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, unpack.MaxRetries)
+	if !ok || got != EXTRACTFAILED {
+		t.Fatalf("exhausted retries should fail, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -174,8 +174,8 @@ func TestHandleRemnantsRollbackPartialMove(t *testing.T) {
 		NewFiles:   []string{moved},
 	}
 
-	if got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); got != remnantRestart {
-		t.Fatalf("expected restart, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != WAITING {
+		t.Fatalf("expected restart, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(moved); !os.IsNotExist(err) {
@@ -192,8 +192,8 @@ func TestHandleRemnantsNoFinalDests(t *testing.T) {
 
 	resp := &xtractr.Response{Refused: []xtractr.RefusedFile{{Src: "x", Dest: blocker}}}
 
-	if got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); got != remnantNone {
-		t.Fatalf("empty FinalDests should be a no-op, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); ok {
+		t.Fatalf("empty FinalDests should be a no-op, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -214,8 +214,8 @@ func TestHandleRemnantsIgnoresOutsideDest(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); got != remnantNone {
-		t.Fatalf("refusal outside FinalDests should be ignored, got %v", got)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); ok {
+		t.Fatalf("refusal outside FinalDests should be ignored, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {

@@ -444,23 +444,20 @@ func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) 
 
 	u.updateMetrics(resp, FolderString, folder.config.Path)
 
-	switch u.handleRemnants(resp, folder.preFiles, folder.retries) {
-	case remnantRestart:
-		u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
-
-		folder.status = EXTRACTFAILED
-	case remnantFailed:
-		u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
-
-		folder.status = EXTRACTFAILED
-	case remnantNone:
-		if resp.Error != nil {
-			folder.status = EXTRACTFAILED
+	if status, ok := u.handleRemnants(resp, folder.preFiles, folder.retries); ok {
+		if status == WAITING {
+			u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
 		} else {
-			folder.archives = resp.Archives
-			folder.status = EXTRACTED
-			folder.files = resp.NewFiles
+			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
 		}
+
+		folder.status = EXTRACTFAILED
+	} else if resp.Error != nil {
+		folder.status = EXTRACTFAILED
+	} else {
+		folder.archives = resp.Archives
+		folder.status = EXTRACTED
+		folder.files = resp.NewFiles
 	}
 }
 

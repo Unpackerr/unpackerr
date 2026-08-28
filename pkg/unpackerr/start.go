@@ -106,7 +106,7 @@ func New() *Unpackerr {
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
 			MaxRetries:    defaultMaxRetries,
-			RemnantAction: remnantActionRename,
+			RemnantAction: remnantAction(""),
 			LogFiles:      defaultLogFiles,
 			Timeout:       cnfg.Duration{Duration: defaultTimeout},
 			Interval:      cnfg.Duration{Duration: defaultInterval},

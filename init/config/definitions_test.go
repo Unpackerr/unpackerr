@@ -503,6 +503,16 @@ func TestMDXJSXKeywordRegex(t *testing.T) {
 	if len(inst) != 0 {
 		t.Fatalf("a regex after instanceof should be accepted: %v", inst)
 	}
+
+	ofFor := mdxProblems("{{fn: () => { for (const x of /}/g) {} }}}", "fixture")
+	if len(ofFor) != 0 {
+		t.Fatalf("a regex after for-of should be accepted: %v", ofFor)
+	}
+
+	ofVar := mdxProblems("{{n: of /}/}}", "fixture")
+	if len(ofVar) == 0 {
+		t.Fatal("division after an of variable is not a regex; } must be flagged")
+	}
 }
 
 func TestMDXJSXPostfixDivision(t *testing.T) {
@@ -535,6 +545,11 @@ func TestMDXSetextAndIndentedHeading(t *testing.T) {
 	notSetext := mdxProblems("--\n    {broken", "fixture")
 	if len(notSetext) == 0 {
 		t.Fatal("a standalone -- is a paragraph, not a setext underline; { must be flagged")
+	}
+
+	spaced := mdxProblems("text\n- -\n    {broken", "fixture")
+	if len(spaced) == 0 {
+		t.Fatal("spaces in - - are not a setext underline; { must be flagged")
 	}
 }
 
@@ -584,6 +599,20 @@ func TestMDXListFenceAndTabPad(t *testing.T) {
 	one := mdxProblems("text\n1. ~~~\n   {ok}\n   ~~~\n", "fixture")
 	if len(one) != 0 {
 		t.Fatalf("a 1. list can interrupt a paragraph with a fence: %v", one)
+	}
+}
+
+func TestMDXThematicAndEmptyList(t *testing.T) {
+	t.Parallel()
+
+	breakThenCode := mdxProblems("* * *\n    {ok}\n", "fixture")
+	if len(breakThenCode) != 0 {
+		t.Fatalf("indented code after a thematic break is code: %v", breakThenCode)
+	}
+
+	emptyStar := mdxProblems("text\n*\n\n    {ok}\n", "fixture")
+	if len(emptyStar) != 0 {
+		t.Fatalf("an empty * cannot interrupt a paragraph; later indent is code: %v", emptyStar)
 	}
 }
 

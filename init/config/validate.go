@@ -453,6 +453,8 @@ type jsPunct struct {
 	member       bool
 	control      bool
 	afterCtrl    bool
+	forCtrl      bool
+	forParen     bool
 }
 
 func (punct *jsPunct) saw(char byte, adjacent bool) {
@@ -479,11 +481,13 @@ func (punct *jsPunct) trackControl(char byte) {
 	case '(':
 		if punct.control && punct.parenDepth == 0 {
 			punct.parenDepth = 1
+			punct.forParen = punct.forCtrl
 		} else if punct.parenDepth > 0 {
 			punct.parenDepth++
 		}
 
 		punct.control = false
+		punct.forCtrl = false
 		punct.afterCtrl = false
 	case ')':
 		if punct.parenDepth == 0 {
@@ -495,9 +499,11 @@ func (punct *jsPunct) trackControl(char byte) {
 		punct.parenDepth--
 		if punct.parenDepth == 0 {
 			punct.afterCtrl = true
+			punct.forParen = false
 		}
 	default:
 		punct.control = false
+		punct.forCtrl = false
 		punct.afterCtrl = false
 	}
 }
@@ -517,8 +523,11 @@ func (punct *jsPunct) finishIdent() {
 		return
 	}
 
-	punct.keyword = !punct.member && jsRegexKeyword(punct.ident)
+	isFor := punct.ident == "for"
+	ofInFor := punct.ident == "of" && punct.forParen && punct.parenDepth > 0
+	punct.keyword = !punct.member && (jsRegexKeyword(punct.ident) || ofInFor)
 	punct.control = !punct.member && jsControlKeyword(punct.ident)
+	punct.forCtrl = !punct.member && isFor
 	punct.ident = ""
 	punct.member = false
 }
@@ -833,7 +842,7 @@ func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel in
 	scan.out.WriteByte('\n')
 
 	scan.inIndented = false
-	if !scan.lastWasParagraph || !setextUnderline(trimmed) {
+	if !thematicBreak(trimmed) && (!scan.lastWasParagraph || !setextUnderline(trimmed)) {
 		if col, _, ok := listItemSplit(indent, trimmed); ok && rel <= maxFenceIndent && scan.allowListItem(trimmed) {
 			scan.pushList(col)
 		}
@@ -1001,11 +1010,20 @@ func (scan *mdScan) allowListItem(trimmed string) bool {
 	}
 
 	_, start, ok := consumeListMarker(trimmed)
-	if !ok {
+	if !ok || !listItemHasContent(trimmed) {
 		return false
 	}
 
 	return start == bulletStart || start == 1
+}
+
+func listItemHasContent(trimmed string) bool {
+	end, _, ok := consumeListMarker(trimmed)
+	if !ok || end >= len(trimmed) {
+		return false
+	}
+
+	return strings.TrimSpace(trimmed[end:]) != ""
 }
 
 // leadingIndent returns the visual column of the first non-whitespace rune.
@@ -1089,34 +1107,22 @@ func thematicBreak(trimmed string) bool {
 }
 
 func setextUnderline(trimmed string) bool {
-	var marker byte
-
-	count := 0
-
-	for idx := range len(trimmed) {
-		char := trimmed[idx]
-		if char == ' ' || char == '\t' {
-			continue
-		}
-
-		if char != '=' && char != '-' {
-			return false
-		}
-
-		if marker == 0 {
-			marker = char
-		} else if char != marker {
-			return false
-		}
-
-		count++
+	if trimmed == "" {
+		return false
 	}
 
-	if marker == '=' || marker == '-' {
-		return count >= 1
+	marker := trimmed[0]
+	if marker != '=' && marker != '-' {
+		return false
 	}
 
-	return false
+	for idx := 1; idx < len(trimmed); idx++ {
+		if trimmed[idx] != marker {
+			return false
+		}
+	}
+
+	return true
 }
 
 // fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same

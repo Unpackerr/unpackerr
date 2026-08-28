@@ -141,12 +141,11 @@ def write_manifests(
     scripts: dict[str, str],
 ) -> None:
     checksums = {}
+    config = []
     for rel in members:
-        digest = sha256(staging / rel)
+        checksums["/" + rel] = sha256(staging / rel)
         if rel in CONFIG_FILES:
-            checksums["/" + rel] = {"sum": digest, "config": True}
-        else:
-            checksums["/" + rel] = digest
+            config.append("/" + rel)
 
     pkgdata = {
         "arch": f"FreeBSD:{OSVERSION}:{abi_arch}",
@@ -163,6 +162,8 @@ def write_manifests(
     compact.write_text(json.dumps(pkgdata, separators=(",", ":")) + "\n", encoding="utf-8")
     pkgdata["files"] = checksums
     pkgdata["scripts"] = scripts
+    # pkg reads a top-level config array, not per-file attributes.
+    pkgdata["config"] = config
     manifest = staging / "+MANIFEST"
     manifest.write_text(json.dumps(pkgdata, separators=(",", ":")) + "\n", encoding="utf-8")
 

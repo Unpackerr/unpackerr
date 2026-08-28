@@ -208,6 +208,11 @@ archives:
     wrap_in_directory: false
     files:
       - LICENSE
+      - src: examples/unpackerr.conf.example
+        dst: unpackerr.conf.example
+      - src: examples/MANUAL.html
+        dst: unpackerr-manual.html
+      - README.html
   # Real pkgng .txz is built after --split by .github/scripts/freebsd_txz.py.
   # nFPM has no freebsd target; a tar.xz is not `pkg install`-able.
 
@@ -264,6 +269,18 @@ nfpms:
           mode: 0644
       - src: examples/MANUAL.html
         dst: /usr/share/doc/unpackerr/unpackerr-manual.html
+        file_info:
+          mode: 0644
+      - src: README.html
+        dst: /usr/share/doc/unpackerr/README.html
+        file_info:
+          mode: 0644
+      - src: examples/docker-compose.yml
+        dst: /usr/share/doc/unpackerr/docker-compose.yml
+        file_info:
+          mode: 0644
+      - src: examples/unpackerr.conf.example
+        dst: /usr/share/doc/unpackerr/unpackerr.conf.example
         file_info:
           mode: 0644
       - src: init/systemd/unpackerr.service
@@ -390,6 +407,7 @@ aur_sources:
       - armv6h
       - armv7h
       - i686
+      - pentium4
     prepare: |
       cd "${pkgname}-${pkgver}"
       mkdir -p build
@@ -412,6 +430,7 @@ aur_sources:
       install -D -m 644 examples/unpackerr.conf.example "${pkgdir}/etc/unpackerr/unpackerr.conf"
       install -D -m 644 examples/unpackerr.conf.example "${pkgdir}/etc/unpackerr/unpackerr.conf.example"
       install -D -m 644 LICENSE "${pkgdir}/usr/share/licenses/unpackerr/LICENSE"
+      install -D -m 644 examples/MANUAL.html "${pkgdir}/usr/share/doc/${pkgname}/unpackerr-manual.html"
       install -D -m 644 unpackerr.1.gz "${pkgdir}/usr/share/man/man1/unpackerr.1.gz"
       install -D -m 644 init/systemd/unpackerr.service "${pkgdir}/usr/lib/systemd/system/unpackerr.service"
       echo 'u unpackerr - "unpackerr daemon"' > unpackerr.sysusers

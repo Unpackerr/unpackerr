@@ -533,7 +533,7 @@ signs:
   # embedded signatures; pacman wants a sidecar.
   - id: archlinux
     artifacts: package
-    if: '{{ hasSuffix .Name "pkg.tar.zst" }}'
+    if: '{{ or (hasSuffix .Name "pkg.tar.zst") (hasSuffix .Path "pkg.tar.zst") }}'
 
 release:
   disable: "{{ .IsNightly }}"

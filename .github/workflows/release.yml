@@ -1,294 +1,409 @@
 name: build-and-release
 on:
+  # Calendar nightly is Docker :nightly from main. It does not touch the unstable branch.
+  schedule:
+    - cron: "27 12 * * *"
+  workflow_dispatch:
   push:
     branches:
       - unstable
     tags:
       - v*
-  pull_request:
-    branches:
-    - main
+# Jobs that publish (GitHub Release, GHCR) set write on the job. The rest only checkout.
 permissions:
   contents: read
-jobs:
-  macapp-test:
-    # description: "Builds and signs a macOS app then packages it in a notarized DMG."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    name: Make macOS DMG
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # we need the whole thing so we can count commits.
-          fetch-depth: '0'
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-      - name: go-generate
-        run: go generate ./...
-      - name: make-signdmg
-        env:
-          APPLE_SIGNING_KEY: ${{ secrets.APPLE_SIGNING_KEY }}
-          AC_USERNAME: ${{ secrets.AC_USERNAME }}
-          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
-          AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
-        id: release
-        run: |
-          brew install Bearer/tap/gon
-          make signdmg
-      - name: upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: dmg-release
-          path: release
 
-  release-test:
-    # description: "Builds all the application client binaries and packages for a release."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable' || github.ref == 'refs/heads/main'
+# Darwin App/DMG notarization needs xcrun/codesign (macOS). Linux/Windows/FreeBSD
+# split on ubuntu; merge publishes Docker, GitHub, Homebrew, AUR, packagecloud.
+# See README.md in this folder.
+jobs:
+  channel:
+    runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.release.outputs.version }}
-    name: Make Release Assets
+      channel: ${{ steps.channel.outputs.channel }}
+      extra: ${{ steps.channel.outputs.extra }}
+      revision: ${{ steps.revision.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - name: Count git revisions
+        id: revision
+        run: echo "revision=$(git rev-list --count --all || echo 0)" >> "${GITHUB_OUTPUT}"
+      - name: Choose release channel
+        id: channel
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          set -euo pipefail
+          extra=
+          if [[ "${GITHUB_EVENT_NAME}" == schedule ]]; then
+            channel=nightly
+            extra=--nightly
+          elif [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch && "${GITHUB_REF}" == refs/heads/main ]]; then
+            channel=nightly
+            extra=--nightly
+          elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF}" == refs/tags/v* ]]; then
+            channel=release
+          elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF}" == refs/heads/unstable ]]; then
+            channel=unstable
+            extra=--nightly
+          else
+            echo "refusing to release from ${GITHUB_REF} (${GITHUB_EVENT_NAME})" >&2
+            exit 1
+          fi
+          echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
+          echo "extra=${extra}" >> "${GITHUB_OUTPUT}"
+          echo "CHANNEL=${channel} extra=${extra}"
+
+  require-secrets:
+    name: require secrets
+    needs: channel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - name: Fail if publishing secrets are missing
+        env:
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          GORELEASER_PRO_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+          UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
+        run: bash .github/scripts/require_secrets.sh
+
+  split:
+    name: "Build: ${{ matrix.goos }}"
+    needs: [channel, require-secrets]
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [linux, freebsd]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install package tooling
+        if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Install fpm
+        if: matrix.goos == 'freebsd'
+        run: sudo gem install --no-document fpm
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
+      - name: Create GPG_SIGNING_KEY file
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+        run: printf '%s\n' "${GPG_SIGNING_KEY}" > /tmp/key.gpg
+      - name: Set tagged nFPM release
+        if: matrix.goos == 'linux' && needs.channel.outputs.channel == 'release'
+        env:
+          REVISION: ${{ needs.channel.outputs.revision }}
+        run: |
+          set -euo pipefail
+          [[ ${REVISION} =~ ^[0-9]+$ ]]
+          awk -v r="${REVISION}" '
+            { print }
+            /nfpm-release:/ { print "    release: " r }
+          ' .goreleaser.yaml > .goreleaser.yaml.nfpm
+          mv .goreleaser.yaml.nfpm .goreleaser.yaml
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          # GGOOS filters targets without leaking GOOS into before-hook `go run`.
+          GGOOS: ${{ matrix.goos }}
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ needs.channel.outputs.revision }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          GPG_SIGNING_KEY: /tmp/key.gpg
+          GPG_SIGNING_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - name: Build FreeBSD pkgng txz
+        if: matrix.goos == 'freebsd'
+        env:
+          REVISION: ${{ needs.channel.outputs.revision }}
+        run: bash .github/scripts/freebsd_txz.sh dist/freebsd
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-${{ matrix.goos }}
+          path: dist/${{ matrix.goos }}
+          include-hidden-files: true
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+  # OIDC + mTLS certs stay off linux/freebsd. signerd is Windows-only.
+  split-windows:
+    name: "Build: windows"
+    needs: [channel, require-secrets]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-    env:
-      GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-      # Map first: secrets cannot be referenced in steps.if.
-      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # we need the whole thing so we can count commits.
-          fetch-depth: '0'
-      - uses: actions/setup-go@v7
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: 'go.mod'
-      - name: make-release
-        id: release
+          go-version-file: go.mod
+          cache: true
+      - name: Create GPG_SIGNING_KEY file
         env:
-          # Job-level CODESIGN_URL is only for the codesign step's if.
-          # Make must not see it: signexe.sh would fail before the Action installs the CLI.
-          CODESIGN_URL: ""
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+        run: printf '%s\n' "${GPG_SIGNING_KEY}" > /tmp/key.gpg
+      - name: Install golift codesign
+        env:
+          GOBIN: ${{ runner.temp }}/codesign-bin
         run: |
-          sudo apt install -y rpm fakeroot zip debsigs gnupg jq libarchive-tools
-          sudo gem install --no-document fpm
-          echo "${GPG_SIGNING_KEY}" | gpg --import -
-          make release WINDOWS_ZIP=0
-          source settings.sh ; echo "version=${VERSION}-${ITERATION}" >> $GITHUB_OUTPUT
-      - uses: golift/codesign@v1
-        if: env.CODESIGN_URL != ''
+          set -euo pipefail
+          mkdir -p "${GOBIN}"
+          go install golift.io/codesign/cmd/codesign@v1.0.3
+          echo "${GOBIN}" >> "${GITHUB_PATH}"
+          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          files: unpackerr.amd64.exe
-          url: ${{ secrets.CODESIGN_URL }}
-          client-cert: ${{ secrets.CODESIGN_CLIENT_CERT }}
-          client-key: ${{ secrets.CODESIGN_CLIENT_KEY }}
-          name: Unpackerr
-          website: https://unpackerr.zip
-      - name: Zip Windows exe
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          GGOOS: windows
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ needs.channel.outputs.revision }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          GPG_SIGNING_KEY: /tmp/key.gpg
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          CODESIGN_NAME: Unpackerr
+          CODESIGN_WEBSITE: https://unpackerr.zip
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-windows
+          path: dist/windows
+          include-hidden-files: true
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+  split-darwin:
+    name: "Build: darwin"
+    needs: [channel, require-secrets]
+    # Nightly is Docker-only; skip Apple notarization.
+    if: needs.channel.outputs.channel != 'nightly'
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Import signing certificate and notary credentials
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: bash .github/scripts/macos_keychain.sh
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          GGOOS: darwin
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ needs.channel.outputs.revision }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          KEYCHAIN_PATH: ${{ env.KEYCHAIN_PATH }}
+          MACOS_SIGN_IDENTITY: ${{ env.MACOS_SIGN_IDENTITY }}
+          MACOS_NOTARY_PROFILE_NAME: ${{ env.MACOS_NOTARY_PROFILE_NAME }}
+      - name: Staple notarized DMG
+        run: bash .github/scripts/macos_staple.sh dist/darwin
+      - name: Pack Darwin dist
         run: |
-          make windows_zip
-          rm -f release/checksums.sha256.txt
-          openssl dgst -r -sha256 release/* | sed 's#release/##' | tee release/checksums.sha256.txt
-      - name: upload artifacts
-        uses: actions/upload-artifact@v7
+          set -euo pipefail
+          # hdiutil leaves a writable clone of Unpackerr.app next to the DMG.
+          # upload-artifact on macos hangs for many minutes on that file tree.
+          find dist/darwin/dmg -mindepth 2 -maxdepth 2 -type d -name 'Unpackerr' -exec rm -rf {} +
+          du -sh dist/darwin dist/darwin/* 2>/dev/null || true
+          tar -C dist/darwin -cf dist-darwin.tar .
+          ls -lh dist-darwin.tar
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release
-          path: release
+          name: dist-darwin
+          path: dist-darwin.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+        env:
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: "5"
 
-  deploy-unstable-unstable:
-    # description: "Uploads pre-built binaries to unstable.golift.io."
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    strategy:
-      matrix:
-        files: [release, dmg-release]
-    needs:
-      - release-test
-      - macapp-test
-    name: Deploy Unstable.app
+  release:
+    name: "release ${{ needs.channel.outputs.revision }}"
+    needs: [channel, require-secrets, split, split-windows, split-darwin]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.channel.result == 'success' &&
+      needs.require-secrets.result == 'success' &&
+      needs.split.result == 'success' &&
+      needs.split-windows.result == 'success' &&
+      (needs.split-darwin.result == 'success' || needs.split-darwin.result == 'skipped')
     runs-on: ubuntu-latest
-    steps:
-      - name: "Download files: ${{ matrix.files }}"
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.files }}
-      - name: Upload files to unstable.golift.io
-        run: >-
-          set -euo pipefail;
-          for file in *.{zip,dmg,gz}; do
-            [ -f "$file" ] || continue;
-            echo "Uploading: ${file}";
-            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
-            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
-            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=@${file}";
-            versionfile="${{needs.release-test.outputs.version}};filename=${file}.txt;type=text/plain";
-            curl -sS --fail-with-body --retry 5 --retry-all-errors --retry-delay 2
-            -H "X-API-KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}"
-            "https://unstable.golift.io/upload.php?folder=unpackerr" -F "file=${versionfile}";
-          done
-
-  deploy-unstable-packagecloud:
-    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
-    if: github.ref == 'refs/heads/unstable'
-    needs: release-test
-    name: Deploy Unstable PackageCloud
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release files
-        uses: actions/download-artifact@v8
-        with:
-          name: release
-      - uses: golift/upload-packagecloud@v1
-        with:
-          userrepo: golift/unstable
-          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          packages: .
-          rpmdists: el/6
-          debdists: ubuntu/focal
-
-  deploy-packagecloud:
-    # description: "Uploads pre-built RPM and DEB packages to packagecloud.io/golift"
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: release-test
-    name: Deploy Release PackageCloud
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release files
-        uses: actions/download-artifact@v8
-        with:
-          name: release
-      - uses: golift/upload-packagecloud@v1
-        with:
-          userrepo: golift/pkgs
-          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          packages: .
-          rpmdists: el/6
-          debdists: ubuntu/focal
-
-  deploy-github-release:
-    # description: uploads all the built release assets to the GitHub Release.
-    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 90
     permissions:
       contents: write
-    needs: [release-test, macapp-test]
-    strategy:
-      matrix:
-        files: [release, dmg-release]
-    name: Deploy GitHub Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download ${{ matrix.files }} Files
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.files }}
-      - name: Publish ${{ matrix.files }} artifacts to github
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            *.rpm
-            *.deb
-            *.txz
-            *.zip
-            *.dmg
-            *.gz
-            *.txt
-            *.zst
-            *.sig
-
-  archlinux-aur:
-    # description: creates and uploads and aur file to the golift/aur repo for arch linux.
-    needs: deploy-github-release
-    name: Deploy ArchLinux AUR
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: '0'
-      - name: Deploy Arch AUR
-        run: bash init/archlinux/aur-deploy.sh
-        env:
-          DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
-
-  docker-ghcr-build-push:
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/unstable'
-    name: Deploy GHCR Container
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
-
+    env:
+      CHANNEL: ${{ needs.channel.outputs.channel }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          platforms: 'arm64'
-
-      # Workaround: https://github.com/docker/build-push-action/issues/461
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v4
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ghcr.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        with:
+          platforms: arm64,arm
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Log into GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
+      - name: Log into Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern=v{{version}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=ref,enable=true,event=branch
-
-      - name: Set docker build-args
-        run: >-
-          git fetch --force --tags;
-          source ./settings.sh;
-          for item in DATE COMMIT VERSION ITERATION BRANCH LICENSE DESC VENDOR MAINT SOURCE_URL; do
-            eval echo "settings.sh build-arg: ${item}=\$${item}";
-            eval echo "${item}=\$${item}" >> $GITHUB_ENV;
+          username: golift
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Enable Docker Hub publish
+        run: echo DOCKERHUB_PUBLISH=1 >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist-linux
+          path: dist/linux
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist-windows
+          path: dist/windows
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist-freebsd
+          path: dist/freebsd
+      - name: Verify FreeBSD txz packages
+        run: |
+          set -euo pipefail
+          ls -l dist/freebsd/unpackerr-*.txz
+          for arch in amd64 i386 armhf arm64; do
+            ls dist/freebsd/unpackerr-*."${arch}".txz
           done
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: needs.split-darwin.result == 'success'
         with:
-          platforms: |-
-            linux/amd64
-            linux/arm64
-          context: .
-          file: init/docker/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILD_DATE=${{ env.DATE }}
-            COMMIT=${{ env.COMMIT }}
-            VERSION=${{ env.VERSION }}
-            ITERATION=${{ env.ITERATION }}
-            BRANCH=${{ env.BRANCH }}
-            LICENSE=${{ env.LICENSE }}
-            DESC=${{ env.DESC }}
-            VENDOR=${{ env.VENDOR }}
-            AUTHOR=${{ env.MAINT }}
-            SOURCE_URL=${{ env.SOURCE_URL }}
+          name: dist-darwin
+          path: dist
+      - name: Unpack Darwin dist
+        if: needs.split-darwin.result == 'success'
+        run: |
+          set -euo pipefail
+          mkdir -p dist/darwin
+          tar -xf dist/dist-darwin.tar -C dist/darwin
+          rm -f dist/dist-darwin.tar
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: continue --merge --timeout 60m
+        env:
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ needs.channel.outputs.revision }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          USER: github-actions
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - name: Flatten Linux packages for packagecloud
+        if: env.CHANNEL != 'nightly'
+        run: |
+          set -euo pipefail
+          find dist -type f \( -name '*.deb' -o -name '*.rpm' \) -print0 |
+            while IFS= read -r -d '' f; do
+              base="$(basename "$f")"
+              if [ ! -e "dist/${base}" ]; then
+                cp "$f" "dist/${base}"
+              fi
+            done
+      - uses: golift/upload-packagecloud@eb0067369b59340b04dce218010960ebe74720b2 # v1.1.1
+        if: env.CHANNEL != 'nightly'
+        with:
+          userrepo: ${{ env.CHANNEL == 'release' && 'golift/pkgs' || 'golift/unstable' }}
+          apitoken: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          packages: dist/
+          rpmdists: el/6
+          debdists: ubuntu/focal
+      - name: Upload to unstable.golift.io
+        if: env.CHANNEL == 'unstable'
+        env:
+          UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
+          CHANNEL: unstable
+        run: bash .github/scripts/unstable_upload.sh dist

@@ -1,4 +1,6 @@
 /unpackerr
+/dist/
+__pycache__/
 
 # JetBrains IDEs: GoLand, IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
 .idea/*

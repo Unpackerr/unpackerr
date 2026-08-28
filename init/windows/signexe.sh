@@ -3,16 +3,22 @@
 set -e -o pipefail
 
 # Authenticode-sign a Windows PE via golift/codesign (YubiKey-backed signerd).
-# GitHub Actions uses golift/codesign@v1 after `make release WINDOWS_ZIP=0`.
-# This script is for local `make windows` when CODESIGN_URL is set (SSH tunnel
-# or a configured CLI).
+# GoReleaser calls this from builds.hooks.post on windows binaries, after the
+# CLI is installed into a temp GOBIN (never /usr/bin/codesign).
 #
-# On macOS, never call /usr/bin/codesign (Apple's tool). Prefer CODESIGN_BIN,
-# "$(go env GOPATH)/bin/codesign", then any other `codesign` on PATH.
+# Local snapshots skip when CODESIGN_URL is unset. GitHub Actions must fail
+# closed — the release contract is an Authenticode-signed Windows binary.
+#
+# Prefer CODESIGN_BIN, then GOBIN/codesign, then GOPATH/bin, then PATH
+# entries that are not Apple's /usr/bin/codesign.
 
 function pick_codesign() {
   if [ -n "${CODESIGN_BIN:-}" ]; then
     echo "${CODESIGN_BIN}"
+    return
+  fi
+  if [ -n "${GOBIN:-}" ] && [ -x "${GOBIN}/codesign" ]; then
+    echo "${GOBIN}/codesign"
     return
   fi
   gopath="$(go env GOPATH 2>/dev/null || true)"
@@ -20,7 +26,6 @@ function pick_codesign() {
     echo "${gopath}/bin/codesign"
     return
   fi
-  # Apple ships /usr/bin/codesign. Skip it; any other PATH hit is the CLI.
   while IFS= read -r p; do
     case "$p" in
       /usr/bin/codesign|/bin/codesign) continue ;;
@@ -33,15 +38,15 @@ function pick_codesign() {
 
 function sign() {
   if [ -z "${CODESIGN_URL:-}" ]; then
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "CODESIGN_URL unset; refusing to ship an unsigned Windows binary in CI" >&2
+      exit 1
+    fi
     echo "Skipped signing ${FILE} (CODESIGN_URL unset) .." >&2
     exit 0
   fi
 
   bin="$(pick_codesign)" || {
-    if [ -n "${GITHUB_ACTIONS:-}" ]; then
-      echo "Skipped signing ${FILE} (codesign CLI not on PATH; Action signs later) .." >&2
-      exit 0
-    fi
     echo "CODESIGN_URL is set but golift codesign CLI not found (set CODESIGN_BIN)" >&2
     exit 1
   }

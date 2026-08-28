@@ -33,15 +33,15 @@ GoReleaser Pro `--split` / `--continue --merge` builds each GOOS in its own job,
 So:
 
 1. **channel** — compute `CHANNEL` + extra args. Nothing else.
-2. **split** (ubuntu, matrix `linux` / `windows` / `freebsd`) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS.
-3. **split-darwin** (macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
+2. **Build: linux / windows / freebsd** (`split` on ubuntu) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS.
+3. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
 4. **release** — download `dist-*` artifacts, `continue --merge`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
 
 `REVISION` is `git rev-list --count --all`. It must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). Nightly/unstable versions are `{{ incpatch .Version }}-{{ .Env.REVISION }}` (example `0.15.3-1045`). nFPM `release` is not templated; uniqueness is that version string. Do not put `CHANNEL` in the package version.
 
 ## Darwin signing
 
-`.github/scripts/macos_keychain.sh` is **required** on `split-darwin`. Missing `MACOS_SIGN_*` / `MACOS_NOTARY_*` fails the job; there is no unsigned-DMG fallback.
+`.github/scripts/macos_keychain.sh` is **required** on Build: darwin. Missing `MACOS_SIGN_*` / `MACOS_NOTARY_*` fails the job; there is no unsigned-DMG fallback.
 
 `notarize.macos_native.ids` must be the **app bundle** and **DMG** ids (`unpackerr-app`, `unpackerr-dmg`), not the Darwin build id. Those pipes match Extra.ID on the `.app` / `.dmg`. After GoReleaser, `.github/scripts/macos_staple.sh` checks Developer ID on `Unpackerr.app` and staples the DMG (CloudKit can lag a bit after `notarytool` says Accepted).
 
@@ -49,10 +49,10 @@ So:
 
 - **Docker** — always `ghcr.io/unpackerr/unpackerr`. Hub `docker.io/golift/unpackerr` only when `DOCKERHUB_PASSWORD` is set (`DOCKERHUB_PUBLISH=1`). Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
 - **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`).
-- **Homebrew** — `homebrew_casks` → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly`. Do not delete `Formula/unpackerr.rb` until a tagged release has produced a cask.
+- **Homebrew** — `homebrew_casks` → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly`.
 - **AUR** — `aur_sources` over SSH. Skip on `--nightly`.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
-- **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1045`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh`. Upload overwrites by name; leftover versioned files on the site need a manual wipe.
+- **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1045`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh`. Upload overwrites by name.
 
 | Stable name | Payload |
 |---|---|
@@ -84,4 +84,4 @@ Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo):
 
 ## Action pins
 
-`release.yml` pins `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used there. `codetests.yml` still uses major tags; that is independent of the publisher.
+`release.yml` pins `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used there.

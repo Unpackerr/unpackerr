@@ -48,6 +48,7 @@ jobs:
           echo "CHANNEL=${channel} extra=${extra}"
 
   split:
+    name: "Build: ${{ matrix.goos }}"
     needs: channel
     strategy:
       fail-fast: false
@@ -123,6 +124,7 @@ jobs:
           retention-days: 1
 
   split-darwin:
+    name: "Build: darwin"
     needs: channel
     # Nightly is Docker-only; skip Apple notarization.
     if: needs.channel.outputs.channel != 'nightly'

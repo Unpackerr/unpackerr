@@ -48,7 +48,8 @@ elif [[ $ARCH = *386* ]] || [[ $ARCH = *686* ]]; then
 elif [[ $ARCH = *arm64* ]] || [[ $ARCH = *armv8* ]] || [[ $ARCH = *aarch64* ]]; then
   ARCH="arm64"
 elif [[ $ARCH = *armv6* ]] || [[ $ARCH = *armv7* ]]; then
-  ARCH="armhf"
+  # Deb/old rpm/freebsd: armhf. RPM: armv7hl. Arch: armv7h. Old zst: arm7hf.
+  ARCH="armv7hl|armv7h|armhf|arm7hf|armv7"
 else
   echo "${P} [ERROR] Unknown Architecture: ${ARCH}"
   echo "${P} $(uname -a) | $(head -n 1 /etc/issue): ${ID}"

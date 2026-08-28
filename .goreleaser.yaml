@@ -529,6 +529,11 @@ checksum:
 
 signs:
   - artifacts: checksum
+  # Detached .pkg.tar.zst.sig like the old Makefile. Deb/rpm already have
+  # embedded signatures; pacman wants a sidecar.
+  - id: archlinux
+    artifacts: package
+    if: '{{ hasSuffix .Name "pkg.tar.zst" }}'
 
 release:
   disable: "{{ .IsNightly }}"

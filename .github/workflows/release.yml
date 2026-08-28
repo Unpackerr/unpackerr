@@ -42,9 +42,9 @@ jobs:
           elif [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch && "${GITHUB_REF}" == refs/heads/main ]]; then
             channel=nightly
             extra=--nightly
-          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF}" == refs/tags/v* ]]; then
             channel=release
-          elif [[ "${GITHUB_REF}" == refs/heads/unstable ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF}" == refs/heads/unstable ]]; then
             channel=unstable
             extra=--nightly
           else

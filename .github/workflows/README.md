@@ -12,6 +12,8 @@ Two workflows. `test-and-lint` (`codetests.yml`) runs tests and golangci-lint on
 | Push branch `unstable` | `unstable` | `--nightly` | Docker `:unstable`, packagecloud `golift/unstable`, [unstable.golift.io](https://unstable.golift.io/?dir=unpackerr) |
 | Cron `27 12 * * *` UTC, or `workflow_dispatch` on `main` | `nightly` | `--nightly` | Docker `:nightly` only |
 
+`workflow_dispatch` on any other ref is refused. Tagged and unstable publishes are **push** only.
+
 `unstable` is a **manual publish branch**. Recut it by pushing the commit you want:
 
 ```bash

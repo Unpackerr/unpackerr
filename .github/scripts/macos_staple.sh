@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Confirm Developer ID on Unpackerr.app, then staple the notarized DMG.
 # codesign -dv writes to stderr; grep -q in a pipefail pipeline is a false fail
-# (tee gets SIGPIPE after the first match).
+# (tee gets SIGPIPE after the first match). Dump to a file, then grep.
 set -euo pipefail
 
 root="${1:-dist/darwin}"
@@ -30,7 +30,8 @@ if [ ! -d "${app}" ]; then
   exit 1
 fi
 
-codesign -dv --verbose=2 "${app}" >"${dump}" 2>&1 || true
+codesign --verify --deep --strict "${app}"
+codesign -dv --verbose=2 "${app}" >"${dump}" 2>&1
 if ! grep -F "Developer ID Application" "${dump}" >/dev/null; then
   echo "Unpackerr.app is not Developer ID signed; macos_native skipped or failed" >&2
   cat "${dump}" >&2

@@ -401,6 +401,10 @@ func balancedBraceEnd(content string, idx int) int {
 	)
 
 	for pos := idx; pos < len(content); {
+		if !isJSIdentChar(content[pos], punct.ident != "") {
+			punct.finishIdent()
+		}
+
 		if skip, next := skipJSLexical(content, pos, punct.canStartRegex()); skip {
 			if next < 0 {
 				return -1
@@ -415,6 +419,8 @@ func balancedBraceEnd(content string, idx int) int {
 		}
 
 		if isJSSpace(content[pos]) {
+			punct.finishIdent()
+
 			adjacent = false
 			pos++
 
@@ -426,23 +432,11 @@ func balancedBraceEnd(content string, idx int) int {
 			continue
 		}
 
-		switch content[pos] {
-		case '{':
-			depth++
+		var done bool
 
-			punct.saw('{', adjacent)
-			adjacent = true
-		case '}':
-			depth--
-			if depth == 0 {
-				return pos + 1
-			}
-
-			punct.saw('}', adjacent)
-			adjacent = true
-		default:
-			punct.saw(content[pos], adjacent)
-			adjacent = true
+		done, depth, adjacent = punct.brace(content[pos], depth, adjacent)
+		if done {
+			return pos + 1
 		}
 
 		pos++
@@ -453,9 +447,23 @@ func balancedBraceEnd(content string, idx int) int {
 
 type jsPunct struct {
 	prev, before byte
+	ident        string
+	keyword      bool
 }
 
 func (punct *jsPunct) saw(char byte, adjacent bool) {
+	if isJSIdentChar(char, punct.ident != "") {
+		punct.ident += string(char)
+		punct.sawPunct(char, adjacent)
+
+		return
+	}
+
+	punct.finishIdent()
+	punct.sawPunct(char, adjacent)
+}
+
+func (punct *jsPunct) sawPunct(char byte, adjacent bool) {
 	if adjacent {
 		punct.before = punct.prev
 	} else {
@@ -465,7 +473,41 @@ func (punct *jsPunct) saw(char byte, adjacent bool) {
 	punct.prev = char
 }
 
+func (punct *jsPunct) finishIdent() {
+	if punct.ident == "" {
+		return
+	}
+
+	punct.keyword = jsRegexKeyword(punct.ident)
+	punct.ident = ""
+}
+
+func (punct *jsPunct) brace(char byte, depth int, adjacent bool) (bool, int, bool) {
+	switch char {
+	case '{':
+		punct.saw('{', adjacent)
+		return false, depth + 1, true
+	case '}':
+		depth--
+		if depth == 0 {
+			return true, 0, adjacent
+		}
+
+		punct.saw('}', adjacent)
+
+		return false, depth, true
+	default:
+		punct.saw(char, adjacent)
+
+		return false, depth, true
+	}
+}
+
 func (punct *jsPunct) canStartRegex() bool {
+	if punct.keyword {
+		return true
+	}
+
 	if punct.prev == '+' && punct.before == '+' {
 		return false
 	}
@@ -486,9 +528,32 @@ func (punct *jsPunct) afterLexical(content string, start, end int) {
 		return
 	}
 
+	punct.ident = ""
+	punct.keyword = false
+
 	if end > start {
 		punct.prev = content[end-1]
 		punct.before = 0
+	}
+}
+
+func isJSIdentChar(char byte, cont bool) bool {
+	if char == '_' || char == '$' ||
+		(char >= 'A' && char <= 'Z') ||
+		(char >= 'a' && char <= 'z') {
+		return true
+	}
+
+	return cont && char >= '0' && char <= '9'
+}
+
+func jsRegexKeyword(ident string) bool {
+	switch ident {
+	case "return", "throw", "case", "else", "do",
+		"typeof", "delete", "void", "new", "yield", "await":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -623,73 +688,166 @@ const (
 // trailing text (CommonMark). Info strings on the opening fence are ignored.
 // Indented code (4+ columns, including tabs) cannot interrupt a paragraph.
 func stripCodeBlocks(content string) string {
-	var (
-		out              strings.Builder
-		inFence          bool
-		fenceChar        byte
-		fenceLen         int
-		inIndented       bool
-		canStartIndented = true
-		lastWasParagraph bool
-	)
+	scan := mdScan{canStartIndented: true}
 
 	for line := range strings.SplitSeq(content, "\n") {
-		indent := leadingIndent(line)
-		trimmed := strings.TrimSpace(line)
-
-		if inFence {
-			if fenceClosed(indent, trimmed, fenceChar, fenceLen) {
-				inFence = false
-				canStartIndented, lastWasParagraph = true, false
-			}
-
-			continue
-		}
-
-		if indent <= maxFenceIndent {
-			if char, length, isOpen := fenceOpener(trimmed); isOpen {
-				inFence, fenceChar, fenceLen = true, char, length
-				inIndented, canStartIndented, lastWasParagraph = false, true, false
-
-				continue
-			}
-		}
-
-		if trimmed == "" {
-			out.WriteString(line)
-			out.WriteByte('\n')
-
-			inIndented, canStartIndented, lastWasParagraph = false, true, false
-
-			continue
-		}
-
-		if indent > maxFenceIndent && (canStartIndented || inIndented) {
-			inIndented = true
-			lastWasParagraph = false
-
-			continue
-		}
-
-		out.WriteString(line)
-		out.WriteByte('\n')
-
-		inIndented = false
-		canStartIndented = indent <= maxFenceIndent && leafBlockLine(trimmed, lastWasParagraph)
-		lastWasParagraph = !canStartIndented
+		scan.line(line)
 	}
 
-	return out.String()
+	return scan.out.String()
 }
 
-func fenceClosed(indent int, trimmed string, fenceChar byte, fenceLen int) bool {
-	if indent > maxFenceIndent {
+type mdScan struct {
+	out              strings.Builder
+	inFence          bool
+	fenceChar        byte
+	fenceLen         int
+	fenceBase        int
+	inIndented       bool
+	canStartIndented bool
+	lastWasParagraph bool
+	contentIndent    int
+}
+
+func (scan *mdScan) line(line string) {
+	indent := leadingIndent(line)
+	trimmed := strings.TrimSpace(line)
+
+	if scan.inFence {
+		if fenceClosed(indent-scan.fenceBase, trimmed, scan.fenceChar, scan.fenceLen) {
+			scan.inFence = false
+			scan.canStartIndented, scan.lastWasParagraph = true, false
+		}
+
+		return
+	}
+
+	scan.syncList(indent, trimmed)
+
+	rel := indent - scan.contentIndent
+	if rel < 0 {
+		rel = indent
+	}
+
+	if rel <= maxFenceIndent {
+		if char, length, isOpen := fenceOpener(trimmed); isOpen {
+			scan.inFence, scan.fenceChar, scan.fenceLen, scan.fenceBase = true, char, length, scan.contentIndent
+			scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
+
+			return
+		}
+	}
+
+	if trimmed == "" {
+		scan.out.WriteString(line)
+		scan.out.WriteByte('\n')
+
+		scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
+
+		return
+	}
+
+	if rel > maxFenceIndent && (scan.canStartIndented || scan.inIndented) {
+		scan.inIndented = true
+		scan.lastWasParagraph = false
+
+		return
+	}
+
+	scan.writeContent(line, indent, trimmed, rel)
+}
+
+func (scan *mdScan) syncList(indent int, trimmed string) {
+	if trimmed == "" || indent >= scan.contentIndent {
+		return
+	}
+
+	if pad, ok := listMarkerPad(trimmed); ok {
+		scan.contentIndent = indent + pad
+		return
+	}
+
+	scan.contentIndent = 0
+}
+
+func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel int) {
+	scan.out.WriteString(line)
+	scan.out.WriteByte('\n')
+
+	scan.inIndented = false
+	if !scan.lastWasParagraph || !setextUnderline(trimmed) {
+		if pad, ok := listMarkerPad(trimmed); ok && rel <= maxFenceIndent {
+			scan.contentIndent = indent + pad
+		}
+	}
+
+	scan.canStartIndented = rel <= maxFenceIndent && leafBlockLine(trimmed, scan.lastWasParagraph)
+	scan.lastWasParagraph = !scan.canStartIndented
+}
+
+func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
+	if rel > maxFenceIndent {
 		return false
 	}
 
 	char, length, isClose := fenceCloser(trimmed)
 
 	return isClose && char == fenceChar && length >= fenceLen
+}
+
+// listMarkerPad reports the width of a CommonMark list marker plus its
+// following padding (1-4 spaces). The caller adds the line's indent to get
+// the list item's content column.
+func listMarkerPad(trimmed string) (int, bool) {
+	end, ok := consumeListMarker(trimmed)
+	if !ok {
+		return 0, false
+	}
+
+	if end == len(trimmed) {
+		return end + 1, true
+	}
+
+	if trimmed[end] != ' ' && trimmed[end] != '\t' {
+		return 0, false
+	}
+
+	pad := 0
+	for end+pad < len(trimmed) && pad < tabWidth && trimmed[end+pad] == ' ' {
+		pad++
+	}
+
+	if pad == 0 {
+		pad = 1
+	}
+
+	if pad == tabWidth && end+pad < len(trimmed) && trimmed[end+pad] == ' ' {
+		pad = 1
+	}
+
+	return end + pad, true
+}
+
+func consumeListMarker(trimmed string) (int, bool) {
+	if trimmed == "" {
+		return 0, false
+	}
+
+	switch trimmed[0] {
+	case '-', '*', '+':
+		return 1, true
+	}
+
+	digits := 0
+	for digits < len(trimmed) && digits < 9 && trimmed[digits] >= '0' && trimmed[digits] <= '9' {
+		digits++
+	}
+
+	if digits == 0 || digits >= len(trimmed) || (trimmed[digits] != '.' && trimmed[digits] != ')') {
+		return 0, false
+	}
+
+	return digits + 1, true
 }
 
 // leadingIndent returns the visual column of the first non-whitespace rune.

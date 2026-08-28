@@ -454,6 +454,30 @@ func TestMDXIndentedCodeContext(t *testing.T) {
 	if len(afterList) == 0 {
 		t.Fatal("an indented line continuing a list paragraph is MDX; { must be flagged")
 	}
+
+	listBlank := mdxProblems("- item\n\n    {broken", "fixture")
+	if len(listBlank) == 0 {
+		t.Fatal("four spaces in a list item is a paragraph, not indented code; { must be flagged")
+	}
+
+	listCode := mdxProblems("- item\n\n      {ok}\n", "fixture")
+	if len(listCode) != 0 {
+		t.Fatalf("six spaces in a list item is indented code: %v", listCode)
+	}
+}
+
+func TestMDXJSXKeywordRegex(t *testing.T) {
+	t.Parallel()
+
+	ret := mdxProblems("{{fn: function () { return /}/ }}}", "fixture")
+	if len(ret) != 0 {
+		t.Fatalf("a regex after return should be accepted: %v", ret)
+	}
+
+	thr := mdxProblems("{{fn: function () { throw /}/ }}}", "fixture")
+	if len(thr) != 0 {
+		t.Fatalf("a regex after throw should be accepted: %v", thr)
+	}
 }
 
 func TestMDXJSXPostfixDivision(t *testing.T) {

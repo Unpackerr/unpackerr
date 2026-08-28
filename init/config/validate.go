@@ -448,14 +448,18 @@ func balancedBraceEnd(content string, idx int) int {
 type jsPunct struct {
 	prev, before byte
 	ident        string
+	parenDepth   int
 	keyword      bool
 	member       bool
+	control      bool
+	afterCtrl    bool
 }
 
 func (punct *jsPunct) saw(char byte, adjacent bool) {
 	if isJSIdentChar(char, punct.ident != "") {
 		if punct.ident == "" {
 			punct.member = punct.prev == '.'
+			punct.afterCtrl = false
 		}
 
 		punct.ident += string(char)
@@ -465,7 +469,37 @@ func (punct *jsPunct) saw(char byte, adjacent bool) {
 	}
 
 	punct.finishIdent()
+	punct.keyword = false
+	punct.trackControl(char)
 	punct.sawPunct(char, adjacent)
+}
+
+func (punct *jsPunct) trackControl(char byte) {
+	switch char {
+	case '(':
+		if punct.control && punct.parenDepth == 0 {
+			punct.parenDepth = 1
+		} else if punct.parenDepth > 0 {
+			punct.parenDepth++
+		}
+
+		punct.control = false
+		punct.afterCtrl = false
+	case ')':
+		if punct.parenDepth == 0 {
+			punct.afterCtrl = false
+
+			return
+		}
+
+		punct.parenDepth--
+		if punct.parenDepth == 0 {
+			punct.afterCtrl = true
+		}
+	default:
+		punct.control = false
+		punct.afterCtrl = false
+	}
 }
 
 func (punct *jsPunct) sawPunct(char byte, adjacent bool) {
@@ -484,6 +518,7 @@ func (punct *jsPunct) finishIdent() {
 	}
 
 	punct.keyword = !punct.member && jsRegexKeyword(punct.ident)
+	punct.control = !punct.member && jsControlKeyword(punct.ident)
 	punct.ident = ""
 	punct.member = false
 }
@@ -510,7 +545,7 @@ func (punct *jsPunct) brace(char byte, depth int, adjacent bool) (bool, int, boo
 }
 
 func (punct *jsPunct) canStartRegex() bool {
-	if punct.keyword {
+	if punct.keyword || punct.afterCtrl {
 		return true
 	}
 
@@ -537,6 +572,8 @@ func (punct *jsPunct) afterLexical(content string, start, end int) {
 	punct.ident = ""
 	punct.keyword = false
 	punct.member = false
+	punct.control = false
+	punct.afterCtrl = false
 
 	if end > start {
 		punct.prev = content[end-1]
@@ -558,6 +595,15 @@ func jsRegexKeyword(ident string) bool {
 	switch ident {
 	case "return", "throw", "case", "else", "do",
 		"typeof", "delete", "void", "new", "yield", "await":
+		return true
+	default:
+		return false
+	}
+}
+
+func jsControlKeyword(ident string) bool {
+	switch ident {
+	case "if", "while", "for", "with":
 		return true
 	default:
 		return false
@@ -720,12 +766,7 @@ func (scan *mdScan) line(line string) {
 	indent := leadingIndent(line)
 	trimmed := strings.TrimSpace(line)
 
-	if scan.inFence {
-		if fenceClosed(indent-scan.fenceBase, trimmed, scan.fenceChar, scan.fenceLen) {
-			scan.inFence = false
-			scan.canStartIndented, scan.lastWasParagraph = true, false
-		}
-
+	if scan.inFence && scan.continueFence(indent, trimmed) {
 		return
 	}
 
@@ -787,13 +828,34 @@ func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel in
 	scan.lastWasParagraph = !scan.canStartIndented
 }
 
-func (scan *mdScan) openFence(indent, rel int, trimmed string) bool {
-	if rel <= maxFenceIndent {
-		if char, length, isOpen := fenceOpener(trimmed); isOpen {
-			scan.startFence(char, length, scan.contentIndent)
+func (scan *mdScan) continueFence(indent int, trimmed string) bool {
+	if fenceClosed(indent-scan.fenceBase, trimmed, scan.fenceChar, scan.fenceLen) {
+		scan.inFence = false
+		scan.canStartIndented, scan.lastWasParagraph = true, false
 
-			return true
-		}
+		return true
+	}
+
+	if trimmed == "" || indent >= scan.fenceBase {
+		return true
+	}
+
+	scan.inFence = false
+	scan.contentIndent = 0
+	scan.canStartIndented, scan.lastWasParagraph = true, false
+
+	return false
+}
+
+func (scan *mdScan) openFence(indent, rel int, trimmed string) bool {
+	if rel > maxFenceIndent {
+		return false
+	}
+
+	if char, length, isOpen := fenceOpener(trimmed); isOpen {
+		scan.startFence(char, length, scan.contentIndent)
+
+		return true
 	}
 
 	if scan.lastWasParagraph && setextUnderline(trimmed) {
@@ -821,7 +883,7 @@ func (scan *mdScan) startFence(char byte, length, base int) {
 }
 
 func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
-	if rel > maxFenceIndent {
+	if rel < 0 || rel > maxFenceIndent {
 		return false
 	}
 

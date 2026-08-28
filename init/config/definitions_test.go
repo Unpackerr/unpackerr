@@ -483,6 +483,16 @@ func TestMDXJSXKeywordRegex(t *testing.T) {
 	if len(prop) != 0 {
 		t.Fatalf("division after a .return property is not a regex: %v", prop)
 	}
+
+	div := mdxProblems("{{fn: () => { return 1 / 2 }}}", "fixture")
+	if len(div) != 0 {
+		t.Fatalf("division after return 1 is not a regex: %v", div)
+	}
+
+	ctrl := mdxProblems("{{fn: x => { if (x) /}/.test(x) }}}", "fixture")
+	if len(ctrl) != 0 {
+		t.Fatalf("a regex after if (x) should be accepted: %v", ctrl)
+	}
 }
 
 func TestMDXJSXPostfixDivision(t *testing.T) {
@@ -529,6 +539,26 @@ func TestMDXListFenceAndTabPad(t *testing.T) {
 	listFence := mdxProblems("- ```\n  code\n  ```\n{broken", "fixture")
 	if len(listFence) == 0 {
 		t.Fatal("a fence starting after a list marker must close; later { must be flagged")
+	}
+
+	dedent := mdxProblems("- ```\n  code\noutside {broken", "fixture")
+	if len(dedent) == 0 {
+		t.Fatal("a list fence ends when the line leaves the list; later { must be flagged")
+	}
+
+	blank := mdxProblems("- ```\n  code\n\n  {ok}\n  ```\n", "fixture")
+	if len(blank) != 0 {
+		t.Fatalf("a blank line does not end a list fence: %v", blank)
+	}
+
+	indentedList := mdxProblems("    - ```\n{broken", "fixture")
+	if len(indentedList) == 0 {
+		t.Fatal("an indented-code list marker is not a fence opener; later { must be flagged")
+	}
+
+	rootFence := mdxProblems("- ```\n  inner\n```\n{ok}\n", "fixture")
+	if len(rootFence) != 0 {
+		t.Fatalf("a dedented fence after a list item opens a new fence: %v", rootFence)
 	}
 }
 

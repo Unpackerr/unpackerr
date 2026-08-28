@@ -23,6 +23,7 @@ jobs:
       channel: ${{ steps.channel.outputs.channel }}
       extra: ${{ steps.channel.outputs.extra }}
       revision: ${{ steps.revision.outputs.revision }}
+      pkg_release: ${{ steps.channel.outputs.pkg_release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +34,8 @@ jobs:
         run: echo "revision=$(git rev-list --count --all || echo 0)" >> "${GITHUB_OUTPUT}"
       - name: Choose release channel
         id: channel
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
         run: |
           set -euo pipefail
           extra=
@@ -51,9 +54,17 @@ jobs:
             echo "refusing to release from ${GITHUB_REF} (${GITHUB_EVENT_NAME})" >&2
             exit 1
           fi
+          # Tagged debs/rpms are 0.15.3-REVISION (nFPM release). Nightly already
+          # bakes REVISION into .Version, so keep release at 1.
+          if [[ ${channel} == release ]]; then
+            pkg_release=${REVISION}
+          else
+            pkg_release=1
+          fi
           echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
           echo "extra=${extra}" >> "${GITHUB_OUTPUT}"
-          echo "CHANNEL=${channel} extra=${extra}"
+          echo "pkg_release=${pkg_release}" >> "${GITHUB_OUTPUT}"
+          echo "CHANNEL=${channel} extra=${extra} pkg_release=${pkg_release}"
 
   require-secrets:
     name: require secrets
@@ -129,6 +140,7 @@ jobs:
           GGOOS: ${{ matrix.goos }}
           CHANNEL: ${{ needs.channel.outputs.channel }}
           REVISION: ${{ needs.channel.outputs.revision }}
+          PKG_RELEASE: ${{ needs.channel.outputs.pkg_release }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           USER: github-actions
@@ -137,6 +149,8 @@ jobs:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
       - name: Build FreeBSD pkgng txz
         if: matrix.goos == 'freebsd'
+        env:
+          REVISION: ${{ needs.channel.outputs.revision }}
         run: bash .github/scripts/freebsd_txz.sh dist/freebsd
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -284,7 +298,6 @@ jobs:
     permissions:
       contents: write
       packages: write
-      id-token: write
     env:
       CHANNEL: ${{ needs.channel.outputs.channel }}
     steps:

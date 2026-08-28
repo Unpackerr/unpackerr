@@ -1,0 +1,2 @@
+# systemd-tmpfiles.d — log dir for User=unpackerr (see unpackerr.service).
+d /var/log/unpackerr 0755 unpackerr unpackerr -

@@ -23,6 +23,12 @@ if [[ -z ${VERSION} || ${VERSION} == unknown || ${VERSION} == unstable ]]; then
   echo "refusing version '${VERSION}'" >&2
   exit 1
 fi
+# Tagged pkgng version is 0.15.3_REVISION (same as old fpm). --nightly already
+# puts REVISION in metadata.json (.Version).
+if [[ ${VERSION} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  [[ -n ${REVISION:-} ]] || { echo "REVISION required for tagged freebsd pkg" >&2; exit 1; }
+  VERSION="${VERSION}_${REVISION}"
+fi
 
 # goarch -> asset suffix / fpm -a / pkg ABI CPU (uname -p).
 # fpm only knows amd64, i386, aarch64(→arm64). Unknown -a becomes getconf LONG_BIT

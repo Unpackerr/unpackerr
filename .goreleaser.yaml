@@ -13,7 +13,7 @@ nightly:
   # though {{ .Version }} already includes it on --nightly: this template is
   # what *creates* that version. Tagged builds keep .Version as the semver
   # tag; ldflags Revision and Darwin CFBundleVersion still need the count.
-  # nfpms.release is not templated. Do not put CHANNEL in the package version.
+  # nFPM release is ${PKG_RELEASE}: REVISION on tags, 1 on --nightly.
   version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:
@@ -231,6 +231,9 @@ nfpms:
     maintainer: David Newhall II <captain at golift dot io>
     description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
     license: MIT
+    # GoReleaser does not template this field; nFPM expands ${PKG_RELEASE}.
+    # Tags: 0.15.3-REVISION. --nightly: .Version already has REVISION, release 1.
+    release: "${PKG_RELEASE}"
     formats:
       - deb
       - rpm
@@ -293,6 +296,10 @@ nfpms:
       - src: init/systemd/unpackerr.service
         dst: /usr/lib/systemd/system/unpackerr.service
         type: config
+        file_info:
+          mode: 0644
+      - src: init/systemd/unpackerr.tmpfiles
+        dst: /usr/lib/tmpfiles.d/unpackerr.conf
         file_info:
           mode: 0644
 
@@ -446,6 +453,7 @@ aur_sources:
       install -D -m 644 init/systemd/unpackerr.service "${pkgdir}/usr/lib/systemd/system/unpackerr.service"
       echo 'u unpackerr - "unpackerr daemon"' > unpackerr.sysusers
       install -D -m 644 unpackerr.sysusers "${pkgdir}/usr/lib/sysusers.d/unpackerr.conf"
+      install -D -m 644 init/systemd/unpackerr.tmpfiles "${pkgdir}/usr/lib/tmpfiles.d/unpackerr.conf"
 
 homebrew_casks:
   - name: unpackerr

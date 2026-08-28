@@ -112,6 +112,9 @@ jobs:
       - name: Install package tooling
         if: matrix.goos == 'linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Install fpm
+        if: matrix.goos == 'freebsd'
+        run: sudo gem install --no-document fpm
       - name: Import GPG key
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
@@ -152,7 +155,7 @@ jobs:
           CODESIGN_WEBSITE: https://unpackerr.zip
       - name: Build FreeBSD pkgng txz
         if: matrix.goos == 'freebsd'
-        run: python3 .github/scripts/freebsd_txz.py dist/freebsd
+        run: bash .github/scripts/freebsd_txz.sh dist/freebsd
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-${{ matrix.goos }}

@@ -216,8 +216,8 @@ archives:
       - src: examples/MANUAL.html
         dst: unpackerr-manual.html
       - README.html
-  # Real pkgng .txz is built after --split by .github/scripts/freebsd_txz.py.
-  # nFPM has no freebsd target; a tar.xz is not `pkg install`-able.
+  # Real pkgng .txz is built after --split by fpm (-t freebsd), same as the
+  # old Makefile. nFPM has no freebsd target; a tar.xz is not `pkg install`-able.
 
 nfpms:
   - id: unpackerr-packages

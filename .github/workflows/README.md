@@ -43,7 +43,7 @@ So:
 
 `.github/scripts/macos_keychain.sh` is **required** on Build: darwin. Missing `MACOS_SIGN_*` / `MACOS_NOTARY_*` fails the job; there is no unsigned-DMG fallback.
 
-`notarize.macos_native.ids` must be the **app bundle** and **DMG** ids (`unpackerr-app`, `unpackerr-dmg`), not the Darwin build id. Those pipes match Extra.ID on the `.app` / `.dmg`. After GoReleaser, `.github/scripts/macos_staple.sh` checks Developer ID on `Unpackerr.app` and staples the DMG (CloudKit can lag a bit after `notarytool` says Accepted).
+`notarize.macos_native.ids` must be the **app bundle** and **DMG** ids (`unpackerr-app`, `unpackerr-dmg`), not the Darwin build id. Those pipes match Extra.ID on the `.app` / `.dmg`. After GoReleaser, `.github/scripts/macos_staple.sh` checks Developer ID on `Unpackerr.app` and staples the DMG (CloudKit can lag a bit after `notarytool` says Accepted). The Darwin `dist/` is packed into one tar before `upload-artifact`; uploading the `.app` tree on macos-latest hangs.
 
 ## Merge destinations
 

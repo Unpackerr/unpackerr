@@ -120,6 +120,7 @@ jobs:
           name: dist-${{ matrix.goos }}
           path: dist/${{ matrix.goos }}
           include-hidden-files: true
+          compression-level: 0
           if-no-files-found: error
           retention-days: 1
 
@@ -169,13 +170,24 @@ jobs:
           MACOS_NOTARY_PROFILE_NAME: ${{ env.MACOS_NOTARY_PROFILE_NAME }}
       - name: Staple notarized DMG
         run: bash .github/scripts/macos_staple.sh dist/darwin
+      - name: Pack Darwin dist
+        run: |
+          set -euo pipefail
+          # hdiutil leaves a writable clone of Unpackerr.app next to the DMG.
+          # upload-artifact on macos hangs for many minutes on that file tree.
+          find dist/darwin/dmg -mindepth 2 -maxdepth 2 -type d -name 'Unpackerr' -exec rm -rf {} +
+          du -sh dist/darwin dist/darwin/* 2>/dev/null || true
+          tar -C dist/darwin -cf dist-darwin.tar .
+          ls -lh dist-darwin.tar
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist-darwin
-          path: dist/darwin
-          include-hidden-files: true
+          path: dist-darwin.tar
+          compression-level: 0
           if-no-files-found: error
           retention-days: 1
+        env:
+          ACTIONS_ARTIFACT_UPLOAD_CONCURRENCY: "5"
 
   release:
     needs: [channel, split, split-darwin]
@@ -246,7 +258,14 @@ jobs:
         if: needs.split-darwin.result == 'success'
         with:
           name: dist-darwin
-          path: dist/darwin
+          path: dist
+      - name: Unpack Darwin dist
+        if: needs.split-darwin.result == 'success'
+        run: |
+          set -euo pipefail
+          mkdir -p dist/darwin
+          tar -xf dist/dist-darwin.tar -C dist/darwin
+          rm -f dist/dist-darwin.tar
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro

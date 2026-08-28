@@ -83,7 +83,6 @@ xcrun notarytool store-credentials "${profile}" \
 
 {
   echo "KEYCHAIN_PATH=${keychain}"
-  echo "KEYCHAIN_PASSWORD=${password}"
   echo "MACOS_SIGN_IDENTITY=${identity}"
   echo "MACOS_NOTARY_PROFILE_NAME=${profile}"
 } >> "${GITHUB_ENV}"

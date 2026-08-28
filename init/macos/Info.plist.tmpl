@@ -11,7 +11,7 @@
 	<key>CFBundleVersion</key>
 	<string>{{ .Env.REVISION }}</string>
 	<key>CFBundleShortVersionString</key>
-	<string>{{ trimSuffix (printf "-%s" .Env.REVISION) .Version }}</string>
+	<string>{{ .RawVersion }}</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>CFBundleExecutable</key>

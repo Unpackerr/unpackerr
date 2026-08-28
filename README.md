@@ -1,4 +1,4 @@
-<img style="max-width:840px;" src="https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/unpackerr-logo-text.png">
+<img style="max-width:840px;" src="https://unpackerr.zip/img/unpackerr.png">
 
 ## About
 

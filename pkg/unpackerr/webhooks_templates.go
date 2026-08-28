@@ -122,13 +122,13 @@ const WebhookTemplateGotify = `{
 // WebhookTemplateDiscord is used when sending a webhook to discord.com.
 const WebhookTemplateDiscord = `{
   "username": "{{nickname}}",
-  "avatar_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
+  "avatar_url": "https://unpackerr.zip/img/icon.png",
   "embeds": [{
     "title": {{encode (index .IDs "title")}},
     "timestamp": "{{timestamp .Time}}",
     "author": {
      "name": "Unpackerr: {{.Event.Desc}}",
-     "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
+     "icon_url": "https://unpackerr.zip/img/icon.png",
      "url": "https://github.com/Unpackerr/unpackerr/releases"
     },
     "color": {{ if (eq 1 .Event)}}1752220
@@ -180,7 +180,7 @@ const WebhookTemplateSlack = `
 {
   "username": "{{nickname}}",
   {{if channel}}"channel": "{{channel}}",{{end}}
-  "icon_url": "https://raw.githubusercontent.com/wiki/Unpackerr/unpackerr/images/logo.png",
+  "icon_url": "https://unpackerr.zip/img/icon.png",
   "blocks": [
     {
       "type": "header",

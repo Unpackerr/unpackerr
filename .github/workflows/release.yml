@@ -90,15 +90,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: [linux, windows, freebsd]
+        goos: [linux, freebsd]
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # golift/codesign fetches a GitHub OIDC token (audience = CODESIGN_URL).
-      # Without this, signerd returns 401 unauthorized.
-      id-token: write
-    env:
-      CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,17 +116,9 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
       - name: Create GPG_SIGNING_KEY file
-        run: echo '${{ secrets.GPG_SIGNING_KEY }}' > /tmp/key.gpg
-      - name: Install golift codesign
-        if: matrix.goos == 'windows'
         env:
-          GOBIN: ${{ runner.temp }}/codesign-bin
-        run: |
-          set -euo pipefail
-          mkdir -p "${GOBIN}"
-          go install golift.io/codesign/cmd/codesign@v1.0.3
-          echo "${GOBIN}" >> "${GITHUB_PATH}"
-          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+        run: printf '%s\n' "${GPG_SIGNING_KEY}" > /tmp/key.gpg
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro
@@ -148,11 +135,6 @@ jobs:
           GPG_SIGNING_KEY: /tmp/key.gpg
           GPG_SIGNING_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
-          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
-          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
-          CODESIGN_NAME: Unpackerr
-          CODESIGN_WEBSITE: https://unpackerr.zip
       - name: Build FreeBSD pkgng txz
         if: matrix.goos == 'freebsd'
         run: bash .github/scripts/freebsd_txz.sh dist/freebsd
@@ -160,6 +142,64 @@ jobs:
         with:
           name: dist-${{ matrix.goos }}
           path: dist/${{ matrix.goos }}
+          include-hidden-files: true
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+  # OIDC + mTLS certs stay off linux/freebsd. signerd is Windows-only.
+  split-windows:
+    name: "Build: windows"
+    needs: [channel, require-secrets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'schedule' && 'refs/heads/main' || github.ref }}
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Create GPG_SIGNING_KEY file
+        env:
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+        run: printf '%s\n' "${GPG_SIGNING_KEY}" > /tmp/key.gpg
+      - name: Install golift codesign
+        env:
+          GOBIN: ${{ runner.temp }}/codesign-bin
+        run: |
+          set -euo pipefail
+          mkdir -p "${GOBIN}"
+          go install golift.io/codesign/cmd/codesign@v1.0.3
+          echo "${GOBIN}" >> "${GITHUB_PATH}"
+          echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --split --timeout 60m ${{ needs.channel.outputs.extra }}
+        env:
+          GGOOS: windows
+          CHANNEL: ${{ needs.channel.outputs.channel }}
+          REVISION: ${{ needs.channel.outputs.revision }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
+          USER: github-actions
+          GPG_SIGNING_KEY: /tmp/key.gpg
+          CODESIGN_URL: ${{ secrets.CODESIGN_URL }}
+          CODESIGN_CLIENT_CERT: ${{ secrets.CODESIGN_CLIENT_CERT }}
+          CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
+          CODESIGN_NAME: Unpackerr
+          CODESIGN_WEBSITE: https://unpackerr.zip
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist-windows
+          path: dist/windows
           include-hidden-files: true
           compression-level: 0
           if-no-files-found: error
@@ -230,13 +270,14 @@ jobs:
 
   release:
     name: "release ${{ needs.channel.outputs.revision }}"
-    needs: [channel, require-secrets, split, split-darwin]
+    needs: [channel, require-secrets, split, split-windows, split-darwin]
     if: >-
       always() &&
       !cancelled() &&
       needs.channel.result == 'success' &&
       needs.require-secrets.result == 'success' &&
       needs.split.result == 'success' &&
+      needs.split-windows.result == 'success' &&
       (needs.split-darwin.result == 'success' || needs.split-darwin.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 90

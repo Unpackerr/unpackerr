@@ -34,7 +34,7 @@ So:
 
 1. **channel** — compute `CHANNEL`, extra args, and `REVISION` (`git rev-list --count --all`). This is the only place the count is taken; later jobs pass `needs.channel.outputs.revision`.
 2. **require secrets** — fail closed if any signing/upload/push secret needed for that channel is empty. Missing secrets used to skip Docker Hub, Windows Authenticode, or unstable.golift.io and still go green.
-3. **Build: linux / windows / freebsd** (`split` on ubuntu) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
+3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
 4. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
 5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
 

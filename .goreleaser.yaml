@@ -24,7 +24,7 @@ before:
     - go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "{{.Version}}" --date "{{.Date}}" README.md
     - gzip -9nf examples/MANUAL
     - mv -f examples/MANUAL.gz unpackerr.1.gz
-    - go run github.com/akavel/rsrc@latest -arch amd64 -ico init/windows/application.ico -manifest init/windows/manifest.xml -o rsrc_windows_amd64.syso
+    - go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico init/windows/application.ico -manifest init/windows/manifest.xml -o rsrc_windows_amd64.syso
 
 builds:
   - id: unpackerr

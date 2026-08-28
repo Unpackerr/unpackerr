@@ -37,14 +37,18 @@ pkg_for() {
   esac
 }
 
-# fpm already wrote the right ABI: do nothing. Otherwise unpack, jq .arch, retar.
-set_abi() {
-  local pkg=$1 abi=$2 tmp list
-  [[ $(tar -xJOf "${pkg}" +COMPACT_MANIFEST | jq -r .arch) == "${abi}" ]] && return
+CONF=/usr/local/etc/unpackerr/unpackerr.conf
+# fpm --config-files is ignored by freebsd.rb (v0.15.2 had no config array).
+# Unpack only when ABI or config still needs a patch.
+fix_pkg() {
+  local pkg=$1 abi=$2 tmp list got cfg
+  got=$(tar -xJOf "${pkg}" +COMPACT_MANIFEST | jq -r .arch)
+  cfg=$(tar -xJOf "${pkg}" +MANIFEST | jq -r '.config[0] // empty')
+  [[ ${got} == "${abi}" && ${cfg} == "${CONF}" ]] && return
   tmp=$(mktemp -d)
   tar --transform 's|^/||' -xJf "${pkg}" -C "${tmp}"
   jq --arg a "${abi}" '.arch=$a' "${tmp}/+COMPACT_MANIFEST" > "${tmp}/c.json"
-  jq --arg a "${abi}" '.arch=$a' "${tmp}/+MANIFEST" > "${tmp}/m.json"
+  jq --arg a "${abi}" --arg c "${CONF}" '.arch=$a | .config=[$c]' "${tmp}/+MANIFEST" > "${tmp}/m.json"
   mv "${tmp}/c.json" "${tmp}/+COMPACT_MANIFEST"
   mv "${tmp}/m.json" "${tmp}/+MANIFEST"
   list=$(mktemp)
@@ -75,6 +79,7 @@ stage() {
 extra=$(mktemp)
 echo '[]' > "${extra}"
 seen=
+
 while IFS='|' read -r goarch goarm path; do
   [[ ${goarch} == arm && ${goarm} == 6 ]] && continue
   [[ ${seen} == *"|${goarch}|"* ]] && continue
@@ -97,9 +102,10 @@ while IFS='|' read -r goarch goarm path; do
     --before-install "${REPO}/init/systemd/before-install.sh" \
     --after-install "${REPO}/init/systemd/after-install.sh" \
     --before-remove "${REPO}/init/systemd/before-remove.sh" \
+    --config-files "${CONF}" \
     -C "${tmp}" -p "${dest}" .
   rm -rf "${tmp}"
-  set_abi "${dest}" "FreeBSD:*:${cpu}"
+  fix_pkg "${dest}" "FreeBSD:*:${cpu}"
   echo "wrote ${dest##*/}" >&2
   jq --arg name "${dest##*/}" --arg goarch "${goarch}" --arg goarm "${goarm}" \
     '. + [{name:$name, path:$name, goos:"freebsd", goarch:$goarch,
@@ -111,6 +117,7 @@ done < <(jq -r '.[] | select(.type=="Binary" and .goos=="freebsd") | [.goarch, (
 for a in amd64 386 arm arm64; do
   [[ ${seen} == *"|${a}|"* ]] || { echo "freebsd txz missing goarch ${a}" >&2; exit 1; }
 done
+
 jq --slurpfile extra "${extra}" '. + $extra[0]' "${artifacts}" > "${artifacts}.n"
 mv "${artifacts}.n" "${artifacts}"
 rm -f "${extra}"

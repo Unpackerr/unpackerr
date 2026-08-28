@@ -165,6 +165,7 @@ func (c *Config) validateDefs() []string {
 			}
 
 			errs = append(errs, mdxProblems(def.Title, string(defName)+"."+string(item)+" title")...)
+			errs = append(errs, c.validateDefListOverrides(defName, item, def)...)
 		}
 	}
 
@@ -230,6 +231,8 @@ func (h *Header) validate(name section) []string {
 			errs = append(errs, string(name)+"."+param.Name+": unknown kind "+param.Kind)
 		}
 
+		errs = append(errs, param.validateListValues(string(name)+"."+param.Name)...)
+
 		where := string(name) + "." + param.Name + " short"
 		errs = append(errs, mdxProblems(param.Short, where)...)
 
@@ -241,11 +244,69 @@ func (h *Header) validate(name section) []string {
 	return errs
 }
 
+func (p *Param) validateListValues(where string) []string {
+	if p.Kind != list && p.Kind != "conlist" {
+		return nil
+	}
+
+	var errs []string
+
+	for _, item := range []struct {
+		label string
+		val   any
+	}{
+		{"default", p.Default},
+		{"example", p.Example},
+		{"docker", p.Docker},
+	} {
+		if item.val != nil && !isSeq(item.val) {
+			errs = append(errs, where+": "+p.Kind+" "+item.label+" must be a list")
+		}
+	}
+
+	return errs
+}
+
+func (c *Config) validateDefListOverrides(defName, item section, def *Def) []string {
+	header := c.Sections[defName]
+	if header == nil {
+		return nil
+	}
+
+	var errs []string
+
+	for _, param := range header.Params {
+		if param == nil || (param.Kind != list && param.Kind != "conlist") {
+			continue
+		}
+
+		where := string(defName) + "." + string(item) + "." + param.Name
+		if val, ok := def.Defaults[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" default override must be a list")
+		}
+
+		if val, ok := def.Examples[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" example override must be a list")
+		}
+
+		if val, ok := def.DockerExample[param.Name]; ok && !isSeq(val) {
+			errs = append(errs, where+": "+param.Kind+" docker override must be a list")
+		}
+	}
+
+	return errs
+}
+
+func isSeq(val any) bool {
+	_, ok := val.([]any)
+	return ok
+}
+
 // mdxProblems finds Docusaurus MDX v2 compile breakers in generated website markdown.
 func mdxProblems(content, where string) []string {
 	var errs []string
 
-	stripped := stripInlineCode(stripFencedCode(content))
+	stripped := stripInlineCode(stripCodeBlocks(content))
 
 	if admonitionSpace.MatchString(stripped) {
 		errs = append(errs, where+": use :::note[Title] (MDX v2); :::note Title fails Docusaurus compile")
@@ -263,7 +324,7 @@ func mdxProblems(content, where string) []string {
 
 // hasUnescapedBrace reports whether a line contains a { or } that MDX will
 // parse as JSX. Complete {{...}} and {/*...*/} spans are removed first, then
-// backslash-escaped braces (\{, \}, and \\{) are ignored.
+// braces preceded by an odd number of backslashes are ignored.
 func hasUnescapedBrace(line string) bool {
 	stripped := stripAllowedBraces(line)
 
@@ -292,6 +353,7 @@ func oddEscapes(content string, idx int) bool {
 }
 
 // stripAllowedBraces removes complete {{...}} JSX and {/*...*/} comment spans.
+// JSX spans are depth-balanced so nested objects like {{a: {b: 1}}} match.
 // Leftover { or } characters are MDX compile breakers.
 func stripAllowedBraces(line string) string {
 	var out strings.Builder
@@ -300,7 +362,7 @@ func stripAllowedBraces(line string) string {
 		rest := line[idx:]
 
 		switch {
-		case strings.HasPrefix(rest, "{/*"):
+		case strings.HasPrefix(rest, "{/*") && !oddEscapes(line, idx):
 			end := strings.Index(rest, "*/}")
 			if end < 0 {
 				out.WriteString(rest)
@@ -308,14 +370,16 @@ func stripAllowedBraces(line string) string {
 			}
 
 			idx += end + len("*/}")
-		case strings.HasPrefix(rest, "{{"):
-			end := strings.Index(rest[len("{{"):], "}}")
+		case strings.HasPrefix(rest, "{{") && !oddEscapes(line, idx):
+			end := balancedBraceEnd(line, idx)
 			if end < 0 {
-				out.WriteString(rest)
-				return out.String()
+				out.WriteByte(line[idx])
+				idx++
+
+				continue
 			}
 
-			idx += len("{{") + end + len("}}")
+			idx = end
 		default:
 			out.WriteByte(line[idx])
 			idx++
@@ -325,51 +389,741 @@ func stripAllowedBraces(line string) string {
 	return out.String()
 }
 
-// stripFencedCode removes fenced code blocks. A fence opens with a run of 3+
-// backticks or tildes (indented at most three spaces) and closes only with the
-// same marker character, a run at least as long, and whitespace-only trailing
-// text (CommonMark). Info strings on the opening fence are ignored.
-func stripFencedCode(content string) string {
-	var out strings.Builder
+// balancedBraceEnd returns the index after a complete brace group starting at
+// idx, counting nested unescaped { and }. Braces inside JavaScript strings,
+// comments, and regex literals are ignored. idx must point at an unescaped '{'.
+func balancedBraceEnd(content string, idx int) int {
+	depth := 0
 
-	inFence := false
-	fenceChar := byte(0)
-	fenceLen := 0
+	var (
+		punct    jsPunct
+		adjacent bool
+	)
 
-	for line := range strings.SplitSeq(content, "\n") {
-		// CommonMark allows up to 3 leading spaces; more makes it indented code.
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		trimmed := strings.TrimSpace(line)
+	for pos := idx; pos < len(content); {
+		if !isJSIdentChar(content[pos], punct.ident != "") {
+			punct.finishIdent()
+		}
 
-		if !inFence {
-			if indent <= maxFenceIndent {
-				if char, length, isOpen := fenceOpener(trimmed); isOpen {
-					inFence, fenceChar, fenceLen = true, char, length
-					continue
-				}
+		if skip, next := skipJSLexical(content, pos, punct.canStartRegex()); skip {
+			if next < 0 {
+				return -1
 			}
 
-			out.WriteString(line)
-			out.WriteByte('\n')
+			punct.afterLexical(content, pos, next)
+
+			adjacent = false
+			pos = next
 
 			continue
 		}
 
-		// Inside a fence: close on a compatible marker with only trailing spaces.
-		if char, length, isClose := fenceCloser(trimmed); isClose && char == fenceChar && length >= fenceLen {
-			inFence = false
+		if isJSSpace(content[pos]) {
+			punct.finishIdent()
+
+			adjacent = false
+			pos++
+
+			continue
+		}
+
+		if oddEscapes(content, pos) {
+			pos++
+			continue
+		}
+
+		var done bool
+
+		done, depth, adjacent = punct.brace(content[pos], depth, adjacent)
+		if done {
+			return pos + 1
+		}
+
+		pos++
+	}
+
+	return -1
+}
+
+type jsPunct struct {
+	prev, before byte
+	ident        string
+	parenDepth   int
+	keyword      bool
+	member       bool
+	control      bool
+	afterCtrl    bool
+	forCtrl      bool
+	forParen     bool
+}
+
+func (punct *jsPunct) saw(char byte, adjacent bool) {
+	if isJSIdentChar(char, punct.ident != "") {
+		if punct.ident == "" {
+			punct.member = punct.prev == '.'
+			punct.afterCtrl = false
+		}
+
+		punct.ident += string(char)
+		punct.sawPunct(char, adjacent)
+
+		return
+	}
+
+	punct.finishIdent()
+	punct.keyword = false
+	punct.trackControl(char)
+	punct.sawPunct(char, adjacent)
+}
+
+func (punct *jsPunct) trackControl(char byte) {
+	switch char {
+	case '(':
+		if punct.control && punct.parenDepth == 0 {
+			punct.parenDepth = 1
+			punct.forParen = punct.forCtrl
+		} else if punct.parenDepth > 0 {
+			punct.parenDepth++
+		}
+
+		punct.control = false
+		punct.forCtrl = false
+		punct.afterCtrl = false
+	case ')':
+		if punct.parenDepth == 0 {
+			punct.afterCtrl = false
+
+			return
+		}
+
+		punct.parenDepth--
+		if punct.parenDepth == 0 {
+			punct.afterCtrl = true
+			punct.forParen = false
+		}
+	default:
+		punct.control = false
+		punct.forCtrl = false
+		punct.afterCtrl = false
+	}
+}
+
+func (punct *jsPunct) sawPunct(char byte, adjacent bool) {
+	if adjacent {
+		punct.before = punct.prev
+	} else {
+		punct.before = 0
+	}
+
+	punct.prev = char
+}
+
+func (punct *jsPunct) finishIdent() {
+	if punct.ident == "" {
+		return
+	}
+
+	isFor := punct.ident == "for"
+	ofInFor := punct.ident == "of" && punct.forParen && punct.parenDepth > 0
+	punct.keyword = !punct.member && (jsRegexKeyword(punct.ident) || ofInFor)
+	punct.control = !punct.member && jsControlKeyword(punct.ident)
+	punct.forCtrl = !punct.member && isFor
+	punct.ident = ""
+	punct.member = false
+}
+
+func (punct *jsPunct) brace(char byte, depth int, adjacent bool) (bool, int, bool) {
+	switch char {
+	case '{':
+		punct.saw('{', adjacent)
+		return false, depth + 1, true
+	case '}':
+		depth--
+		if depth == 0 {
+			return true, 0, adjacent
+		}
+
+		punct.saw('}', adjacent)
+
+		return false, depth, true
+	default:
+		punct.saw(char, adjacent)
+
+		return false, depth, true
+	}
+}
+
+func (punct *jsPunct) canStartRegex() bool {
+	if punct.keyword || punct.afterCtrl {
+		return true
+	}
+
+	if punct.prev == '+' && punct.before == '+' {
+		return false
+	}
+
+	if punct.prev == '-' && punct.before == '-' {
+		return false
+	}
+
+	return canStartJSRegex(punct.prev)
+}
+
+func (punct *jsPunct) afterLexical(content string, start, end int) {
+	if start >= len(content) {
+		return
+	}
+
+	if content[start] == '/' && start+1 < len(content) && (content[start+1] == '/' || content[start+1] == '*') {
+		return
+	}
+
+	punct.ident = ""
+	punct.keyword = false
+	punct.member = false
+	punct.control = false
+	punct.afterCtrl = false
+
+	if end > start {
+		punct.prev = content[end-1]
+		punct.before = 0
+	}
+}
+
+func isJSIdentChar(char byte, cont bool) bool {
+	if char == '_' || char == '$' ||
+		(char >= 'A' && char <= 'Z') ||
+		(char >= 'a' && char <= 'z') {
+		return true
+	}
+
+	return cont && char >= '0' && char <= '9'
+}
+
+func jsRegexKeyword(ident string) bool {
+	switch ident {
+	case "return", "throw", "case", "else", "do",
+		"typeof", "delete", "void", "new", "yield", "await",
+		"in", "instanceof":
+		return true
+	default:
+		return false
+	}
+}
+
+func jsControlKeyword(ident string) bool {
+	switch ident {
+	case "if", "while", "for", "with":
+		return true
+	default:
+		return false
+	}
+}
+
+func isJSSpace(char byte) bool {
+	return char == ' ' || char == '\t' || char == '\n' || char == '\r'
+}
+
+// skipJSLexical reports whether pos starts a JS string, comment, or regex
+// literal and, if so, the index after that construct (or -1 if unterminated).
+func skipJSLexical(content string, pos int, startRegex bool) (bool, int) {
+	if pos >= len(content) {
+		return false, pos
+	}
+
+	switch content[pos] {
+	case '"', '\'', '`':
+		return true, skipJSString(content, pos)
+	case '/':
+		if pos+1 >= len(content) {
+			return false, pos
+		}
+
+		switch content[pos+1] {
+		case '/':
+			return true, skipJSLineComment(content, pos)
+		case '*':
+			return true, skipJSBlockComment(content, pos)
+		}
+
+		if startRegex {
+			return true, skipJSRegex(content, pos)
 		}
 	}
 
-	return out.String()
+	return false, pos
+}
+
+func canStartJSRegex(prev byte) bool {
+	switch prev {
+	case 0, '(', '[', '{', ',', '=', ':', ';', '!', '&', '|', '?', '+', '-', '*', '%', '^', '~', '<', '>':
+		return true
+	default:
+		return false
+	}
+}
+
+func skipJSRegex(content string, pos int) int {
+	inClass := false
+
+	for idx := pos + 1; idx < len(content); idx++ {
+		if content[idx] == '\n' {
+			return -1
+		}
+
+		if oddEscapes(content, idx) {
+			continue
+		}
+
+		switch {
+		case inClass:
+			if content[idx] == ']' {
+				inClass = false
+			}
+		case content[idx] == '[':
+			inClass = true
+		case content[idx] == '/':
+			return skipJSRegexpFlags(content, idx+1)
+		}
+	}
+
+	return -1
+}
+
+func skipJSRegexpFlags(content string, pos int) int {
+	for pos < len(content) && isJSRegexpFlag(content[pos]) {
+		pos++
+	}
+
+	return pos
+}
+
+func isJSRegexpFlag(char byte) bool {
+	switch char {
+	case 'd', 'g', 'i', 'm', 's', 'u', 'v', 'y':
+		return true
+	default:
+		return false
+	}
+}
+
+func skipJSString(content string, pos int) int {
+	quote := content[pos]
+
+	for idx := pos + 1; idx < len(content); idx++ {
+		if content[idx] == quote && !oddEscapes(content, idx) {
+			return idx + 1
+		}
+	}
+
+	return -1
+}
+
+func skipJSLineComment(content string, pos int) int {
+	if nl := strings.IndexByte(content[pos:], '\n'); nl >= 0 {
+		return pos + nl
+	}
+
+	return len(content)
+}
+
+func skipJSBlockComment(content string, pos int) int {
+	end := strings.Index(content[pos+2:], "*/")
+	if end < 0 {
+		return len(content)
+	}
+
+	return pos + 2 + end + len("*/")
 }
 
 // minFenceLen is the minimum run length that opens a CommonMark code fence.
-// maxFenceIndent is the maximum leading spaces before a fence becomes indented code.
+// maxFenceIndent is the maximum leading columns before a fence becomes indented code.
+// tabWidth is the CommonMark tab-stop width used when measuring indentation.
 const (
 	minFenceLen    = 3
 	maxFenceIndent = 3
+	tabWidth       = 4
 )
+
+// stripCodeBlocks removes fenced and indented code. A fence opens with a run of
+// 3+ backticks or tildes (indented at most three columns) and closes only with
+// the same marker character, a run at least as long, and whitespace-only
+// trailing text (CommonMark). Info strings on the opening fence are ignored.
+// Indented code (4+ columns, including tabs) cannot interrupt a paragraph.
+func stripCodeBlocks(content string) string {
+	scan := mdScan{canStartIndented: true}
+
+	for line := range strings.SplitSeq(content, "\n") {
+		scan.line(line)
+	}
+
+	return scan.out.String()
+}
+
+type mdScan struct {
+	out              strings.Builder
+	listIndents      []int
+	inFence          bool
+	fenceChar        byte
+	fenceLen         int
+	fenceBase        int
+	inIndented       bool
+	canStartIndented bool
+	lastWasParagraph bool
+	contentIndent    int
+}
+
+func (scan *mdScan) line(line string) {
+	indent := leadingIndent(line)
+	trimmed := strings.TrimSpace(line)
+
+	if scan.inFence && scan.continueFence(indent, trimmed) {
+		return
+	}
+
+	scan.syncList(indent, trimmed)
+
+	rel := indent - scan.contentIndent
+	if rel < 0 {
+		rel = indent
+	}
+
+	if scan.openFence(indent, rel, trimmed) {
+		return
+	}
+
+	if trimmed == "" {
+		scan.out.WriteString(line)
+		scan.out.WriteByte('\n')
+
+		scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
+
+		return
+	}
+
+	if rel > maxFenceIndent && (scan.canStartIndented || scan.inIndented) {
+		scan.inIndented = true
+		scan.lastWasParagraph = false
+
+		return
+	}
+
+	scan.writeContent(line, indent, trimmed, rel)
+}
+
+func (scan *mdScan) syncList(indent int, trimmed string) {
+	if trimmed == "" {
+		return
+	}
+
+	scan.popLists(indent)
+}
+
+func (scan *mdScan) pushList(col int) {
+	scan.listIndents = append(scan.listIndents, col)
+	scan.contentIndent = col
+}
+
+func (scan *mdScan) popLists(indent int) {
+	for len(scan.listIndents) > 0 && indent < scan.listIndents[len(scan.listIndents)-1] {
+		scan.listIndents = scan.listIndents[:len(scan.listIndents)-1]
+	}
+
+	if len(scan.listIndents) == 0 {
+		scan.contentIndent = 0
+		return
+	}
+
+	scan.contentIndent = scan.listIndents[len(scan.listIndents)-1]
+}
+
+func (scan *mdScan) writeContent(line string, indent int, trimmed string, rel int) {
+	scan.out.WriteString(line)
+	scan.out.WriteByte('\n')
+
+	scan.inIndented = false
+	if !thematicBreak(trimmed) && (!scan.lastWasParagraph || !setextUnderline(trimmed)) {
+		if col, _, ok := listItemSplit(indent, trimmed); ok && rel <= maxFenceIndent && scan.allowListItem(trimmed) {
+			scan.pushList(col)
+		}
+	}
+
+	scan.canStartIndented = rel <= maxFenceIndent && leafBlockLine(trimmed, scan.lastWasParagraph)
+	scan.lastWasParagraph = !scan.canStartIndented
+}
+
+func (scan *mdScan) continueFence(indent int, trimmed string) bool {
+	if fenceClosed(indent-scan.fenceBase, trimmed, scan.fenceChar, scan.fenceLen) {
+		scan.inFence = false
+		scan.canStartIndented, scan.lastWasParagraph = true, false
+
+		return true
+	}
+
+	if trimmed == "" || indent >= scan.fenceBase {
+		return true
+	}
+
+	scan.inFence = false
+	scan.popLists(indent)
+	scan.canStartIndented, scan.lastWasParagraph = true, false
+
+	return false
+}
+
+func (scan *mdScan) openFence(indent, rel int, trimmed string) bool {
+	if rel > maxFenceIndent {
+		return false
+	}
+
+	if char, length, isOpen := fenceOpener(trimmed); isOpen {
+		scan.startFence(char, length, scan.contentIndent)
+
+		return true
+	}
+
+	if scan.lastWasParagraph && setextUnderline(trimmed) {
+		return false
+	}
+
+	col, rest, ok := listItemSplit(indent, trimmed)
+	if !ok || !scan.allowListItem(trimmed) {
+		return false
+	}
+
+	if char, length, isOpen := fenceOpener(strings.TrimSpace(rest)); isOpen {
+		scan.pushList(col)
+		scan.startFence(char, length, col)
+
+		return true
+	}
+
+	return false
+}
+
+func (scan *mdScan) startFence(char byte, length, base int) {
+	scan.inFence, scan.fenceChar, scan.fenceLen, scan.fenceBase = true, char, length, base
+	scan.inIndented, scan.canStartIndented, scan.lastWasParagraph = false, true, false
+}
+
+func fenceClosed(rel int, trimmed string, fenceChar byte, fenceLen int) bool {
+	if rel < 0 || rel > maxFenceIndent {
+		return false
+	}
+
+	char, length, isClose := fenceCloser(trimmed)
+
+	return isClose && char == fenceChar && length >= fenceLen
+}
+
+// listItemSplit reports the content column of a CommonMark list item and the
+// remainder of the line after the marker and padding. Tabs in the padding
+// advance to the next tab stop from the marker's ending column.
+func listItemSplit(indent int, trimmed string) (int, string, bool) {
+	end, _, ok := consumeListMarker(trimmed)
+	if !ok {
+		return 0, "", false
+	}
+
+	col := indent + end
+	if end == len(trimmed) {
+		return col + 1, "", true
+	}
+
+	if trimmed[end] != ' ' && trimmed[end] != '\t' {
+		return 0, "", false
+	}
+
+	start := col
+	idx := end
+
+	for idx < len(trimmed) {
+		var advance int
+
+		switch trimmed[idx] {
+		case ' ':
+			advance = 1
+		case '\t':
+			advance = tabWidth - col%tabWidth
+		default:
+			if col == start {
+				return 0, "", false
+			}
+
+			return col, trimmed[idx:], true
+		}
+
+		if col-start+advance > tabWidth {
+			return start + 1, trimmed[end+1:], true
+		}
+
+		col += advance
+		idx++
+
+		if col-start >= tabWidth {
+			return col, trimmed[idx:], true
+		}
+	}
+
+	if col == start {
+		return 0, "", false
+	}
+
+	return col, "", true
+}
+
+// bulletStart is consumeListMarker's start value for -, *, and +. Ordered
+// markers return the parsed number, which is never negative.
+const (
+	bulletStart = -1
+	decimalBase = 10
+)
+
+func consumeListMarker(trimmed string) (int, int, bool) {
+	if trimmed == "" {
+		return 0, 0, false
+	}
+
+	switch trimmed[0] {
+	case '-', '*', '+':
+		return 1, bulletStart, true
+	}
+
+	digits := 0
+	start := 0
+
+	for digits < len(trimmed) && digits < 9 && trimmed[digits] >= '0' && trimmed[digits] <= '9' {
+		start = start*decimalBase + int(trimmed[digits]-'0')
+		digits++
+	}
+
+	if digits == 0 || digits >= len(trimmed) || (trimmed[digits] != '.' && trimmed[digits] != ')') {
+		return 0, 0, false
+	}
+
+	return digits + 1, start, true
+}
+
+func (scan *mdScan) allowListItem(trimmed string) bool {
+	if !scan.lastWasParagraph {
+		return true
+	}
+
+	_, start, ok := consumeListMarker(trimmed)
+	if !ok || !listItemHasContent(trimmed) {
+		return false
+	}
+
+	return start == bulletStart || start == 1
+}
+
+func listItemHasContent(trimmed string) bool {
+	end, _, ok := consumeListMarker(trimmed)
+	if !ok || end >= len(trimmed) {
+		return false
+	}
+
+	return strings.TrimSpace(trimmed[end:]) != ""
+}
+
+// leadingIndent returns the visual column of the first non-whitespace rune.
+// CommonMark tabs advance to the next tab stop.
+func leadingIndent(line string) int {
+	col := 0
+
+	for _, r := range line {
+		switch r {
+		case ' ':
+			col++
+		case '\t':
+			col += tabWidth - col%tabWidth
+		default:
+			return col
+		}
+	}
+
+	return col
+}
+
+// leafBlockLine reports whether trimmed is a CommonMark leaf that ends a
+// paragraph so indented code may start on the next line. ATX headings always
+// qualify. Setext underlines only qualify after a paragraph. Thematic breaks
+// qualify when they are not a setext underline (after a paragraph, dashes are
+// setext; stars and underscores are still thematic).
+func leafBlockLine(trimmed string, lastWasParagraph bool) bool {
+	if atxHeading(trimmed) {
+		return true
+	}
+
+	if lastWasParagraph {
+		return setextUnderline(trimmed) || thematicBreak(trimmed)
+	}
+
+	return thematicBreak(trimmed)
+}
+
+func atxHeading(trimmed string) bool {
+	hashes := 0
+	for hashes < len(trimmed) && trimmed[hashes] == '#' {
+		hashes++
+	}
+
+	if hashes < 1 || hashes > 6 {
+		return false
+	}
+
+	if hashes == len(trimmed) {
+		return true
+	}
+
+	return trimmed[hashes] == ' ' || trimmed[hashes] == '\t'
+}
+
+func thematicBreak(trimmed string) bool {
+	var marker byte
+
+	count := 0
+
+	for idx := range len(trimmed) {
+		char := trimmed[idx]
+		if char == ' ' || char == '\t' {
+			continue
+		}
+
+		if char != '-' && char != '*' && char != '_' {
+			return false
+		}
+
+		if marker == 0 {
+			marker = char
+		} else if char != marker {
+			return false
+		}
+
+		count++
+	}
+
+	return count >= minFenceLen
+}
+
+func setextUnderline(trimmed string) bool {
+	if trimmed == "" {
+		return false
+	}
+
+	marker := trimmed[0]
+	if marker != '=' && marker != '-' {
+		return false
+	}
+
+	for idx := 1; idx < len(trimmed); idx++ {
+		if trimmed[idx] != marker {
+			return false
+		}
+	}
+
+	return true
+}
 
 // fenceOpener reports whether a trimmed line opens a code fence: 3+ of the same
 // backtick or tilde. An optional info string may follow the run.

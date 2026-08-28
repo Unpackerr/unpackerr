@@ -1,5 +1,7 @@
 code.cloudfoundry.org/bytefmt v0.86.0 h1:nT+g6H9uMZKuDFw2Q2k5YUtN/36y3BJ7/WgWGlAzICw=
 code.cloudfoundry.org/bytefmt v0.86.0/go.mod h1:nXPkX12GcU2FREdotT/niWqAoqj6f3S0VIK+O6x1kUM=
+code.cloudfoundry.org/bytefmt v0.87.0 h1:UMEv9AhQCNEkqOimWsC7bN7IHuyF72kfWR33QUSjlLs=
+code.cloudfoundry.org/bytefmt v0.87.0/go.mod h1:vMPfPm2ydXwZkR2RogzxvdVo3J1TFDVZ7Qil4l0Bg1c=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
@@ -185,6 +187,8 @@ golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=
 golift.io/version v0.0.2/go.mod h1:76aHNz8/Pm7CbuxIsDi97jABL5Zui3f2uZxDm4vB6hU=
 golift.io/xtractr v0.4.2 h1:7lssy4Ipb+VLo4ci/9eHPX4Sk4mpdYCsKct69Si2IzY=
 golift.io/xtractr v0.4.2/go.mod h1:ubRpSmW3drFmhxgxvIhctHax6VjvDdCHwcCiYAY8n7k=
+golift.io/xtractr v0.5.0 h1:lwhpXLvH9FHlx5mUxTCc8biGxOhMQRypWsdoXQvnRWw=
+golift.io/xtractr v0.5.0/go.mod h1:fa49Lo8o1aTLuYzhe2IX3goRkUclgIW+a3P6a3dea3I=
 google.golang.org/protobuf v1.36.12 h1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=
 google.golang.org/protobuf v1.36.12/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

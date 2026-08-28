@@ -3,7 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.27.0
 
 require (
-	code.cloudfoundry.org/bytefmt v0.86.0
+	code.cloudfoundry.org/bytefmt v0.87.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/dromara/carbon/v2 v2.6.17
 	github.com/energye/systray v1.0.3
@@ -22,7 +22,7 @@ require (
 	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	golift.io/starr v1.3.1
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.4.2
+	golift.io/xtractr v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

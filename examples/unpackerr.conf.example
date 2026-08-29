@@ -67,9 +67,10 @@ max_retries = 3
 ## with the download are kept; names that were not (leftovers from an
 ## interrupted extraction) are handled by this setting. `rename` (default)
 ## moves the leftover to a sibling named with a `.remnant` suffix and retries
-## the extract. `delete` removes it and retries. `off` logs a warning and does
-## not retry. Bounded by max_retries; if retries are exhausted the leftover
-## fails the extract instead of reporting success.
+## the extract. `delete` removes it and retries. `off` leaves the leftover
+## in place and fails the extract without retrying. Bounded by max_retries;
+## if retries are exhausted the leftover fails the extract instead of
+## reporting success.
 remnant_action = "rename"
 
 ## How many files may be extracted in parallel. 1 works fine.
@@ -355,4 +356,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 28 AUG 2026 08:22 UTC
+## => Content Auto Generated, 29 AUG 2026 03:59 UTC

@@ -430,8 +430,9 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 
 // finishFolderExtract classifies refusals on any terminal response (success or
 // error), then keeps EXTRACTFAILED when remnants remain or the original error
-// still requires a retry. Cleared remnants restart via the existing
-// EXTRACTFAILED retry path (folders have no WAITING poller).
+// still requires a retry. Cleared remnants restart via EXTRACTFAILED so the
+// next pass is spaced by retry_delay. remnant_action=off uses EXTRACTEDNOTHING
+// so checkFolderStats will not retry.
 func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) {
 	if resp.Error != nil {
 		folder.archives = resp.Archives
@@ -446,13 +447,21 @@ func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) 
 	u.updateMetrics(resp, FolderString, folder.config.Path)
 
 	if status, ok := u.handleRemnants(resp, folder.preFiles, folder.retries); ok {
-		if status == WAITING {
+		switch status {
+		case WAITING:
 			u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
-		} else {
-			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
-		}
 
-		folder.status = EXTRACTFAILED
+			folder.status = EXTRACTFAILED
+		case DELETED:
+			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s) (remnant_action=off): %s",
+				resp.X.Name)
+
+			folder.status = EXTRACTEDNOTHING
+		default:
+			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
+
+			folder.status = EXTRACTFAILED
+		}
 	} else if resp.Error != nil {
 		folder.status = EXTRACTFAILED
 	} else {

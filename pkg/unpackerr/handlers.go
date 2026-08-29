@@ -256,12 +256,22 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
 	case remnants && remnantStatus == WAITING:
 		// Every blocker was cleared; re-extract into the empty destination.
+		// This case wins over resp.Error, so log a password/corrupt-archive
+		// error here the way finishFolderExtract does before handleRemnants.
+		if resp.Error != nil {
+			u.Errorf("[%s] Extraction Failed: %s: %v", item.App, resp.X.Name, resp.Error)
+		}
+
 		u.Retries++
 		item.Retries++
 		item.Status = WAITING
 		item.Updated = now
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
+	case remnants && remnantStatus == DELETED:
+		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s) (remnant_action=off): %s",
+			item.App, resp.X.Name)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: DELETED, Resp: resp}, now, true)
 	case remnants:
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)

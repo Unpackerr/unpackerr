@@ -188,8 +188,8 @@ func TestHandleRemnantsOffLeavesInPlaceAndFails(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != EXTRACTFAILED {
-		t.Fatalf("off should leave the blocker and fail, got %v ok=%v", got, ok)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != DELETED {
+		t.Fatalf("off should leave the blocker and not retry, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -252,11 +252,32 @@ func TestHandleRemnantsNoFinalDests(t *testing.T) {
 	resp := &xtractr.Response{Refused: []xtractr.RefusedFile{{Src: "x", Dest: blocker}}}
 
 	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); ok {
-		t.Fatalf("empty FinalDests should be a no-op, got %v ok=%v", got, ok)
+		t.Fatalf("empty dests should be a no-op, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
-		t.Fatalf("no-FinalDests refusal must not touch the file, err=%v", err)
+		t.Fatalf("no-dests refusal must not touch the file, err=%v", err)
+	}
+}
+
+func TestHandleRemnantsUsesOutputWhenFinalDestsEmpty(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	output := t.TempDir()
+	blocker := writeRemnant(t, output, "movie.mkv")
+
+	resp := &xtractr.Response{
+		Output:  output,
+		Refused: []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
+	}
+
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != WAITING {
+		t.Fatalf("TempFolder Output refusals should classify, got %v ok=%v", got, ok)
+	}
+
+	if _, err := os.Lstat(blocker); !os.IsNotExist(err) {
+		t.Fatalf("Output leftover should be renamed away, lstat err=%v", err)
 	}
 }
 

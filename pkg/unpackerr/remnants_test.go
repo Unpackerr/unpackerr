@@ -3,6 +3,8 @@ package unpackerr
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"golift.io/xtractr"
@@ -338,11 +340,71 @@ func TestHandleRemnantsIgnoresOutsideDest(t *testing.T) {
 func TestKeepDirSnapshotReadDirFailure(t *testing.T) {
 	t.Parallel()
 
+	file := writeRemnant(t, t.TempDir(), "not-a-dir")
+	out := map[string]os.FileInfo{}
+
+	if err := keepDirChildren(out, file); err == nil {
+		t.Fatal("ReadDir of a file must fail the snapshot")
+	}
+}
+
+func TestKeepDirSnapshotMissingDestIsEmpty(t *testing.T) {
+	t.Parallel()
+
 	missing := filepath.Join(t.TempDir(), "nope", "also-nope")
 
 	snap, err := keepDirSnapshot(nil, missing)
-	if err == nil || snap != nil {
-		t.Fatalf("unlistable dest must not look empty, snap=%v err=%v", snap, err)
+	if err != nil || snap == nil {
+		t.Fatalf("missing dest is empty, not a failed snapshot, snap=%v err=%v", snap, err)
+	}
+
+	if len(snap) != 0 {
+		t.Fatalf("expected no children, got %v", snap)
+	}
+}
+
+func TestArchiveSnapshotPathsIncludesArchiveDest(t *testing.T) {
+	t.Parallel()
+
+	archive := filepath.Join(t.TempDir(), "movie.rar")
+	dest := strings.TrimSuffix(archive, filepath.Ext(archive))
+
+	got := archiveSnapshotPaths(archive, xtractr.ArchiveList{archive: {archive}})
+	if !slices.Contains(got, dest) {
+		t.Fatalf("archive-file dest %s missing from %v", dest, got)
+	}
+}
+
+func TestHandleRemnantsKeepsArchiveFileDestChildren(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	parent := t.TempDir()
+	archive := filepath.Join(parent, "movie.rar")
+
+	if err := os.WriteFile(archive, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+
+	dest := strings.TrimSuffix(archive, filepath.Ext(archive))
+	if err := os.Mkdir(dest, 0o750); err != nil {
+		t.Fatalf("mkdir dest: %v", err)
+	}
+
+	nfo := writeRemnant(t, dest, "movie.nfo")
+	snapshot := mustSnapshot(t, archiveSnapshotPaths(archive, xtractr.ArchiveList{archive: {archive}})...)
+
+	resp := &xtractr.Response{
+		FinalDests: map[string]string{archive: dest},
+		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: nfo}},
+	}
+
+	if got, ok := unpack.handleRemnants(resp, snapshot, 0); ok {
+		t.Fatalf("pre-existing dest child must be kept, got %v ok=%v", got, ok)
+	}
+
+	if _, err := os.Lstat(nfo); err != nil {
+		t.Fatalf("download file in archive dest must remain, err=%v", err)
 	}
 }
 

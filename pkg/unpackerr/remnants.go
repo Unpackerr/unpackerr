@@ -46,10 +46,27 @@ func (u *Unpackerr) validateRemnantAction() error {
 	return nil
 }
 
+// archiveFileDest is the directory xtractr moveFiles uses when Path is an
+// archive file: it strips the extension so the extract lands in a sibling
+// folder. Children of that folder are not in the parent listing.
+func archiveFileDest(path string) string {
+	if !xtractr.IsArchiveFile(path) {
+		return ""
+	}
+
+	dest := strings.TrimSuffix(path, filepath.Ext(path))
+	if dest == "" || dest == path {
+		return ""
+	}
+
+	return dest
+}
+
 // archiveSnapshotPaths is the search path plus every folder FindCompressedFiles
 // already keyed (those are xtractr's per-archive dests / FinalDests keys).
+// Archive-file keys also include the extension-stripped sibling dest.
 func archiveSnapshotPaths(root string, archives xtractr.ArchiveList) []string {
-	paths := make([]string, 0, len(archives)+1)
+	paths := make([]string, 0, len(archives)*2+1)
 	if root != "" {
 		paths = append(paths, root)
 	}
@@ -57,6 +74,10 @@ func archiveSnapshotPaths(root string, archives xtractr.ArchiveList) []string {
 	for dir := range archives {
 		if dir != "" {
 			paths = append(paths, dir)
+		}
+
+		if dest := archiveFileDest(dir); dest != "" {
+			paths = append(paths, dest)
 		}
 	}
 
@@ -114,6 +135,10 @@ func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) (map[stri
 func keepDirChildren(out map[string]os.FileInfo, root string) error {
 	entries, err := os.ReadDir(root)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // dest does not exist yet; nothing there to protect.
+		}
+
 		return fmt.Errorf("os.ReadDir: %w", err)
 	}
 

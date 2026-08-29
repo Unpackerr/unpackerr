@@ -36,7 +36,8 @@ type Extract struct {
 	// failed to clear.
 	PreFiles map[string]os.FileInfo
 	// NoRetry is set when remnant_action=off leaves a blocker; EXTRACTFAILED
-	// must not re-enter the retry loop.
+	// must not re-enter the retry loop or be promoted to DELETED (that
+	// bounces a still-completed Starr item back to WAITING).
 	NoRetry bool
 }
 
@@ -201,8 +202,8 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 		case item.App == FolderString:
 			continue // folders are handled in folder.go.
 		case item.Status == EXTRACTFAILED && item.NoRetry:
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
-			u.Printf("[%s] Remnant left in place (remnant_action=off), giving up: %v", item.App, name)
+			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
+			// would bounce a still-completed Starr item back to WAITING.
 		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || item.Retries < u.MaxRetries):
 			u.Retries++

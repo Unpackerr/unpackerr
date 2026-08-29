@@ -20,6 +20,7 @@ var (
 	// ErrInvalidRemnantAction is returned when remnant_action is not rename, delete, or off.
 	ErrInvalidRemnantAction = errors.New("invalid remnant_action")
 	errNoRemnantName        = errors.New("no unused remnant name")
+	errNotDirectory         = errors.New("not a directory")
 )
 
 // remnantAction normalizes remnant_action. Empty and unknown values become
@@ -133,12 +134,22 @@ func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) (map[stri
 }
 
 func keepDirChildren(out map[string]os.FileInfo, root string) error {
-	entries, err := os.ReadDir(root)
+	info, err := os.Stat(root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // dest does not exist yet; nothing there to protect.
 		}
 
+		return fmt.Errorf("os.Stat: %w", err)
+	}
+
+	if !info.IsDir() {
+		// Windows ReadDir of a file is an empty listing, not an error.
+		return fmt.Errorf("%w: %s", errNotDirectory, root)
+	}
+
+	entries, err := os.ReadDir(root)
+	if err != nil {
 		return fmt.Errorf("os.ReadDir: %w", err)
 	}
 

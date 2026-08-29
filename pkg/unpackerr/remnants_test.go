@@ -344,7 +344,7 @@ func TestKeepDirSnapshotReadDirFailure(t *testing.T) {
 	out := map[string]os.FileInfo{}
 
 	if err := keepDirChildren(out, file); err == nil {
-		t.Fatal("ReadDir of a file must fail the snapshot")
+		t.Fatal("a file dest must fail the snapshot, not look empty")
 	}
 }
 

@@ -20,6 +20,17 @@ func writeRemnant(t *testing.T, dir, name string) string {
 	return path
 }
 
+func mustSnapshot(t *testing.T, paths ...string) map[string]os.FileInfo {
+	t.Helper()
+
+	snap, err := keepDirSnapshot(nil, paths...)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+
+	return snap
+}
+
 func TestHandleRemnantsRenamesAndRestarts(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +86,7 @@ func TestHandleRemnantsKeepsDownloadContent(t *testing.T) {
 	dest := t.TempDir()
 	blocker := writeRemnant(t, dest, "file_id.diz")
 
-	snapshot := keepDirSnapshot(nil, dest) // blocker present before extraction
+	snapshot := mustSnapshot(t, dest) // blocker present before extraction
 
 	resp := &xtractr.Response{
 		FinalDests: map[string]string{dest: dest},
@@ -104,7 +115,7 @@ func TestHandleRemnantsKeepsNestedDownloadContent(t *testing.T) {
 
 	blocker := writeRemnant(t, sub, "file_id.diz")
 	archives := xtractr.ArchiveList{sub: {filepath.Join(sub, "movie.rar")}}
-	snapshot := keepDirSnapshot(nil, archiveSnapshotPaths(root, archives)...)
+	snapshot := mustSnapshot(t, archiveSnapshotPaths(root, archives)...)
 
 	resp := &xtractr.Response{
 		FinalDests: map[string]string{sub: sub},
@@ -134,7 +145,7 @@ func TestHandleRemnantsNestedLeftoverNotProtectedByRootBasename(t *testing.T) {
 	writeRemnant(t, root, "readme.txt") // download content at the search root
 	leftover := writeRemnant(t, sub, "readme.txt")
 	// Snapshot only the search root — the leftover lives in the archive dest.
-	snapshot := keepDirSnapshot(nil, root)
+	snapshot := mustSnapshot(t, root)
 
 	resp := &xtractr.Response{
 		FinalDests: map[string]string{sub: sub},
@@ -159,7 +170,7 @@ func TestHandleRemnantsCaseInsensitiveSnapshot(t *testing.T) {
 	// case-insensitive filesystem). isDownloadContent falls back to os.SameFile.
 	writeRemnant(t, dest, "Movie.mkv")
 
-	snapshot := keepDirSnapshot(nil, dest)
+	snapshot := mustSnapshot(t, dest)
 
 	resp := &xtractr.Response{
 		FinalDests: map[string]string{dest: dest},
@@ -188,8 +199,8 @@ func TestHandleRemnantsOffLeavesInPlaceAndFails(t *testing.T) {
 		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != DELETED {
-		t.Fatalf("off should leave the blocker and not retry, got %v ok=%v", got, ok)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != EXTRACTFAILED {
+		t.Fatalf("off should leave the blocker and fail, got %v ok=%v", got, ok)
 	}
 
 	if _, err := os.Lstat(blocker); err != nil {
@@ -260,7 +271,7 @@ func TestHandleRemnantsNoFinalDests(t *testing.T) {
 	}
 }
 
-func TestHandleRemnantsUsesOutputWhenFinalDestsEmpty(t *testing.T) {
+func TestHandleRemnantsIgnoresOutputWithoutFinalDests(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
@@ -272,12 +283,33 @@ func TestHandleRemnantsUsesOutputWhenFinalDestsEmpty(t *testing.T) {
 		Refused: []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
 	}
 
-	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); !ok || got != WAITING {
-		t.Fatalf("TempFolder Output refusals should classify, got %v ok=%v", got, ok)
+	if got, ok := unpack.handleRemnants(resp, map[string]os.FileInfo{}, 0); ok {
+		t.Fatalf("Output is not a dest unless FinalDests says so, got %v ok=%v", got, ok)
 	}
 
-	if _, err := os.Lstat(blocker); !os.IsNotExist(err) {
-		t.Fatalf("Output leftover should be renamed away, lstat err=%v", err)
+	if _, err := os.Lstat(blocker); err != nil {
+		t.Fatalf("squash/temp Output refusal must not be cleared, err=%v", err)
+	}
+}
+
+func TestHandleRemnantsNilSnapshotIsNoop(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	dest := t.TempDir()
+	blocker := writeRemnant(t, dest, "movie.mkv")
+
+	resp := &xtractr.Response{
+		FinalDests: map[string]string{dest: dest},
+		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
+	}
+
+	if got, ok := unpack.handleRemnants(resp, nil, 0); ok {
+		t.Fatalf("nil snapshot cannot classify, got %v ok=%v", got, ok)
+	}
+
+	if _, err := os.Lstat(blocker); err != nil {
+		t.Fatalf("nil snapshot must not touch the file, err=%v", err)
 	}
 }
 
@@ -300,6 +332,32 @@ func TestHandleRemnantsIgnoresOutsideDest(t *testing.T) {
 
 	if _, err := os.Lstat(blocker); err != nil {
 		t.Fatalf("outside-dest refusal must not touch the file, err=%v", err)
+	}
+}
+
+func TestKeepDirSnapshotReadDirFailure(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope", "also-nope")
+
+	snap, err := keepDirSnapshot(nil, missing)
+	if err == nil || snap != nil {
+		t.Fatalf("unlistable dest must not look empty, snap=%v err=%v", snap, err)
+	}
+}
+
+func TestKeepDirSnapshotKeepsExisting(t *testing.T) {
+	t.Parallel()
+
+	existing := map[string]os.FileInfo{"sentinel": nil}
+
+	snap, err := keepDirSnapshot(existing, t.TempDir())
+	if err != nil {
+		t.Fatalf("existing snapshot: %v", err)
+	}
+
+	if _, ok := snap["sentinel"]; !ok || len(snap) != 1 {
+		t.Fatalf("retries must not recapture leftovers, got %v", snap)
 	}
 }
 

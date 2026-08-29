@@ -70,7 +70,7 @@ func snapshotDir(path string) string {
 		return ""
 	}
 
-	info, err := os.Lstat(path)
+	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
 		return filepath.Dir(path)
 	}
@@ -81,10 +81,11 @@ func snapshotDir(path string) string {
 // keepDirSnapshot returns the first pre-extraction listing. Keys are cleaned
 // full paths of the immediate children of each dest folder (same listing
 // xtractr.GetFileList uses). Retries must not recapture leftovers that failed
-// to clear.
-func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) map[string]os.FileInfo {
+// to clear. A ReadDir failure returns (nil, err) so callers leave PreFiles
+// unset and handleRemnants will not classify that item.
+func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) (map[string]os.FileInfo, error) {
 	if existing != nil {
-		return existing
+		return existing, nil
 	}
 
 	out := make(map[string]os.FileInfo)
@@ -101,16 +102,19 @@ func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) map[strin
 		}
 
 		seen[root] = struct{}{}
-		keepDirChildren(out, root)
+
+		if err := keepDirChildren(out, root); err != nil {
+			return nil, err
+		}
 	}
 
-	return out
+	return out, nil
 }
 
-func keepDirChildren(out map[string]os.FileInfo, root string) {
+func keepDirChildren(out map[string]os.FileInfo, root string) error {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return
+		return fmt.Errorf("os.ReadDir: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -125,6 +129,8 @@ func keepDirChildren(out map[string]os.FileInfo, root string) {
 
 		out[full] = info
 	}
+
+	return nil
 }
 
 // isDownloadContent reports whether dest was present before extraction, by
@@ -170,48 +176,25 @@ func underFinalDests(path string, dests map[string]string) bool {
 	return false
 }
 
-// remnantDests is FinalDests plus Output. TempFolder moves only record
-// FinalDests after a successful rename; refusals can still sit under Output
-// (the temp tree, or the renamed folder after Output is updated).
-func remnantDests(resp *xtractr.Response) map[string]string {
-	dests := make(map[string]string, len(resp.FinalDests)+1)
-
-	for dir, dest := range resp.FinalDests {
-		if dest != "" {
-			dests[dir] = dest
-		}
-	}
-
-	if resp.Output != "" {
-		dests[resp.Output] = resp.Output
-	}
-
-	return dests
-}
-
 // handleRemnants classifies Response.Refused against the pre-extraction
-// snapshot of each remnant dest. snapshot must come from keepDirSnapshot
+// snapshot of each FinalDests value. snapshot must come from keepDirSnapshot
 // at queue time. It clears non-snapshot blockers per remnant_action and also
 // rolls back sibling NewFiles when a restart will re-extract into them.
 //
-// ok is false when remnants do not change the normal success/error path.
-// When ok is true, WAITING means restart, EXTRACTFAILED means a remnant
-// still blocks (retryable), and DELETED means remnant_action=off (no retry).
+// ok is false when remnants do not change the normal success/error path
+// (no refusals, no FinalDests, or no snapshot). When ok is true, WAITING
+// means restart and EXTRACTFAILED means a remnant still blocks. Callers
+// must set NoRetry when remnant_action is off so EXTRACTFAILED is not retried.
 func (u *Unpackerr) handleRemnants(
 	resp *xtractr.Response,
 	snapshot map[string]os.FileInfo,
 	retries uint,
 ) (ExtractStatus, bool) {
-	if resp == nil || len(resp.Refused) == 0 {
+	if resp == nil || snapshot == nil || len(resp.Refused) == 0 || len(resp.FinalDests) == 0 {
 		return 0, false
 	}
 
-	dests := remnantDests(resp)
-	if len(dests) == 0 {
-		return 0, false
-	}
-
-	remnants := u.classifyRemnants(resp, snapshot, dests)
+	remnants := u.classifyRemnants(resp, snapshot)
 	if len(remnants) == 0 {
 		return 0, false
 	}
@@ -221,7 +204,7 @@ func (u *Unpackerr) handleRemnants(
 			u.Printf("Interrupted-extraction remnant left in place (remnant_action=off): %s", dest)
 		}
 
-		return DELETED, true
+		return EXTRACTFAILED, true
 	}
 
 	if u.MaxRetries != 0 && retries >= u.MaxRetries {
@@ -237,7 +220,7 @@ func (u *Unpackerr) handleRemnants(
 	// move are still in place and would refuse on the next attempt — remove the
 	// ones that were not part of the download so the restart extracts cleanly.
 	for _, newFile := range resp.NewFiles {
-		if !underFinalDests(newFile, dests) || isDownloadContent(snapshot, newFile) {
+		if !underFinalDests(newFile, resp.FinalDests) || isDownloadContent(snapshot, newFile) {
 			continue
 		}
 
@@ -249,11 +232,7 @@ func (u *Unpackerr) handleRemnants(
 	return WAITING, true
 }
 
-func (u *Unpackerr) classifyRemnants(
-	resp *xtractr.Response,
-	snapshot map[string]os.FileInfo,
-	dests map[string]string,
-) []string {
+func (u *Unpackerr) classifyRemnants(resp *xtractr.Response, snapshot map[string]os.FileInfo) []string {
 	var remnants []string
 
 	seen := make(map[string]struct{}, len(resp.Refused))
@@ -265,7 +244,7 @@ func (u *Unpackerr) classifyRemnants(
 
 		seen[refused.Dest] = struct{}{}
 
-		if !underFinalDests(refused.Dest, dests) {
+		if !underFinalDests(refused.Dest, resp.FinalDests) {
 			u.Debugf("Ignoring refused path outside extract dest: %s", refused.Dest)
 			continue
 		}

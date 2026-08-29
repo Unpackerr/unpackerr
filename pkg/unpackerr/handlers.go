@@ -35,6 +35,9 @@ type Extract struct {
 	// Snapshot once per queue item; retries must not fold in leftovers that
 	// failed to clear.
 	PreFiles map[string]os.FileInfo
+	// NoRetry is set when remnant_action=off leaves a blocker; EXTRACTFAILED
+	// must not re-enter the retry loop.
+	NoRetry bool
 }
 
 // StarrConfig is the shared config items for all starr apps.
@@ -129,7 +132,13 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	// This updates the item in the map.
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
-	item.PreFiles = keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
+	snap, err := keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
+	if err != nil {
+		u.Errorf("[%s] Snapshot dests for remnant check: %v", item.App, err)
+	} else {
+		item.PreFiles = snap
+	}
+
 	item.Status = QUEUED
 	item.Updated = now
 	// This queues the extraction. Which may start right away.
@@ -191,6 +200,9 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.Printf("[%s] Finished, Removed History: %v", item.App, name)
 		case item.App == FolderString:
 			continue // folders are handled in folder.go.
+		case item.Status == EXTRACTFAILED && item.NoRetry:
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			u.Printf("[%s] Remnant left in place (remnant_action=off), giving up: %v", item.App, name)
 		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || item.Retries < u.MaxRetries):
 			u.Retries++
@@ -268,11 +280,11 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		item.Updated = now
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
-	case remnants && remnantStatus == DELETED:
-		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s) (remnant_action=off): %s",
-			item.App, resp.X.Name)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: DELETED, Resp: resp}, now, true)
 	case remnants:
+		if remnantAction(u.RemnantAction) == "off" {
+			item.NoRetry = true
+		}
+
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:

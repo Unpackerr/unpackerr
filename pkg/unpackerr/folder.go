@@ -71,8 +71,10 @@ type Folder struct {
 	// preFiles is the snapshot of each archive dest before extraction
 	// (MoveBack only). Dest folders come from FindCompressedFiles so nested
 	// archive dirs are included. Kept across retries so failed cleanups are
-	// not recaptured as download content.
+	// not recaptured as download content. Nil means remnant handling is skipped.
 	preFiles map[string]os.FileInfo
+	// noRetry is set when remnant_action=off leaves a blocker.
+	noRetry bool
 }
 
 type eventData struct {
@@ -335,7 +337,13 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 
 	if folder.config.MoveBack {
 		found := xtractr.FindCompressedFiles(xtractr.Filter{Path: name, ExcludeSuffix: exclude})
-		folder.preFiles = keepDirSnapshot(folder.preFiles, archiveSnapshotPaths(name, found)...)
+
+		snap, err := keepDirSnapshot(folder.preFiles, archiveSnapshotPaths(name, found)...)
+		if err != nil {
+			u.Errorf("[Folder] Snapshot dests for remnant check: %v", err)
+		} else {
+			folder.preFiles = snap
+		}
 	}
 
 	// extract it.
@@ -431,8 +439,8 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 // finishFolderExtract classifies refusals on any terminal response (success or
 // error), then keeps EXTRACTFAILED when remnants remain or the original error
 // still requires a retry. Cleared remnants restart via EXTRACTFAILED so the
-// next pass is spaced by retry_delay. remnant_action=off uses EXTRACTEDNOTHING
-// so checkFolderStats will not retry.
+// next pass is spaced by retry_delay. remnant_action=off sets noRetry so
+// checkFolderStats will not restart.
 func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) {
 	if resp.Error != nil {
 		folder.archives = resp.Archives
@@ -447,28 +455,36 @@ func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) 
 	u.updateMetrics(resp, FolderString, folder.config.Path)
 
 	if status, ok := u.handleRemnants(resp, folder.preFiles, folder.retries); ok {
-		switch status {
-		case WAITING:
-			u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
-
-			folder.status = EXTRACTFAILED
-		case DELETED:
-			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s) (remnant_action=off): %s",
-				resp.X.Name)
-
-			folder.status = EXTRACTEDNOTHING
-		default:
-			u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
-
-			folder.status = EXTRACTFAILED
-		}
-	} else if resp.Error != nil {
-		folder.status = EXTRACTFAILED
-	} else {
-		folder.archives = resp.Archives
-		folder.status = EXTRACTED
-		folder.files = resp.NewFiles
+		u.finishFolderRemnants(folder, resp, status)
+		return
 	}
+
+	if resp.Error != nil {
+		folder.status = EXTRACTFAILED
+		return
+	}
+
+	folder.archives = resp.Archives
+	folder.status = EXTRACTED
+	folder.files = resp.NewFiles
+}
+
+func (u *Unpackerr) finishFolderRemnants(folder *Folder, resp *xtractr.Response, status ExtractStatus) {
+	if status == WAITING {
+		u.Printf("[Folder] Cleared interrupted-extraction remnant(s), restarting extraction: %s", resp.X.Name)
+
+		folder.status = EXTRACTFAILED
+
+		return
+	}
+
+	if remnantAction(u.RemnantAction) == "off" {
+		folder.noRetry = true
+	}
+
+	u.Errorf("[Folder] Extraction blocked by interrupted-extraction remnant(s): %s", resp.X.Name)
+
+	folder.status = EXTRACTFAILED
 }
 
 // watchFSNotify reads file system events from a channel and processes them.
@@ -615,6 +631,10 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 				delete(u.Map, name)
 				delete(u.folders.Folders, name)
 			}
+		case EXTRACTFAILED == folder.status && folder.noRetry:
+			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			delete(u.folders.Folders, name)
+			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
 		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
 			(u.MaxRetries == 0 || folder.retries < u.MaxRetries):
 			u.Retries++
@@ -630,7 +650,7 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.MaxRetries, name)
-		case folder.status > EXTRACTING && folder.config.DeleteAfter.Duration <= 0:
+		case EXTRACTED == folder.status && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)
 			delete(u.folders.Folders, name)

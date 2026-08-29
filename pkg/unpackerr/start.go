@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -430,7 +431,7 @@ func (u *Unpackerr) extractLimits() (extractLimits, error) {
 		return extractLimits{}, fmt.Errorf("%w: max_files=%d", errNegativeExtractLimit, u.MaxFiles)
 	}
 
-	if u.MaxRatio < 0 {
+	if u.MaxRatio < 0 || math.IsNaN(u.MaxRatio) || math.IsInf(u.MaxRatio, 0) {
 		return extractLimits{}, fmt.Errorf("%w: max_ratio=%v", errNegativeExtractLimit, u.MaxRatio)
 	}
 
@@ -444,7 +445,11 @@ func (u *Unpackerr) extractLimits() (extractLimits, error) {
 
 func parseExtractMaxBytes(size string) (uint64, error) {
 	size = strings.TrimSpace(size)
-	if size == "" || size == "0" || strings.EqualFold(size, "0B") {
+	if size == "" {
+		return 0, fmt.Errorf("%w: empty", errInvalidMaxBytes)
+	}
+
+	if size == "0" || strings.EqualFold(size, "0B") {
 		return 0, nil
 	}
 
@@ -469,7 +474,7 @@ func (l extractLimits) String() string {
 
 	ratio := "unlimited"
 	if l.ratio > 0 {
-		ratio = fmt.Sprintf("%.0f:1", l.ratio)
+		ratio = fmt.Sprintf("%g:1", l.ratio)
 	}
 
 	return size + ", " + files + " files, " + ratio

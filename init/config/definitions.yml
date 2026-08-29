@@ -396,6 +396,49 @@ sections:
           - value: '0770'
           - value: '0775'
         short: Extracted folders are written with this mode
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: 75GB
+        recommend:
+          - name: Unlimited
+            value: '0'
+          - value: 10GB
+          - value: 75GB
+          - value: 100GB
+          - value: 200GB
+        short: Stop an archive after this much uncompressed data. `0` is unlimited.
+        desc: |
+          Per-archive cap on uncompressed bytes written to disk. Guards against zip bombs.
+          Uses a size string such as `75GB` or `100GiB`. `0` or `0B` disables the cap.
+      - name: max_files
+        envvar: MAX_FILES
+        default: 5000
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 100
+          - value: 1000
+          - value: 5000
+          - value: 10000
+        short: Stop an archive after this many files, dirs, and symlinks. `0` is unlimited.
+        desc: |
+          Per-archive cap on files, directories, and symlinks created during extract.
+          `0` disables the cap.
+      - name: max_ratio
+        envvar: MAX_RATIO
+        default: 15
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 5
+          - value: 10
+          - value: 15
+          - value: 20
+          - value: 50
+        short: Stop an archive when written bytes exceed this times the archive size. `0` is unlimited.
+        desc: |
+          Per-archive cap on `bytes written / archive file size`. A `15` means a 1GB
+          archive may write at most 15GB. `0` disables the cap.
       - name: passwords
         envvar: PASSWORD_
         default: []

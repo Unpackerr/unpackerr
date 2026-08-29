@@ -174,6 +174,57 @@ func TestPurgeEmptyFoldersNoRoot(t *testing.T) {
 	}
 }
 
+func TestExtractLimitsDefaults(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+
+	got, err := unpack.extractLimits()
+	if err != nil {
+		t.Fatalf("defaults: %v", err)
+	}
+
+	wantBytes, err := parseExtractMaxBytes(defaultMaxBytes)
+	if err != nil {
+		t.Fatalf("parse default: %v", err)
+	}
+
+	if got.bytes != wantBytes || got.files != defaultMaxFiles || got.ratio != defaultMaxRatio {
+		t.Fatalf("defaults: got %+v", got)
+	}
+}
+
+func TestExtractLimitsUnlimited(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.MaxBytes = "0"
+	unpack.MaxFiles = 0
+	unpack.MaxRatio = 0
+
+	got, err := unpack.extractLimits()
+	if err != nil {
+		t.Fatalf("unlimited: %v", err)
+	}
+
+	if got.bytes != 0 || got.files != 0 || got.ratio != 0 {
+		t.Fatalf("0 must be unlimited, got %+v", got)
+	}
+}
+
+func TestParseExtractMaxBytes(t *testing.T) {
+	t.Parallel()
+
+	n, err := parseExtractMaxBytes(defaultMaxBytes)
+	if err != nil || n != 75*1024*1024*1024 {
+		t.Fatalf("%s: n=%d err=%v", defaultMaxBytes, n, err)
+	}
+
+	if _, err := parseExtractMaxBytes("nope"); err == nil {
+		t.Fatal("invalid max_bytes must error")
+	}
+}
+
 func TestPurgeEmptyFoldersEmptyPaths(t *testing.T) {
 	t.Parallel()
 

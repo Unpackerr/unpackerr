@@ -42,6 +42,9 @@ services:
     - UN_PARALLEL=1
     - UN_FILE_MODE=0644
     - UN_DIR_MODE=0755
+    - UN_MAX_BYTES=75GB
+    - UN_MAX_FILES=5000
+    - UN_MAX_RATIO=15
     ## Web Server
     - UN_WEBSERVER_METRICS=false
     - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
@@ -139,4 +142,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 29 AUG 2026 04:32 UTC
+## => Content Auto Generated, 29 AUG 2026 07:06 UTC

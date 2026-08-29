@@ -259,6 +259,11 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 	u.logWhisparr()
 	u.logFolders()
 	u.Printf(" => Parallel: %d", u.Parallel)
+
+	if limits, err := u.extractLimits(); err == nil {
+		u.Printf(" => Extract Limits: %s", limits)
+	}
+
 	u.Printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
 	u.Printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())
 	u.Printf(" => Start/Delete Delay: %s/%s", u.StartDelay.String(), u.DeleteDelay.String())

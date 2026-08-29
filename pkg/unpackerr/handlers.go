@@ -29,11 +29,11 @@ type Extract struct {
 	IDs         map[string]any
 	Resp        *xtractr.Response
 	XProg       *ExtractProgress
-	// PreFiles maps top-level basenames present in Path before extraction to
-	// their Lstat info (nil when the stat failed). It distinguishes download
-	// content from interrupted-extraction remnants, including case-only name
-	// differences on case-insensitive filesystems (via os.SameFile). Snapshot
-	// once per queue item; retries must not fold in leftovers that failed to clear.
+	// PreFiles maps cleaned full paths present in each archive dest before
+	// extraction to their Lstat info (nil when the stat failed). Dest folders
+	// come from FindCompressedFiles so nested archive dirs are included.
+	// Snapshot once per queue item; retries must not fold in leftovers that
+	// failed to clear.
 	PreFiles map[string]os.FileInfo
 }
 
@@ -129,7 +129,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	// This updates the item in the map.
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
-	item.PreFiles = keepDirSnapshot(item.PreFiles, item.Path)
+	item.PreFiles = keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
 	item.Status = QUEUED
 	item.Updated = now
 	// This queues the extraction. Which may start right away.

@@ -46,35 +46,92 @@ func (u *Unpackerr) validateRemnantAction() error {
 	return nil
 }
 
-// keepDirSnapshot returns the first pre-extraction listing for this item.
-// Retries must not recapture leftovers that failed to clear.
-func keepDirSnapshot(existing map[string]os.FileInfo, path string) map[string]os.FileInfo {
+// archiveSnapshotPaths is the search path plus every folder FindCompressedFiles
+// already keyed (those are xtractr's per-archive dests / FinalDests keys).
+func archiveSnapshotPaths(root string, archives xtractr.ArchiveList) []string {
+	paths := make([]string, 0, len(archives)+1)
+	if root != "" {
+		paths = append(paths, root)
+	}
+
+	for dir := range archives {
+		if dir != "" {
+			paths = append(paths, dir)
+		}
+	}
+
+	return paths
+}
+
+// snapshotDir returns the directory to list for path. An archive file uses its parent.
+func snapshotDir(path string) string {
+	path = filepath.Clean(path)
+	if path == "" || path == "." {
+		return ""
+	}
+
+	info, err := os.Lstat(path)
+	if err != nil || !info.IsDir() {
+		return filepath.Dir(path)
+	}
+
+	return path
+}
+
+// keepDirSnapshot returns the first pre-extraction listing. Keys are cleaned
+// full paths of the immediate children of each dest folder (same listing
+// xtractr.GetFileList uses). Retries must not recapture leftovers that failed
+// to clear.
+func keepDirSnapshot(existing map[string]os.FileInfo, paths ...string) map[string]os.FileInfo {
 	if existing != nil {
 		return existing
 	}
 
-	names := fileList(path)
-	out := make(map[string]os.FileInfo, len(names))
+	out := make(map[string]os.FileInfo)
+	seen := make(map[string]struct{}, len(paths))
 
-	for _, name := range names {
-		info, err := os.Lstat(filepath.Join(path, name))
-		if err != nil {
-			out[name] = nil
-
+	for _, path := range paths {
+		root := snapshotDir(path)
+		if root == "" || root == "." {
 			continue
 		}
 
-		out[name] = info
+		if _, dup := seen[root]; dup {
+			continue
+		}
+
+		seen[root] = struct{}{}
+		keepDirChildren(out, root)
 	}
 
 	return out
 }
 
+func keepDirChildren(out map[string]os.FileInfo, root string) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		full := filepath.Clean(filepath.Join(root, entry.Name()))
+
+		info, err := os.Lstat(full)
+		if err != nil {
+			out[full] = nil
+
+			continue
+		}
+
+		out[full] = info
+	}
+}
+
 // isDownloadContent reports whether dest was present before extraction, by
-// basename or by same-file identity (case-only differences on case-insensitive
-// filesystems).
+// cleaned full path or by same-file identity (case-only differences on
+// case-insensitive filesystems).
 func isDownloadContent(preFiles map[string]os.FileInfo, dest string) bool {
-	if _, ok := preFiles[filepath.Base(dest)]; ok {
+	if _, ok := preFiles[filepath.Clean(dest)]; ok {
 		return true
 	}
 

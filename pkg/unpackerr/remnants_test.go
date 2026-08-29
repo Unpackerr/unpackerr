@@ -91,6 +91,65 @@ func TestHandleRemnantsKeepsDownloadContent(t *testing.T) {
 	}
 }
 
+func TestHandleRemnantsKeepsNestedDownloadContent(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	root := t.TempDir()
+	sub := filepath.Join(root, "CD1")
+
+	if err := os.Mkdir(sub, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	blocker := writeRemnant(t, sub, "file_id.diz")
+	archives := xtractr.ArchiveList{sub: {filepath.Join(sub, "movie.rar")}}
+	snapshot := keepDirSnapshot(nil, archiveSnapshotPaths(root, archives)...)
+
+	resp := &xtractr.Response{
+		FinalDests: map[string]string{sub: sub},
+		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: blocker}},
+	}
+
+	if got, ok := unpack.handleRemnants(resp, snapshot, 0); ok {
+		t.Fatalf("nested download content should not be touched, got %v ok=%v", got, ok)
+	}
+
+	if _, err := os.Lstat(blocker); err != nil {
+		t.Fatalf("nested download file must remain, err=%v", err)
+	}
+}
+
+func TestHandleRemnantsNestedLeftoverNotProtectedByRootBasename(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	root := t.TempDir()
+	sub := filepath.Join(root, "CD1")
+
+	if err := os.Mkdir(sub, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	writeRemnant(t, root, "readme.txt") // download content at the search root
+	leftover := writeRemnant(t, sub, "readme.txt")
+	// Snapshot only the search root — the leftover lives in the archive dest.
+	snapshot := keepDirSnapshot(nil, root)
+
+	resp := &xtractr.Response{
+		FinalDests: map[string]string{sub: sub},
+		Refused:    []xtractr.RefusedFile{{Src: "x", Dest: leftover}},
+	}
+
+	if got, ok := unpack.handleRemnants(resp, snapshot, 0); !ok || got != WAITING {
+		t.Fatalf("nested leftover must not match a root basename, got %v ok=%v", got, ok)
+	}
+
+	if _, err := os.Lstat(leftover); !os.IsNotExist(err) {
+		t.Fatalf("nested leftover should be renamed away, lstat err=%v", err)
+	}
+}
+
 func TestHandleRemnantsCaseInsensitiveSnapshot(t *testing.T) {
 	t.Parallel()
 

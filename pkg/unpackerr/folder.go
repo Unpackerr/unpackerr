@@ -68,9 +68,10 @@ type Folder struct {
 	files    []string
 	retries  uint
 	archives xtractr.ArchiveList
-	// preFiles is the snapshot of the move destination before extraction
-	// (MoveBack only; it is the watched item's own contents). Kept across
-	// retries so failed cleanups are not recaptured as download content.
+	// preFiles is the snapshot of each archive dest before extraction
+	// (MoveBack only). Dest folders come from FindCompressedFiles so nested
+	// archive dirs are included. Kept across retries so failed cleanups are
+	// not recaptured as download content.
 	preFiles map[string]os.FileInfo
 }
 
@@ -333,8 +334,8 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	exclude := folderExcludeSuffixes(name, folder.config)
 
 	if folder.config.MoveBack {
-		// With MoveBack the destination is the watched item's own path.
-		folder.preFiles = keepDirSnapshot(folder.preFiles, name)
+		found := xtractr.FindCompressedFiles(xtractr.Filter{Path: name, ExcludeSuffix: exclude})
+		folder.preFiles = keepDirSnapshot(folder.preFiles, archiveSnapshotPaths(name, found)...)
 	}
 
 	// extract it.

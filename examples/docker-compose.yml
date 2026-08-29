@@ -38,6 +38,7 @@ services:
     - UN_START_DELAY=1m
     - UN_RETRY_DELAY=5m
     - UN_MAX_RETRIES=3
+    - UN_REMNANT_ACTION=rename
     - UN_PARALLEL=1
     - UN_FILE_MODE=0644
     - UN_DIR_MODE=0755
@@ -138,4 +139,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 26 AUG 2026 08:51 UTC
+## => Content Auto Generated, 29 AUG 2026 04:32 UTC

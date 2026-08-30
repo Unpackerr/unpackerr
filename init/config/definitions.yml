@@ -560,12 +560,13 @@ sections:
           - name: Unlimited
             value: '0'
           - value: 1GB
+          - value: 4GB
           - value: 20GB
           - value: 75GB
         short: Per-archive byte cap. Empty uses the app default. `0` is unlimited.
         desc: |
-          Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-          default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+          Per-archive uncompressed-byte cap. Empty uses the app default:
+          Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
           `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC
@@ -662,12 +663,10 @@ sections:
           - name: Unlimited
             value: ''
           - value: 20GB
-          - value: 75GB
           - value: 200GB
         short: Per-archive byte cap. Empty (the default) is unlimited.
         desc: |
-          Per-archive uncompressed-byte cap for this folder. Empty is unlimited
-          (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
+          Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
       - name: max_files
         envvar: MAX_FILES
         default: 0
@@ -678,9 +677,7 @@ sections:
           - value: 5000
           - value: 10000
         short: Stop after this many files, dirs, and symlinks. `0` is unlimited.
-        desc: |
-          Cap on files, directories, and symlinks created during extract. Folder
-          watcher default is unlimited (`0`). Starr apps always use 1000.
+        desc: Cap on files, directories, and symlinks created during extract. `0` is unlimited.
       - name: max_ratio
         envvar: MAX_RATIO
         default: 0
@@ -691,9 +688,7 @@ sections:
           - value: 10
           - value: 15
         short: Stop when written bytes exceed this times the archive size. `0` is unlimited.
-        desc: |
-          Cap on `bytes written / archive file size`. Folder watcher default is
-          unlimited (`0`). Starr apps always use 5.
+        desc: Cap on `bytes written / archive file size`. `0` is unlimited.
       - name: max_nested
         envvar: MAX_NESTED
         default: 0
@@ -705,9 +700,7 @@ sections:
           - value: 32
           - value: 50
         short: Stop after this many nested archives from this folder's extras pass. `0` is unlimited.
-        desc: |
-          Cap on archives extracted from this folder's output (one extras pass).
-          Folder watcher default is unlimited (`0`). Starr apps always use 8.
+        desc: Cap on archives extracted from this folder's output (one extras pass). `0` is unlimited.
       - name: extras_max_depth
         envvar: EXTRAS_MAX_DEPTH
         default: 0
@@ -719,9 +712,7 @@ sections:
           - value: 8
           - value: 16
         short: How deep extras may walk this folder's extract output. `0` is unlimited.
-        desc: |
-          Walk depth for the extras pass. Folder watcher default is unlimited (`0`).
-          Starr apps always use 3.
+        desc: Walk depth for the extras pass. `0` is unlimited.
       - name: allow_symlinks
         envvar: ALLOW_SYMLINKS
         default: false
@@ -729,7 +720,7 @@ sections:
         short: Include symlink-named archives in the initial search.
         desc: |
           When true, the initial archive search may include symlink-named files.
-          Starr apps never allow this. The extras pass never follows archive-member zip links.
+          The extras pass never follows archive-member zip links.
       - name: delete_files
         envvar: DELETE_FILES
         default: false

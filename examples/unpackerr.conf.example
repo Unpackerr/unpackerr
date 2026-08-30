@@ -161,8 +161,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## Per-archive uncompressed-byte cap. Empty uses the app default:
+## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -191,8 +191,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## Per-archive uncompressed-byte cap. Empty uses the app default:
+## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -219,8 +219,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## Per-archive uncompressed-byte cap. Empty uses the app default:
+## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 ## When enabled, FLAC files with embedded CUE sheets are split into
@@ -250,8 +250,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## Per-archive uncompressed-byte cap. Empty uses the app default:
+## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -278,8 +278,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
-## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## Per-archive uncompressed-byte cap. Empty uses the app default:
+## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -308,23 +308,18 @@ passwords = []
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
-## Per-archive uncompressed-byte cap for this folder. Empty is unlimited
-## (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
+## Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
 # max_bytes = ""
-## Cap on files, directories, and symlinks created during extract. Folder
-## watcher default is unlimited (`0`). Starr apps always use 1000.
+## Cap on files, directories, and symlinks created during extract. `0` is unlimited.
 # max_files = 0
-## Cap on `bytes written / archive file size`. Folder watcher default is
-## unlimited (`0`). Starr apps always use 5.
+## Cap on `bytes written / archive file size`. `0` is unlimited.
 # max_ratio = 0
-## Cap on archives extracted from this folder's output (one extras pass).
-## Folder watcher default is unlimited (`0`). Starr apps always use 8.
+## Cap on archives extracted from this folder's output (one extras pass). `0` is unlimited.
 # max_nested = 0
-## Walk depth for the extras pass. Folder watcher default is unlimited (`0`).
-## Starr apps always use 3.
+## Walk depth for the extras pass. `0` is unlimited.
 # extras_max_depth = 0
 ## When true, the initial archive search may include symlink-named files.
-## Starr apps never allow this. The extras pass never follows archive-member zip links.
+## The extras pass never follows archive-member zip links.
 # allow_symlinks = false
 ## Delete extracted files after successful extraction? delete_after must be greater than 0.
 # delete_files = false
@@ -397,4 +392,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 AUG 2026 07:52 UTC
+## => Content Auto Generated, 30 AUG 2026 07:56 UTC

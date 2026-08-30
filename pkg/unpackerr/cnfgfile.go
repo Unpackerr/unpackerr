@@ -343,7 +343,7 @@ func defaultAppMaxBytes(app starr.App) string {
 	case starr.Whisparr:
 		return defaultWhisparrMaxBytes
 	default:
-		return defaultRadarrMaxBytes
+		return defaultSonarrMaxBytes
 	}
 }
 

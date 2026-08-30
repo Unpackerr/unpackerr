@@ -216,14 +216,14 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
 			// would bounce a still-completed Starr item back to WAITING.
 		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
-			(u.MaxRetries == 0 || item.Retries < u.MaxRetries):
+			item.Retries < u.maxRetries():
 			u.Retries++
 			item.Retries++
 			item.Status = WAITING
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
-				item.App, elapsed.Round(time.Second), item.Retries, u.MaxRetries, name)
-		case item.Status == EXTRACTFAILED && u.MaxRetries > 0 && item.Retries >= u.MaxRetries:
+				item.App, elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
+		case item.Status == EXTRACTFAILED && item.Retries >= u.maxRetries():
 			// Retries exhausted — clean up to prevent the item from staying in the map forever.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
@@ -300,6 +300,10 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
+		if item != nil && xtractr.IsLimitError(resp.Error) {
+			item.NoRetry = true
+		}
+
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:

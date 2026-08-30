@@ -340,11 +340,12 @@ sections:
           extraction will start again. Uses Go Duration.
       - name: max_retries
         envvar: MAX_RETRIES
-        default: 3
+        default: 2
         recommend: *NUMBERS
-        short: Failed extractions are retried after at least this long.
+        short: How many times to retry a failed extraction. `0` uses this default.
         desc: |
-          How many times to retry a failed extraction. Pauses retry_delay between attempts.
+          How many times to retry a failed extraction after the first try. Default is 2
+          (3 attempts total). `0` uses that default. Pauses retry_delay between attempts.
       - name: remnant_action
         envvar: REMNANT_ACTION
         default: rename

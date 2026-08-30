@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	defaultMaxRetries       = 3
+	defaultMaxRetries       = 2    // two retries after the first try (3 attempts).
 	defaultMaxFiles         = 1000 // Starr cap. Folders default to 0 (unlimited).
 	defaultMaxRatio         = 5.0  // Starr cap. Folders default to 0 (unlimited).
 	defaultSonarrMaxBytes   = "20GB"
@@ -405,6 +405,14 @@ func (u *Unpackerr) Run() {
 			u.printProgress(now)
 		}
 	}
+}
+
+func (u *Unpackerr) maxRetries() uint {
+	if u.MaxRetries == 0 {
+		return defaultMaxRetries
+	}
+
+	return u.MaxRetries
 }
 
 var errInvalidMaxBytes = errors.New("invalid max_bytes")

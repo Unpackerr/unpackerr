@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"golift.io/starr"
 	"golift.io/xtractr"
@@ -257,6 +258,53 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 
 	if unpack.Folders[2].MaxNested != -1 || unpack.Folders[2].ExtrasMaxDepth != -1 {
 		t.Fatalf("unlimited: %+v", unpack.Folders[2])
+	}
+}
+
+func TestMaxRetriesZeroUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.MaxRetries = 0
+
+	if unpack.maxRetries() != defaultMaxRetries {
+		t.Fatalf("0 must use default %d, got %d", defaultMaxRetries, unpack.maxRetries())
+	}
+
+	unpack.MaxRetries = 7
+
+	if unpack.maxRetries() != 7 {
+		t.Fatalf("explicit override: got %d", unpack.maxRetries())
+	}
+}
+
+func TestHandleXtractrCallbackLimitNoRetry(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Map["bomb"] = &Extract{App: starr.Sonarr, Path: t.TempDir()}
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "bomb"},
+		Error:   xtractr.ErrMaxBytes,
+	})
+
+	item := unpack.Map["bomb"]
+	if item.Status != EXTRACTFAILED || !item.NoRetry {
+		t.Fatalf("limit error must stay failed without retry: %+v", item)
+	}
+
+	unpack.Map["io"] = &Extract{App: starr.Sonarr, Path: t.TempDir()}
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "io"},
+		Error:   os.ErrPermission,
+	})
+
+	if unpack.Map["io"].NoRetry {
+		t.Fatal("non-limit errors must still retry")
 	}
 }
 

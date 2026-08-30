@@ -664,20 +664,20 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
 		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
-			(u.MaxRetries == 0 || folder.retries < u.MaxRetries):
+			folder.retries < u.maxRetries():
 			u.Retries++
 			folder.retries++
 			folder.updated = now
 			folder.status = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
-				folder.config.Path, folder.retries, u.MaxRetries, elapsed.Round(time.Second))
-		case EXTRACTFAILED == folder.status && folder.retries < u.MaxRetries:
+				folder.config.Path, folder.retries, u.maxRetries(), elapsed.Round(time.Second))
+		case EXTRACTFAILED == folder.status && folder.retries < u.maxRetries():
 			// This empty block is to avoid deleting an item that needs more retries.
-		case EXTRACTFAILED == folder.status && u.MaxRetries > 0 && folder.retries >= u.MaxRetries:
+		case EXTRACTFAILED == folder.status && folder.retries >= u.maxRetries():
 			// Retries exhausted — clean up to prevent the item from staying in the map forever.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
 			delete(u.folders.Folders, name)
-			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.MaxRetries, name)
+			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.maxRetries(), name)
 		case EXTRACTED == folder.status && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)

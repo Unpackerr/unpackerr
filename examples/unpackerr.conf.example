@@ -58,8 +58,9 @@ start_delay = "1m"
 ## extraction will start again. Uses Go Duration.
 retry_delay = "5m"
 
-## How many times to retry a failed extraction. Pauses retry_delay between attempts.
-max_retries = 3
+## How many times to retry a failed extraction after the first try. Default is 2
+## (3 attempts total). `0` uses that default. Pauses retry_delay between attempts.
+max_retries = 2
 
 ## Applies to Starr apps and to watched folders with `move_back` enabled
 ## (the default folder config extracts into a sidecar tree and does not
@@ -392,4 +393,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 AUG 2026 07:56 UTC
+## => Content Auto Generated, 30 AUG 2026 08:13 UTC

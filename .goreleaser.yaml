@@ -252,7 +252,8 @@ nfpms:
     # Default is unpackerr_VERSION_linux_386.deb. Conventional names match
     # v0.15.2 (unpackerr_0.15.2-960_i386.deb). nFPM uses ~ for semver
     # prerelease; GitHub replaces tilde with a dot, so swap it for a hyphen.
-    file_name_template: '{{ replace "~" "-" .ConventionalFileName }}'
+    # GoReleaser replace is STRING OLD NEW (not sprig OLD NEW STRING).
+    file_name_template: '{{ replace .ConventionalFileName "~" "-" }}'
     vendor: Go Lift
     homepage: https://unpackerr.zip
     maintainer: David Newhall II <captain at golift dot io>
@@ -415,7 +416,9 @@ dockers_v2:
 
 aur_sources:
   - name: unpackerr
-    disable: "{{ .IsNightly }}"
+    # PKGBUILD needs the source tarball, which exists only on continue --merge.
+    # --split has none; AUR then fatals "no linux archives found".
+    disable: "{{ or .IsNightly (not .IsMerging) }}"
     homepage: https://unpackerr.zip
     description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
     license: MIT

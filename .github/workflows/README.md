@@ -42,7 +42,7 @@ So:
 
 `REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` / Windows FileVersion still need the count. Darwin `CFBundleShortVersionString` and Windows FileVersion `x.y.z` use the prefix of `{{ .Version }}`, not `.RawVersion` (that stays on the last tag during `--nightly`).
 
-nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}` stayed literal and Packagecloud rejected `Version: 0.15.3~1081-${PKG_RELEASE}`. The tagged linux split inserts `release: REVISION` after the `nfpm-release:` marker; `--nightly` leaves it unset. Package files use `{{ replace "~" "-" .ConventionalFileName }}` (`unpackerr_0.15.2-960_i386.deb`, not `_linux_386`). Do not put `CHANNEL` in the package version. Do not set nFPM `version_metadata`. Tagged FreeBSD packages are `unpackerr-0.15.3_REVISION.amd64.txz`.
+nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}` stayed literal and Packagecloud rejected `Version: 0.15.3~1081-${PKG_RELEASE}`. The tagged linux split inserts `release: REVISION` after the `nfpm-release:` marker; `--nightly` leaves it unset. Package files use `{{ replace .ConventionalFileName "~" "-" }}` (GoReleaser `replace` is STRING/OLD/NEW, not sprig). That yields `unpackerr_0.15.2-960_i386.deb`, not `_linux_386`. Do not put `CHANNEL` in the package version. Do not set nFPM `version_metadata`. Tagged FreeBSD packages are `unpackerr-0.15.3_REVISION.amd64.txz`.
 
 ## Darwin signing
 
@@ -55,7 +55,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 - **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
 - **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`.
 - **Homebrew** — notarized `Unpackerr.app` from the `unpackerr-dmg` DMG → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly` (and that channel has no Darwin job).
-- **AUR** — `aur_sources` over SSH. Skip on `--nightly`.
+- **AUR** — `aur_sources` over SSH. Skip on `--nightly` and on `--split` (`disable: "{{ or .IsNightly (not .IsMerging) }}"`). The pipe wants the source tarball, which exists only after `continue --merge`; split otherwise fatals `no linux archives found`.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
 - **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1056`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh` (reads `dist/$GOOS/artifacts.json` after split/merge). Upload overwrites by name. Empty `UNSTABLE_UPLOAD_KEY` fails in GitHub Actions.
 

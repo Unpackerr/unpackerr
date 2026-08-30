@@ -12,7 +12,9 @@ nightly:
   # This is why REVISION is still computed (once, in the channel job) even
   # though {{ .Version }} already includes it on --nightly: this template is
   # what *creates* that version. Tagged builds keep .Version as the semver
-  # tag; ldflags Revision and Darwin CFBundleVersion still need the count.
+  # tag; ldflags Revision, Darwin CFBundleVersion, and Windows FileVersion
+  # still need the count. CFBundleShortVersionString / FileVersion x.y.z come
+  # from .Version (not .RawVersion: that stays on the last tag during --nightly).
   version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:
@@ -23,7 +25,29 @@ before:
     - go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "{{.Version}}" --date "{{.Date}}" README.md
     - gzip -9nf examples/MANUAL
     - mv -f examples/MANUAL.gz unpackerr.1.gz
-    - go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico init/windows/application.ico -manifest init/windows/manifest.xml -o rsrc_windows_amd64.syso
+    # rsrc only embeds icon+manifest. goversioninfo does that and VERSIONINFO
+    # (Explorer File version). -64: before-hooks run on darwin/arm64 too;
+    # the Windows build is amd64. Skip JSON: versions come from these flags.
+    # --nightly rewrites .Version (incpatch-REVISION) but .RawVersion / .Major /
+    # .Minor / .Patch stay on the last tag. FileVersion is the x.y.z prefix of
+    # .Version plus REVISION; goversioninfo fills the numeric fields from that
+    # string. ProductVersion string is .Version (nightly includes -REVISION).
+    - >-
+      go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
+      -64 -skip-versioninfo
+      -icon init/windows/application.ico
+      -manifest init/windows/manifest.xml
+      -company "Go Lift"
+      -copyright "© Go Lift (https://golift.io)"
+      -description "Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
+      -internal-name unpackerr
+      -original-name unpackerr.exe
+      -product-name Unpackerr
+      -file-version "{{ index (split .Version "-") 0 }}.{{ .Env.REVISION }}"
+      -product-version "{{ .Version }}"
+      -translation 1033
+      -charset 1200
+      -o rsrc_windows_amd64.syso
 
 builds:
   - id: unpackerr

@@ -36,11 +36,11 @@ So:
 
 1. **channel** — compute `CHANNEL`, extra args, and `REVISION` (`git rev-list --count --all`). This is the only place the count is taken; later jobs pass `needs.channel.outputs.revision`.
 2. **require secrets** — fail closed if any signing/upload/push secret needed for that channel is empty. Missing secrets used to skip Docker Hub, Windows Authenticode, or unstable.golift.io and still go green.
-3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, rsrc) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
+3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, goversioninfo) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
 4. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
 5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
 
-`REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` still need the count.
+`REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` / Windows FileVersion still need the count. Darwin `CFBundleShortVersionString` and Windows FileVersion `x.y.z` use the prefix of `{{ .Version }}`, not `.RawVersion` (that stays on the last tag during `--nightly`).
 
 nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}` stayed literal and Packagecloud rejected `Version: 0.15.3~1081-${PKG_RELEASE}`. The tagged linux split inserts `release: REVISION` after the `nfpm-release:` marker; `--nightly` leaves it unset. Package files use `{{ replace "~" "-" .ConventionalFileName }}` (`unpackerr_0.15.2-960_i386.deb`, not `_linux_386`). Do not put `CHANNEL` in the package version. Do not set nFPM `version_metadata`. Tagged FreeBSD packages are `unpackerr-0.15.3_REVISION.amd64.txz`.
 
@@ -66,7 +66,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 | `unpackerr.{amd64,386,arm,arm64}.linux.gz` | gzipped binary |
 | `unpackerr.{amd64,i386,armhf,arm64}.freebsd.gz` | gzipped binary |
 
-Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr-0.15.3-1081.x86_64.rpm`). Arches: amd64, arm64, i386, armv7 (one `armhf` / RPM `armv7hl`). Darwin min macOS 13. Windows is `-H=windowsgui`. Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
+Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr-0.15.3-1081.x86_64.rpm`). Arches: amd64, arm64, i386, armv7 (one `armhf` / RPM `armv7hl`). Darwin min macOS 13. `CFBundleShortVersionString` and Windows FileVersion both take the `x.y.z` prefix of `{{ .Version }}` (not `.RawVersion`: that stays on the last tag during `--nightly`); Windows FileVersion’s fourth number is `REVISION`. Windows is `-H=windowsgui`. Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
 
 ## Secrets
 

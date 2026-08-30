@@ -37,8 +37,16 @@ type FolderConfig struct {
 	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
 	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
 	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
-	ExcludePaths     []string       `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
-	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
+	MaxNested        int            `json:"maxNested"        toml:"max_nested"        xml:"max_nested"        yaml:"maxNested"`
+	ExtrasMaxDepth   int            `json:"extrasMaxDepth"   toml:"extras_max_depth"  xml:"extras_max_depth"  yaml:"extrasMaxDepth"`
+	AllowSymlinks    bool           `json:"allowSymlinks"    toml:"allow_symlinks"    xml:"allow_symlinks"    yaml:"allowSymlinks"`
+	MaxBytes         string         `json:"maxBytes"         toml:"max_bytes"         xml:"max_bytes"         yaml:"maxBytes"`
+	MaxFiles         int            `json:"maxFiles"         toml:"max_files"         xml:"max_files"         yaml:"maxFiles"`
+	MaxRatio         float64        `json:"maxRatio"         toml:"max_ratio"         xml:"max_ratio"         yaml:"maxRatio"`
+	// maxBytes is 0 when unset: folder watcher is uncapped.
+	maxBytes     uint64
+	ExcludePaths []string `json:"exclude_paths" toml:"exclude_paths" xml:"exclude_path" yaml:"exclude_paths"`
+	Path         string   `json:"path"          toml:"path"          xml:"path"         yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -90,6 +98,13 @@ func (u *Unpackerr) validateFolders() error {
 			// If delete after wasn't set, then set it to 10 minutes.
 			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
+
+		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		if err != nil {
+			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
+		}
+
+		u.Folders[idx].maxBytes = n
 	}
 
 	return nil
@@ -103,9 +118,10 @@ func (u *Unpackerr) logFolders() {
 		}
 
 		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v event_buffer:%d",
+			"log_file:%v move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
+			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, u.Folder.Buffer)
 	} else {
 		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
 
@@ -114,9 +130,11 @@ func (u *Unpackerr) logFolders() {
 				epath = " extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v move_back:%v isos:%v",
+			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
+				"move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
+				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks)
 		}
 	}
 }
@@ -336,7 +354,11 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	exclude := folderExcludeSuffixes(name, folder.config)
 
 	if folder.config.MoveBack {
-		found := xtractr.FindCompressedFiles(xtractr.Filter{Path: name, ExcludeSuffix: exclude})
+		found := xtractr.FindCompressedFiles(xtractr.Filter{
+			Path:          name,
+			ExcludeSuffix: exclude,
+			AllowSymlinks: folder.config.AllowSymlinks,
+		})
 
 		snap, err := keepDirSnapshot(folder.preFiles, archiveSnapshotPaths(name, found)...)
 		if err != nil {
@@ -353,6 +375,12 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		Name:             name,
 		Path:             name,
 		ExcludeSuffix:    exclude,
+		AllowSymlinks:    folder.config.AllowSymlinks,
+		MaxBytes:         folder.config.maxBytes,
+		MaxFiles:         folder.config.MaxFiles,
+		MaxRatio:         folder.config.MaxRatio,
+		MaxNested:        folder.config.MaxNested,
+		ExtrasMaxDepth:   folder.config.ExtrasMaxDepth,
 		TempFolder:       !folder.config.MoveBack,
 		ExtractTo:        folder.config.ExtractPath,
 		DeleteOrig:       false,
@@ -636,20 +664,20 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
 		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
-			(u.MaxRetries == 0 || folder.retries < u.MaxRetries):
+			folder.retries < u.maxRetries():
 			u.Retries++
 			folder.retries++
 			folder.updated = now
 			folder.status = WAITING
 			u.Printf("[Folder] Re-starting Failed Extraction: %s (%d/%d, failed %v ago)",
-				folder.config.Path, folder.retries, u.MaxRetries, elapsed.Round(time.Second))
-		case EXTRACTFAILED == folder.status && folder.retries < u.MaxRetries:
+				folder.config.Path, folder.retries, u.maxRetries(), elapsed.Round(time.Second))
+		case EXTRACTFAILED == folder.status && folder.retries < u.maxRetries():
 			// This empty block is to avoid deleting an item that needs more retries.
-		case EXTRACTFAILED == folder.status && u.MaxRetries > 0 && folder.retries >= u.MaxRetries:
+		case EXTRACTFAILED == folder.status && folder.retries >= u.maxRetries():
 			// Retries exhausted — clean up to prevent the item from staying in the map forever.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
 			delete(u.folders.Folders, name)
-			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.MaxRetries, name)
+			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.maxRetries(), name)
 		case EXTRACTED == folder.status && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)

@@ -35,10 +35,12 @@ type Extract struct {
 	// Snapshot once per queue item; retries must not fold in leftovers that
 	// failed to clear.
 	PreFiles map[string]os.FileInfo
-	// NoRetry is set when remnant_action=off leaves a blocker; EXTRACTFAILED
-	// must not re-enter the retry loop or be promoted to DELETED (that
-	// bounces a still-completed Starr item back to WAITING).
+	// NoRetry is set for limit errors, remnant_action=off, or exhausted retries.
+	// EXTRACTFAILED must not re-enter the retry loop or be promoted to DELETED
+	// (that bounces a still-completed Starr item back to WAITING).
 	NoRetry bool
+	// MaxBytes is the resolved byte cap for this Starr item (0 = unlimited).
+	MaxBytes uint64
 }
 
 // StarrConfig is the shared config items for all starr apps.
@@ -52,6 +54,10 @@ type StarrConfig struct {
 	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
 	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
 	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
+	// MaxBytes overrides the app default (Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB).
+	// Empty uses that default. `0` or `0B` is unlimited.
+	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
+	maxBytes uint64
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -149,15 +155,20 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	}
 
 	queueSize, _ := u.Extract(&xtractr.Xtract{
-		Password:      u.getPasswordFromPath(item.Path),
-		Passwords:     u.Passwords,
-		Name:          name,
-		Path:          item.Path,
-		ExcludeSuffix: xtractr.AllExcept(archiveTypes...),
-		TempFolder:    false,
-		DeleteOrig:    false,
-		CBChannel:     u.updates,
-		Progress:      u.progressUpdateCallback(item),
+		Password:       u.getPasswordFromPath(item.Path),
+		Passwords:      u.Passwords,
+		Name:           name,
+		Path:           item.Path,
+		ExcludeSuffix:  xtractr.AllExcept(archiveTypes...),
+		MaxBytes:       item.MaxBytes,
+		MaxFiles:       defaultMaxFiles,
+		MaxRatio:       defaultMaxRatio,
+		MaxNested:      defaultMaxNested,
+		ExtrasMaxDepth: defaultExtrasMaxDepth,
+		TempFolder:     false,
+		DeleteOrig:     false,
+		CBChannel:      u.updates,
+		Progress:       u.progressUpdateCallback(item),
 	})
 
 	u.logQueuedDownload(queueSize, item, files)
@@ -205,18 +216,20 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
 			// would bounce a still-completed Starr item back to WAITING.
 		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
-			(u.MaxRetries == 0 || item.Retries < u.MaxRetries):
+			item.Retries < u.maxRetries():
 			u.Retries++
 			item.Retries++
 			item.Status = WAITING
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
-				item.App, elapsed.Round(time.Second), item.Retries, u.MaxRetries, name)
-		case item.Status == EXTRACTFAILED && u.MaxRetries > 0 && item.Retries >= u.MaxRetries:
-			// Retries exhausted — clean up to prevent the item from staying in the map forever.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+				item.App, elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
+		case item.Status == EXTRACTFAILED && item.Retries >= u.maxRetries():
+			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
+			// would bounce a still-completed Starr item back to WAITING.
+			item.NoRetry = true
+			u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTFAILED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
-				item.App, item.Retries, u.MaxRetries, name)
+				item.App, item.Retries, u.maxRetries(), name)
 		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
 			elapsed >= staleItemTimeout:
 			// Safety net: items stuck at intermediate states for too long are cleaned up
@@ -289,6 +302,10 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
+		if item != nil && xtractr.IsLimitError(resp.Error) {
+			item.NoRetry = true
+		}
+
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:

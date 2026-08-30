@@ -243,7 +243,7 @@ func (u *Unpackerr) handleRemnants(
 		return EXTRACTFAILED, true
 	}
 
-	if u.MaxRetries != 0 && retries >= u.MaxRetries {
+	if retries >= u.maxRetries() {
 		return EXTRACTFAILED, true
 	}
 

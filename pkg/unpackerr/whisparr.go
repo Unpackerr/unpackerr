@@ -103,6 +103,7 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 					Status:      WAITING,
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
+					MaxBytes:    server.maxBytes,
 					Path:        u.getDownloadPath(record.OutputPath, starr.Whisparr, record.Title, server.Paths),
 					IDs: map[string]any{
 						"downloadId": record.DownloadID,

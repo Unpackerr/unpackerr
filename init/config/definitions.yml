@@ -340,11 +340,12 @@ sections:
           extraction will start again. Uses Go Duration.
       - name: max_retries
         envvar: MAX_RETRIES
-        default: 3
+        default: 2
         recommend: *NUMBERS
-        short: Failed extractions are retried after at least this long.
+        short: How many times to retry a failed extraction. `0` uses this default.
         desc: |
-          How many times to retry a failed extraction. Pauses retry_delay between attempts.
+          How many times to retry a failed extraction after the first try. Default is 2
+          (3 attempts total). `0` uses that default. Pauses retry_delay between attempts.
       - name: remnant_action
         envvar: REMNANT_ACTION
         default: rename
@@ -551,6 +552,23 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: App default
+            value: ''
+          - name: Unlimited
+            value: '0'
+          - value: 1GB
+          - value: 4GB
+          - value: 20GB
+          - value: 75GB
+        short: Per-archive byte cap. Empty uses the app default. `0` is unlimited.
+        desc: |
+          Per-archive uncompressed-byte cap. Empty uses the app default:
+          Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+          `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC
         default: false
@@ -639,6 +657,71 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true disables extracting archives inside archives.
         desc: Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: Unlimited
+            value: ''
+          - value: 20GB
+          - value: 200GB
+        short: Per-archive byte cap. Empty (the default) is unlimited.
+        desc: |
+          Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
+      - name: max_files
+        envvar: MAX_FILES
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 1000
+          - value: 5000
+          - value: 10000
+        short: Stop after this many files, dirs, and symlinks. `0` is unlimited.
+        desc: Cap on files, directories, and symlinks created during extract. `0` is unlimited.
+      - name: max_ratio
+        envvar: MAX_RATIO
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 5
+          - value: 10
+          - value: 15
+        short: Stop when written bytes exceed this times the archive size. `0` is unlimited.
+        desc: Cap on `bytes written / archive file size`. `0` is unlimited.
+      - name: max_nested
+        envvar: MAX_NESTED
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 8
+          - value: 16
+          - value: 32
+          - value: 50
+        short: Stop after this many nested archives from this folder's extras pass. `0` is unlimited.
+        desc: Cap on archives extracted from this folder's output (one extras pass). `0` is unlimited.
+      - name: extras_max_depth
+        envvar: EXTRAS_MAX_DEPTH
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 2
+          - value: 3
+          - value: 8
+          - value: 16
+        short: How deep extras may walk this folder's extract output. `0` is unlimited.
+        desc: Walk depth for the extras pass. `0` is unlimited.
+      - name: allow_symlinks
+        envvar: ALLOW_SYMLINKS
+        default: false
+        recommend: *BOOLEAN
+        short: Include symlink-named archives in the initial search.
+        desc: |
+          When true, the initial archive search may include symlink-named files.
+          The extras pass never follows archive-member zip links.
       - name: delete_files
         envvar: DELETE_FILES
         default: false

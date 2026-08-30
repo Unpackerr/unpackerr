@@ -52,7 +52,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 
 ## Merge destinations
 
-- **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
+- **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`. `upload-artifact` zip stores files as `0644`; the merge job `chmod 0755`s `dist/linux/**/unpackerr` and the Dockerfile `COPY --chmod=755` so the image entrypoint is executable.
 - **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). macOS is the notarized `Unpackerr.dmg`. Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`. Homebrew is unsupported.
 - **AUR** — tagged `CHANNEL=release` only. `.github/scripts/aur_publish.sh` after `continue --merge` (same pattern as packagecloud). GoReleaser `aur_sources` cannot split/merge: `--split` fatals `no linux archives found` (source tarball is merge-only), and merge Publish finds no PKGBUILD artifacts. The script writes PKGBUILD/`.SRCINFO` from `dist/unpackerr-VERSION.tar.gz` and pushes `ssh://aur@aur.archlinux.org/unpackerr.git`. Skip nightly/unstable. nFPM `.pkg.tar.zst` on the GitHub Release is a separate binary package.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.

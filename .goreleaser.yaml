@@ -13,7 +13,8 @@ nightly:
   # though {{ .Version }} already includes it on --nightly: this template is
   # what *creates* that version. Tagged builds keep .Version as the semver
   # tag; ldflags Revision, Darwin CFBundleVersion, and Windows FileVersion
-  # still need the count.
+  # still need the count. CFBundleShortVersionString / FileVersion x.y.z come
+  # from .Version (not .RawVersion: that stays on the last tag during --nightly).
   version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
 
 before:

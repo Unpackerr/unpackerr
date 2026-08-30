@@ -400,8 +400,11 @@ jobs:
           rpmdists: el/6
           debdists: ubuntu/focal
       - name: Upload to unstable.golift.io
-        if: env.CHANNEL == 'unstable'
+        # Do not use env.CHANNEL: a step-level CHANNEL: unstable is visible to
+        # this step's own `if:`, so nightly and tagged releases ran the uploader
+        # (missing DMG on nightly; would publish v0.16.0 into the unstable feed
+        # on a tag once the cask pipe no longer kills merge first).
+        if: needs.channel.outputs.channel == 'unstable'
         env:
           UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
-          CHANNEL: unstable
         run: bash .github/scripts/unstable_upload.sh dist

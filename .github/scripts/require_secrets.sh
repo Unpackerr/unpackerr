@@ -28,7 +28,8 @@ need CODESIGN_URL
 need CODESIGN_CLIENT_CERT
 need CODESIGN_CLIENT_KEY
 
-# Nightly is Docker-only (no Darwin, no GitHub Release, no AUR/packagecloud).
+# Nightly still builds linux/windows/freebsd and publishes Docker.
+# It skips Darwin, GitHub Releases, AUR, and packagecloud.
 if [ "${CHANNEL}" != nightly ]; then
   need MACOS_SIGN_P12
   need MACOS_SIGN_PASSWORD

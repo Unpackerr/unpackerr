@@ -495,9 +495,11 @@ signs:
   # embedded signatures; pacman wants a sidecar.
   - id: archlinux
     artifacts: package
-    # Merge artifact filters do not load sprig (hasSuffix is undefined there).
-    # eq is a Go template builtin; Extra.Format is archlinux/deb/rpm.
-    if: '{{ eq .Format "archlinux" }}'
+    # Merge artifact filters do not load sprig (hasSuffix is undefined there)
+    # and the artifact map has no Format key (eq .Format fatals "map has no
+    # entry for key" and silently skips every package). Use ArtifactExt:
+    # nFPM stores the conventional extension (.deb / .rpm / .pkg.tar.zst).
+    if: '{{ eq .ArtifactExt ".pkg.tar.zst" }}'
 
 release:
   disable: "{{ .IsNightly }}"

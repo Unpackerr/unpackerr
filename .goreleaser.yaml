@@ -106,6 +106,12 @@ builds:
       - -X "golift.io/version.BuildUser={{.Env.USER}}"
       - -X "golift.io/version.Revision={{.Env.REVISION}}"
       - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+    # Developer ID-sign each slice before universal_binaries lipos them, so
+    # the Homebrew cask (which installs the tar.gz, not the DMG) ships a
+    # signed binary. No-op without MACOS_SIGN_IDENTITY (local builds).
+    hooks:
+      post:
+        - cmd: bash init/macos/signbin.sh "{{ .Path }}"
   - id: unpackerr-freebsd
     env:
       - CGO_ENABLED=0
@@ -512,8 +518,10 @@ homebrew_casks:
     # The universal darwin tar.gz (id: darwin). The cask pipe cannot consume
     # DMG/App Bundle artifacts at all (filters: UploadableArchive or
     # UploadableBinary, OnlyReplacingUnibins), so the notarized DMG stays a
-    # manual-install release asset only; brew's curl does not set the
-    # quarantine xattr, so the plain binary runs like the pre-GoReleaser cask.
+    # manual-install release asset. The Darwin build is Developer ID-signed
+    # per slice by init/macos/signbin.sh before it is archived, so the cask
+    # ships the signed binary; brew sets no com.apple.quarantine, so
+    # notarization (which cannot be stapled to a tar.gz) is not required.
     ids: [darwin]
     binaries:
       - unpackerr
@@ -597,7 +605,7 @@ homebrew_casks:
       Menu bar: run unpackerr from a shell (do not also run the LaunchAgent).
       The LaunchAgent runs unpackerr headless (no menu bar).
       For a signed/notarized Unpackerr.app, download Unpackerr.dmg from the
-      GitHub release instead of brew.
+      GitHub release instead of brew. brew's binary is Developer ID-signed.
       The manual explains the config file options: man unpackerr
 
 checksum:

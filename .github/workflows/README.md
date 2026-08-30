@@ -4,11 +4,11 @@ Two workflows. `test-and-lint` (`codetests.yml`) runs tests and golangci-lint on
 
 ## Channels
 
-`release.yml` maps the GitHub event to a `CHANNEL` env that `.goreleaser.yaml` reads (`dockers_v2.disable`, packagecloud repo, unstable upload). `--nightly` is a GoReleaser flag: it bumps the version and turns off GitHub Releases / brew / AUR.
+`release.yml` maps the GitHub event to a `CHANNEL` env that `.goreleaser.yaml` reads (`dockers_v2.disable`, packagecloud repo, unstable upload). `--nightly` is a GoReleaser flag: it bumps the version and turns off GitHub Releases / AUR.
 
 | Trigger | CHANNEL | GoReleaser extra | What it publishes |
 |---|---|---|---|
-| Push tag `v*` | `release` | (none) | GitHub Release, Docker `:latest` + version tags, Homebrew cask, AUR, packagecloud `golift/pkgs` |
+| Push tag `v*` | `release` | (none) | GitHub Release, Docker `:latest` + version tags, AUR, packagecloud `golift/pkgs` |
 | Push branch `unstable` | `unstable` | `--nightly` | Docker `:unstable`, packagecloud `golift/unstable`, [unstable.golift.io](https://unstable.golift.io/?dir=unpackerr) |
 | Cron `27 12 * * *` UTC, or `workflow_dispatch` on `main` | `nightly` | `--nightly` | Docker `:nightly` only |
 
@@ -38,7 +38,7 @@ So:
 2. **require secrets** — fail closed if any signing/upload/push secret needed for that channel is empty. Missing secrets used to skip Docker Hub, Windows Authenticode, or unstable.golift.io and still go green.
 3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, goversioninfo) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
 4. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
-5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / brew / AUR / packagecloud / unstable.golift.io.
+5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / AUR / packagecloud / unstable.golift.io.
 
 `REVISION` must be in the goreleaser-action `env:` map (Actions does not automatically forward `GITHUB_ENV` into a later step’s `env:` block). On `--nightly`, `nightly.version_template` already bakes it into `{{ .Version }}` (example `0.15.3-1056`), so man-page hooks use `{{ .Version }}` only — do not append `REVISION` again. The env var is still required: that template *creates* `.Version`, and tagged builds keep `.Version` as the semver while ldflags `Revision` / Darwin `CFBundleVersion` / Windows FileVersion still need the count. Darwin `CFBundleShortVersionString` and Windows FileVersion `x.y.z` use the prefix of `{{ .Version }}`, not `.RawVersion` (that stays on the last tag during `--nightly`).
 
@@ -53,8 +53,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 ## Merge destinations
 
 - **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
-- **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`.
-- **Homebrew** — notarized `Unpackerr.app` from the `unpackerr-dmg` DMG → `golift/homebrew-mugs` `Casks/`. Skip on `--nightly` (and that channel has no Darwin job).
+- **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). macOS is the notarized `Unpackerr.dmg`. Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`. Homebrew is unsupported.
 - **AUR** — `aur_sources` over SSH. Skip on `--nightly` and on `--split` (`disable: "{{ or .IsNightly (not .IsMerging) }}"`). The pipe wants the source tarball, which exists only after `continue --merge`; split otherwise fatals `no linux archives found`.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
 - **unstable.golift.io** — only `CHANNEL=unstable`. Auto-update URLs are **stable names**; version lives in a sibling `.txt` (plain `0.15.3-1056`, not JSON). Payload is a gzipped/zipped **binary**, not the versioned `tar.gz`. Script: `.github/scripts/unstable_upload.sh` (reads `dist/$GOOS/artifacts.json` after split/merge). Upload overwrites by name. Empty `UNSTABLE_UPLOAD_KEY` fails in GitHub Actions.
@@ -70,7 +69,7 @@ Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr
 
 ## Secrets
 
-Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo). `.github/scripts/require_secrets.sh` runs before any build job and **fails the workflow** if a secret required for that `CHANNEL` is empty. Nightly does not require Apple / Homebrew / AUR / packagecloud / unstable-upload secrets (those destinations are skipped).
+Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo). `.github/scripts/require_secrets.sh` runs before any build job and **fails the workflow** if a secret required for that `CHANNEL` is empty. Nightly does not require Apple / AUR / packagecloud / unstable-upload secrets (those destinations are skipped).
 
 | Secret | Used by |
 |---|---|
@@ -80,7 +79,6 @@ Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo). `.g
 | `MACOS_NOTARY_KEY`, `MACOS_NOTARY_KEY_ID`, `MACOS_NOTARY_ISSUER_ID` | App Store Connect `.p8` |
 | `CODESIGN_URL`, `CODESIGN_CLIENT_CERT`, `CODESIGN_CLIENT_KEY` | Windows Authenticode (OIDC + mTLS) |
 | `DOCKERHUB_PASSWORD` | Hub login (required) |
-| `HOMEBREW_TAP_GITHUB_TOKEN` | `golift/homebrew-mugs` (release channel) |
 | `PACKAGECLOUD_TOKEN` | `golift/pkgs` / `golift/unstable` |
 | `AUR_DEPLOY_KEY` | AUR `unpackerr` (release channel) |
 | `UNSTABLE_UPLOAD_KEY` | unstable.golift.io (unstable channel) |

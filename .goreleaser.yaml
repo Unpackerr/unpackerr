@@ -214,7 +214,7 @@ archives:
   - id: default
     ids: [unpackerr, unpackerr-darwin]
     formats: [tar.gz]
-    # Flat tarball for GitHub. Homebrew installs the notarized DMG, not this archive.
+    # Flat tarball for GitHub. macOS installs are the notarized DMG, not this archive.
     wrap_in_directory: false
     files:
       - LICENSE
@@ -484,96 +484,6 @@ aur_sources:
       echo 'u unpackerr - "unpackerr daemon"' > unpackerr.sysusers
       install -D -m 644 unpackerr.sysusers "${pkgdir}/usr/lib/sysusers.d/unpackerr.conf"
       install -D -m 644 init/systemd/unpackerr.tmpfiles "${pkgdir}/usr/lib/tmpfiles.d/unpackerr.conf"
-
-homebrew_casks:
-  - name: unpackerr
-    # Notarized DMG (macos_native signs unpackerr-app / unpackerr-dmg). The
-    # unsigned darwin tar.gz (ids: default) is GitHub-only; Gatekeeper rejects it.
-    ids: [unpackerr-dmg]
-    app: Unpackerr.app
-    binaries:
-      - '#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr'
-    skip_upload: "{{ .IsNightly }}"
-    repository:
-      owner: golift
-      name: homebrew-mugs
-      branch: master
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Casks
-    homepage: https://unpackerr.zip
-    description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
-    license: MIT
-    url:
-      template: "https://github.com/Unpackerr/unpackerr/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-      verified: github.com/Unpackerr/unpackerr
-    # Do not set `service:` — cask `service` is ~/Library/Services (Automator), not LaunchAgents.
-    # Install a LaunchAgent in postflight; brew services is formula-only.
-    hooks:
-      post:
-        install: |
-          staged_app = "#{staged_path}/Unpackerr.app"
-          conf_src = "#{staged_app}/Contents/Resources/unpackerr.conf.example"
-          conf_dir = HOMEBREW_PREFIX/"etc/unpackerr"
-          conf_dir.mkpath
-          FileUtils.cp conf_src, conf_dir/"unpackerr.conf.example"
-          had_conf = (conf_dir/"unpackerr.conf").exist?
-          FileUtils.cp conf_src, conf_dir/"unpackerr.conf" unless had_conf
-          man1 = HOMEBREW_PREFIX/"share/man/man1"
-          man1.mkpath
-          FileUtils.cp "#{staged_app}/Contents/Resources/unpackerr.1.gz", man1/"unpackerr.1.gz"
-          (HOMEBREW_PREFIX/"var/log").mkpath
-          label = "io.golift.unpackerr"
-          agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
-          agent.dirname.mkpath
-          binary = "#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr"
-          conf = conf_dir/"unpackerr.conf"
-          log = HOMEBREW_PREFIX/"var/log/unpackerr.log"
-          agent.write <<~XML
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>Label</key><string>#{label}</string>
-              <key>ProgramArguments</key>
-              <array>
-                <string>#{binary}</string>
-                <string>--config</string>
-                <string>#{conf}</string>
-              </array>
-              <key>RunAtLoad</key><true/>
-              <key>KeepAlive</key><true/>
-              <key>WorkingDirectory</key><string>#{HOMEBREW_PREFIX}</string>
-              <key>StandardOutPath</key><string>#{log}</string>
-              <key>StandardErrorPath</key><string>#{log}</string>
-            </dict>
-            </plist>
-          XML
-          if had_conf
-            uid = Process.uid
-            system "/bin/launchctl", "bootout", "gui/#{uid}/#{label}"
-            system "/bin/launchctl", "bootstrap", "gui/#{uid}", agent.to_s
-          end
-        uninstall: |
-          label = "io.golift.unpackerr"
-          agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
-          system "/bin/launchctl", "bootout", "gui/#{Process.uid}/#{label}"
-          agent.delete if agent.exist?
-          man = HOMEBREW_PREFIX/"share/man/man1/unpackerr.1.gz"
-          man.delete if man.exist?
-    caveats: |
-      First install: edit #{HOMEBREW_PREFIX}/etc/unpackerr/unpackerr.conf then:
-        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.golift.unpackerr.plist
-      Upgrades restart the LaunchAgent when that config already exists.
-      Restart: launchctl kickstart -k gui/$(id -u)/io.golift.unpackerr
-      Stop:    launchctl bootout gui/$(id -u)/io.golift.unpackerr
-      (brew services does not manage casks.)
-      Menu bar: open Unpackerr.app (do not also run the LaunchAgent).
-      The LaunchAgent runs the signed CLI inside the app (no menu bar).
-      The manual explains the config file options: man unpackerr
 
 checksum:
   name_template: checksums.sha256.txt

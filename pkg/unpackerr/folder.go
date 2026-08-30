@@ -43,10 +43,10 @@ type FolderConfig struct {
 	MaxBytes         string         `json:"maxBytes"         toml:"max_bytes"         xml:"max_bytes"         yaml:"maxBytes"`
 	MaxFiles         int            `json:"maxFiles"         toml:"max_files"         xml:"max_files"         yaml:"maxFiles"`
 	MaxRatio         float64        `json:"maxRatio"         toml:"max_ratio"         xml:"max_ratio"         yaml:"maxRatio"`
-	maxBytes         uint64
-	maxBytesSet      bool
-	ExcludePaths     []string `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
-	Path             string   `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
+	// maxBytes is 0 when unset: folder watcher is uncapped.
+	maxBytes     uint64
+	ExcludePaths []string `json:"exclude_paths" toml:"exclude_paths" xml:"exclude_path" yaml:"exclude_paths"`
+	Path         string   `json:"path"          toml:"path"          xml:"path"         yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -115,15 +115,12 @@ func (u *Unpackerr) validateFolders() error {
 			u.Folders[idx].MaxRatio = defaultMaxRatio
 		}
 
-		n, set, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
 		if err != nil {
 			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
 		}
 
-		if set {
-			u.Folders[idx].maxBytes = n
-			u.Folders[idx].maxBytesSet = true
-		}
+		u.Folders[idx].maxBytes = n
 	}
 
 	return nil
@@ -395,7 +392,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		Path:             name,
 		ExcludeSuffix:    exclude,
 		AllowSymlinks:    folder.config.AllowSymlinks,
-		MaxBytes:         resolvedMaxBytes(folder.config.maxBytesSet, folder.config.maxBytes, u.bytesCap),
+		MaxBytes:         folder.config.maxBytes,
 		MaxFiles:         folder.config.MaxFiles,
 		MaxRatio:         folder.config.MaxRatio,
 		MaxNested:        folder.config.MaxNested,

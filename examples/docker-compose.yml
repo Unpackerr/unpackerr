@@ -42,7 +42,6 @@ services:
     - UN_PARALLEL=1
     - UN_FILE_MODE=0644
     - UN_DIR_MODE=0755
-    - UN_MAX_BYTES=75GB
     ## Web Server
     - UN_WEBSERVER_METRICS=false
     - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
@@ -75,6 +74,7 @@ services:
     - UN_RADARR_0_DELETE_DELAY=5m
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
+    - UN_RADARR_0_MAX_BYTES=
     ## Lidarr Settings
     - UN_LIDARR_0_URL=http://lidarr:8686
     - UN_LIDARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -84,6 +84,7 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
     ## Readarr Settings
     - UN_READARR_0_URL=http://readarr:8787
@@ -94,6 +95,7 @@ services:
     - UN_READARR_0_DELETE_DELAY=5m
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
+    - UN_READARR_0_MAX_BYTES=
     ## Whisparr Settings
     - UN_WHISPARR_0_URL=http://whisparr:6969
     - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -103,6 +105,7 @@ services:
     - UN_WHISPARR_0_DELETE_DELAY=5m
     - UN_WHISPARR_0_DELETE_ORIG=false
     - UN_WHISPARR_0_SYNCTHING=false
+    - UN_WHISPARR_0_MAX_BYTES=
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
     - UN_FOLDER_0_EXTRACT_PATH=
@@ -147,4 +150,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 29 AUG 2026 07:06 UTC
+## => Content Auto Generated, 30 AUG 2026 07:44 UTC

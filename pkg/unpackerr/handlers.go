@@ -54,10 +54,10 @@ type StarrConfig struct {
 	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
 	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
 	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
-	// MaxBytes overrides the global max_bytes for this Starr instance. Empty uses global.
-	MaxBytes    string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
-	maxBytes    uint64
-	maxBytesSet bool
+	// MaxBytes overrides the app default (Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB).
+	// Empty uses that default. `0` or `0B` is unlimited.
+	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
+	maxBytes uint64
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.

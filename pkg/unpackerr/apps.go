@@ -57,7 +57,6 @@ type Config struct {
 	LogFileMode   string           `json:"logFileMode"        toml:"log_file_mode"  xml:"log_file_mode"  yaml:"logFileMode"`
 	MaxRetries    uint             `json:"maxRetries"         toml:"max_retries"    xml:"max_retries"    yaml:"maxRetries"`
 	RemnantAction string           `json:"remnantAction"      toml:"remnant_action" xml:"remnant_action" yaml:"remnantAction"`
-	MaxBytes      string           `json:"maxBytes"           toml:"max_bytes"      xml:"max_bytes"      yaml:"maxBytes"`
 	FileMode      string           `json:"fileMode"           toml:"file_mode"      xml:"file_mode"      yaml:"fileMode"`
 	DirMode       string           `json:"dirMode"            toml:"dir_mode"       xml:"dir_mode"       yaml:"dirMode"`
 	LogQueues     cnfg.Duration    `json:"logQueues"          toml:"log_queues"     xml:"log_queues"     yaml:"logQueues"`

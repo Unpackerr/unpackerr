@@ -316,11 +316,8 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		conf.Protocols = defaultProtocol
 	}
 
-	if n, set, err := parseOptionalMaxBytes(conf.MaxBytes); err != nil {
+	if err := conf.applyMaxBytes(app); err != nil {
 		return fmt.Errorf("%s (%s) %w", app, conf.URL, err)
-	} else if set {
-		conf.maxBytes = n
-		conf.maxBytesSet = true
 	}
 
 	conf.Client = &http.Client{
@@ -329,6 +326,39 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: !conf.ValidSSL}, //nolint:gosec
 		},
 	}
+
+	return nil
+}
+
+func defaultAppMaxBytes(app starr.App) string {
+	switch app {
+	case starr.Sonarr:
+		return defaultSonarrMaxBytes
+	case starr.Radarr:
+		return defaultRadarrMaxBytes
+	case starr.Lidarr:
+		return defaultLidarrMaxBytes
+	case starr.Readarr:
+		return defaultReadarrMaxBytes
+	case starr.Whisparr:
+		return defaultWhisparrMaxBytes
+	default:
+		return defaultRadarrMaxBytes
+	}
+}
+
+func (conf *StarrConfig) applyMaxBytes(app starr.App) error {
+	size := strings.TrimSpace(conf.MaxBytes)
+	if size == "" {
+		size = defaultAppMaxBytes(app)
+	}
+
+	n, err := parseExtractMaxBytes(size)
+	if err != nil {
+		return err
+	}
+
+	conf.maxBytes = n
 
 	return nil
 }

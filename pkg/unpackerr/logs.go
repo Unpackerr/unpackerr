@@ -260,9 +260,10 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 	u.logFolders()
 	u.Printf(" => Parallel: %d", u.Parallel)
 
-	if limits, err := u.extractLimits(); err == nil {
-		u.Printf(" => Extract Limits: %s", limits)
-	}
+	u.Printf(" => Extract Limits: Sonarr %s, Radarr/Whisparr %s, Lidarr/Readarr %s; "+
+		"Starr %d files, %g:1, %d nested, extras depth %d; folders uncapped",
+		defaultSonarrMaxBytes, defaultRadarrMaxBytes, defaultLidarrMaxBytes,
+		defaultMaxFiles, defaultMaxRatio, defaultMaxNested, defaultExtrasMaxDepth)
 
 	u.Printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
 	u.Printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())

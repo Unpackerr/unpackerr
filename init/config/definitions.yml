@@ -396,22 +396,6 @@ sections:
           - value: '0770'
           - value: '0775'
         short: Extracted folders are written with this mode
-      - name: max_bytes
-        envvar: MAX_BYTES
-        default: 75GB
-        recommend:
-          - name: Unlimited
-            value: '0'
-          - value: 10GB
-          - value: 75GB
-          - value: 100GB
-          - value: 200GB
-        short: Stop an archive after this much uncompressed data. `0` is unlimited.
-        desc: |
-          Per-archive cap on uncompressed bytes written to disk. Guards against zip bombs.
-          Uses a size string such as `75GB` or `100GiB`. `0` or `0B` disables the cap.
-          Starr apps and folders inherit this unless they set their own `max_bytes`.
-          Starr file/ratio/extras caps are fixed (1000 files, 5:1, 8 nested, depth 3).
       - name: passwords
         envvar: PASSWORD_
         default: []
@@ -571,17 +555,18 @@ sections:
         envvar: MAX_BYTES
         default: ''
         recommend:
-          - name: Use global
+          - name: App default
             value: ''
           - name: Unlimited
             value: '0'
+          - value: 1GB
+          - value: 20GB
           - value: 75GB
-          - value: 100GB
-          - value: 200GB
-        short: Override global max_bytes for this Starr instance. Empty uses global.
+        short: Per-archive byte cap. Empty uses the app default. `0` is unlimited.
         desc: |
-          Per-archive uncompressed-byte cap for this Starr app. Empty inherits the
-          global `max_bytes`. `0` or `0B` disables the cap for this instance.
+          Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+          default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+          `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC
         default: false
@@ -674,16 +659,15 @@ sections:
         envvar: MAX_BYTES
         default: ''
         recommend:
-          - name: Use global
-            value: ''
           - name: Unlimited
-            value: '0'
+            value: ''
+          - value: 20GB
           - value: 75GB
           - value: 200GB
-        short: Override global max_bytes for this folder. Empty uses global.
+        short: Per-archive byte cap. Empty (the default) is unlimited.
         desc: |
-          Per-archive uncompressed-byte cap for this folder. Empty inherits the
-          global `max_bytes`. `0` or `0B` disables the cap for this folder.
+          Per-archive uncompressed-byte cap for this folder. Empty is unlimited
+          (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
       - name: max_files
         envvar: MAX_FILES
         default: 1000
@@ -741,7 +725,6 @@ sections:
       - name: allow_symlinks
         envvar: ALLOW_SYMLINKS
         default: false
-        kind: bool
         recommend: *BOOLEAN
         short: Include symlink-named archives in the initial search.
         desc: |

@@ -22,35 +22,39 @@ import (
 )
 
 const (
-	defaultMaxRetries     = 3
-	defaultMaxFiles       = 1000 // Starr cap; folder watcher default.
-	defaultMaxRatio       = 5.0  // Starr cap; folder watcher default.
-	defaultMaxBytes       = "75GB"
-	defaultMaxNested      = 8 // Starr extras cap; folder watcher default.
-	defaultExtrasMaxDepth = 3 // Starr extras walk; folder watcher default.
-	defaultFileMode       = 0o644
-	defaultLogFileMode    = 0o600
-	defaultDirMode        = 0o755
-	defaultTimeout        = 10 * time.Second
-	minimumInterval       = 15 * time.Second
-	defaultInterval       = 2 * time.Minute
-	cleanerInterval       = 5 * time.Second
-	defaultRetryDelay     = 5 * time.Minute
-	defaultStartDelay     = time.Minute
-	minimumDeleteDelay    = time.Second
-	defaultDeleteDelay    = 5 * time.Minute
-	staleItemTimeout      = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory        = 10             // items kept in history.
-	suffix                = "_unpackerred" // suffix for unpacked folders.
-	updateChanBuf         = 100            // Size of xtractr callback update channels.
-	defaultFolderBuf      = 20000          // Channel queue size for file system events.
-	minimumFolderBuf      = 1000           // Minimum size of the folder event buffer.
-	defaultLogFileMb      = 10
-	defaultLogFiles       = 10
-	helpLink              = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
-	windows               = "windows"
-	bits8                 = 8
-	base32                = 32
+	defaultMaxRetries       = 3
+	defaultMaxFiles         = 1000 // Starr cap; folder watcher default.
+	defaultMaxRatio         = 5.0  // Starr cap; folder watcher default.
+	defaultSonarrMaxBytes   = "20GB"
+	defaultRadarrMaxBytes   = "75GB"
+	defaultLidarrMaxBytes   = "1GB"
+	defaultReadarrMaxBytes  = "1GB"
+	defaultWhisparrMaxBytes = "75GB" // same content class as Radarr
+	defaultMaxNested        = 8      // Starr extras cap; folder watcher default.
+	defaultExtrasMaxDepth   = 3      // Starr extras walk; folder watcher default.
+	defaultFileMode         = 0o644
+	defaultLogFileMode      = 0o600
+	defaultDirMode          = 0o755
+	defaultTimeout          = 10 * time.Second
+	minimumInterval         = 15 * time.Second
+	defaultInterval         = 2 * time.Minute
+	cleanerInterval         = 5 * time.Second
+	defaultRetryDelay       = 5 * time.Minute
+	defaultStartDelay       = time.Minute
+	minimumDeleteDelay      = time.Second
+	defaultDeleteDelay      = 5 * time.Minute
+	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
+	defaultHistory          = 10             // items kept in history.
+	suffix                  = "_unpackerred" // suffix for unpacked folders.
+	updateChanBuf           = 100            // Size of xtractr callback update channels.
+	defaultFolderBuf        = 20000          // Channel queue size for file system events.
+	minimumFolderBuf        = 1000           // Minimum size of the folder event buffer.
+	defaultLogFileMb        = 10
+	defaultLogFiles         = 10
+	helpLink                = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
+	windows                 = "windows"
+	bits8                   = 8
+	base32                  = 32
 )
 
 // Unpackerr stores all the running data.
@@ -67,7 +71,6 @@ type Unpackerr struct {
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
-	bytesCap uint64 // resolved global max_bytes; Starr/folder may override.
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -115,7 +118,6 @@ func New() *Unpackerr {
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
 			MaxRetries:    defaultMaxRetries,
 			RemnantAction: remnantAction(""),
-			MaxBytes:      defaultMaxBytes,
 			LogFiles:      defaultLogFiles,
 			Timeout:       cnfg.Duration{Duration: defaultTimeout},
 			Interval:      cnfg.Duration{Duration: defaultInterval},
@@ -177,13 +179,6 @@ func Start() error {
 	if err := unpackerr.validateApps(); err != nil {
 		return err
 	}
-
-	limits, err := unpackerr.extractLimits()
-	if err != nil {
-		return err
-	}
-
-	unpackerr.bytesCap = limits.bytes
 
 	unpackerr.logStartupInfo(msg, output)
 
@@ -412,22 +407,7 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// extractLimits is the global max_bytes cap. 0 is unlimited.
-// Starr files/ratio/extras are hardcoded; folders may override.
-type extractLimits struct {
-	bytes uint64
-}
-
 var errInvalidMaxBytes = errors.New("invalid max_bytes")
-
-func (u *Unpackerr) extractLimits() (extractLimits, error) {
-	bytes, err := parseExtractMaxBytes(u.MaxBytes)
-	if err != nil {
-		return extractLimits{}, err
-	}
-
-	return extractLimits{bytes: bytes}, nil
-}
 
 func parseOptionalMaxBytes(size string) (uint64, bool, error) {
 	if strings.TrimSpace(size) == "" {
@@ -440,14 +420,6 @@ func parseOptionalMaxBytes(size string) (uint64, bool, error) {
 	}
 
 	return n, true, nil
-}
-
-func resolvedMaxBytes(set bool, override, global uint64) uint64 {
-	if set {
-		return override
-	}
-
-	return global
 }
 
 func parseExtractMaxBytes(size string) (uint64, error) {
@@ -466,16 +438,6 @@ func parseExtractMaxBytes(size string) (uint64, error) {
 	}
 
 	return n, nil
-}
-
-func (l extractLimits) String() string {
-	size := "unlimited"
-	if l.bytes > 0 {
-		size = bytefmt.ByteSize(l.bytes)
-	}
-
-	return size + fmt.Sprintf(" (Starr: %d files, %g:1, %d nested, extras depth %d)",
-		defaultMaxFiles, defaultMaxRatio, defaultMaxNested, defaultExtrasMaxDepth)
 }
 
 // Custom percentage procedure for starr apps.

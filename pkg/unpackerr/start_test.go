@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"golift.io/starr"
 	"golift.io/xtractr"
 )
 
@@ -174,39 +175,57 @@ func TestPurgeEmptyFoldersNoRoot(t *testing.T) {
 	}
 }
 
-func TestExtractLimitsDefaults(t *testing.T) {
+func TestApplyMaxBytes(t *testing.T) {
 	t.Parallel()
 
-	unpack := New()
-
-	got, err := unpack.extractLimits()
-	if err != nil {
-		t.Fatalf("defaults: %v", err)
+	cases := []struct {
+		app  starr.App
+		size string
+	}{
+		{starr.Sonarr, defaultSonarrMaxBytes},
+		{starr.Radarr, defaultRadarrMaxBytes},
+		{starr.Lidarr, defaultLidarrMaxBytes},
+		{starr.Readarr, defaultReadarrMaxBytes},
+		{starr.Whisparr, defaultWhisparrMaxBytes},
 	}
 
-	wantBytes, err := parseExtractMaxBytes(defaultMaxBytes)
-	if err != nil {
-		t.Fatalf("parse default: %v", err)
+	for _, testCase := range cases {
+		conf := &StarrConfig{}
+		if err := conf.applyMaxBytes(testCase.app); err != nil {
+			t.Fatalf("%s default: %v", testCase.app, err)
+		}
+
+		want, err := parseExtractMaxBytes(testCase.size)
+		if err != nil {
+			t.Fatalf("parse %s: %v", testCase.size, err)
+		}
+
+		if conf.maxBytes != want {
+			t.Fatalf("%s: got %d want %d", testCase.app, conf.maxBytes, want)
+		}
 	}
 
-	if got.bytes != wantBytes {
-		t.Fatalf("defaults: got %+v", got)
-	}
-}
-
-func TestExtractLimitsUnlimited(t *testing.T) {
-	t.Parallel()
-
-	unpack := New()
-	unpack.MaxBytes = "0"
-
-	got, err := unpack.extractLimits()
-	if err != nil {
+	unlimited := &StarrConfig{MaxBytes: "0"}
+	if err := unlimited.applyMaxBytes(starr.Radarr); err != nil {
 		t.Fatalf("unlimited: %v", err)
 	}
 
-	if got.bytes != 0 {
-		t.Fatalf("0 must be unlimited, got %+v", got)
+	if unlimited.maxBytes != 0 {
+		t.Fatalf("0 must be unlimited, got %d", unlimited.maxBytes)
+	}
+
+	custom := &StarrConfig{MaxBytes: "10GB"}
+	if err := custom.applyMaxBytes(starr.Sonarr); err != nil {
+		t.Fatalf("custom: %v", err)
+	}
+
+	want, err := parseExtractMaxBytes("10GB")
+	if err != nil {
+		t.Fatalf("parse 10GB: %v", err)
+	}
+
+	if custom.maxBytes != want {
+		t.Fatalf("custom override: got %d want %d", custom.maxBytes, want)
 	}
 }
 
@@ -227,7 +246,8 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 	if unpack.Folders[0].MaxNested != defaultMaxNested ||
 		unpack.Folders[0].ExtrasMaxDepth != defaultExtrasMaxDepth ||
 		unpack.Folders[0].MaxFiles != defaultMaxFiles ||
-		unpack.Folders[0].MaxRatio != defaultMaxRatio {
+		unpack.Folders[0].MaxRatio != defaultMaxRatio ||
+		unpack.Folders[0].maxBytes != 0 {
 		t.Fatalf("unset defaults: %+v", unpack.Folders[0])
 	}
 
@@ -240,28 +260,12 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 	}
 }
 
-func TestResolvedMaxBytes(t *testing.T) {
-	t.Parallel()
-
-	if got := resolvedMaxBytes(false, 99, 75); got != 75 {
-		t.Fatalf("unset override should use global, got %d", got)
-	}
-
-	if got := resolvedMaxBytes(true, 0, 75); got != 0 {
-		t.Fatalf("explicit 0 is unlimited, got %d", got)
-	}
-
-	if got := resolvedMaxBytes(true, 10, 75); got != 10 {
-		t.Fatalf("override, got %d", got)
-	}
-}
-
 func TestParseExtractMaxBytes(t *testing.T) {
 	t.Parallel()
 
-	n, err := parseExtractMaxBytes(defaultMaxBytes)
+	n, err := parseExtractMaxBytes(defaultRadarrMaxBytes)
 	if err != nil || n != 75*1024*1024*1024 {
-		t.Fatalf("%s: n=%d err=%v", defaultMaxBytes, n, err)
+		t.Fatalf("%s: n=%d err=%v", defaultRadarrMaxBytes, n, err)
 	}
 
 	if _, err := parseExtractMaxBytes("nope"); err == nil {

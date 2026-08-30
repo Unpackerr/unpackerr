@@ -85,11 +85,6 @@ parallel = 1
 file_mode = "0644"
 dir_mode = "0755"
 
-## Per-archive cap on uncompressed bytes written to disk. Guards against zip bombs.
-## Uses a size string such as `75GB` or `100GiB`. `0` or `0B` disables the cap.
-## Starr apps and folders inherit this unless they set their own max_bytes.
-max_bytes = "75GB"
-
 ## List of passwords to use for encrypted archives. Must be a list of strings.
 ## Use this special format as a password to read more passwords from a file:
 ## passwords = [ "filepath:/path/to/passwords.txt" ]
@@ -166,8 +161,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
-## Optional override of the global max_bytes for this Starr instance.
-# max_bytes = "75GB"
+## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## `0` or `0B` disables the cap for this instance.
+# max_bytes = ""
 
 ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
@@ -194,6 +191,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## `0` or `0B` disables the cap for this instance.
+# max_bytes = ""
 
 #[[lidarr]]
 # url = "http://127.0.0.1:8686"
@@ -218,6 +219,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## `0` or `0B` disables the cap for this instance.
+# max_bytes = ""
 ## When enabled, FLAC files with embedded CUE sheets are split into
 ## individual track files.
 # split_flac = false
@@ -245,6 +250,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## `0` or `0B` disables the cap for this instance.
+# max_bytes = ""
 
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
@@ -269,6 +278,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Per-archive uncompressed-byte cap for this Starr app. Empty uses the app
+## default: Sonarr 20GB, Radarr/Whisparr 75GB, Lidarr/Readarr 1GB.
+## `0` or `0B` disables the cap for this instance.
+# max_bytes = ""
 
 ##################################################################################
 ### ###  STOP HERE ### STOP HERE ### STOP HERE ### STOP HERE #### STOP HERE  ### #
@@ -295,21 +308,23 @@ passwords = []
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
-## Optional override of the global max_bytes for this folder.
-# max_bytes = "75GB"
-## Cap on files, dirs, and symlinks. Default matches Starr (1000). `0` uses that default.
-## A negative number is unlimited.
+## Per-archive uncompressed-byte cap for this folder. Empty is unlimited
+## (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
+# max_bytes = ""
+## Cap on files, directories, and symlinks created during extract. Starr apps
+## always use 1000. `0` uses that same default. A negative number is unlimited.
 # max_files = 1000
-## Cap on written bytes / archive size. Default matches Starr (5). `0` uses that default.
-## A negative number is unlimited.
+## Cap on `bytes written / archive file size`. Starr apps always use 5.
+## `0` uses that same default. A negative number is unlimited.
 # max_ratio = 5
-## Maximum nested archives from this folder's extras pass. Default matches Starr (8).
-## `0` uses the default. A negative number is unlimited.
+## Cap on archives extracted from this folder's output (one extras pass).
+## Starr apps always use 8. `0` uses that same default. A negative number is unlimited.
 # max_nested = 8
-## How deep extras may walk extract output. Default matches Starr (3).
-## `0` uses the default. A negative number is unlimited.
+## Walk depth for the extras pass. Starr apps always use 3. `0` uses that
+## same default. A negative number is unlimited.
 # extras_max_depth = 3
-## Include symlink-named archives in the initial search. Default is false.
+## When true, the initial archive search may include symlink-named files.
+## Starr apps never allow this. The extras pass never follows archive-member zip links.
 # allow_symlinks = false
 ## Delete extracted files after successful extraction? delete_after must be greater than 0.
 # delete_files = false
@@ -382,4 +397,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 29 AUG 2026 07:06 UTC
+## => Content Auto Generated, 30 AUG 2026 07:44 UTC

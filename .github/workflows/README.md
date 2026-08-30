@@ -66,7 +66,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 | `unpackerr.{amd64,386,arm,arm64}.linux.gz` | gzipped binary |
 | `unpackerr.{amd64,i386,armhf,arm64}.freebsd.gz` | gzipped binary |
 
-Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr-0.15.3-1081.x86_64.rpm`). Arches: amd64, arm64, i386, armv7 (one `armhf` / RPM `armv7hl`). Darwin min macOS 13. Windows is `-H=windowsgui` with FileVersion `Major.Minor.Patch.REVISION`. Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
+Linux nFPM names are conventional (`unpackerr_0.15.3-1081_amd64.deb`, `unpackerr-0.15.3-1081.x86_64.rpm`). Arches: amd64, arm64, i386, armv7 (one `armhf` / RPM `armv7hl`). Darwin min macOS 13. Windows is `-H=windowsgui` with FileVersion from the `x.y.z` prefix of `{{ .Version }}` plus `REVISION` (not `.RawVersion`: that stays on the last tag during `--nightly`). Empty `CODESIGN_URL` fails in GitHub Actions (local snapshots still skip).
 
 ## Secrets
 

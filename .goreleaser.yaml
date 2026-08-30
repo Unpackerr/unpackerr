@@ -27,8 +27,10 @@ before:
     # rsrc only embeds icon+manifest. goversioninfo does that and VERSIONINFO
     # (Explorer File version). -64: before-hooks run on darwin/arm64 too;
     # the Windows build is amd64. Skip JSON: versions come from these flags.
-    # FileVersion is Major.Minor.Patch.REVISION (Darwin CFBundleVersion).
-    # ProductVersion string is the release version (nightly includes -REVISION).
+    # --nightly rewrites .Version (incpatch-REVISION) but .RawVersion / .Major /
+    # .Minor / .Patch stay on the last tag. FileVersion is the x.y.z prefix of
+    # .Version plus REVISION; goversioninfo fills the numeric fields from that
+    # string. ProductVersion string is .Version (nightly includes -REVISION).
     - >-
       go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
       -64 -skip-versioninfo
@@ -40,12 +42,8 @@ before:
       -internal-name unpackerr
       -original-name unpackerr.exe
       -product-name Unpackerr
-      -file-version "{{ .RawVersion }}.{{ .Env.REVISION }}"
+      -file-version "{{ index (split .Version "-") 0 }}.{{ .Env.REVISION }}"
       -product-version "{{ .Version }}"
-      -ver-major {{ .Major }}
-      -ver-minor {{ .Minor }}
-      -ver-patch {{ .Patch }}
-      -ver-build {{ .Env.REVISION }}
       -translation 1033
       -charset 1200
       -o rsrc_windows_amd64.syso

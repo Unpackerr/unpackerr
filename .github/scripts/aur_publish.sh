@@ -72,7 +72,9 @@ pkgver="${version//-/_}"
 stage="$(mktemp -d "${TMPDIR:-/tmp}/unpackerr-aur.XXXXXX")"
 cleanup() {
   rm -rf "${stage}"
-  [ -n "${keyfile:-}" ] && rm -f "${keyfile}"
+  if [ -n "${keyfile:-}" ]; then
+    rm -f "${keyfile}"
+  fi
 }
 trap cleanup EXIT
 

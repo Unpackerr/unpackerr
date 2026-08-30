@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 # Darwin App/DMG notarization needs xcrun/codesign (macOS). Linux/Windows/FreeBSD
-# split on ubuntu; merge publishes Docker, GitHub, Homebrew, AUR, packagecloud.
+# split on ubuntu; merge publishes Docker, GitHub, AUR, packagecloud.
 # See README.md in this folder.
 jobs:
   channel:
@@ -81,7 +81,6 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
           UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
         run: bash .github/scripts/require_secrets.sh
@@ -377,7 +376,6 @@ jobs:
           REVISION: ${{ needs.channel.outputs.revision }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           USER: github-actions
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
           AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}

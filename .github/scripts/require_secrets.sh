@@ -28,7 +28,7 @@ need CODESIGN_URL
 need CODESIGN_CLIENT_CERT
 need CODESIGN_CLIENT_KEY
 
-# Nightly is Docker-only (no Darwin, no GitHub Release, no brew/AUR/packagecloud).
+# Nightly is Docker-only (no Darwin, no GitHub Release, no AUR/packagecloud).
 if [ "${CHANNEL}" != nightly ]; then
   need MACOS_SIGN_P12
   need MACOS_SIGN_PASSWORD
@@ -39,7 +39,6 @@ if [ "${CHANNEL}" != nightly ]; then
 fi
 
 if [ "${CHANNEL}" = release ]; then
-  need HOMEBREW_TAP_GITHUB_TOKEN
   need AUR_DEPLOY_KEY
 fi
 

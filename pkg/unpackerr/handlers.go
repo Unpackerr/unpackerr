@@ -39,6 +39,8 @@ type Extract struct {
 	// must not re-enter the retry loop or be promoted to DELETED (that
 	// bounces a still-completed Starr item back to WAITING).
 	NoRetry bool
+	// MaxBytes is the resolved byte cap for this Starr item (0 = unlimited).
+	MaxBytes uint64
 }
 
 // StarrConfig is the shared config items for all starr apps.
@@ -52,6 +54,10 @@ type StarrConfig struct {
 	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
 	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
 	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
+	// MaxBytes overrides the global max_bytes for this Starr instance. Empty uses global.
+	MaxBytes    string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
+	maxBytes    uint64
+	maxBytesSet bool
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -154,6 +160,9 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		Name:           name,
 		Path:           item.Path,
 		ExcludeSuffix:  xtractr.AllExcept(archiveTypes...),
+		MaxBytes:       item.MaxBytes,
+		MaxFiles:       defaultMaxFiles,
+		MaxRatio:       defaultMaxRatio,
 		MaxNested:      defaultMaxNested,
 		ExtrasMaxDepth: defaultExtrasMaxDepth,
 		TempFolder:     false,

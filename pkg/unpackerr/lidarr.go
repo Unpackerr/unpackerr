@@ -104,6 +104,7 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
+					MaxBytes:    resolvedMaxBytes(server.maxBytesSet, server.maxBytes, u.bytesCap),
 					SplitFlac:   server.SplitFlac,
 					Path:        u.getDownloadPath(record.OutputPath, starr.Lidarr, record.Title, server.Paths),
 					OutputPath:  record.OutputPath,

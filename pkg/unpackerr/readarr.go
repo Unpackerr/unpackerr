@@ -95,6 +95,7 @@ func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
+					MaxBytes:    resolvedMaxBytes(server.maxBytesSet, server.maxBytes, u.bytesCap),
 					Path:        u.getDownloadPath(record.OutputPath, starr.Readarr, record.Title, server.Paths),
 					IDs: map[string]any{
 						"title":      record.Title,

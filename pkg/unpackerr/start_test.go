@@ -189,7 +189,7 @@ func TestExtractLimitsDefaults(t *testing.T) {
 		t.Fatalf("parse default: %v", err)
 	}
 
-	if got.bytes != wantBytes || got.files != defaultMaxFiles || got.ratio != defaultMaxRatio {
+	if got.bytes != wantBytes {
 		t.Fatalf("defaults: got %+v", got)
 	}
 }
@@ -199,15 +199,13 @@ func TestExtractLimitsUnlimited(t *testing.T) {
 
 	unpack := New()
 	unpack.MaxBytes = "0"
-	unpack.MaxFiles = 0
-	unpack.MaxRatio = 0
 
 	got, err := unpack.extractLimits()
 	if err != nil {
 		t.Fatalf("unlimited: %v", err)
 	}
 
-	if got.bytes != 0 || got.files != 0 || got.ratio != 0 {
+	if got.bytes != 0 {
 		t.Fatalf("0 must be unlimited, got %+v", got)
 	}
 }
@@ -226,7 +224,10 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 		t.Fatalf("validate: %v", err)
 	}
 
-	if unpack.Folders[0].MaxNested != defaultMaxNested || unpack.Folders[0].ExtrasMaxDepth != defaultExtrasMaxDepth {
+	if unpack.Folders[0].MaxNested != defaultMaxNested ||
+		unpack.Folders[0].ExtrasMaxDepth != defaultExtrasMaxDepth ||
+		unpack.Folders[0].MaxFiles != defaultMaxFiles ||
+		unpack.Folders[0].MaxRatio != defaultMaxRatio {
 		t.Fatalf("unset defaults: %+v", unpack.Folders[0])
 	}
 
@@ -236,6 +237,22 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 
 	if unpack.Folders[2].MaxNested != -1 || unpack.Folders[2].ExtrasMaxDepth != -1 {
 		t.Fatalf("unlimited: %+v", unpack.Folders[2])
+	}
+}
+
+func TestResolvedMaxBytes(t *testing.T) {
+	t.Parallel()
+
+	if got := resolvedMaxBytes(false, 99, 75); got != 75 {
+		t.Fatalf("unset override should use global, got %d", got)
+	}
+
+	if got := resolvedMaxBytes(true, 0, 75); got != 0 {
+		t.Fatalf("explicit 0 is unlimited, got %d", got)
+	}
+
+	if got := resolvedMaxBytes(true, 10, 75); got != 10 {
+		t.Fatalf("override, got %d", got)
 	}
 }
 

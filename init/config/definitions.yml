@@ -410,36 +410,8 @@ sections:
         desc: |
           Per-archive cap on uncompressed bytes written to disk. Guards against zip bombs.
           Uses a size string such as `75GB` or `100GiB`. `0` or `0B` disables the cap.
-      - name: max_files
-        envvar: MAX_FILES
-        default: 5000
-        recommend:
-          - name: Unlimited
-            value: 0
-          - value: 100
-          - value: 1000
-          - value: 5000
-          - value: 10000
-        short: Stop an archive after this many files, dirs, and symlinks. `0` is unlimited.
-        desc: |
-          Per-archive cap on files, directories, and symlinks created during extract.
-          `0` disables the cap.
-      - name: max_ratio
-        envvar: MAX_RATIO
-        default: 15
-        recommend:
-          - name: Unlimited
-            value: 0
-          - value: 5
-          - value: 10
-          - value: 15
-          - value: 20
-          - value: 50
-        short: Stop an archive when written bytes exceed this times the archive size. `0` is unlimited.
-        desc: |
-          Per-archive cap on `bytes written / archive file size`. A `15` means a 1GB
-          archive may write at most 15GB. `0` disables the cap. Nested extras share
-          the tighter leftover among sibling archives in the same folder.
+          Starr apps and folders inherit this unless they set their own `max_bytes`.
+          Starr file/ratio/extras caps are fixed (1000 files, 5:1, 8 nested, depth 3).
       - name: passwords
         envvar: PASSWORD_
         default: []
@@ -595,6 +567,21 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: Use global
+            value: ''
+          - name: Unlimited
+            value: '0'
+          - value: 75GB
+          - value: 100GB
+          - value: 200GB
+        short: Override global max_bytes for this Starr instance. Empty uses global.
+        desc: |
+          Per-archive uncompressed-byte cap for this Starr app. Empty inherits the
+          global `max_bytes`. `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC
         default: false
@@ -683,6 +670,46 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true disables extracting archives inside archives.
         desc: Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: Use global
+            value: ''
+          - name: Unlimited
+            value: '0'
+          - value: 75GB
+          - value: 200GB
+        short: Override global max_bytes for this folder. Empty uses global.
+        desc: |
+          Per-archive uncompressed-byte cap for this folder. Empty inherits the
+          global `max_bytes`. `0` or `0B` disables the cap for this folder.
+      - name: max_files
+        envvar: MAX_FILES
+        default: 1000
+        recommend:
+          - name: Unlimited
+            value: -1
+          - value: 1000
+          - value: 5000
+          - value: 10000
+        short: Stop after this many files, dirs, and symlinks. Starr apps always use 1000.
+        desc: |
+          Cap on files, directories, and symlinks created during extract. Starr apps
+          always use 1000. `0` uses that same default. A negative number is unlimited.
+      - name: max_ratio
+        envvar: MAX_RATIO
+        default: 5
+        recommend:
+          - name: Unlimited
+            value: -1
+          - value: 5
+          - value: 10
+          - value: 15
+        short: Stop when written bytes exceed this times the archive size. Starr apps always use 5.
+        desc: |
+          Cap on `bytes written / archive file size`. Starr apps always use 5.
+          `0` uses that same default. A negative number is unlimited.
       - name: max_nested
         envvar: MAX_NESTED
         default: 8

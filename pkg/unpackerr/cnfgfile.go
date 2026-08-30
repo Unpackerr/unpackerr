@@ -316,6 +316,13 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		conf.Protocols = defaultProtocol
 	}
 
+	if n, set, err := parseOptionalMaxBytes(conf.MaxBytes); err != nil {
+		return fmt.Errorf("%s (%s) %w", app, conf.URL, err)
+	} else if set {
+		conf.maxBytes = n
+		conf.maxBytesSet = true
+	}
+
 	conf.Client = &http.Client{
 		Timeout: conf.Timeout.Duration,
 		Transport: &http.Transport{

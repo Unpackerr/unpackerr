@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,8 +23,8 @@ import (
 
 const (
 	defaultMaxRetries     = 3
-	defaultMaxFiles       = 5000
-	defaultMaxRatio       = 15
+	defaultMaxFiles       = 1000 // Starr cap; folder watcher default.
+	defaultMaxRatio       = 5.0  // Starr cap; folder watcher default.
 	defaultMaxBytes       = "75GB"
 	defaultMaxNested      = 8 // Starr extras cap; folder watcher default.
 	defaultExtrasMaxDepth = 3 // Starr extras walk; folder watcher default.
@@ -69,6 +67,7 @@ type Unpackerr struct {
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
+	bytesCap uint64 // resolved global max_bytes; Starr/folder may override.
 	*Logger
 	rotatorr *rotatorr.Logger
 	menu     map[string]ui.MenuItem
@@ -117,8 +116,6 @@ func New() *Unpackerr {
 			MaxRetries:    defaultMaxRetries,
 			RemnantAction: remnantAction(""),
 			MaxBytes:      defaultMaxBytes,
-			MaxFiles:      defaultMaxFiles,
-			MaxRatio:      defaultMaxRatio,
 			LogFiles:      defaultLogFiles,
 			Timeout:       cnfg.Duration{Duration: defaultTimeout},
 			Interval:      cnfg.Duration{Duration: defaultInterval},
@@ -186,6 +183,8 @@ func Start() error {
 		return err
 	}
 
+	unpackerr.bytesCap = limits.bytes
+
 	unpackerr.logStartupInfo(msg, output)
 
 	if unpackerr.webhook > 0 {
@@ -198,9 +197,6 @@ func Start() error {
 		Logger:   unpackerr.Logger,
 		FileMode: os.FileMode(fileMode),
 		DirMode:  os.FileMode(dirMode),
-		MaxBytes: limits.bytes,
-		MaxFiles: limits.files,
-		MaxRatio: limits.ratio,
 	})
 
 	if len(unpackerr.Webhook) > 0 || len(unpackerr.Cmdhook) > 0 {
@@ -416,33 +412,42 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// extractLimits are the xtractr per-archive zip-bomb guards. 0 is unlimited.
+// extractLimits is the global max_bytes cap. 0 is unlimited.
+// Starr files/ratio/extras are hardcoded; folders may override.
 type extractLimits struct {
 	bytes uint64
-	files int
-	ratio float64
 }
 
-var (
-	errNegativeExtractLimit = errors.New("extract limit must not be negative")
-	errInvalidMaxBytes      = errors.New("invalid max_bytes")
-)
+var errInvalidMaxBytes = errors.New("invalid max_bytes")
 
 func (u *Unpackerr) extractLimits() (extractLimits, error) {
-	if u.MaxFiles < 0 {
-		return extractLimits{}, fmt.Errorf("%w: max_files=%d", errNegativeExtractLimit, u.MaxFiles)
-	}
-
-	if u.MaxRatio < 0 || math.IsNaN(u.MaxRatio) || math.IsInf(u.MaxRatio, 0) {
-		return extractLimits{}, fmt.Errorf("%w: max_ratio=%v", errNegativeExtractLimit, u.MaxRatio)
-	}
-
 	bytes, err := parseExtractMaxBytes(u.MaxBytes)
 	if err != nil {
 		return extractLimits{}, err
 	}
 
-	return extractLimits{bytes: bytes, files: u.MaxFiles, ratio: u.MaxRatio}, nil
+	return extractLimits{bytes: bytes}, nil
+}
+
+func parseOptionalMaxBytes(size string) (uint64, bool, error) {
+	if strings.TrimSpace(size) == "" {
+		return 0, false, nil
+	}
+
+	n, err := parseExtractMaxBytes(size)
+	if err != nil {
+		return 0, false, err
+	}
+
+	return n, true, nil
+}
+
+func resolvedMaxBytes(set bool, override, global uint64) uint64 {
+	if set {
+		return override
+	}
+
+	return global
 }
 
 func parseExtractMaxBytes(size string) (uint64, error) {
@@ -469,17 +474,8 @@ func (l extractLimits) String() string {
 		size = bytefmt.ByteSize(l.bytes)
 	}
 
-	files := "unlimited"
-	if l.files > 0 {
-		files = strconv.Itoa(l.files)
-	}
-
-	ratio := "unlimited"
-	if l.ratio > 0 {
-		ratio = fmt.Sprintf("%g:1", l.ratio)
-	}
-
-	return size + ", " + files + " files, " + ratio
+	return size + fmt.Sprintf(" (Starr: %d files, %g:1, %d nested, extras depth %d)",
+		defaultMaxFiles, defaultMaxRatio, defaultMaxNested, defaultExtrasMaxDepth)
 }
 
 // Custom percentage procedure for starr apps.

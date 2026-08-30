@@ -87,15 +87,8 @@ dir_mode = "0755"
 
 ## Per-archive cap on uncompressed bytes written to disk. Guards against zip bombs.
 ## Uses a size string such as `75GB` or `100GiB`. `0` or `0B` disables the cap.
+## Starr apps and folders inherit this unless they set their own max_bytes.
 max_bytes = "75GB"
-
-## Per-archive cap on files, directories, and symlinks created during extract.
-## `0` disables the cap.
-max_files = 5000
-
-## Per-archive cap on `bytes written / archive file size`. A `15` means a 1GB
-## archive may write at most 15GB. `0` disables the cap.
-max_ratio = 15
 
 ## List of passwords to use for encrypted archives. Must be a list of strings.
 ## Use this special format as a password to read more passwords from a file:
@@ -173,6 +166,8 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## Optional override of the global max_bytes for this Starr instance.
+# max_bytes = "75GB"
 
 ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
@@ -300,6 +295,14 @@ passwords = []
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
+## Optional override of the global max_bytes for this folder.
+# max_bytes = "75GB"
+## Cap on files, dirs, and symlinks. Default matches Starr (1000). `0` uses that default.
+## A negative number is unlimited.
+# max_files = 1000
+## Cap on written bytes / archive size. Default matches Starr (5). `0` uses that default.
+## A negative number is unlimited.
+# max_ratio = 5
 ## Maximum nested archives from this folder's extras pass. Default matches Starr (8).
 ## `0` uses the default. A negative number is unlimited.
 # max_nested = 8

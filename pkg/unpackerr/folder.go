@@ -40,8 +40,13 @@ type FolderConfig struct {
 	MaxNested        int            `json:"maxNested"        toml:"max_nested"        xml:"max_nested"        yaml:"maxNested"`
 	ExtrasMaxDepth   int            `json:"extrasMaxDepth"   toml:"extras_max_depth"  xml:"extras_max_depth"  yaml:"extrasMaxDepth"`
 	AllowSymlinks    bool           `json:"allowSymlinks"    toml:"allow_symlinks"    xml:"allow_symlinks"    yaml:"allowSymlinks"`
-	ExcludePaths     []string       `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
-	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
+	MaxBytes         string         `json:"maxBytes"         toml:"max_bytes"         xml:"max_bytes"         yaml:"maxBytes"`
+	MaxFiles         int            `json:"maxFiles"         toml:"max_files"         xml:"max_files"         yaml:"maxFiles"`
+	MaxRatio         float64        `json:"maxRatio"         toml:"max_ratio"         xml:"max_ratio"         yaml:"maxRatio"`
+	maxBytes         uint64
+	maxBytesSet      bool
+	ExcludePaths     []string `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
+	Path             string   `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
 
 // Folders holds all known (created) folders in all watch paths.
@@ -101,6 +106,24 @@ func (u *Unpackerr) validateFolders() error {
 		if u.Folders[idx].ExtrasMaxDepth == 0 {
 			u.Folders[idx].ExtrasMaxDepth = defaultExtrasMaxDepth
 		}
+
+		if u.Folders[idx].MaxFiles == 0 {
+			u.Folders[idx].MaxFiles = defaultMaxFiles
+		}
+
+		if u.Folders[idx].MaxRatio == 0 {
+			u.Folders[idx].MaxRatio = defaultMaxRatio
+		}
+
+		n, set, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		if err != nil {
+			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
+		}
+
+		if set {
+			u.Folders[idx].maxBytes = n
+			u.Folders[idx].maxBytesSet = true
+		}
 	}
 
 	return nil
@@ -114,9 +137,9 @@ func (u *Unpackerr) logFolders() {
 		}
 
 		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
+			"log_file:%v move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
 			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, u.Folder.Buffer)
 	} else {
 		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
@@ -127,9 +150,9 @@ func (u *Unpackerr) logFolders() {
 			}
 
 			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
-				"move_back:%v isos:%v nested:%d extras_depth:%d symlinks:%v",
+				"move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
 				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks)
 		}
 	}
@@ -372,6 +395,9 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		Path:             name,
 		ExcludeSuffix:    exclude,
 		AllowSymlinks:    folder.config.AllowSymlinks,
+		MaxBytes:         resolvedMaxBytes(folder.config.maxBytesSet, folder.config.maxBytes, u.bytesCap),
+		MaxFiles:         folder.config.MaxFiles,
+		MaxRatio:         folder.config.MaxRatio,
 		MaxNested:        folder.config.MaxNested,
 		ExtrasMaxDepth:   folder.config.ExtrasMaxDepth,
 		TempFolder:       !folder.config.MoveBack,

@@ -35,9 +35,9 @@ type Extract struct {
 	// Snapshot once per queue item; retries must not fold in leftovers that
 	// failed to clear.
 	PreFiles map[string]os.FileInfo
-	// NoRetry is set when remnant_action=off leaves a blocker; EXTRACTFAILED
-	// must not re-enter the retry loop or be promoted to DELETED (that
-	// bounces a still-completed Starr item back to WAITING).
+	// NoRetry is set for limit errors, remnant_action=off, or exhausted retries.
+	// EXTRACTFAILED must not re-enter the retry loop or be promoted to DELETED
+	// (that bounces a still-completed Starr item back to WAITING).
 	NoRetry bool
 	// MaxBytes is the resolved byte cap for this Starr item (0 = unlimited).
 	MaxBytes uint64
@@ -224,10 +224,12 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				item.App, elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
 		case item.Status == EXTRACTFAILED && item.Retries >= u.maxRetries():
-			// Retries exhausted — clean up to prevent the item from staying in the map forever.
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
+			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
+			// would bounce a still-completed Starr item back to WAITING.
+			item.NoRetry = true
+			u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTFAILED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
-				item.App, item.Retries, u.MaxRetries, name)
+				item.App, item.Retries, u.maxRetries(), name)
 		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
 			elapsed >= staleItemTimeout:
 			// Safety net: items stuck at intermediate states for too long are cleaned up

@@ -308,6 +308,32 @@ func TestHandleXtractrCallbackLimitNoRetry(t *testing.T) {
 	}
 }
 
+func TestCheckExtractDoneExhaustedStaysFailed(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	now := time.Now()
+	unpack.Map["stuck"] = &Extract{
+		App:     starr.Sonarr,
+		Status:  EXTRACTFAILED,
+		Retries: unpack.maxRetries(),
+		Updated: now.Add(-time.Hour),
+	}
+
+	unpack.checkExtractDone(now)
+
+	item := unpack.Map["stuck"]
+	if item == nil || item.Status != EXTRACTFAILED || !item.NoRetry {
+		t.Fatalf("exhausted retries must stay EXTRACTFAILED: %+v", item)
+	}
+
+	unpack.checkExtractDone(now.Add(time.Hour))
+
+	if unpack.Map["stuck"].Status != EXTRACTFAILED {
+		t.Fatalf("later tick must not bounce to %s", unpack.Map["stuck"].Status.Desc())
+	}
+}
+
 func TestParseExtractMaxBytes(t *testing.T) {
 	t.Parallel()
 

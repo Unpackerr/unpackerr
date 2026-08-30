@@ -402,7 +402,10 @@ jobs:
           rpmdists: el/6
           debdists: ubuntu/focal
       - name: Upload to unstable.golift.io
-        if: env.CHANNEL == 'unstable'
+        # Do NOT use env.CHANNEL here: the step-level CHANNEL: unstable below
+        # is visible to this step's own `if:`, so the nightly schedule ran this
+        # and fatals on the missing DMG (no Darwin split on --nightly).
+        if: needs.channel.outputs.channel == 'unstable'
         env:
           UNSTABLE_UPLOAD_KEY: ${{ secrets.UNSTABLE_UPLOAD_KEY }}
           CHANNEL: unstable

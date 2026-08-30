@@ -212,9 +212,31 @@ source:
 
 archives:
   - id: default
-    ids: [unpackerr, unpackerr-darwin]
+    ids: [unpackerr]
     formats: [tar.gz]
-    # Flat tarball for GitHub. Homebrew installs the notarized DMG, not this archive.
+    # Flat tarball for GitHub and nFPM/Docker inputs.
+    wrap_in_directory: false
+    files:
+      - LICENSE
+      - README.md
+      - README.html
+      - src: examples/unpackerr.conf.example
+        dst: unpackerr.conf.example
+      - src: unpackerr.1.gz
+        dst: unpackerr.1.gz
+      - src: examples/MANUAL.html
+        dst: unpackerr-manual.html
+        info:
+          mode: 0644
+      - src: examples/docker-compose.yml
+        dst: docker-compose.yml
+  # The Homebrew cask gets its own Darwin archive. The cask pipe only matches
+  # UploadableArchive/UploadableBinary artifacts that replace the single-arch
+  # binaries (see internal/pipe/cask in goreleaser); the DMG artifact (type
+  # DMG, Replaces: false) can never match, and v0.16.0 fatalled on it.
+  - id: darwin
+    ids: [unpackerr-darwin]
+    formats: [tar.gz]
     wrap_in_directory: false
     files:
       - LICENSE
@@ -487,12 +509,14 @@ aur_sources:
 
 homebrew_casks:
   - name: unpackerr
-    # Notarized DMG (macos_native signs unpackerr-app / unpackerr-dmg). The
-    # unsigned darwin tar.gz (ids: default) is GitHub-only; Gatekeeper rejects it.
-    ids: [unpackerr-dmg]
-    app: Unpackerr.app
+    # The universal darwin tar.gz (id: darwin). The cask pipe cannot consume
+    # DMG/App Bundle artifacts at all (filters: UploadableArchive or
+    # UploadableBinary, OnlyReplacingUnibins), so the notarized DMG stays a
+    # manual-install release asset only; brew's curl does not set the
+    # quarantine xattr, so the plain binary runs like the pre-GoReleaser cask.
+    ids: [darwin]
     binaries:
-      - '#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr'
+      - unpackerr
     skip_upload: "{{ .IsNightly }}"
     repository:
       owner: golift
@@ -515,8 +539,7 @@ homebrew_casks:
     hooks:
       post:
         install: |
-          staged_app = "#{staged_path}/Unpackerr.app"
-          conf_src = "#{staged_app}/Contents/Resources/unpackerr.conf.example"
+          conf_src = "#{staged_path}/unpackerr.conf.example"
           conf_dir = HOMEBREW_PREFIX/"etc/unpackerr"
           conf_dir.mkpath
           FileUtils.cp conf_src, conf_dir/"unpackerr.conf.example"
@@ -524,12 +547,12 @@ homebrew_casks:
           FileUtils.cp conf_src, conf_dir/"unpackerr.conf" unless had_conf
           man1 = HOMEBREW_PREFIX/"share/man/man1"
           man1.mkpath
-          FileUtils.cp "#{staged_app}/Contents/Resources/unpackerr.1.gz", man1/"unpackerr.1.gz"
+          FileUtils.cp "#{staged_path}/unpackerr.1.gz", man1/"unpackerr.1.gz"
           (HOMEBREW_PREFIX/"var/log").mkpath
           label = "io.golift.unpackerr"
           agent = Pathname.new(Dir.home)/"Library/LaunchAgents/#{label}.plist"
           agent.dirname.mkpath
-          binary = "#{appdir}/Unpackerr.app/Contents/MacOS/unpackerr"
+          binary = HOMEBREW_PREFIX/"bin/unpackerr"
           conf = conf_dir/"unpackerr.conf"
           log = HOMEBREW_PREFIX/"var/log/unpackerr.log"
           agent.write <<~XML
@@ -571,8 +594,10 @@ homebrew_casks:
       Restart: launchctl kickstart -k gui/$(id -u)/io.golift.unpackerr
       Stop:    launchctl bootout gui/$(id -u)/io.golift.unpackerr
       (brew services does not manage casks.)
-      Menu bar: open Unpackerr.app (do not also run the LaunchAgent).
-      The LaunchAgent runs the signed CLI inside the app (no menu bar).
+      Menu bar: run unpackerr from a shell (do not also run the LaunchAgent).
+      The LaunchAgent runs unpackerr headless (no menu bar).
+      For a signed/notarized Unpackerr.app, download Unpackerr.dmg from the
+      GitHub release instead of brew.
       The manual explains the config file options: man unpackerr
 
 checksum:
@@ -585,9 +610,11 @@ signs:
   # embedded signatures; pacman wants a sidecar.
   - id: archlinux
     artifacts: package
-    # Merge artifact filters do not load sprig (hasSuffix is undefined there).
-    # eq is a Go template builtin; Extra.Format is archlinux/deb/rpm.
-    if: '{{ eq .Format "archlinux" }}'
+    # Merge artifact filters do not load sprig (hasSuffix is undefined there)
+    # and the artifact map has no Format key (eq .Format fatals "map has no
+    # entry for key" and silently skips every package). Use ArtifactExt:
+    # nFPM stores the conventional extension (.deb / .rpm / .pkg.tar.zst).
+    if: '{{ eq .ArtifactExt ".pkg.tar.zst" }}'
 
 release:
   disable: "{{ .IsNightly }}"

@@ -23,15 +23,15 @@ import (
 
 const (
 	defaultMaxRetries       = 3
-	defaultMaxFiles         = 1000 // Starr cap; folder watcher default.
-	defaultMaxRatio         = 5.0  // Starr cap; folder watcher default.
+	defaultMaxFiles         = 1000 // Starr cap. Folders default to 0 (unlimited).
+	defaultMaxRatio         = 5.0  // Starr cap. Folders default to 0 (unlimited).
 	defaultSonarrMaxBytes   = "20GB"
 	defaultRadarrMaxBytes   = "75GB"
 	defaultLidarrMaxBytes   = "1GB"
 	defaultReadarrMaxBytes  = "1GB"
 	defaultWhisparrMaxBytes = "75GB" // same content class as Radarr
-	defaultMaxNested        = 8      // Starr extras cap; folder watcher default.
-	defaultExtrasMaxDepth   = 3      // Starr extras walk; folder watcher default.
+	defaultMaxNested        = 8      // Starr extras cap. Folders default to 0 (unlimited).
+	defaultExtrasMaxDepth   = 3      // Starr extras walk. Folders default to 0 (unlimited).
 	defaultFileMode         = 0o644
 	defaultLogFileMode      = 0o600
 	defaultDirMode          = 0o755

@@ -99,22 +99,6 @@ func (u *Unpackerr) validateFolders() error {
 			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
 
-		if u.Folders[idx].MaxNested == 0 {
-			u.Folders[idx].MaxNested = defaultMaxNested
-		}
-
-		if u.Folders[idx].ExtrasMaxDepth == 0 {
-			u.Folders[idx].ExtrasMaxDepth = defaultExtrasMaxDepth
-		}
-
-		if u.Folders[idx].MaxFiles == 0 {
-			u.Folders[idx].MaxFiles = defaultMaxFiles
-		}
-
-		if u.Folders[idx].MaxRatio == 0 {
-			u.Folders[idx].MaxRatio = defaultMaxRatio
-		}
-
 		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
 		if err != nil {
 			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)

@@ -311,18 +311,18 @@ passwords = []
 ## Per-archive uncompressed-byte cap for this folder. Empty is unlimited
 ## (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
 # max_bytes = ""
-## Cap on files, directories, and symlinks created during extract. Starr apps
-## always use 1000. `0` uses that same default. A negative number is unlimited.
-# max_files = 1000
-## Cap on `bytes written / archive file size`. Starr apps always use 5.
-## `0` uses that same default. A negative number is unlimited.
-# max_ratio = 5
+## Cap on files, directories, and symlinks created during extract. Folder
+## watcher default is unlimited (`0`). Starr apps always use 1000.
+# max_files = 0
+## Cap on `bytes written / archive file size`. Folder watcher default is
+## unlimited (`0`). Starr apps always use 5.
+# max_ratio = 0
 ## Cap on archives extracted from this folder's output (one extras pass).
-## Starr apps always use 8. `0` uses that same default. A negative number is unlimited.
-# max_nested = 8
-## Walk depth for the extras pass. Starr apps always use 3. `0` uses that
-## same default. A negative number is unlimited.
-# extras_max_depth = 3
+## Folder watcher default is unlimited (`0`). Starr apps always use 8.
+# max_nested = 0
+## Walk depth for the extras pass. Folder watcher default is unlimited (`0`).
+## Starr apps always use 3.
+# extras_max_depth = 0
 ## When true, the initial archive search may include symlink-named files.
 ## Starr apps never allow this. The extras pass never follows archive-member zip links.
 # allow_symlinks = false
@@ -397,4 +397,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 AUG 2026 07:44 UTC
+## => Content Auto Generated, 30 AUG 2026 07:52 UTC

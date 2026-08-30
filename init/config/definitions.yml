@@ -670,58 +670,58 @@ sections:
           (folder watcher is uncapped by default). `0` or `0B` is also unlimited.
       - name: max_files
         envvar: MAX_FILES
-        default: 1000
+        default: 0
         recommend:
           - name: Unlimited
-            value: -1
+            value: 0
           - value: 1000
           - value: 5000
           - value: 10000
-        short: Stop after this many files, dirs, and symlinks. Starr apps always use 1000.
+        short: Stop after this many files, dirs, and symlinks. `0` is unlimited.
         desc: |
-          Cap on files, directories, and symlinks created during extract. Starr apps
-          always use 1000. `0` uses that same default. A negative number is unlimited.
+          Cap on files, directories, and symlinks created during extract. Folder
+          watcher default is unlimited (`0`). Starr apps always use 1000.
       - name: max_ratio
         envvar: MAX_RATIO
-        default: 5
+        default: 0
         recommend:
           - name: Unlimited
-            value: -1
+            value: 0
           - value: 5
           - value: 10
           - value: 15
-        short: Stop when written bytes exceed this times the archive size. Starr apps always use 5.
+        short: Stop when written bytes exceed this times the archive size. `0` is unlimited.
         desc: |
-          Cap on `bytes written / archive file size`. Starr apps always use 5.
-          `0` uses that same default. A negative number is unlimited.
+          Cap on `bytes written / archive file size`. Folder watcher default is
+          unlimited (`0`). Starr apps always use 5.
       - name: max_nested
         envvar: MAX_NESTED
-        default: 8
+        default: 0
         recommend:
           - name: Unlimited
-            value: -1
+            value: 0
           - value: 8
           - value: 16
           - value: 32
           - value: 50
-        short: Stop after this many nested archives from this folder's extras pass.
+        short: Stop after this many nested archives from this folder's extras pass. `0` is unlimited.
         desc: |
           Cap on archives extracted from this folder's output (one extras pass).
-          Starr apps always use 8. `0` uses that same default. A negative number is unlimited.
+          Folder watcher default is unlimited (`0`). Starr apps always use 8.
       - name: extras_max_depth
         envvar: EXTRAS_MAX_DEPTH
-        default: 3
+        default: 0
         recommend:
           - name: Unlimited
-            value: -1
+            value: 0
           - value: 2
           - value: 3
           - value: 8
           - value: 16
-        short: How deep extras may walk this folder's extract output.
+        short: How deep extras may walk this folder's extract output. `0` is unlimited.
         desc: |
-          Walk depth for the extras pass. Starr apps always use 3. `0` uses that
-          same default. A negative number is unlimited.
+          Walk depth for the extras pass. Folder watcher default is unlimited (`0`).
+          Starr apps always use 3.
       - name: allow_symlinks
         envvar: ALLOW_SYMLINKS
         default: false

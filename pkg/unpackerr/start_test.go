@@ -243,12 +243,12 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 		t.Fatalf("validate: %v", err)
 	}
 
-	if unpack.Folders[0].MaxNested != defaultMaxNested ||
-		unpack.Folders[0].ExtrasMaxDepth != defaultExtrasMaxDepth ||
-		unpack.Folders[0].MaxFiles != defaultMaxFiles ||
-		unpack.Folders[0].MaxRatio != defaultMaxRatio ||
+	if unpack.Folders[0].MaxNested != 0 ||
+		unpack.Folders[0].ExtrasMaxDepth != 0 ||
+		unpack.Folders[0].MaxFiles != 0 ||
+		unpack.Folders[0].MaxRatio != 0 ||
 		unpack.Folders[0].maxBytes != 0 {
-		t.Fatalf("unset defaults: %+v", unpack.Folders[0])
+		t.Fatalf("unset must stay unlimited: %+v", unpack.Folders[0])
 	}
 
 	if unpack.Folders[1].MaxNested != 32 || unpack.Folders[1].ExtrasMaxDepth != 6 || !unpack.Folders[1].AllowSymlinks {

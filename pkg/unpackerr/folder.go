@@ -37,6 +37,9 @@ type FolderConfig struct {
 	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
 	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
 	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
+	MaxNested        int            `json:"maxNested"        toml:"max_nested"        xml:"max_nested"        yaml:"maxNested"`
+	ExtrasMaxDepth   int            `json:"extrasMaxDepth"   toml:"extras_max_depth"  xml:"extras_max_depth"  yaml:"extrasMaxDepth"`
+	AllowSymlinks    bool           `json:"allowSymlinks"    toml:"allow_symlinks"    xml:"allow_symlinks"    yaml:"allowSymlinks"`
 	ExcludePaths     []string       `json:"exclude_paths"    toml:"exclude_paths"     xml:"exclude_path"      yaml:"exclude_paths"`
 	Path             string         `json:"path"             toml:"path"              xml:"path"              yaml:"path"`
 }
@@ -90,6 +93,14 @@ func (u *Unpackerr) validateFolders() error {
 			// If delete after wasn't set, then set it to 10 minutes.
 			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
+
+		if u.Folders[idx].MaxNested == 0 {
+			u.Folders[idx].MaxNested = defaultMaxNested
+		}
+
+		if u.Folders[idx].ExtrasMaxDepth == 0 {
+			u.Folders[idx].ExtrasMaxDepth = defaultExtrasMaxDepth
+		}
 	}
 
 	return nil
@@ -103,9 +114,10 @@ func (u *Unpackerr) logFolders() {
 		}
 
 		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v event_buffer:%d",
+			"log_file:%v move_back:%v isos:%v nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, u.Folder.Buffer)
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, u.Folder.Buffer)
 	} else {
 		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
 
@@ -114,9 +126,11 @@ func (u *Unpackerr) logFolders() {
 				epath = " extract to: " + folder.ExtractPath
 			}
 
-			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v move_back:%v isos:%v",
+			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
+				"move_back:%v isos:%v nested:%d extras_depth:%d symlinks:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs)
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks)
 		}
 	}
 }
@@ -336,7 +350,11 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	exclude := folderExcludeSuffixes(name, folder.config)
 
 	if folder.config.MoveBack {
-		found := xtractr.FindCompressedFiles(xtractr.Filter{Path: name, ExcludeSuffix: exclude})
+		found := xtractr.FindCompressedFiles(xtractr.Filter{
+			Path:          name,
+			ExcludeSuffix: exclude,
+			AllowSymlinks: folder.config.AllowSymlinks,
+		})
 
 		snap, err := keepDirSnapshot(folder.preFiles, archiveSnapshotPaths(name, found)...)
 		if err != nil {
@@ -353,6 +371,9 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		Name:             name,
 		Path:             name,
 		ExcludeSuffix:    exclude,
+		AllowSymlinks:    folder.config.AllowSymlinks,
+		MaxNested:        folder.config.MaxNested,
+		ExtrasMaxDepth:   folder.config.ExtrasMaxDepth,
 		TempFolder:       !folder.config.MoveBack,
 		ExtractTo:        folder.config.ExtractPath,
 		DeleteOrig:       false,

@@ -212,6 +212,33 @@ func TestExtractLimitsUnlimited(t *testing.T) {
 	}
 }
 
+func TestValidateFoldersExtrasDefaults(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Folders = []*FolderConfig{
+		{Path: "unset"},
+		{Path: "custom", MaxNested: 32, ExtrasMaxDepth: 6, AllowSymlinks: true},
+		{Path: "unlimited", MaxNested: -1, ExtrasMaxDepth: -1},
+	}
+
+	if err := unpack.validateFolders(); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+
+	if unpack.Folders[0].MaxNested != defaultMaxNested || unpack.Folders[0].ExtrasMaxDepth != defaultExtrasMaxDepth {
+		t.Fatalf("unset defaults: %+v", unpack.Folders[0])
+	}
+
+	if unpack.Folders[1].MaxNested != 32 || unpack.Folders[1].ExtrasMaxDepth != 6 || !unpack.Folders[1].AllowSymlinks {
+		t.Fatalf("custom: %+v", unpack.Folders[1])
+	}
+
+	if unpack.Folders[2].MaxNested != -1 || unpack.Folders[2].ExtrasMaxDepth != -1 {
+		t.Fatalf("unlimited: %+v", unpack.Folders[2])
+	}
+}
+
 func TestParseExtractMaxBytes(t *testing.T) {
 	t.Parallel()
 

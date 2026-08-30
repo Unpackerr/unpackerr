@@ -300,6 +300,14 @@ passwords = []
 # delete_after = "10m"
 ## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
 # disable_recursion = false
+## Maximum nested archives from this folder's extras pass. Default matches Starr (8).
+## `0` uses the default. A negative number is unlimited.
+# max_nested = 8
+## How deep extras may walk extract output. Default matches Starr (3).
+## `0` uses the default. A negative number is unlimited.
+# extras_max_depth = 3
+## Include symlink-named archives in the initial search. Default is false.
+# allow_symlinks = false
 ## Delete extracted files after successful extraction? delete_after must be greater than 0.
 # delete_files = false
 ## Delete original items after successful extraction? delete_after must be greater than 0.

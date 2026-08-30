@@ -24,33 +24,35 @@ import (
 )
 
 const (
-	defaultMaxRetries  = 3
-	defaultMaxFiles    = 5000
-	defaultMaxRatio    = 15
-	defaultMaxBytes    = "75GB"
-	defaultFileMode    = 0o644
-	defaultLogFileMode = 0o600
-	defaultDirMode     = 0o755
-	defaultTimeout     = 10 * time.Second
-	minimumInterval    = 15 * time.Second
-	defaultInterval    = 2 * time.Minute
-	cleanerInterval    = 5 * time.Second
-	defaultRetryDelay  = 5 * time.Minute
-	defaultStartDelay  = time.Minute
-	minimumDeleteDelay = time.Second
-	defaultDeleteDelay = 5 * time.Minute
-	staleItemTimeout   = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory     = 10             // items kept in history.
-	suffix             = "_unpackerred" // suffix for unpacked folders.
-	updateChanBuf      = 100            // Size of xtractr callback update channels.
-	defaultFolderBuf   = 20000          // Channel queue size for file system events.
-	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
-	defaultLogFileMb   = 10
-	defaultLogFiles    = 10
-	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
-	windows            = "windows"
-	bits8              = 8
-	base32             = 32
+	defaultMaxRetries     = 3
+	defaultMaxFiles       = 5000
+	defaultMaxRatio       = 15
+	defaultMaxBytes       = "75GB"
+	defaultMaxNested      = 8 // Starr extras cap; folder watcher default.
+	defaultExtrasMaxDepth = 3 // Starr extras walk; folder watcher default.
+	defaultFileMode       = 0o644
+	defaultLogFileMode    = 0o600
+	defaultDirMode        = 0o755
+	defaultTimeout        = 10 * time.Second
+	minimumInterval       = 15 * time.Second
+	defaultInterval       = 2 * time.Minute
+	cleanerInterval       = 5 * time.Second
+	defaultRetryDelay     = 5 * time.Minute
+	defaultStartDelay     = time.Minute
+	minimumDeleteDelay    = time.Second
+	defaultDeleteDelay    = 5 * time.Minute
+	staleItemTimeout      = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
+	defaultHistory        = 10             // items kept in history.
+	suffix                = "_unpackerred" // suffix for unpacked folders.
+	updateChanBuf         = 100            // Size of xtractr callback update channels.
+	defaultFolderBuf      = 20000          // Channel queue size for file system events.
+	minimumFolderBuf      = 1000           // Minimum size of the folder event buffer.
+	defaultLogFileMb      = 10
+	defaultLogFiles       = 10
+	helpLink              = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
+	windows               = "windows"
+	bits8                 = 8
+	base32                = 32
 )
 
 // Unpackerr stores all the running data.
@@ -414,7 +416,7 @@ func (u *Unpackerr) Run() {
 	}
 }
 
-// extractLimits are the xtractr queue-wide zip-bomb guards. 0 is unlimited.
+// extractLimits are the xtractr per-archive zip-bomb guards. 0 is unlimited.
 type extractLimits struct {
 	bytes uint64
 	files int

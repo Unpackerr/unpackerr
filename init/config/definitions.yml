@@ -438,7 +438,8 @@ sections:
         short: Stop an archive when written bytes exceed this times the archive size. `0` is unlimited.
         desc: |
           Per-archive cap on `bytes written / archive file size`. A `15` means a 1GB
-          archive may write at most 15GB. `0` disables the cap.
+          archive may write at most 15GB. `0` disables the cap. Nested extras share
+          the tighter leftover among sibling archives in the same folder.
       - name: passwords
         envvar: PASSWORD_
         default: []
@@ -682,6 +683,43 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true disables extracting archives inside archives.
         desc: Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+      - name: max_nested
+        envvar: MAX_NESTED
+        default: 8
+        recommend:
+          - name: Unlimited
+            value: -1
+          - value: 8
+          - value: 16
+          - value: 32
+          - value: 50
+        short: Stop after this many nested archives from this folder's extras pass.
+        desc: |
+          Cap on archives extracted from this folder's output (one extras pass).
+          Starr apps always use 8. `0` uses that same default. A negative number is unlimited.
+      - name: extras_max_depth
+        envvar: EXTRAS_MAX_DEPTH
+        default: 3
+        recommend:
+          - name: Unlimited
+            value: -1
+          - value: 2
+          - value: 3
+          - value: 8
+          - value: 16
+        short: How deep extras may walk this folder's extract output.
+        desc: |
+          Walk depth for the extras pass. Starr apps always use 3. `0` uses that
+          same default. A negative number is unlimited.
+      - name: allow_symlinks
+        envvar: ALLOW_SYMLINKS
+        default: false
+        kind: bool
+        recommend: *BOOLEAN
+        short: Include symlink-named archives in the initial search.
+        desc: |
+          When true, the initial archive search may include symlink-named files.
+          Starr apps never allow this. The extras pass never follows archive-member zip links.
       - name: delete_files
         envvar: DELETE_FILES
         default: false

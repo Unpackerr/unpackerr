@@ -1,0 +1,14 @@
+# Fresh install only. Upgrades must not reset config ownership for admins
+# who overrode User=/Group= in a systemd drop-in.
+post_install() {
+  if command -v systemd-sysusers >/dev/null; then
+    systemd-sysusers unpackerr.conf
+  fi
+  if [ -d /etc/unpackerr ]; then
+    chown -R unpackerr:unpackerr /etc/unpackerr
+  fi
+}
+
+post_upgrade() {
+  :
+}

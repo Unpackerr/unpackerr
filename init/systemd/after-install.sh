@@ -8,11 +8,19 @@ OS="$(uname -s)"
 logdir='/var/log/unpackerr'
 [ "${OS}" = "Linux" ] || logdir='/usr/local/var/log/unpackerr'
 
+if [ -d /usr/local/etc/unpackerr ]; then
+  chown -R unpackerr: /usr/local/etc/unpackerr
+fi
+
+if [ -d /etc/unpackerr ]; then
+  chown -R unpackerr: /etc/unpackerr
+fi
+
 if [ ! -d "${logdir}" ]; then
   mkdir "${logdir}"
-  chown unpackerr: "${logdir}"
-  chmod 0755 "${logdir}"
 fi
+chown unpackerr: "${logdir}"
+chmod 0755 "${logdir}"
 
 if [ -x "/bin/systemctl" ]; then
   # Reload and restart - this starts the application as user nobody.

@@ -1,2 +1,8 @@
-# systemd-tmpfiles.d — log dir for User=unpackerr (see unpackerr.service).
+# systemd-tmpfiles.d — config and log dirs for User=unpackerr (see unpackerr.service).
+# Chown packaged conf files before the directory. systemd rejects an unpackerr-owned
+# directory that still contains root-owned files ("unsafe path transition").
+z /etc/unpackerr/unpackerr.conf 0644 unpackerr unpackerr -
+z /etc/unpackerr/unpackerr.conf.example 0644 unpackerr unpackerr -
+z /etc/unpackerr 0755 unpackerr unpackerr -
 d /var/log/unpackerr 0755 unpackerr unpackerr -
+z /var/log/unpackerr 0755 unpackerr unpackerr -

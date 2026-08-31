@@ -153,7 +153,7 @@ builds:
       - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
     hooks:
       post:
-        - cmd: bash init/windows/signexe.sh "{{ .Path }}"
+        - cmd: bash .github/scripts/signexe.sh "{{ .Path }}"
 
 universal_binaries:
   - id: unpackerr-darwin

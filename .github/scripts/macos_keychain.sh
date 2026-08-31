@@ -23,9 +23,8 @@ password="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
 # one-line (or wrapped) base64. macOS openssl base64 -d without -A yields
 # empty files for long lines; -A treats the whole buffer as one line.
 write_secret() {
-  local dest=$1 envname=$2
-  local raw s compact mod
-  raw="${!envname-}"
+  local dest=$1 envname=$2 raw=$3
+  local s compact mod
   s="${raw//$'\r'/}"
   s="${s#"${s%%[![:space:]]*}"}"
   s="${s%"${s##*[![:space:]]}"}"
@@ -59,8 +58,8 @@ write_secret() {
   echo "${envname}: ${#raw} chars -> $(wc -c < "${dest}" | tr -d ' ') bytes"
 }
 
-write_secret "${cert}" MACOS_SIGN_P12
-write_secret "${key}" MACOS_NOTARY_KEY
+write_secret "${cert}" MACOS_SIGN_P12 "${MACOS_SIGN_P12}"
+write_secret "${key}" MACOS_NOTARY_KEY "${MACOS_NOTARY_KEY}"
 chmod 600 "${cert}" "${key}"
 echo "p12 $(wc -c < "${cert}" | tr -d ' ') bytes ($(file -b "${cert}"))"
 echo "p8 $(wc -c < "${key}" | tr -d ' ') bytes ($(file -b "${key}"))"

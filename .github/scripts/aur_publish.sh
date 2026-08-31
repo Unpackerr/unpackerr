@@ -51,7 +51,13 @@ fi
 
 tag="${TAG:-v${version}}"
 tarball="${dir}/${pkgname}-${version}.tar.gz"
-if [ ! -f "${tarball}" ]; then
+if [ -f "${tarball}" ]; then
+  echo "using ${tarball}"
+elif [ -n "${GITHUB_ACTIONS:-}" ]; then
+  echo "missing ${tarball}; continue --merge should have created it at dist root" >&2
+  ls -l "${dir}"/*.tar.gz 2>/dev/null || ls -l "${dir}" >&2 || true
+  exit 1
+else
   echo "missing ${tarball}; downloading ${tag} from GitHub" >&2
   mkdir -p "${dir}"
   curl -fsSL -o "${tarball}" \

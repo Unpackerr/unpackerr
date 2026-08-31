@@ -392,15 +392,6 @@ jobs:
           USER: github-actions
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-      - name: Publish AUR
-        # Source tarball is created by continue --merge. GoReleaser aur_sources
-        # cannot split/merge, so this script pushes PKGBUILD/.SRCINFO after
-        # the GitHub source asset exists.
-        if: needs.channel.outputs.channel == 'release'
-        env:
-          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash .github/scripts/aur_publish.sh dist
       - name: Flatten Linux packages for packagecloud
         if: env.CHANNEL != 'nightly'
         run: |
@@ -420,6 +411,15 @@ jobs:
           packages: dist/
           rpmdists: el/6
           debdists: ubuntu/focal
+      - name: Publish AUR
+        # After packagecloud so a dead aur.archlinux.org cannot skip deb/rpm.
+        # continue --merge writes dist/unpackerr-VERSION.tar.gz; the script
+        # fails in CI if that file is missing (no silent GitHub curl).
+        if: needs.channel.outputs.channel == 'release'
+        env:
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash .github/scripts/aur_publish.sh dist
       - name: Upload to unstable.golift.io
         # Do not use env.CHANNEL: a step-level CHANNEL: unstable is visible to
         # this step's own `if:`, so nightly and tagged releases ran the uploader

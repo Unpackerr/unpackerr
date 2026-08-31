@@ -1,15 +1,21 @@
-# Fresh install only. Upgrades must not reset config ownership for admins
-# who overrode User=/Group= in a systemd drop-in. Name the packaged files
-# instead of chown -R so extra files in the directory keep their owner.
+# Claim packaged config paths that are still root-owned. post_upgrade is a
+# no-op: an admin who overrode User=/Group= has already chowned away from root.
+# Name the packaged files instead of chown -R so extra files keep their owner.
+# Always return 0 so a missing example file cannot fail the pacman transaction.
 post_install() {
   if command -v systemd-sysusers >/dev/null; then
-    systemd-sysusers unpackerr.conf
+    systemd-sysusers unpackerr.conf || true
   fi
   if [ -d /etc/unpackerr ]; then
-    chown unpackerr:unpackerr /etc/unpackerr
-    [ -f /etc/unpackerr/unpackerr.conf ] && chown unpackerr:unpackerr /etc/unpackerr/unpackerr.conf
-    [ -f /etc/unpackerr/unpackerr.conf.example ] && chown unpackerr:unpackerr /etc/unpackerr/unpackerr.conf.example
+    chown unpackerr:unpackerr /etc/unpackerr || true
+    if [ -f /etc/unpackerr/unpackerr.conf ]; then
+      chown unpackerr:unpackerr /etc/unpackerr/unpackerr.conf || true
+    fi
+    if [ -f /etc/unpackerr/unpackerr.conf.example ]; then
+      chown unpackerr:unpackerr /etc/unpackerr/unpackerr.conf.example || true
+    fi
   fi
+  return 0
 }
 
 post_upgrade() {

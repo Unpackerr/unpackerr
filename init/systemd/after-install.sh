@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# This file is used by deb, rpm and BSD packages.
-# FPM/nFPM adds this as the after-install script.
+# This file is used by deb, rpm, nFPM archlinux, and FreeBSD packages.
 #
-# Chown the packaged config files only on a first install. Upgrades must not
-# reset an admin who overrode User=/Group= and chowned the config to match.
-# Name the packaged files instead of chown -R so extra files in the directory
-# (password lists, drop-in confs) keep the ownership the admin set.
+# Claim packaged config paths that are still root-owned. Do not use packager
+# $1/$2 as "first install": nFPM Arch passes the version string, and FreeBSD
+# pkg runs this script with no args on install *and* upgrade. An admin who
+# overrode User=/Group= has already chowned away from root, so we leave them
+# alone. Extra files in the directory are not touched.
 
 OS="$(uname -s)"
 
@@ -18,24 +18,23 @@ else
   logdir=/usr/local/var/log/unpackerr
 fi
 
-# nFPM: deb $1=configure $2=oldver-or-empty; rpm $1=1 install / $1=2 upgrade.
-first_install=0
-if [ "${1:-}" = "1" ] || [ "${1:-}" = "install" ]; then
-  first_install=1
-elif [ "${1:-}" = "configure" ] && [ -z "${2:-}" ]; then
-  first_install=1
-fi
+chown_if_root() {
+  [ -e "$1" ] || return 0
+  uid="$(stat -c '%u' "$1" 2>/dev/null || stat -f '%u' "$1")"
+  [ "${uid}" = 0 ] || return 0
+  chown unpackerr: "$1"
+}
 
-if [ "${first_install}" = 1 ] && [ -d "${confdir}" ]; then
-  chown unpackerr: "${confdir}"
-  [ -f "${confdir}/unpackerr.conf" ] && chown unpackerr: "${confdir}/unpackerr.conf"
-  [ -f "${confdir}/unpackerr.conf.example" ] && chown unpackerr: "${confdir}/unpackerr.conf.example"
-fi
+chown_if_root "${confdir}"
+chown_if_root "${confdir}/unpackerr.conf"
+chown_if_root "${confdir}/unpackerr.conf.example"
 
 if [ ! -d "${logdir}" ]; then
   mkdir "${logdir}"
   chown unpackerr: "${logdir}"
   chmod 0755 "${logdir}"
+else
+  chown_if_root "${logdir}"
 fi
 
 if [ -x "/bin/systemctl" ]; then

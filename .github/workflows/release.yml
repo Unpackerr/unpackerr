@@ -366,6 +366,19 @@ jobs:
           mkdir -p dist/darwin
           tar -xf dist/dist-darwin.tar -C dist/darwin
           rm -f dist/dist-darwin.tar
+      - name: Restore execute bits lost by artifact zip
+        run: |
+          set -euo pipefail
+          # upload-artifact zip forces 0644. dockers_v2 gio.Copy preserves that,
+          # so /unpackerr in the image is not executable (#675).
+          mapfile -t bins < <(find dist/linux -type f -name unpackerr)
+          if [ "${#bins[@]}" -eq 0 ]; then
+            echo "no dist/linux/**/unpackerr binaries" >&2
+            find dist/linux -type f | head >&2 || true
+            exit 1
+          fi
+          chmod 0755 "${bins[@]}"
+          ls -l "${bins[@]}"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro
@@ -378,7 +391,6 @@ jobs:
           GORELEASER_KEY: ${{ secrets.GORELEASER_PRO_KEY }}
           USER: github-actions
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
       - name: Flatten Linux packages for packagecloud
         if: env.CHANNEL != 'nightly'
@@ -399,6 +411,15 @@ jobs:
           packages: dist/
           rpmdists: el/6
           debdists: ubuntu/focal
+      - name: Publish AUR
+        # After packagecloud so a dead aur.archlinux.org cannot skip deb/rpm.
+        # continue --merge writes dist/unpackerr-VERSION.tar.gz; the script
+        # fails in CI if that file is missing (no silent GitHub curl).
+        if: needs.channel.outputs.channel == 'release'
+        env:
+          AUR_DEPLOY_KEY: ${{ secrets.AUR_DEPLOY_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash .github/scripts/aur_publish.sh dist
       - name: Upload to unstable.golift.io
         # Do not use env.CHANNEL: a step-level CHANNEL: unstable is visible to
         # this step's own `if:`, so nightly and tagged releases ran the uploader

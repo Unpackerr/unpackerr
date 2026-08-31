@@ -2,11 +2,13 @@
 
 # This file is used by deb, rpm, nFPM archlinux, and FreeBSD packages.
 #
-# Claim packaged config paths that are still root-owned. Do not use packager
-# $1/$2 as "first install": nFPM Arch passes the version string, and FreeBSD
-# pkg runs this script with no args on install *and* upgrade. An admin who
-# overrode User=/Group= has already chowned away from root, so we leave them
-# alone. Extra files in the directory are not touched.
+# Claim packaged paths that are still root:root. Do not use packager $1/$2 as
+# "first install": nFPM Arch passes the version string, and FreeBSD pkg runs
+# this script with no args on install *and* upgrade.
+#
+# uid 0 alone is not "unclaimed": a User=/Group= override is often
+# root:www-data with 0750/0640. Require uid and gid 0. Skip symlinks so a
+# root-owned link cannot move the chown onto a file outside the config dir.
 
 OS="$(uname -s)"
 
@@ -18,23 +20,24 @@ else
   logdir=/usr/local/var/log/unpackerr
 fi
 
-chown_if_root() {
+chown_if_root_root() {
+  [ -L "$1" ] && return 0
   [ -e "$1" ] || return 0
-  uid="$(stat -c '%u' "$1" 2>/dev/null || stat -f '%u' "$1")"
-  [ "${uid}" = 0 ] || return 0
+  ug="$(stat -c '%u %g' "$1" 2>/dev/null || stat -f '%u %g' "$1")"
+  [ "${ug}" = "0 0" ] || return 0
   chown unpackerr: "$1"
 }
 
-chown_if_root "${confdir}"
-chown_if_root "${confdir}/unpackerr.conf"
-chown_if_root "${confdir}/unpackerr.conf.example"
+chown_if_root_root "${confdir}"
+chown_if_root_root "${confdir}/unpackerr.conf"
+chown_if_root_root "${confdir}/unpackerr.conf.example"
 
 if [ ! -d "${logdir}" ]; then
   mkdir "${logdir}"
   chown unpackerr: "${logdir}"
   chmod 0755 "${logdir}"
 else
-  chown_if_root "${logdir}"
+  chown_if_root_root "${logdir}"
 fi
 
 if [ -x "/bin/systemctl" ]; then

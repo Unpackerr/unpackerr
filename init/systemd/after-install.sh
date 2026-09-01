@@ -7,8 +7,9 @@
 # this script with no args on install *and* upgrade.
 #
 # uid 0 alone is not "unclaimed": a User=/Group= override is often
-# root:www-data with 0750/0640. Require uid and gid 0. Skip symlinks so a
-# root-owned link cannot move the chown onto a file outside the config dir.
+# root:www-data with 0750/0640. Require uid and gid 0. Skip the path if it
+# is a symlink, and skip child claims if the config directory is a symlink,
+# so chown cannot follow a link onto a file outside the packaged tree.
 
 OS="$(uname -s)"
 
@@ -29,8 +30,10 @@ chown_if_root_root() {
 }
 
 chown_if_root_root "${confdir}"
-chown_if_root_root "${confdir}/unpackerr.conf"
-chown_if_root_root "${confdir}/unpackerr.conf.example"
+if [ ! -L "${confdir}" ]; then
+  chown_if_root_root "${confdir}/unpackerr.conf"
+  chown_if_root_root "${confdir}/unpackerr.conf.example"
+fi
 
 if [ ! -d "${logdir}" ]; then
   mkdir "${logdir}"

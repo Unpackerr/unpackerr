@@ -47,6 +47,7 @@ const (
 	defaultHistory          = 10             // items kept in history.
 	suffix                  = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf           = 100            // Size of xtractr callback update channels.
+	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
 	defaultFolderBuf        = 20000          // Channel queue size for file system events.
 	minimumFolderBuf        = 1000           // Minimum size of the folder event buffer.
 	defaultLogFileMb        = 10
@@ -108,7 +109,7 @@ func New() *Unpackerr {
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal, 1),
+		sigChan:  make(chan os.Signal, signalBuf),
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
@@ -153,6 +154,8 @@ func Start() error {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 		return nil                              // don't run anything else.
 	}
+
+	notifySignals(unpackerr.sigChan)
 
 	fileMode, dirMode, msg, err := unpackerr.unmarshalConfig()
 	if err != nil {

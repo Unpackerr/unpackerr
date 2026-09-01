@@ -20,7 +20,6 @@ func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
 		go u.Run()
 
-		notifySignals(u.sigChan)
 		u.waitForExit()
 
 		return
@@ -56,7 +55,6 @@ func (u *Unpackerr) readyTray() {
 
 	u.menu["info"].Disable()
 
-	notifySignals(u.sigChan)
 	go u.watchKillerChannels()
 	go u.watchDebugChannels()
 	go u.Run()

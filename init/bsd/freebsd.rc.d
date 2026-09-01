@@ -45,11 +45,12 @@ unpackerr_precmd() {
 }
 
 unpackerr_reload() {
-  if [ ! -f "${childpidfile}" ]; then
-    echo "${name} not running? (${childpidfile} missing)"
+  pid=$(cat "${childpidfile}" 2>/dev/null)
+  if [ -z "$pid" ]; then
+    echo "${name} not running? (${childpidfile} empty or missing)"
     return 1
   fi
-  kill -HUP "$(cat "${childpidfile}")"
+  kill -HUP "$pid"
 }
 
 # Go!

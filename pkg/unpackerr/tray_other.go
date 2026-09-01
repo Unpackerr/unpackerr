@@ -7,7 +7,6 @@ func (u *Unpackerr) startTray() {
 
 	defer u.Stop() // stop and wait for extractions to finish.
 
-	notifySignals(u.sigChan)
 	u.waitForExit()
 }
 

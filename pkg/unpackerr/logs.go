@@ -195,7 +195,7 @@ func getLogFilePath(logFile, base string) string {
 }
 
 func logFileSize(files, megabytes int) int64 {
-	if files == 0 {
+	if files <= 0 {
 		return rotatorr.NoMaxSize
 	}
 
@@ -218,16 +218,26 @@ func (u *Unpackerr) waitForExit() {
 }
 
 func (u *Unpackerr) reopenLogs() {
+	reopened := true
+
 	if u.rotatorr != nil {
 		if err := u.rotatorr.Reopen(); err != nil {
 			u.Errorf("Reopening log file: %v", err)
+
+			reopened = false
 		}
 	}
 
 	if u.httpLog != nil {
 		if err := u.httpLog.Reopen(); err != nil {
 			u.Errorf("Reopening HTTP log file: %v", err)
+
+			reopened = false
 		}
+	}
+
+	if !reopened {
+		return
 	}
 
 	// After Reopen so this lands in the live file, not the one logrotate just moved.
@@ -276,6 +286,7 @@ func (u *Unpackerr) setupHTTPLogging() {
 
 func (u *Unpackerr) postLogRotate(_, newFile string) {
 	if newFile != "" {
+		// Post runs on rotatorr's dispatch goroutine; a sync Printf deadlocks.
 		go u.Printf("Rotated log file to: %s", newFile)
 	}
 

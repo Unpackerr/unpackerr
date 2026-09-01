@@ -438,7 +438,7 @@ sections:
         envvar: LOG_FILES
         default: 10
         recommend: *NUMBERS
-        short: Log files to keep after rotating. `0` to disable.
+        short: Log files to keep after rotating. `0` disables rotation
         desc: |
           This app automatically rotates logs. Set these to the size and number to keep.
           log_files=0 disables auto-rotation; SIGHUP reopens the HTTP log too.

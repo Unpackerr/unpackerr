@@ -149,13 +149,14 @@ func New() *Unpackerr {
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
-	unpackerr := New().ParseFlags() // Grab CLI args (like config file location).
+	unpackerr := New()
+	notifySignals(unpackerr.sigChan)
+	unpackerr.ParseFlags() // Grab CLI args (like config file location).
+
 	if unpackerr.verReq {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 		return nil                              // don't run anything else.
 	}
-
-	notifySignals(unpackerr.sigChan)
 
 	fileMode, dirMode, msg, err := unpackerr.unmarshalConfig()
 	if err != nil {

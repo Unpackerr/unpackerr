@@ -1,2 +1,6 @@
 # systemd-tmpfiles.d — log dir for User=unpackerr (see unpackerr.service).
+# Do not chown /etc/unpackerr here. systemd-tmpfiles runs on every boot and
+# would reset an admin who overrode User=/Group= (see the unit comments).
+# Config ownership is claimed while the path is still root:root, from
+# after-install.sh (deb/rpm/nFPM/FreeBSD) or unpackerr.install (AUR).
 d /var/log/unpackerr 0755 unpackerr unpackerr -

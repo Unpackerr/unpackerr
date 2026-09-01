@@ -140,12 +140,12 @@ func (u *Unpackerr) setupLogging() {
 	u.LogFile = getLogFilePath(u.LogFile, "unpackerr.log")
 	fileMode, _ := strconv.ParseUint(u.LogFileMode, bits8, base32)
 	rotate := &rotatorr.Config{
-		Filepath: u.LogFile,                     // log file name.
-		FileSize: int64(u.LogFileMb) * megabyte, // megabytes
+		Filepath: u.LogFile,
+		FileSize: logFileSize(u.LogFiles, u.LogFileMb),
 		Rotatorr: &timerotator.Layout{
 			FileCount:  u.LogFiles,
 			PostRotate: u.postLogRotate,
-		}, // number of files to keep.
+		},
 		DirMode:  logsDirMode,
 		FileMode: os.FileMode(fileMode),
 	}
@@ -194,6 +194,47 @@ func getLogFilePath(logFile, base string) string {
 	return logFile
 }
 
+func logFileSize(files, megabytes int) int64 {
+	if files == 0 {
+		return rotatorr.NoMaxSize
+	}
+
+	return int64(megabytes) * megabyte
+}
+
+func (u *Unpackerr) waitForExit() {
+	for {
+		sig := <-u.sigChan
+		if isHangup(sig) {
+			u.reopenLogs()
+
+			continue
+		}
+
+		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, sig)
+
+		return
+	}
+}
+
+func (u *Unpackerr) reopenLogs() {
+	u.Printf("Caught SIGHUP: reopening log files")
+
+	if u.rotatorr != nil {
+		if err := u.rotatorr.Reopen(); err != nil {
+			u.Errorf("Reopening log file: %v", err)
+		}
+	}
+
+	if u.httpLog != nil {
+		if err := u.httpLog.Reopen(); err != nil {
+			u.Errorf("Reopening HTTP log file: %v", err)
+		}
+	}
+
+	u.postLogRotate("", "")
+}
+
 func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
@@ -214,21 +255,23 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 func (u *Unpackerr) setupHTTPLogging() {
 	u.Webserver.LogFile = getLogFilePath(u.Webserver.LogFile, "http.log")
 	rotate := &rotatorr.Config{
-		Filepath: u.Webserver.LogFile,                     // log file name.
-		FileSize: int64(u.Webserver.LogFileMb) * megabyte, // megabytes
+		Filepath: u.Webserver.LogFile,
+		FileSize: logFileSize(u.Webserver.LogFiles, u.Webserver.LogFileMb),
 		Rotatorr: &timerotator.Layout{FileCount: u.Webserver.LogFiles},
 		DirMode:  logsDirMode,
 	}
 
+	u.httpLog = rotatorr.NewMust(rotate)
+
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Quiet && u.Webserver.LogFile != "":
-		u.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+		u.HTTP.SetOutput(io.MultiWriter(u.httpLog, os.Stdout))
 	case !u.Quiet && u.Webserver.LogFile == "":
 		u.HTTP.SetOutput(os.Stdout)
 	case u.Quiet && u.Webserver.LogFile == "":
 		u.HTTP.SetOutput(io.Discard)
 	default: // u.Config.Quiet && u.Webserver.LogFile != ""
-		u.HTTP.SetOutput(rotatorr.NewMust(rotate))
+		u.HTTP.SetOutput(u.httpLog)
 	}
 }
 

@@ -5,9 +5,7 @@ package unpackerr
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -22,8 +20,8 @@ func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
 		go u.Run()
 
-		signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
+		notifySignals(u.sigChan)
+		u.waitForExit()
 
 		return
 	}
@@ -58,6 +56,7 @@ func (u *Unpackerr) readyTray() {
 
 	u.menu["info"].Disable()
 
+	notifySignals(u.sigChan)
 	go u.watchKillerChannels()
 	go u.watchDebugChannels()
 	go u.Run()
@@ -215,7 +214,14 @@ func (u *Unpackerr) watchKillerChannels() {
 	for {
 		select {
 		case sigc := <-u.sigChan:
+			if isHangup(sigc) {
+				u.reopenLogs()
+
+				continue
+			}
+
 			u.Printf("Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, sigc)
+
 			return
 		case <-u.menu["exit"].Clicked():
 			u.Printf("Need help? %s\n=====> Exiting! User Requested", helpLink)
@@ -226,6 +232,10 @@ func (u *Unpackerr) watchKillerChannels() {
 
 func (u *Unpackerr) rotateLogs() {
 	u.Printf("User Requested: Rotate Log File!")
+
+	if u.rotatorr == nil {
+		return
+	}
 
 	if _, err := u.rotatorr.Rotate(); err != nil {
 		u.Errorf("Rotating Log Files: %v", err)

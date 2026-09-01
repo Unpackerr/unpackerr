@@ -265,7 +265,9 @@ sections:
           The alternative is to use syslog to log the output of the application to a file.
           Default is no log file; this is unset.
           Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
-          log_files=0 turns off auto-rotation.
+          log_files=0 turns off auto-rotation so logrotate can own the file.
+          After logrotate renames the live file, send SIGHUP (`systemctl reload unpackerr`)
+          to close and reopen it. Use logrotate `create` plus postrotate HUP, not copytruncate.
           Default files is 10 and size(mb) is 10 Megabytes.
       - name: log_files
         envvar: LOG_FILES
@@ -437,7 +439,9 @@ sections:
         default: 10
         recommend: *NUMBERS
         short: Log files to keep after rotating. `0` to disable.
-        desc: This app automatically rotates logs. Set these to the size and number to keep.
+        desc: |
+          This app automatically rotates logs. Set these to the size and number to keep.
+          log_files=0 disables auto-rotation; SIGHUP reopens the HTTP log too.
       - name: log_file_mb
         envvar: LOG_FILE_MB
         default: 10

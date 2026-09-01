@@ -33,6 +33,8 @@ load_rc_config ${name}
 # This runs `daemon` as the `unpackerr_user` user using `chroot`.
 command="/usr/sbin/daemon"
 command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
+extra_commands="reload"
+sig_reload="HUP"
 
 start_precmd=${name}_precmd
 unpackerr_precmd() {

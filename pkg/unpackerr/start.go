@@ -73,6 +73,7 @@ type Unpackerr struct {
 	workChan chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
+	httpLog  *rotatorr.Logger
 	menu     map[string]ui.MenuItem
 }
 
@@ -107,7 +108,7 @@ func New() *Unpackerr {
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal),
+		sigChan:  make(chan os.Signal, 1),
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),

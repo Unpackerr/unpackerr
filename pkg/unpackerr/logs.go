@@ -218,8 +218,6 @@ func (u *Unpackerr) waitForExit() {
 }
 
 func (u *Unpackerr) reopenLogs() {
-	u.Printf("Caught SIGHUP: reopening log files")
-
 	if u.rotatorr != nil {
 		if err := u.rotatorr.Reopen(); err != nil {
 			u.Errorf("Reopening log file: %v", err)
@@ -232,7 +230,8 @@ func (u *Unpackerr) reopenLogs() {
 		}
 	}
 
-	u.postLogRotate("", "")
+	// After Reopen so this lands in the live file, not the one logrotate just moved.
+	u.Printf("Caught SIGHUP: reopened log files")
 }
 
 func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {

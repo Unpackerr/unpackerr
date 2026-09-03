@@ -31,7 +31,7 @@ type WebServer struct {
 }
 
 func (w *WebServer) Enabled() bool {
-	return w != nil && w.Metrics && w.ListenAddr != ""
+	return w != nil && strings.TrimSpace(w.ListenAddr) != ""
 }
 
 func (u *Unpackerr) logWebserver() {
@@ -52,6 +52,10 @@ func (u *Unpackerr) logWebserver() {
 
 	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams)",
 		ssl, addr, u.Webserver.URLBase, len(u.Webserver.Upstreams))
+
+	if u.Webserver.Metrics {
+		u.Printf(" => Prometheus metrics enabled at %smetrics", u.Webserver.URLBase)
+	}
 }
 
 func (u *Unpackerr) startWebServer() {

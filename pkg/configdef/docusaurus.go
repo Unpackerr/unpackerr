@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -75,7 +75,7 @@ func makeGenerated(config *Config, output string) error {
 	}
 
 	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
-		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/pkg/configdef), "+
 		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))+"</font>\n")
 }
 

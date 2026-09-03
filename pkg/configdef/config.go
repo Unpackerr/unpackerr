@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -12,23 +12,28 @@ import (
 /* This file creates an example config file: unpackerr.conf.example */
 
 func createConfFile(config *Config, output, dir string) {
-	buf := bytes.Buffer{}
+	buf := bytes.NewBufferString(config.ExampleTOML())
+	writeFile(dir, output, buf)
+}
 
-	// Loop the 'Order' list.
-	for _, section := range config.Order {
-		// If Order contains a missing section, bail.
-		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
+// ExampleTOML renders the commented example configuration (go generate / first-run).
+func (c *Config) ExampleTOML() string {
+	var buf bytes.Buffer
+
+	for _, name := range c.Order {
+		header := c.Sections[name]
+		if header == nil {
+			log.Fatalln(name + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
-		if config.Defs[section] != nil {
-			buf.WriteString(config.Sections[section].makeDefinedSection(config.Defs[section], config.DefOrder[section], false))
+		if c.Defs[name] != nil {
+			buf.WriteString(header.makeDefinedSection(c.Defs[name], c.DefOrder[name], false))
 		} else {
-			buf.WriteString(config.Sections[section].makeSection(section, false, false))
+			buf.WriteString(header.makeSection(name, false, false))
 		}
 	}
 
-	writeFile(dir, output, &buf)
+	return buf.String()
 }
 
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.

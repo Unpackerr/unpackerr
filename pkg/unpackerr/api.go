@@ -25,7 +25,17 @@ func (u *Unpackerr) registerAPIRoutes() {
 	u.Webserver.router.GET(path.Join(base, "stats"), u.requirePerm(PermReadSystemStats, u.statsHandler))
 	u.Webserver.router.GET(path.Join(base, "system"), u.requirePerm(PermReadSystemInfo, u.systemHandler))
 	u.Webserver.router.GET(path.Join(base, "queue"), u.requirePerm(PermReadSystemQueue, u.queueHandler))
+	u.Webserver.router.POST(path.Join(base, "queue", "retry"), u.requirePerm(PermWriteSystemQueue, u.queueRetryHandler))
+	u.Webserver.router.POST(path.Join(base, "queue", "forget"), u.requirePerm(PermWriteSystemQueue, u.queueForgetHandler))
 	u.Webserver.router.GET(path.Join(base, "history"), u.requirePerm(PermReadSystemHistory, u.historyHandler))
+	u.Webserver.router.POST(
+		path.Join(base, "history", "clear"),
+		u.requirePerm(PermWriteSystemHistory, u.historyClearHandler),
+	)
+	u.Webserver.router.POST(
+		path.Join(base, "history", "delete"),
+		u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler),
+	)
 }
 
 func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {

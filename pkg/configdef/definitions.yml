@@ -442,6 +442,14 @@ sections:
         desc: |
           This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
           Set this to an empty string to disable the HTTP server.
+      - name: ui_password
+        envvar: UI_PASSWORD
+        default: ''
+        short: Web UI password (user:pass, hashed, proxy header, or noauth).
+        desc: |
+          Local UI login. Use user:pass (hashed on startup), !!cryptd!! for a stored hash,
+          webauth:X-Webauth-User for a reverse-proxy header, or noauth. Empty generates a
+          temporary password when the HTTP server is enabled. Reset with --set-ui-password.
       - name: log_file
         envvar: LOG_FILE
         default: ''

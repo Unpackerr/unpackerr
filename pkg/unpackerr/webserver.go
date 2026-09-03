@@ -25,6 +25,7 @@ type WebServer struct {
 	SSLKeyFile string      `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
 	URLBase    string      `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
 	Upstreams  StringSlice `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	UIPassword CryptPass   `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server
@@ -72,8 +73,8 @@ func (u *Unpackerr) logWebserver() {
 		ssl = "s"
 	}
 
-	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams)",
-		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams))
+	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams) auth:%s",
+		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.Webserver.UIPassword.Type())
 
 	if u.Webserver.Metrics {
 		u.Printf(" => Prometheus metrics enabled at %s", path.Join(u.Webserver.URLBase, "metrics"))

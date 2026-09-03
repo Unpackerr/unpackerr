@@ -1,0 +1,425 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Unpackerr API",
+    "version": "1.0.0",
+    "description": "HTTP API for Unpackerr. Login returns an admin API key and a session cookie. After that, send X-Api-Key (or Authorization: Bearer). This spec contains no secret values."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This Unpackerr instance (respect urlbase)"
+    }
+  ],
+  "tags": [
+    {"name": "auth"},
+    {"name": "system"},
+    {"name": "queue"},
+    {"name": "history"},
+    {"name": "config"}
+  ],
+  "security": [
+    {"apiKey": []},
+    {"bearer": []},
+    {"session": []}
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key"
+      },
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {"type": "string"}
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["name", "kdf"],
+        "properties": {
+          "name": {"type": "string", "description": "Username (default admin)"},
+          "kdf": {"type": "string", "description": "PBKDF2-HMAC-SHA-256 hex of the password; never send plaintext"}
+        }
+      },
+      "AuthInfo": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string"},
+          "apiKey": {"type": "string"},
+          "auth": {"type": "string"},
+          "via": {"type": "string"},
+          "permissions": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "waiting": {"type": "integer"},
+          "queued": {"type": "integer"},
+          "extracting": {"type": "integer"},
+          "failed": {"type": "integer"},
+          "extracted": {"type": "integer"},
+          "imported": {"type": "integer"},
+          "deleted": {"type": "integer"},
+          "hookOK": {"type": "integer"},
+          "hookFail": {"type": "integer"},
+          "cmdOK": {"type": "integer"},
+          "cmdFail": {"type": "integer"},
+          "retries": {"type": "integer"},
+          "finished": {"type": "integer"}
+        }
+      },
+      "SystemInfo": {
+        "type": "object",
+        "properties": {
+          "version": {"type": "string"},
+          "revision": {"type": "string"},
+          "started": {"type": "string", "format": "date-time"},
+          "uptime": {"type": "string"},
+          "listenAddr": {"type": "string"},
+          "urlbase": {"type": "string"},
+          "auth": {"type": "string"},
+          "metrics": {"type": "boolean"}
+        }
+      },
+      "QueueItem": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "app": {"type": "string"},
+          "url": {"type": "string"},
+          "path": {"type": "string"},
+          "outputPath": {"type": "string"},
+          "status": {"type": "string"},
+          "retries": {"type": "integer"},
+          "updated": {"type": "string", "format": "date-time"},
+          "progress": {"type": "string"},
+          "error": {"type": "string"}
+        }
+      },
+      "HistoryRecord": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "app": {"type": "string"},
+          "url": {"type": "string"},
+          "path": {"type": "string"},
+          "outputPath": {"type": "string"},
+          "status": {"type": "string"},
+          "retries": {"type": "integer"},
+          "started": {"type": "string", "format": "date-time"},
+          "updated": {"type": "string", "format": "date-time"},
+          "finished": {"type": "string", "format": "date-time"},
+          "archives": {"type": "integer"},
+          "files": {"type": "integer"},
+          "bytes": {"type": "integer"},
+          "ratio": {"type": "number"},
+          "elapsed": {"type": "string"},
+          "error": {"type": "string"},
+          "progress": {"type": "string"}
+        }
+      },
+      "IDRequest": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {"type": "string", "description": "Queue or history item id (usually a filesystem path)"}
+        }
+      },
+      "StatusReply": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "id": {"type": "string"}
+        }
+      },
+      "ConfigWriteReply": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "restartRequired": {"type": "boolean"}
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid credentials",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "Forbidden": {
+        "description": "Authenticated but missing permission",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      }
+    }
+  },
+  "paths": {
+    "/api/openapi.json": {
+      "get": {
+        "tags": ["system"],
+        "summary": "OpenAPI 3 document",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI document",
+            "content": {"application/json": {"schema": {"type": "object"}}}
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Log in with PBKDF2 hex; sets session cookie and returns the admin API key",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LoginRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthInfo"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Clear the session cookie",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Logged out",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Current session or API key identity",
+        "responses": {
+          "200": {
+            "description": "Auth info including apiKey when using a session",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthInfo"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Queue counts for Homepage and the dashboard",
+        "description": "Requires read:system:stats",
+        "responses": {
+          "200": {
+            "description": "Counts",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Stats"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/system": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Version, uptime, listen address, auth mode",
+        "description": "Requires read:system:info",
+        "responses": {
+          "200": {
+            "description": "System info",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SystemInfo"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Prometheus metrics (only registered when metrics = true)",
+        "description": "Requires read:system:metrics. Send Authorization: Bearer or X-Api-Key.",
+        "responses": {
+          "200": {
+            "description": "Prometheus text",
+            "content": {"text/plain": {"schema": {"type": "string"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/queue": {
+      "get": {
+        "tags": ["queue"],
+        "summary": "In-flight extracts",
+        "description": "Requires read:system:queue",
+        "responses": {
+          "200": {
+            "description": "Live queue",
+            "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/QueueItem"}}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/queue/retry": {
+      "post": {
+        "tags": ["queue"],
+        "summary": "Retry an extractfailed item",
+        "description": "Requires write:system:queue. Id is a path in the JSON body.",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Queued for retry",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
+          },
+          "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Not extractfailed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/queue/forget": {
+      "post": {
+        "tags": ["queue"],
+        "summary": "Drop an in-flight item from tracking",
+        "description": "Requires write:system:queue",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Forgotten",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
+          },
+          "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": ["history"],
+        "summary": "Completed and failed items (newest first)",
+        "description": "Requires read:system:history. Capped by keep_history.",
+        "responses": {
+          "200": {
+            "description": "History",
+            "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/HistoryRecord"}}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/history/delete": {
+      "post": {
+        "tags": ["history"],
+        "summary": "Delete one history row",
+        "description": "Requires write:system:history",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
+          },
+          "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/history/clear": {
+      "post": {
+        "tags": ["history"],
+        "summary": "Clear all history rows",
+        "description": "Requires write:system:history",
+        "responses": {
+          "200": {
+            "description": "Cleared",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/config/{section}": {
+      "parameters": [
+        {
+          "name": "section",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "whisparr", "folders", "webhooks", "cmdhooks"]
+          }
+        }
+      ],
+      "get": {
+        "tags": ["config"],
+        "summary": "Read one config section",
+        "description": "Requires read:config:{section}. Starr API keys are visible. ui_password is the stored hash or auth mode, not plaintext.",
+        "responses": {
+          "200": {
+            "description": "Section payload",
+            "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
+          },
+          "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      },
+      "put": {
+        "tags": ["config"],
+        "summary": "Replace one config section and rewrite the TOML file",
+        "description": "Requires write:config:{section}. Replaces the section (GET then PUT). In-flight extracts are not cancelled. Some changes set restartRequired.",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"description": "Same shape as GET for this section"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigWriteReply"}}}
+          },
+          "400": {"description": "Validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    }
+  }
+}

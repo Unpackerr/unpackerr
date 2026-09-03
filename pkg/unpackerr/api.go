@@ -24,10 +24,20 @@ func (u *Unpackerr) registerAPIRoutes() {
 	base := path.Join(u.Webserver.URLBase, "api")
 	u.Webserver.router.GET(path.Join(base, "stats"), u.requirePerm(PermReadSystemStats, u.statsHandler))
 	u.Webserver.router.GET(path.Join(base, "system"), u.requirePerm(PermReadSystemInfo, u.systemHandler))
+	u.Webserver.router.GET(path.Join(base, "queue"), u.requirePerm(PermReadSystemQueue, u.queueHandler))
+	u.Webserver.router.GET(path.Join(base, "history"), u.requirePerm(PermReadSystemHistory, u.historyHandler))
 }
 
 func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	writeJSON(response, http.StatusOK, u.stats())
+}
+
+func (u *Unpackerr) queueHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	writeJSON(response, http.StatusOK, u.queueSnapshot())
+}
+
+func (u *Unpackerr) historyHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	writeJSON(response, http.StatusOK, u.historySnapshot())
 }
 
 func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {

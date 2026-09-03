@@ -296,6 +296,21 @@ sections:
           - value: '0644'
           - value: '0664'
         short: 'POSIX mode used for new log files; not for Windows'
+      - name: keep_history
+        envvar: KEEP_HISTORY
+        default: 200
+        recommend:
+          - value: 0
+          - value: 50
+          - value: 100
+          - value: 200
+          - value: 500
+          - value: 1000
+        short: Completed items kept in the history file and API.
+        desc: |
+          How many completed or failed items to keep in unpackerr.history.jsonl
+          (next to the log file, or the config file if logs go to stdout).
+          The tray menu still shows only the last 10 names. `0` disables history.
       - name: interval
         envvar: INTERVAL
         default: 2m

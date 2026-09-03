@@ -45,7 +45,8 @@ const (
 	minimumDeleteDelay      = time.Second
 	defaultDeleteDelay      = 5 * time.Minute
 	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory          = 10             // items kept in history.
+	defaultHistory          = 200            // JSONL cap; tray still shows trayHistory names.
+	trayHistory             = 10             // items kept in the GUI history menu.
 	suffix                  = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf           = 100            // Size of xtractr callback update channels.
 	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
@@ -84,6 +85,9 @@ type Unpackerr struct {
 	configWriteErr   error
 	adminKeyNotice   string
 	adminKeyErr      error
+	histPath         string
+	histMu           sync.Mutex
+	records          []HistoryRecord
 }
 
 type fileDeleteReq struct {
@@ -188,6 +192,8 @@ func Start() error {
 	if unpackerr.reset {
 		return nil
 	}
+
+	unpackerr.loadHistory()
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",

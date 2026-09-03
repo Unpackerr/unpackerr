@@ -95,7 +95,8 @@ passwords = []
 
 [webserver]
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
-## this only controls the /metrics route.
+## this only controls the /metrics route. Scrapes must send an API key with
+## read:system:metrics via Authorization: Bearer or X-Api-Key.
  metrics = false
 ## Expose Go pprof handlers at /debug/pprof/. Leave this false unless you
 ## are debugging the running process.

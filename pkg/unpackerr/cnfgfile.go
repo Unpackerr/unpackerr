@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Unpackerr/unpackerr/examples"
+	"github.com/Unpackerr/unpackerr/pkg/configdef"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/dromara/carbon/v2"
 	homedir "github.com/mitchellh/go-homedir"
@@ -25,6 +26,8 @@ const (
 	msgConfigCreate = "Created new config file: "
 	msgConfigFound  = "Using Config File: "
 )
+
+var errNoConfigFile = errors.New("no config file path")
 
 func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	var configFile, msg string
@@ -206,13 +209,12 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 		return "", fmt.Errorf("making config dir: %w", err)
 	}
 
-	fOpen, err := os.Create(file)
+	schema, err := configdef.Load()
 	if err != nil {
-		return "", fmt.Errorf("creating config file: %w", err)
+		return "", fmt.Errorf("definitions: %w", err)
 	}
-	defer fOpen.Close()
 
-	if _, err = fOpen.Write(examples.ConfigFile); err != nil {
+	if err := configdef.AtomicWrite(file, []byte(schema.ExampleTOML())); err != nil {
 		return "", fmt.Errorf("writing config file: %w", err)
 	}
 
@@ -221,6 +223,26 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 	}
 
 	return file, nil
+}
+
+// writeConfigFile atomically rewrites the active config file from live values.
+func (u *Unpackerr) writeConfigFile() error {
+	if strings.TrimSpace(u.ConfigFile) == "" {
+		return errNoConfigFile
+	}
+
+	schema, err := configdef.Load()
+	if err != nil {
+		return fmt.Errorf("definitions: %w", err)
+	}
+
+	body := schema.RenderTOML(u.Config, configdef.RenderOpts{Mode: configdef.RenderLive})
+
+	if err := configdef.AtomicWrite(u.ConfigFile, []byte(body)); err != nil {
+		return fmt.Errorf("writing config file: %w", err)
+	}
+
+	return nil
 }
 
 // This function checks if rar passwords need to be read from a file path.

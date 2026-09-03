@@ -1,7 +1,10 @@
 # Unpackerr Configuration Generator
 
-This folder contains a [yaml](definitions.yml) file that describes the entire Unpackerr configuration.
+This folder contains a [yaml](../pkg/configdef/definitions.yml) file that describes the entire Unpackerr configuration.
 This description includes all variables, their defaults, their recommendations, comments and documentation.
+
+The YAML schema, TOML renderer, and atomic writer live in [`pkg/configdef`](../pkg/configdef).
+This folder is the `go generate` / `go run` CLI (`go run github.com/Unpackerr/unpackerr/init/config`).
 
 ## Builders
 

@@ -80,6 +80,10 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, err
 	}
 
+	if err := u.setupAdminAPIKey(); err != nil {
+		return 0, 0, msg, err
+	}
+
 	if err := u.Webserver.validateAuth(); err != nil {
 		return 0, 0, msg, err
 	}
@@ -292,6 +296,18 @@ func (u *Unpackerr) syncFileUIPassword() {
 	}
 
 	u.fileConfig.Webserver.UIPassword = u.Webserver.UIPassword
+}
+
+func (u *Unpackerr) syncFileAPIKeys() {
+	if u.fileConfig == nil || u.Webserver == nil {
+		return
+	}
+
+	if u.fileConfig.Webserver == nil {
+		u.fileConfig.Webserver = &WebServer{}
+	}
+
+	u.fileConfig.Webserver.APIKeys = cloneAPIKeys(u.Webserver.APIKeys)
 }
 
 // This function checks if rar passwords need to be read from a file path.

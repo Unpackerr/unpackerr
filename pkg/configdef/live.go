@@ -158,15 +158,20 @@ func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Val
 	}
 
 	live = derefValue(live)
+	h.writeLiveParams(&buf, name, space, live, persist)
 
+	return buf.String()
+}
+
+func (h *Header) writeLiveParams(
+	buf *bytes.Buffer, name section, space string, live reflect.Value, persist persistSet,
+) {
 	for _, param := range h.Params {
-		writeLiveParam(&buf, name, space, live, persist, h.NoHeader, param)
+		writeLiveParam(buf, name, space, live, persist, h.NoHeader, param)
 	}
 
 	buf.WriteString("\n")
 	buf.WriteString(h.renderNestedLive(name, live))
-
-	return buf.String()
 }
 
 func writeLiveParam(

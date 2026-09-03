@@ -1,0 +1,300 @@
+package unpackerr
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/julienschmidt/httprouter"
+	"golift.io/starr"
+	"golift.io/starr/lidarr"
+	"golift.io/starr/radarr"
+	"golift.io/starr/readarr"
+	"golift.io/starr/sonarr"
+)
+
+const maxConfigBody = 1 << 20
+
+var errInvalidJSON = errors.New("invalid json")
+
+type configWriteReply struct {
+	Status          string `json:"status"`
+	RestartRequired bool   `json:"restartRequired"`
+}
+
+func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	restart, err := u.replaceConfigSection(ConfigSection(params.ByName("section")), request)
+	if err != nil {
+		writeJSON(response, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	if err := u.writeConfigFile(); err != nil && !errors.Is(err, errNoConfigFile) {
+		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(response, http.StatusOK, configWriteReply{Status: "ok", RestartRequired: restart})
+}
+
+func (u *Unpackerr) replaceConfigSection(section ConfigSection, request *http.Request) (bool, error) {
+	switch section {
+	case SectionGeneral:
+		return u.putGeneral(request)
+	case SectionWebserver:
+		return u.putWebserver(request)
+	case SectionSonarr:
+		return false, u.putSonarr(request)
+	case SectionRadarr:
+		return false, u.putRadarr(request)
+	case SectionLidarr:
+		return false, u.putLidarr(request)
+	case SectionReadarr:
+		return false, u.putReadarr(request)
+	case SectionWhisparr:
+		return false, u.putWhisparr(request)
+	case SectionFolders:
+		return u.putFolders(request)
+	case SectionWebhooks:
+		return false, u.putWebhooks(request)
+	case SectionCmdhooks:
+		return false, u.putCmdhooks(request)
+	default:
+		return false, errInvalidJSON
+	}
+}
+
+func readJSONBody(request *http.Request, dest any) error {
+	if err := json.NewDecoder(io.LimitReader(request.Body, maxConfigBody)).Decode(dest); err != nil {
+		return fmt.Errorf("%w: %w", errInvalidJSON, err)
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) putGeneral(request *http.Request) (bool, error) {
+	var next generalConfig
+	if err := readJSONBody(request, &next); err != nil {
+		return false, err
+	}
+
+	restart := next.Interval != u.Interval ||
+		next.StartDelay != u.StartDelay ||
+		next.Progress != u.Progress ||
+		next.LogQueues != u.LogQueues ||
+		next.Parallel != u.Parallel
+
+	u.Config.Debug = next.Debug
+	u.Quiet = next.Quiet
+	u.Activity = next.Activity
+	u.Parallel = next.Parallel
+	u.ErrorStdErr = next.ErrorStdErr
+	u.LogFile = next.LogFile
+	u.LogFiles = next.LogFiles
+	u.LogFileMb = next.LogFileMb
+	u.LogFileMode = next.LogFileMode
+	u.MaxRetries = next.MaxRetries
+	u.RemnantAction = next.RemnantAction
+	u.FileMode = next.FileMode
+	u.DirMode = next.DirMode
+	u.LogQueues = next.LogQueues
+	u.Interval = next.Interval
+	u.Timeout = next.Timeout
+	u.DeleteDelay = next.DeleteDelay
+	u.StartDelay = next.StartDelay
+	u.RetryDelay = next.RetryDelay
+	u.Progress = next.Progress
+	u.KeepHistory = next.KeepHistory
+	u.Passwords = next.Passwords
+
+	u.validateConfig()
+
+	if err := u.validateRemnantAction(); err != nil {
+		return restart, err
+	}
+
+	if err := u.setPasswords(); err != nil {
+		return restart, err
+	}
+
+	return restart, nil
+}
+
+func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
+	var next WebServer
+	if err := readJSONBody(request, &next); err != nil {
+		return false, err
+	}
+
+	if u.Webserver != nil {
+		next.router = u.Webserver.router
+		next.server = u.Webserver.server
+		next.cookies = u.Webserver.cookies
+		next.failDelay = u.Webserver.failDelay
+	}
+
+	if next.UIPassword.Val() == "" && u.Webserver != nil {
+		next.UIPassword = u.Webserver.UIPassword
+	} else if err := normalizeStoredPassword(&next.UIPassword); err != nil {
+		return false, err
+	}
+
+	if err := next.validateAuth(); err != nil {
+		return false, err
+	}
+
+	next.allow = MakeIPs(next.Upstreams)
+
+	restart := u.Webserver.ListenAddr != next.ListenAddr ||
+		u.Webserver.URLBase != next.URLBase ||
+		u.Webserver.SSLCrtFile != next.SSLCrtFile ||
+		u.Webserver.SSLKeyFile != next.SSLKeyFile ||
+		u.Webserver.Metrics != next.Metrics ||
+		u.Webserver.Pprof != next.Pprof
+
+	u.Webserver = &next
+
+	return restart, nil
+}
+
+func normalizeStoredPassword(pass *CryptPass) error {
+	if pass.Val() == "" || pass.IsCrypted() || pass.Webauth() {
+		return nil
+	}
+
+	user, plain := splitUserPass(pass.Val())
+
+	return pass.SetPlain(user, plain)
+}
+
+func (u *Unpackerr) putSonarr(request *http.Request) error {
+	var list []*SonarrConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	for idx := range list {
+		if err := u.validateApp(&list[idx].StarrConfig, starr.Sonarr); err != nil {
+			return err
+		}
+
+		list[idx].Sonarr = sonarr.New(&list[idx].Config)
+	}
+
+	u.Sonarr = list
+
+	return nil
+}
+
+func (u *Unpackerr) putRadarr(request *http.Request) error {
+	var list []*RadarrConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	for idx := range list {
+		if err := u.validateApp(&list[idx].StarrConfig, starr.Radarr); err != nil {
+			return err
+		}
+
+		list[idx].Radarr = radarr.New(&list[idx].Config)
+	}
+
+	u.Radarr = list
+
+	return nil
+}
+
+func (u *Unpackerr) putLidarr(request *http.Request) error {
+	var list []*LidarrConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	for idx := range list {
+		if err := u.validateApp(&list[idx].StarrConfig, starr.Lidarr); err != nil {
+			return err
+		}
+
+		list[idx].Lidarr = lidarr.New(&list[idx].Config)
+	}
+
+	u.Lidarr = list
+
+	return nil
+}
+
+func (u *Unpackerr) putReadarr(request *http.Request) error {
+	var list []*ReadarrConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	for idx := range list {
+		if err := u.validateApp(&list[idx].StarrConfig, starr.Readarr); err != nil {
+			return err
+		}
+
+		list[idx].Readarr = readarr.New(&list[idx].Config)
+	}
+
+	u.Readarr = list
+
+	return nil
+}
+
+func (u *Unpackerr) putWhisparr(request *http.Request) error {
+	var list []*RadarrConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	for idx := range list {
+		if err := u.validateApp(&list[idx].StarrConfig, starr.Whisparr); err != nil {
+			return err
+		}
+
+		list[idx].Radarr = radarr.New(&list[idx].Config)
+	}
+
+	u.Whisparr = list
+
+	return nil
+}
+
+func (u *Unpackerr) putFolders(request *http.Request) (bool, error) {
+	var next foldersConfigAPI
+	if err := readJSONBody(request, &next); err != nil {
+		return true, err
+	}
+
+	u.Folder.Interval = next.Interval
+	u.Folder.Buffer = next.Buffer
+	u.Folders = next.Folder
+
+	return true, u.validateFolders()
+}
+
+func (u *Unpackerr) putWebhooks(request *http.Request) error {
+	var list []*WebhookConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	u.Webhook = list
+
+	return u.validateWebhook()
+}
+
+func (u *Unpackerr) putCmdhooks(request *http.Request) error {
+	var list []*WebhookConfig
+	if err := readJSONBody(request, &list); err != nil {
+		return err
+	}
+
+	u.Cmdhook = list
+
+	return u.validateCmdhook()
+}

@@ -44,6 +44,10 @@ func (u *Unpackerr) registerAPIRoutes() {
 		path.Join(base, "config", ":section"),
 		u.requireConfigPerm(false, u.configGetHandler),
 	)
+	u.Webserver.router.PUT(
+		path.Join(base, "config", ":section"),
+		u.requireConfigPerm(true, u.configPutHandler),
+	)
 }
 
 func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {

@@ -44,6 +44,7 @@ services:
     - UN_DIR_MODE=0755
     ## Web Server
     - UN_WEBSERVER_METRICS=false
+    - UN_WEBSERVER_PPROF=false
     - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
     - UN_WEBSERVER_LOG_FILE=
     - UN_WEBSERVER_LOG_FILES=10
@@ -64,6 +65,7 @@ services:
     - UN_SONARR_0_DELETE_DELAY=5m
     - UN_SONARR_0_DELETE_ORIG=false
     - UN_SONARR_0_SYNCTHING=false
+    - UN_SONARR_0_VALID_SSL=false
     - UN_SONARR_0_MAX_BYTES=
     ## Radarr Settings
     - UN_RADARR_0_URL=http://radarr:7878
@@ -74,6 +76,7 @@ services:
     - UN_RADARR_0_DELETE_DELAY=5m
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
+    - UN_RADARR_0_VALID_SSL=false
     - UN_RADARR_0_MAX_BYTES=
     ## Lidarr Settings
     - UN_LIDARR_0_URL=http://lidarr:8686
@@ -84,6 +87,7 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_VALID_SSL=false
     - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
     ## Readarr Settings
@@ -95,6 +99,7 @@ services:
     - UN_READARR_0_DELETE_DELAY=5m
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
+    - UN_READARR_0_VALID_SSL=false
     - UN_READARR_0_MAX_BYTES=
     ## Whisparr Settings
     - UN_WHISPARR_0_URL=http://whisparr:6969
@@ -105,6 +110,7 @@ services:
     - UN_WHISPARR_0_DELETE_DELAY=5m
     - UN_WHISPARR_0_DELETE_ORIG=false
     - UN_WHISPARR_0_SYNCTHING=false
+    - UN_WHISPARR_0_VALID_SSL=false
     - UN_WHISPARR_0_MAX_BYTES=
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
@@ -131,6 +137,7 @@ services:
     - UN_WEBHOOK_0_EVENTS_2=6
     - UN_WEBHOOK_0_NICKNAME=Unpackerr
     - UN_WEBHOOK_0_CHANNEL=
+    - UN_WEBHOOK_0_TOKEN=
     - UN_WEBHOOK_0_EXCLUDE_0=readarr
     - UN_WEBHOOK_0_EXCLUDE_1=lidarr
     - UN_WEBHOOK_0_TEMPLATE_PATH=
@@ -150,4 +157,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 30 AUG 2026 08:13 UTC
+## => Content Auto Generated, 03 SEP 2026 16:55 UTC

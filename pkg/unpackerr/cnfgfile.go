@@ -236,7 +236,12 @@ func (u *Unpackerr) writeConfigFile() error {
 		return fmt.Errorf("definitions: %w", err)
 	}
 
-	body := schema.RenderTOML(u.Config, configdef.RenderOpts{Mode: configdef.RenderLive})
+	live := *u.Config
+	if u.passwordSources != nil {
+		live.Passwords = u.passwordSources
+	}
+
+	body := schema.RenderTOML(&live, configdef.RenderOpts{Mode: configdef.RenderLive})
 
 	if err := configdef.AtomicWrite(u.ConfigFile, []byte(body)); err != nil {
 		return fmt.Errorf("writing config file: %w", err)
@@ -250,6 +255,7 @@ func (u *Unpackerr) writeConfigFile() error {
 func (u *Unpackerr) setPasswords() error {
 	const filePrefix = "filepath:"
 
+	u.passwordSources = append(StringSlice(nil), u.Passwords...)
 	newPasswords := []string{}
 
 	for _, pass := range u.Passwords {

@@ -97,6 +97,9 @@ passwords = []
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
 ## this only controls the /metrics route.
  metrics = false
+## Expose Go pprof handlers at /debug/pprof/. Leave this false unless you
+## are debugging the running process.
+ pprof = false
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
 ## Set this to an empty string to disable the HTTP server.
  listen_addr = "0.0.0.0:5656"
@@ -167,6 +170,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -197,6 +203,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -225,6 +234,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -256,6 +268,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -284,6 +299,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -361,6 +379,8 @@ passwords = []
 # nickname = "Unpackerr"
 ## Also passed into templates. Used in Slack templates for destination channel.
 # channel = ""
+## Passed into webhook templates. Used by Discord, Telegram, and Slack.
+# token = ""
 ## List of apps to exclude. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
 ## Override internal webhook template for discord.com or other hooks.
@@ -398,4 +418,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 03 SEP 2026 08:08 UTC
+## => Content Auto Generated, 03 SEP 2026 16:55 UTC

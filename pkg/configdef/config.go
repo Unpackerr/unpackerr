@@ -36,6 +36,37 @@ func (c *Config) ExampleTOML() string {
 	return buf.String()
 }
 
+// ParamNames is the set of every schema parameter name across sections.
+func (c *Config) ParamNames() map[string]struct{} {
+	out := make(map[string]struct{})
+
+	for name, header := range c.Sections {
+		if name != "" {
+			out[string(name)] = struct{}{}
+		}
+
+		if header == nil {
+			continue
+		}
+
+		for _, param := range header.Params {
+			if param != nil && param.Name != "" {
+				out[param.Name] = struct{}{}
+			}
+		}
+	}
+
+	for _, defs := range c.Defs {
+		for name := range defs {
+			if name != "" {
+				out[string(name)] = struct{}{}
+			}
+		}
+	}
+
+	return out
+}
+
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.
 func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 	var buf bytes.Buffer
@@ -104,12 +135,7 @@ func (p *Param) Value() string {
 		out, _ = toml.Marshal(p.Example)
 	}
 
-	// The toml marshaller uses only regular quotes " which kinda suck, so replace them with single quotes ' on file paths.
-	if strings.Contains(p.Name, "path") || strings.HasSuffix(p.Name, "file") || p.Name == "command" {
-		return string(bytes.ReplaceAll(out, []byte{'"'}, []byte("'")))
-	}
-
-	return string(out)
+	return string(preferPathQuotes(p.Name, out))
 }
 
 // makeDefinedSection duplicates sections from overrides, and prints it once for each override.

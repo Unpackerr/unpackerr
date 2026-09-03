@@ -70,20 +70,18 @@ func replaceFile(path, tmpName string, mode os.FileMode) error {
 	bak := path + backupSuffix
 
 	if _, err := os.Stat(path); err == nil {
-		_ = os.Remove(bak)
-
-		if err := os.Rename(path, bak); err != nil {
-			if copyErr := copyFile(path, bak, mode); copyErr != nil {
-				return fmt.Errorf("backing up config: %w", err)
-			}
+		if err := copyFile(path, bak, mode); err != nil {
+			return fmt.Errorf("backing up config: %w", err)
 		}
 	}
 
-	if err := os.Rename(tmpName, path); err != nil {
-		if restoreErr := os.Rename(bak, path); restoreErr != nil {
-			_ = copyFile(bak, path, mode)
-		}
+	if err := os.Rename(tmpName, path); err == nil {
+		return nil
+	}
 
+	_ = os.Remove(path)
+
+	if err := os.Rename(tmpName, path); err != nil {
 		return fmt.Errorf("replacing config: %w", err)
 	}
 

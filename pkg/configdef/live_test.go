@@ -3,6 +3,7 @@ package configdef
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ type liveRoot struct {
 	Webserver *liveWeb     `toml:"webserver"`
 	Sonarr    []liveStarr  `toml:"sonarr"`
 	Folder    []liveFolder `toml:"folder"`
+	Webhook   []liveHook   `toml:"webhook"`
 }
 
 type liveWeb struct {
@@ -27,7 +29,20 @@ type liveStarr struct {
 }
 
 type liveFolder struct {
-	Path string `toml:"path"`
+	Path        string        `toml:"path"`
+	DeleteAfter *liveDuration `toml:"delete_after"`
+}
+
+type liveHook struct {
+	URL    string       `toml:"url"`
+	Token  string       `toml:"token"`
+	Events []liveStatus `toml:"events"`
+}
+
+type liveStatus uint8
+
+func (s liveStatus) MarshalText() ([]byte, error) {
+	return []byte("queued"), nil
 }
 
 type liveDuration struct{ time.Duration }
@@ -103,6 +118,64 @@ func TestRenderLiveWritesNonDefaultList(t *testing.T) {
 	}
 }
 
+func TestRenderLiveNilDurationStaysCommented(t *testing.T) {
+	t.Parallel()
+
+	body := MustLoad(t).RenderTOML(&liveRoot{
+		Folder: []liveFolder{{Path: "/downloads/watch"}},
+	}, RenderOpts{Mode: RenderLive})
+
+	if strings.Contains(body, "delete_after = ''") {
+		t.Fatalf("nil delete_after must not write an empty string:\n%s", snippet(body, "delete_after"))
+	}
+
+	if !strings.Contains(body, "# delete_after = ") && !strings.Contains(body, "#delete_after = ") {
+		t.Fatalf("nil delete_after should keep the commented default:\n%s", snippet(body, "delete_after"))
+	}
+}
+
+func TestRenderLiveEventsStayNumeric(t *testing.T) {
+	t.Parallel()
+
+	body := MustLoad(t).RenderTOML(&liveRoot{
+		Webhook: []liveHook{{
+			URL:    "https://example.invalid/hook",
+			Token:  "tok",
+			Events: []liveStatus{1, 4},
+		}},
+	}, RenderOpts{Mode: RenderLive})
+
+	if strings.Contains(body, `"queued"`) {
+		t.Fatalf("events must not use TextMarshaler strings:\n%s", snippet(body, "events ="))
+	}
+
+	if !strings.Contains(body, "events = [1, 4]") && !strings.Contains(body, "events = [1,4]") {
+		t.Fatalf("events should be integer IDs:\n%s", snippet(body, "events ="))
+	}
+
+	if !strings.Contains(body, `token = "tok"`) {
+		t.Fatalf("missing live webhook token:\n%s", snippet(body, "token"))
+	}
+}
+
+func TestFormatTOMLPathQuotes(t *testing.T) {
+	t.Parallel()
+
+	if got := strings.TrimSpace(formatTOML("path", "/downloads")); got != "'/downloads'" {
+		t.Fatalf("unix path %s", got)
+	}
+
+	win := strings.TrimSpace(formatTOML("extract_path", `C:\downloads`))
+	if win != `"C:\\downloads"` {
+		t.Fatalf("windows path must keep double quotes, got %s", win)
+	}
+
+	quoted := strings.TrimSpace(formatTOML("path", `C:\foo"bar`))
+	if !strings.HasPrefix(quoted, `"`) {
+		t.Fatalf("embedded quote must keep double quotes, got %s", quoted)
+	}
+}
+
 func TestRenderLivePersist(t *testing.T) {
 	t.Parallel()
 
@@ -162,7 +235,7 @@ func TestAtomicWriteBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if stat.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && stat.Mode().Perm() != 0o600 {
 		t.Fatalf("mode %o", stat.Mode().Perm())
 	}
 }

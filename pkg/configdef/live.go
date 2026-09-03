@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -174,7 +175,7 @@ func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Val
 		text := param.defaultText()
 		atDefault := true
 
-		if ok && field.IsValid() && field.CanInterface() {
+		if ok && field.IsValid() && field.CanInterface() && !isNilish(field) {
 			text = formatTOML(param.Name, field.Interface())
 			atDefault = valuesEqual(field, param.Default)
 		}
@@ -197,7 +198,7 @@ func (p *Param) defaultText() string {
 }
 
 func formatTOML(name string, val any) string {
-	if !reflect.ValueOf(val).IsValid() {
+	if isNilish(reflect.ValueOf(val)) {
 		return "''\n"
 	}
 
@@ -206,16 +207,81 @@ func formatTOML(name string, val any) string {
 		return "''\n"
 	}
 
+	out := marshalTOML(value)
+
+	return string(preferPathQuotes(name, out))
+}
+
+func marshalTOML(value reflect.Value) []byte {
+	if out, ok := namedUint8TOML(value); ok {
+		return out
+	}
+
 	out, err := toml.Marshal(value.Interface())
 	if err != nil {
 		out, _ = toml.Marshal(fmt.Sprint(value.Interface()))
 	}
 
-	if strings.Contains(name, "path") || strings.HasSuffix(name, "file") || name == "command" {
-		out = bytes.ReplaceAll(out, []byte{'"'}, []byte("'"))
+	return out
+}
+
+// namedUint8TOML converts a named []uint8 (ExtractStatus, etc) to ints so TOML
+// keeps numeric event IDs instead of TextMarshaler strings the decoder rejects.
+func namedUint8TOML(value reflect.Value) ([]byte, bool) {
+	value = derefValue(value)
+	if !value.IsValid() || value.Kind() != reflect.Slice {
+		return nil, false
 	}
 
-	return string(out)
+	elem := value.Type().Elem()
+	if elem.Kind() != reflect.Uint8 || elem.PkgPath() == "" {
+		return nil, false
+	}
+
+	var buf strings.Builder
+
+	buf.WriteByte('[')
+
+	for idx := range value.Len() {
+		if idx > 0 {
+			buf.WriteString(", ")
+		}
+
+		buf.WriteString(strconv.FormatUint(value.Index(idx).Uint(), 10))
+	}
+
+	buf.WriteByte(']')
+
+	return []byte(buf.String()), true
+}
+
+func preferPathQuotes(name string, out []byte) []byte {
+	if !pathishName(name) {
+		return out
+	}
+
+	if bytes.ContainsAny(out, `\'`) {
+		return out
+	}
+
+	return bytes.ReplaceAll(out, []byte{'"'}, []byte{'\''})
+}
+
+func pathishName(name string) bool {
+	return strings.Contains(name, "path") || strings.HasSuffix(name, "file") || name == "command"
+}
+
+func isNilish(val reflect.Value) bool {
+	if !val.IsValid() {
+		return true
+	}
+
+	switch val.Kind() {
+	case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+		return val.IsNil()
+	default:
+		return false
+	}
 }
 
 func valuesEqual(live reflect.Value, yamlDefault any) bool {

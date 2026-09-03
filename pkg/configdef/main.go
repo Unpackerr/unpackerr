@@ -65,7 +65,7 @@ type Param struct {
 	Example     any      `yaml:"example"`
 	Short       string   `yaml:"short"`
 	Desc        string   `yaml:"desc"`
-	Kind        string   `yaml:"kind"` // "", list, conlist
+	Kind        string   `yaml:"kind"` // "", list, conlist, map
 	Recommend   []Option `yaml:"recommend"`
 	Apps        []string `yaml:"apps"` // If set, param only appears for these starr app names (e.g. lidarr).
 	OmitCompose bool     `yaml:"omit_compose"`

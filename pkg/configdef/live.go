@@ -199,17 +199,21 @@ func (p *Param) defaultText() string {
 
 func formatTOML(name string, val any) string {
 	if isNilish(reflect.ValueOf(val)) {
-		return "''\n"
+		return "''"
 	}
 
 	value := derefValue(reflect.ValueOf(val))
 	if !value.IsValid() {
-		return "''\n"
+		return "''"
+	}
+
+	if value.Kind() == reflect.Map && value.Len() == 0 {
+		return "{}"
 	}
 
 	out := marshalTOML(value)
 
-	return string(preferPathQuotes(name, out))
+	return strings.TrimSpace(string(preferPathQuotes(name, out)))
 }
 
 func marshalTOML(value reflect.Value) []byte {

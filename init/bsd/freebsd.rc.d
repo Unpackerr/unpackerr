@@ -45,7 +45,7 @@ unpackerr_precmd() {
 }
 
 unpackerr_reload() {
-  pid=$(cat "${childpidfile}" 2>/dev/null)
+  pid=$(check_pidfile "${childpidfile}" "${unpackerr_command}")
   if [ -z "$pid" ]; then
     echo "${name} not running? (${childpidfile} empty or missing)"
     return 1

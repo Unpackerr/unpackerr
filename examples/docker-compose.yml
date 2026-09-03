@@ -33,6 +33,7 @@ services:
     - UN_LOG_FILES=10
     - UN_LOG_FILE_MB=10
     - UN_LOG_FILE_MODE=0600
+    - UN_KEEP_HISTORY=200
     - UN_INTERVAL=2m
     - UN_PROGRESS=15s
     - UN_START_DELAY=1m

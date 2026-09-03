@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -70,6 +72,29 @@ func (status ExtractStatus) Desc() string {
 func (status ExtractStatus) MarshalText() ([]byte, error) {
 	return []byte(status.String()), nil
 }
+
+// UnmarshalText turns a json identifier or TOML event ID back into a status.
+func (status *ExtractStatus) UnmarshalText(text []byte) error {
+	name := strings.TrimSpace(string(text))
+	if parsed, err := strconv.ParseUint(name, 10, 8); err == nil {
+		got := ExtractStatus(parsed)
+		if got <= EXTRACTEDNOTHING {
+			*status = got
+			return nil
+		}
+	}
+
+	for candidate := WAITING; candidate <= EXTRACTEDNOTHING; candidate++ {
+		if candidate.String() == name {
+			*status = candidate
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: %s", errUnknownExtractStatus, name)
+}
+
+var errUnknownExtractStatus = errors.New("unknown extract status")
 
 // String turns a status into a short string.
 func (status ExtractStatus) String() string {

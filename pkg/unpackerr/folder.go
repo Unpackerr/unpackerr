@@ -813,5 +813,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 		u.runAllHooks(u.Map[data.Name])
 	}
 
+	u.maybeRecordHistory(u.Map[data.Name])
+
 	return u.Map[data.Name]
 }

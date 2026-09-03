@@ -195,7 +195,7 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 	}
 
 	if u.KeepHistory != 0 {
-		u.Items = make([]string, u.KeepHistory)
+		u.Items = make([]string, min(u.KeepHistory, trayHistory))
 	}
 
 	return fileMode, dirMode

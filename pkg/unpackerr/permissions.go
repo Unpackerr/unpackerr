@@ -49,6 +49,10 @@ func PermWriteConfig(section ConfigSection) string {
 	return "write:config:" + string(section)
 }
 
+func KnownSection(name ConfigSection) bool {
+	return slices.Contains(ConfigSections(), name)
+}
+
 // AllPermissions is every known permission, including per-section config ones.
 func AllPermissions() []string {
 	sections := ConfigSections()

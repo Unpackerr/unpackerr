@@ -110,6 +110,48 @@ func (u *Unpackerr) requireAuth(next httprouter.Handle) httprouter.Handle {
 	}
 }
 
+func (info authInfo) allows(perm string) bool {
+	for _, have := range info.Permissions {
+		if have == PermAll || have == perm {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (u *Unpackerr) requirePerm(perm string, next httprouter.Handle) httprouter.Handle {
+	return u.requireAuth(func(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		info, _ := request.Context().Value(authCtxKey).(authInfo)
+		if !info.allows(perm) {
+			writeJSON(response, http.StatusForbidden, map[string]string{"error": "forbidden"})
+
+			return
+		}
+
+		next(response, request, params)
+	})
+}
+
+func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		info, ok := u.authenticate(request)
+		if !ok {
+			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+
+			return
+		}
+
+		if !info.allows(perm) {
+			writeJSON(response, http.StatusForbidden, map[string]string{"error": "forbidden"})
+
+			return
+		}
+
+		next.ServeHTTP(response, request)
+	})
+}
+
 func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
 	if key := strings.TrimSpace(request.Header.Get(headerAPIKey)); key != "" {
 		return u.authAPIKey(key)

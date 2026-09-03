@@ -129,6 +129,7 @@ func (u *Unpackerr) startWebServer() {
 func (u *Unpackerr) webRoutes() {
 	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
 	u.registerAuthRoutes()
+	u.registerAPIRoutes()
 
 	if u.Webserver.Pprof {
 		u.registerPprof()
@@ -140,11 +141,12 @@ func (u *Unpackerr) webRoutes() {
 	}
 
 	u.setupMetrics()
-	u.Webserver.router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
+	metrics := u.requirePermHTTP(PermReadSystemMetrics, promhttp.Handler())
+	u.Webserver.router.Handler(http.MethodGet, "/metrics", metrics)
 
 	if u.Webserver.URLBase != "/" {
 		// Metrics get served from both paths.
-		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), promhttp.Handler())
+		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), metrics)
 	}
 }
 

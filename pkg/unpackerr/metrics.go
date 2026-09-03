@@ -148,22 +148,27 @@ func (u *Unpackerr) setupMetrics() {
 
 // Stats is filled and returned when a stats request is issued.
 type Stats struct {
-	Waiting    uint
-	Queued     uint
-	Extracting uint
-	Failed     uint
-	Extracted  uint
-	Imported   uint
-	Deleted    uint
-	HookOK     uint
-	HookFail   uint
-	CmdOK      uint
-	CmdFail    uint
+	Waiting    uint `json:"waiting"`
+	Queued     uint `json:"queued"`
+	Extracting uint `json:"extracting"`
+	Failed     uint `json:"failed"`
+	Extracted  uint `json:"extracted"`
+	Imported   uint `json:"imported"`
+	Deleted    uint `json:"deleted"`
+	HookOK     uint `json:"hookOK"`
+	HookFail   uint `json:"hookFail"`
+	CmdOK      uint `json:"cmdOK"`
+	CmdFail    uint `json:"cmdFail"`
+	Retries    uint `json:"retries"`
+	Finished   uint `json:"finished"`
 }
 
 // stats compiles and builds the statistics for the app.
 func (u *Unpackerr) stats() *Stats {
-	stats := &Stats{}
+	stats := &Stats{
+		Retries:  u.Retries,
+		Finished: u.Finished,
+	}
 	stats.HookOK, stats.HookFail = u.WebhookCounts()
 	stats.CmdOK, stats.CmdFail = u.CmdhookCounts()
 

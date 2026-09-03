@@ -19,6 +19,7 @@ name="unpackerr"
 rcvar="unpackerr_enable"
 unpackerr_command="/usr/local/bin/${name}"
 pidfile="/var/run/${name}/pid"
+childpidfile="/var/run/${name}/child.pid"
 unpackerr_env="UN_LOG_FILE=/usr/local/var/log/${name}/${name}.log UN_WEBSERVER_LOG_FILE=/usr/local/var/log/${name}/http.log UN_QUIET=true"
 # Suck in optional exported override variables. See: https://unpackerr.zip/docs/install/configuration
 # ie. add something like the following to this file: export UN_DEBUG=true
@@ -32,13 +33,24 @@ load_rc_config ${name}
 
 # This runs `daemon` as the `unpackerr_user` user using `chroot`.
 command="/usr/sbin/daemon"
-command_args="-P ${pidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
+command_args="-P ${pidfile} -p ${childpidfile} -r -t ${name} -T ${name} -l daemon ${unpackerr_command} -c ${unpackerr_config}"
+extra_commands="reload"
+reload_cmd="${name}_reload"
 
 start_precmd=${name}_precmd
 unpackerr_precmd() {
   # Make a place for the pid file.
   mkdir -p $(dirname ${pidfile})
   chown -R $unpackerr_user $(dirname ${pidfile})
+}
+
+unpackerr_reload() {
+  pid=$(check_pidfile "${childpidfile}" "${unpackerr_command}")
+  if [ -z "$pid" ]; then
+    echo "${name} not running? (${childpidfile} empty or missing)"
+    return 1
+  fi
+  kill -HUP "$pid"
 }
 
 # Go!

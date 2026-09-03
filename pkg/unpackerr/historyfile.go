@@ -358,3 +358,40 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 
 	return queue
 }
+
+func (u *Unpackerr) deleteHistoryID(itemID string) bool {
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	found := -1
+
+	for idx := range u.records {
+		if u.records[idx].ID == itemID {
+			found = idx
+			break
+		}
+	}
+
+	if found < 0 {
+		return false
+	}
+
+	u.records = append(u.records[:found], u.records[found+1:]...)
+
+	if err := u.writeHistoryLocked(); err != nil {
+		u.Errorf("Writing history file: %v", err)
+	}
+
+	return true
+}
+
+func (u *Unpackerr) clearHistory() {
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	u.records = nil
+
+	if err := u.writeHistoryLocked(); err != nil {
+		u.Errorf("Writing history file: %v", err)
+	}
+}

@@ -226,7 +226,7 @@ func (h *Header) validate(name section) []string {
 		}
 
 		switch param.Kind {
-		case "", list, "conlist":
+		case "", list, "conlist", "map":
 		default:
 			errs = append(errs, string(name)+"."+param.Name+": unknown kind "+param.Kind)
 		}

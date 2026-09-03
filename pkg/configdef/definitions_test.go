@@ -79,6 +79,33 @@ func TestDefinitionsFile(t *testing.T) {
 	}
 }
 
+func TestExampleConfAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	example := config.ExampleTOML()
+
+	if !strings.Contains(example, "api_keys = []") {
+		t.Fatal("example conf must include api_keys")
+	}
+
+	if !strings.Contains(example, "roles = {}") {
+		t.Fatal("empty roles maps must render as {}")
+	}
+
+	dir := t.TempDir()
+	createCompose(config, "docker-compose.yml", dir)
+
+	compose, err := os.ReadFile(filepath.Join(dir, "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(compose), "UN_WEBSERVER_ROLES") {
+		t.Fatal("role maps are nested TOML tables, not compose env vars")
+	}
+}
+
 func TestMDXAdmonitionInInlineCode(t *testing.T) {
 	t.Parallel()
 

@@ -243,6 +243,7 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	skip := map[string]struct{}{
 		"keep_history": {}, // undocumented until the history API
 		"path":         {}, // legacy StarrConfig alias for paths
+		"key":          {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)

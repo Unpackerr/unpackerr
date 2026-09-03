@@ -1,15 +1,22 @@
 package unpackerr
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
 
 const (
-	apiKeyMinLen = 60
-	apiKeyMaxLen = 150
+	apiKeyMinLen        = 60
+	apiKeyMaxLen        = 150
+	apiKeyRandN         = 45 // RawURL base64 of 45 bytes is 60 characters.
+	defaultAdminKeyName = "admin"
+	fallbackAdminKey    = "ui"
+	keyNameSeqStart     = 2
 )
 
 var (
@@ -214,4 +221,71 @@ func (w *WebServer) HasPermission(key, perm string) bool {
 	}
 
 	return false
+}
+
+// GenerateAPIKey returns a random 60-character URL-safe API key.
+func GenerateAPIKey() string {
+	raw := make([]byte, apiKeyRandN)
+	_, _ = rand.Read(raw)
+
+	return base64.RawURLEncoding.EncodeToString(raw)
+}
+
+func (w *WebServer) hasAdminKey() bool {
+	return w.adminAPIKey() != ""
+}
+
+func (w *WebServer) adminAPIKey() string {
+	if w == nil {
+		return ""
+	}
+
+	for idx := range w.APIKeys {
+		if slices.Contains(w.APIKeys[idx].Roles, RoleAdmin) {
+			return w.APIKeys[idx].Key
+		}
+	}
+
+	return ""
+}
+
+func (w *WebServer) unusedKeyName(want string) string {
+	used := make(map[string]struct{}, len(w.APIKeys))
+
+	for _, key := range w.APIKeys {
+		used[key.Name] = struct{}{}
+	}
+
+	if _, exists := used[want]; !exists {
+		return want
+	}
+
+	if _, exists := used[fallbackAdminKey]; !exists {
+		return fallbackAdminKey
+	}
+
+	for idx := keyNameSeqStart; ; idx++ {
+		name := fmt.Sprintf("%s-%d", fallbackAdminKey, idx)
+		if _, exists := used[name]; !exists {
+			return name
+		}
+	}
+}
+
+func (u *Unpackerr) setupAdminAPIKey() error {
+	if u.Webserver == nil || !u.Webserver.Enabled() || u.Webserver.hasAdminKey() {
+		return nil
+	}
+
+	name := u.Webserver.unusedKeyName(defaultAdminKeyName)
+	u.Webserver.APIKeys = append(u.Webserver.APIKeys, APIKey{
+		Name:  name,
+		Key:   GenerateAPIKey(),
+		Roles: []string{RoleAdmin},
+	})
+	u.adminKeyNotice = name
+	u.syncFileAPIKeys()
+	u.persistConfigFile()
+
+	return nil
 }

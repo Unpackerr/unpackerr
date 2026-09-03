@@ -32,6 +32,7 @@ func cloneWebserver(src *WebServer) *WebServer {
 	dst.router = nil
 	dst.server = nil
 	dst.keyPerms = nil
+	dst.cookies = nil
 
 	return &dst
 }

@@ -322,6 +322,51 @@ func TestRenderLivePersist(t *testing.T) {
 	}
 }
 
+func TestRenderLiveNestedAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	schema := MustLoad(t)
+	live := &liveRoot{
+		Webserver: &liveWeb{
+			ListenAddr: "0.0.0.0:5656",
+			APIKeys: []liveAPIKey{{
+				Name:  "admin",
+				Key:   strings.Repeat("k", 60),
+				Roles: []string{"admin"},
+			}},
+			Roles: map[string]liveRole{
+				"stats": {Permissions: []string{"read:system:stats"}},
+			},
+		},
+	}
+
+	body := schema.RenderTOML(live, RenderOpts{Mode: RenderLive})
+
+	if strings.Contains(body, "api_keys =") {
+		t.Fatalf("struct-slice api_keys must be tables, got:\n%s", snippet(body, "api_keys"))
+	}
+
+	if !strings.Contains(body, "[[webserver.api_keys]]") {
+		t.Fatalf("missing [[webserver.api_keys]]:\n%s", snippet(body, "api_keys"))
+	}
+
+	if !strings.Contains(body, `name = "admin"`) || !strings.Contains(body, `roles = ["admin"]`) {
+		t.Fatalf("missing api key fields:\n%s", snippet(body, "[[webserver.api_keys]]"))
+	}
+
+	if strings.Contains(body, "roles = {") {
+		t.Fatalf("struct-map roles must be tables, got:\n%s", snippet(body, "roles"))
+	}
+
+	if !strings.Contains(body, "[webserver.roles.stats]") {
+		t.Fatalf("missing [webserver.roles.stats]:\n%s", snippet(body, "roles"))
+	}
+
+	if !strings.Contains(body, `permissions = ["read:system:stats"]`) {
+		t.Fatalf("missing role permissions:\n%s", snippet(body, "permissions"))
+	}
+}
+
 func TestAtomicWriteBackup(t *testing.T) {
 	t.Parallel()
 

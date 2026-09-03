@@ -1,0 +1,253 @@
+package unpackerr
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+
+	"github.com/julienschmidt/httprouter"
+)
+
+func testAuthUnpackerr(t *testing.T) *Unpackerr {
+	t.Helper()
+
+	unpack := New()
+	unpack.Webserver.URLBase = "/"
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+
+	if err := unpack.Webserver.UIPassword.SetPlain(defaultUIUser, "correct-horse"); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   strings.Repeat("A", apiKeyMinLen),
+		Roles: []string{RoleAdmin},
+	}}
+	unpack.Webserver.router = httprouter.New()
+	unpack.Webserver.initCookies()
+	unpack.webRoutes()
+
+	return unpack
+}
+
+func doAuth(
+	t *testing.T, unpack *Unpackerr, method, target, body string, setup func(*http.Request),
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	var reader io.Reader
+	if body != "" {
+		reader = strings.NewReader(body)
+	}
+
+	req := httptest.NewRequestWithContext(t.Context(), method, target, reader)
+	if setup != nil {
+		setup(req)
+	}
+
+	rec := httptest.NewRecorder()
+	unpack.Webserver.router.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestGenerateAPIKeyLength(t *testing.T) {
+	t.Parallel()
+
+	key := GenerateAPIKey()
+	if len(key) < apiKeyMinLen || len(key) > apiKeyMaxLen {
+		t.Fatalf("len %d", len(key))
+	}
+}
+
+func TestSetupAdminAPIKeyWritesTables(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupAdminAPIKey(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.adminKeyNotice == "" || !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected a generated admin key")
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(body)
+	if !strings.Contains(text, "[[webserver.api_keys]]") {
+		t.Fatalf("generated key must be a table, got:\n%s", text)
+	}
+
+	if !strings.Contains(text, unpack.Webserver.adminAPIKey()) {
+		t.Fatal("config file must contain the generated key")
+	}
+}
+
+func TestSetupAdminAPIKeySkipsDisabled(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.ListenAddr = ""
+
+	if err := unpack.setupAdminAPIKey(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Webserver.hasAdminKey() {
+		t.Fatal("disabled server must not generate a key")
+	}
+}
+
+func TestSetupAdminAPIKeyUnwritableIsNotFatal(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows {
+		t.Skip("directory permissions are not unix-like")
+	}
+
+	dir := t.TempDir()
+	conf := dir + "/unpackerr.conf"
+
+	if err := os.WriteFile(conf, []byte("debug = false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore after the read-only test
+
+	unpack := New()
+	unpack.ConfigFile = conf
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupAdminAPIKey(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.configWriteErr == nil {
+		t.Fatal("expected persist error")
+	}
+
+	if !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected an in-memory admin key")
+	}
+}
+
+func TestLoginMeLogout(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	logged := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if logged.Code != http.StatusOK {
+		t.Fatalf("login %d %s", logged.Code, logged.Body.String())
+	}
+
+	var login authInfo
+	if err := json.Unmarshal(logged.Body.Bytes(), &login); err != nil {
+		t.Fatal(err)
+	}
+
+	if login.APIKey != unpack.Webserver.adminAPIKey() || login.Username != defaultUIUser {
+		t.Fatalf("login payload %+v", login)
+	}
+
+	res := logged.Result()
+	_ = res.Body.Close()
+
+	meRec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+	})
+	if meRec.Code != http.StatusOK {
+		t.Fatalf("me cookie %d %s", meRec.Code, meRec.Body.String())
+	}
+
+	key := unpack.Webserver.adminAPIKey()
+	headerRec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, key)
+	})
+
+	if headerRec.Code != http.StatusOK {
+		t.Fatalf("me key %d %s", headerRec.Code, headerRec.Body.String())
+	}
+
+	bearerRec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.Header.Set("Authorization", authHeaderBearer+key)
+	})
+
+	if bearerRec.Code != http.StatusOK {
+		t.Fatalf("me bearer %d %s", bearerRec.Code, bearerRec.Body.String())
+	}
+
+	if out := doAuth(t, unpack, http.MethodPost, "/api/auth/logout", "", nil); out.Code != http.StatusOK {
+		t.Fatalf("logout %d", out.Code)
+	}
+}
+
+func TestLoginRejectsBadPassword(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", `{"name":"admin","kdf":"nope"}`, nil)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d", rec.Code)
+	}
+}
+
+func TestLoginDisabledForWebauth(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = "webauth:X-User"
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", `{"name":"admin","kdf":"x"}`, nil)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("got %d", rec.Code)
+	}
+}
+
+func TestMeUnauthorizedWithoutCreds(t *testing.T) {
+	t.Parallel()
+
+	rec := doAuth(t, testAuthUnpackerr(t), http.MethodGet, "/api/auth/me", "", nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d", rec.Code)
+	}
+}
+
+func TestNoauthMeFromUpstream(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = authNone
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+}

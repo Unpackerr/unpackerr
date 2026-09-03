@@ -59,6 +59,7 @@ func (u *Unpackerr) readyTray() {
 	go u.watchDebugChannels()
 	go u.Run()
 
+	u.showGeneratedPassword()
 	u.watchGuiChannels()
 }
 
@@ -66,6 +67,11 @@ func (u *Unpackerr) makeChannels() {
 	conf := systray.AddMenuItem("Config", "show configuration")
 	u.menu["conf"] = ui.WrapMenu(conf)
 	u.menu["edit"] = ui.WrapMenu(conf.AddSubMenuItem("Edit", "open configuration file"))
+	u.menu["pass"] = ui.WrapMenu(conf.AddSubMenuItem("Change Password", "set the web UI password"))
+
+	if u.Webserver == nil || !u.Webserver.Enabled() || u.Webserver.UIPassword.Type() != AuthPassword {
+		u.menu["pass"].Hide()
+	}
 
 	link := systray.AddMenuItem("Links", "external resources")
 	u.menu["link"] = ui.WrapMenu(link)
@@ -116,6 +122,8 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["edit"].Clicked():
 			u.Printf("User Editing Config File: %s", u.ConfigFile)
 			_ = ui.OpenFile(u.ConfigFile)
+		case <-u.menu["pass"].Clicked():
+			u.changePasswordDialog()
 		case <-u.menu["link"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["info"].Clicked():

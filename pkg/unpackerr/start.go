@@ -73,10 +73,11 @@ type Unpackerr struct {
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
 	*Logger
-	rotatorr        *rotatorr.Logger
-	httpLog         *rotatorr.Logger
-	menu            map[string]ui.MenuItem
-	passwordSources StringSlice
+	rotatorr         *rotatorr.Logger
+	httpLog          *rotatorr.Logger
+	menu             map[string]ui.MenuItem
+	passwordSources  StringSlice
+	uiPasswordNotice string
 }
 
 type fileDeleteReq struct {
@@ -97,10 +98,11 @@ type Logger struct {
 
 // Flags are our CLI input flags.
 type Flags struct {
-	verReq     bool
-	ConfigFile string
-	EnvPrefix  string
-	webhook    uint
+	verReq        bool
+	ConfigFile    string
+	EnvPrefix     string
+	webhook       uint
+	setUIPassword string
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -172,6 +174,10 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+
+	if err := unpackerr.handleStartupPassword(); err != nil {
+		return err
+	}
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",
@@ -342,7 +348,7 @@ func (u *Unpackerr) watchCmdAndWebhooks() {
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.Usage = func() {
-		fmt.Println("Usage: unpackerr [--config=filepath] [--version]") //nolint:forbidigo
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version] [--set-ui-password=user:pass]") //nolint:forbidigo
 		flag.PrintDefaults()
 	}
 
@@ -350,6 +356,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.StringVarP(&u.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
 	flag.UintVarP(&u.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
+	flag.StringVar(&u.setUIPassword, "set-ui-password", "", "Set the web UI password (user:pass or pass) and exit")
 	flag.Parse()
 
 	return u // so you can chain into ParseConfig.

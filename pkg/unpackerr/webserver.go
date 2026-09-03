@@ -30,8 +30,33 @@ type WebServer struct {
 	server     *http.Server
 }
 
+func (w *WebServer) listenAddr() string {
+	if w == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(w.ListenAddr)
+}
+
 func (w *WebServer) Enabled() bool {
-	return w != nil && strings.TrimSpace(w.ListenAddr) != ""
+	return w.listenAddr() != ""
+}
+
+func (w *WebServer) bindAddr() string {
+	addr := w.listenAddr()
+	if addr != "" && !strings.Contains(addr, ":") {
+		return "0.0.0.0:" + addr
+	}
+
+	return addr
+}
+
+func (w *WebServer) normalizeURLBase() {
+	if w == nil {
+		return
+	}
+
+	w.URLBase = strings.TrimSuffix(path.Join("/", w.URLBase), "/") + "/"
 }
 
 func (u *Unpackerr) logWebserver() {
@@ -40,10 +65,7 @@ func (u *Unpackerr) logWebserver() {
 		return
 	}
 
-	addr := u.Webserver.ListenAddr
-	if !strings.Contains(addr, ":") {
-		addr = "0.0.0.0:" + addr
-	}
+	u.Webserver.normalizeURLBase()
 
 	ssl := ""
 	if u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "" {
@@ -51,10 +73,10 @@ func (u *Unpackerr) logWebserver() {
 	}
 
 	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams)",
-		ssl, addr, u.Webserver.URLBase, len(u.Webserver.Upstreams))
+		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams))
 
 	if u.Webserver.Metrics {
-		u.Printf(" => Prometheus metrics enabled at %smetrics", u.Webserver.URLBase)
+		u.Printf(" => Prometheus metrics enabled at %s", path.Join(u.Webserver.URLBase, "metrics"))
 	}
 }
 
@@ -63,12 +85,7 @@ func (u *Unpackerr) startWebServer() {
 		return
 	}
 
-	addr := u.Webserver.ListenAddr
-	if !strings.Contains(addr, ":") {
-		addr = "0.0.0.0:" + addr
-	}
-
-	u.Webserver.URLBase = strings.TrimSuffix(path.Join("/", u.Webserver.URLBase), "/") + "/"
+	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = httprouter.New()
 	apache, _ := apachelog.New(`%{X-Forwarded-For}i %l - %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"`)
@@ -80,7 +97,7 @@ func (u *Unpackerr) startWebServer() {
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
-		Addr:              addr,
+		Addr:              u.Webserver.bindAddr(),
 		Handler:           smx,
 		ReadTimeout:       0,
 		ReadHeaderTimeout: defaultTimeout,

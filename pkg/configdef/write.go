@@ -17,6 +17,15 @@ const (
 
 // AtomicWrite writes data to path by temp file + rename, keeping path.bak.
 func AtomicWrite(path string, data []byte) error {
+	return atomicWrite(path, data, true)
+}
+
+// AtomicReplace writes data to path by temp file + rename without creating path.bak.
+func AtomicReplace(path string, data []byte) error {
+	return atomicWrite(path, data, false)
+}
+
+func atomicWrite(path string, data []byte, backup bool) error {
 	if path == "" {
 		return errEmptyConfigPath
 	}
@@ -57,7 +66,7 @@ func AtomicWrite(path string, data []byte) error {
 		return fmt.Errorf("closing temp config: %w", err)
 	}
 
-	if err := replaceFile(path, tmpName, mode); err != nil {
+	if err := replaceFile(path, tmpName, mode, backup); err != nil {
 		return err
 	}
 
@@ -66,12 +75,14 @@ func AtomicWrite(path string, data []byte) error {
 	return nil
 }
 
-func replaceFile(path, tmpName string, mode os.FileMode) error {
+func replaceFile(path, tmpName string, mode os.FileMode, backup bool) error {
 	bak := path + backupSuffix
 
-	if _, err := os.Stat(path); err == nil {
-		if err := copyFile(path, bak, mode); err != nil {
-			return fmt.Errorf("backing up config: %w", err)
+	if backup {
+		if _, err := os.Stat(path); err == nil {
+			if err := copyFile(path, bak, mode); err != nil {
+				return fmt.Errorf("backing up config: %w", err)
+			}
 		}
 	}
 
@@ -82,7 +93,9 @@ func replaceFile(path, tmpName string, mode os.FileMode) error {
 	_ = os.Remove(path)
 
 	if err := os.Rename(tmpName, path); err != nil {
-		_ = copyFile(bak, path, mode)
+		if backup {
+			_ = copyFile(bak, path, mode)
+		}
 
 		return fmt.Errorf("replacing config: %w", err)
 	}

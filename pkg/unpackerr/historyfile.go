@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/configdef"
@@ -19,7 +20,10 @@ const (
 	historyScanMax  = 1024 * 1024
 )
 
-var errHistoryLineTooLong = errors.New("history line exceeds maximum")
+var (
+	errHistoryLineTooLong = errors.New("history line exceeds maximum")
+	errHistoryNotFound    = errors.New("not found")
+)
 
 // HistoryRecord is one completed or failed pipeline item (JSONL + API).
 type HistoryRecord struct {
@@ -302,7 +306,7 @@ func (u *Unpackerr) writeHistoryLocked() error {
 		}
 	}
 
-	if err := configdef.AtomicWrite(u.histPath, buf.Bytes()); err != nil {
+	if err := configdef.AtomicReplace(u.histPath, buf.Bytes()); err != nil {
 		return fmt.Errorf("writing history file: %w", err)
 	}
 
@@ -357,4 +361,47 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 	}
 
 	return queue
+}
+
+func (u *Unpackerr) deleteHistoryID(itemID string) error {
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	found := -1
+
+	for idx := range u.records {
+		if u.records[idx].ID == itemID {
+			found = idx
+			break
+		}
+	}
+
+	if found < 0 {
+		return errHistoryNotFound
+	}
+
+	saved := u.records[found]
+	u.records = slices.Delete(u.records, found, found+1)
+
+	if err := u.writeHistoryLocked(); err != nil {
+		u.records = slices.Insert(u.records, found, saved)
+		return err
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) clearHistory() error {
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	saved := u.records
+	u.records = nil
+
+	if err := u.writeHistoryLocked(); err != nil {
+		u.records = saved
+		return err
+	}
+
+	return nil
 }

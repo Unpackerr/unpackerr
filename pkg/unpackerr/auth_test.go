@@ -41,6 +41,7 @@ func testAuthUnpackerr(t *testing.T) *Unpackerr {
 	}
 
 	unpack.webRoutes()
+	go unpack.runQueueActions(t.Context())
 
 	return unpack
 }

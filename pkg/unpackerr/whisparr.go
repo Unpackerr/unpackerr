@@ -86,6 +86,9 @@ func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
 
 // checkWhisparrQueue saves completed Whisparr-queued downloads to u.Map.
 func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Whisparr {
 		if server.Queue == nil {
 			continue

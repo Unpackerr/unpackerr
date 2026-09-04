@@ -348,7 +348,9 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
+	u.lockHistory()
 	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].updated, true)
+	u.unlockHistory()
 	u.updateHistory(FolderString + ": " + name)
 
 	exclude := folderExcludeSuffixes(name, folder.config)
@@ -440,6 +442,9 @@ func getFileList(path string) []os.FileInfo {
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
 func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	folder, ok := u.folders.Folders[resp.X.Name]
 
 	switch item := u.Map[resp.X.Name]; {
@@ -656,16 +661,23 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
 			if now.Sub(folder.updated) > u.StartDelay.Duration {
 				// Ignore "no compressed files" errors for folders.
+				u.lockHistory()
 				delete(u.Map, name)
+				u.unlockHistory()
 				delete(u.folders.Folders, name)
 			}
 		case EXTRACTFAILED == folder.status && folder.noRetry:
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
 		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
 			folder.retries < u.maxRetries():
+			u.lockHistory()
 			u.Retries++
+			u.unlockHistory()
+
 			folder.retries++
 			folder.updated = now
 			folder.status = WAITING
@@ -675,12 +687,16 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			// This empty block is to avoid deleting an item that needs more retries.
 		case EXTRACTFAILED == folder.status && folder.retries >= u.maxRetries():
 			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.maxRetries(), name)
 		case EXTRACTED == folder.status && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 		case EXTRACTED == folder.status && elapsed >= folder.config.DeleteAfter.Duration:
 			u.deleteAfterReached(name, now, folder)
@@ -708,7 +724,9 @@ func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folde
 		webhook = true
 	}
 
+	u.lockHistory()
 	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, webhook)
+	u.unlockHistory()
 	// Folder reached delete delay (after extraction), nuke it.
 	delete(u.folders.Folders, name)
 }

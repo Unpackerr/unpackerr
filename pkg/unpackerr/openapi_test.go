@@ -29,4 +29,8 @@ func TestOpenAPIUnauthenticated(t *testing.T) {
 	if _, ok := paths["/api/stats"]; !ok {
 		t.Fatal("missing /api/stats")
 	}
+
+	if _, ok := paths["/api/config/{section}/live"]; !ok {
+		t.Fatal("missing live config GET")
+	}
 }

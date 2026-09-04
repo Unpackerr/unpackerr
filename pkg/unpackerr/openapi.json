@@ -389,11 +389,11 @@
       ],
       "get": {
         "tags": ["config"],
-        "summary": "Read one config section",
-        "description": "Requires read:config:{section}. Starr API keys are visible. ui_password is the stored hash or auth mode, not plaintext.",
+        "summary": "Read the on-disk config section",
+        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
-            "description": "Section payload",
+            "description": "On-disk section payload",
             "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
           },
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
@@ -404,10 +404,10 @@
       "put": {
         "tags": ["config"],
         "summary": "Replace one config section and rewrite the TOML file",
-        "description": "Requires write:config:{section}. Replaces the section (GET then PUT). In-flight extracts are not cancelled. Some changes set restartRequired.",
+        "description": "Requires write:config:{section}. Body is the file-shaped GET payload. filepath: ui_password is expanded for the running process and kept as filepath: on disk. In-flight extracts are not cancelled. Some changes set restartRequired.",
         "requestBody": {
           "required": true,
-          "content": {"application/json": {"schema": {"description": "Same shape as GET for this section"}}}
+          "content": {"application/json": {"schema": {"description": "Same shape as GET /api/config/{section}"}}}
         },
         "responses": {
           "200": {
@@ -415,6 +415,33 @@
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigWriteReply"}}}
           },
           "400": {"description": "Validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/config/{section}/live": {
+      "parameters": [
+        {
+          "name": "section",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "whisparr", "folders", "webhooks", "cmdhooks"]
+          }
+        }
+      ],
+      "get": {
+        "tags": ["config"],
+        "summary": "Read the expanded running config section",
+        "description": "Requires read:config:{section}. filepath: values are already expanded. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
+        "responses": {
+          "200": {
+            "description": "Live section payload",
+            "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
+          },
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}

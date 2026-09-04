@@ -43,6 +43,38 @@ func TestStatsAndSystemRequireAuth(t *testing.T) {
 	if !strings.Contains(sysRec.Body.String(), `"auth":"password"`) {
 		t.Fatalf("system body %s", sysRec.Body.String())
 	}
+
+	var info systemInfo
+	if err := json.Unmarshal(sysRec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.ListenAddr != unpack.Webserver.bindAddr() {
+		t.Fatalf("listenAddr %q", info.ListenAddr)
+	}
+}
+
+func TestSystemReportsPortOnlyBindAddr(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.ListenAddr = " 5656 "
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/system", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("system %d %s", rec.Code, rec.Body.String())
+	}
+
+	var info systemInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.ListenAddr != "0.0.0.0:5656" {
+		t.Fatalf("listenAddr %q", info.ListenAddr)
+	}
 }
 
 func TestStatsPermissionDoesNotGrantSystem(t *testing.T) {

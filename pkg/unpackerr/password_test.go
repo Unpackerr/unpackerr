@@ -240,6 +240,39 @@ func TestSetupUIPasswordExpandsFilepath(t *testing.T) {
 	}
 }
 
+func TestSetupUIPasswordEmptyFilepathKeepsPrefix(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	passFile := dir + "/ui.pass"
+
+	if err := os.WriteFile(passFile, []byte("\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.ConfigFile = dir + "/unpackerr.conf"
+	unpack.Webserver.UIPassword = CryptPass(filePrefix + passFile)
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.uiPasswordNotice == "" || !unpack.Webserver.UIPassword.IsCrypted() {
+		t.Fatal("empty password file should generate a live password")
+	}
+
+	stored := unpack.fileConfig.Webserver.UIPassword.Val()
+	if stored != filePrefix+passFile {
+		t.Fatalf("empty filepath: must stay on disk, got %q", stored)
+	}
+
+	if _, err := os.Stat(unpack.ConfigFile); !os.IsNotExist(err) {
+		t.Fatal("empty filepath: must not rewrite the config file")
+	}
+}
+
 func TestResetUIPasswordWritesAndHashes(t *testing.T) {
 	t.Parallel()
 

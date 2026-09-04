@@ -64,7 +64,23 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 }
 
 func (u *Unpackerr) configGetHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
-	payload, ok := u.configSection(ConfigSection(params.ByName("section")))
+	writeConfigSection(response, u.fileConfigOrLive(), ConfigSection(params.ByName("section")))
+}
+
+func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
+	writeConfigSection(response, u.Config, ConfigSection(params.ByName("section")))
+}
+
+func (u *Unpackerr) fileConfigOrLive() *Config {
+	if u.fileConfig != nil {
+		return u.fileConfig
+	}
+
+	return u.Config
+}
+
+func writeConfigSection(response http.ResponseWriter, cfg *Config, section ConfigSection) {
+	payload, ok := configSectionFrom(cfg, section)
 	if !ok {
 		writeJSON(response, http.StatusNotFound, map[string]string{"error": "unknown section"})
 		return
@@ -73,65 +89,73 @@ func (u *Unpackerr) configGetHandler(response http.ResponseWriter, _ *http.Reque
 	writeJSON(response, http.StatusOK, payload)
 }
 
-func (u *Unpackerr) configSection(section ConfigSection) (any, bool) {
+func configSectionFrom(cfg *Config, section ConfigSection) (any, bool) {
+	if cfg == nil {
+		return nil, false
+	}
+
 	switch section {
 	case SectionGeneral:
-		return u.generalConfig(), true
+		return generalConfigFrom(cfg), true
 	case SectionWebserver:
-		return u.Webserver, true
+		if cfg.Webserver == nil {
+			return &WebServer{}, true
+		}
+
+		return cfg.Webserver, true
 	case SectionSonarr:
-		return emptyIfNil(u.Sonarr), true
+		return emptyIfNil(cfg.Sonarr), true
 	case SectionRadarr:
-		return emptyIfNil(u.Radarr), true
+		return emptyIfNil(cfg.Radarr), true
 	case SectionLidarr:
-		return emptyIfNil(u.Lidarr), true
+		return emptyIfNil(cfg.Lidarr), true
 	case SectionReadarr:
-		return emptyIfNil(u.Readarr), true
+		return emptyIfNil(cfg.Readarr), true
 	case SectionWhisparr:
-		return emptyIfNil(u.Whisparr), true
+		return emptyIfNil(cfg.Whisparr), true
 	case SectionFolders:
-		return u.foldersConfig(), true
+		return foldersConfigFrom(cfg), true
 	case SectionWebhooks:
-		return emptyIfNil(u.Webhook), true
+		return emptyIfNil(cfg.Webhook), true
 	case SectionCmdhooks:
-		return emptyIfNil(u.Cmdhook), true
+		return emptyIfNil(cfg.Cmdhook), true
 	default:
 		return nil, false
 	}
 }
 
-func (u *Unpackerr) generalConfig() generalConfig {
+func generalConfigFrom(cfg *Config) generalConfig {
 	return generalConfig{
-		Debug:         u.Config.Debug,
-		Quiet:         u.Quiet,
-		Activity:      u.Activity,
-		Parallel:      u.Parallel,
-		ErrorStdErr:   u.ErrorStdErr,
-		LogFile:       u.LogFile,
-		LogFiles:      u.LogFiles,
-		LogFileMb:     u.LogFileMb,
-		LogFileMode:   u.LogFileMode,
-		MaxRetries:    u.MaxRetries,
-		RemnantAction: u.RemnantAction,
-		FileMode:      u.FileMode,
-		DirMode:       u.DirMode,
-		LogQueues:     u.LogQueues,
-		Interval:      u.Interval,
-		Timeout:       u.Timeout,
-		DeleteDelay:   u.DeleteDelay,
-		StartDelay:    u.StartDelay,
-		RetryDelay:    u.RetryDelay,
-		Progress:      u.Progress,
-		KeepHistory:   u.KeepHistory,
-		Passwords:     emptyIfNil(u.Passwords),
+		Debug:         cfg.Debug,
+		Quiet:         cfg.Quiet,
+		Activity:      cfg.Activity,
+		Parallel:      cfg.Parallel,
+		ErrorStdErr:   cfg.ErrorStdErr,
+		LogFile:       cfg.LogFile,
+		LogFiles:      cfg.LogFiles,
+		LogFileMb:     cfg.LogFileMb,
+		LogFileMode:   cfg.LogFileMode,
+		MaxRetries:    cfg.MaxRetries,
+		RemnantAction: cfg.RemnantAction,
+		FileMode:      cfg.FileMode,
+		DirMode:       cfg.DirMode,
+		LogQueues:     cfg.LogQueues,
+		Interval:      cfg.Interval,
+		Timeout:       cfg.Timeout,
+		DeleteDelay:   cfg.DeleteDelay,
+		StartDelay:    cfg.StartDelay,
+		RetryDelay:    cfg.RetryDelay,
+		Progress:      cfg.Progress,
+		KeepHistory:   cfg.KeepHistory,
+		Passwords:     emptyIfNil(cfg.Passwords),
 	}
 }
 
-func (u *Unpackerr) foldersConfig() foldersConfigAPI {
+func foldersConfigFrom(cfg *Config) foldersConfigAPI {
 	return foldersConfigAPI{
-		Interval: u.Folder.Interval,
-		Buffer:   u.Folder.Buffer,
-		Folder:   emptyIfNil(u.Folders),
+		Interval: cfg.Folder.Interval,
+		Buffer:   cfg.Folder.Buffer,
+		Folder:   emptyIfNil(cfg.Folders),
 	}
 }
 

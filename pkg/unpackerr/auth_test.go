@@ -75,9 +75,7 @@ func TestSetupAdminAPIKeyWritesTables(t *testing.T) {
 	unpack.Webserver.ListenAddr = "127.0.0.1:0"
 	unpack.snapshotFileConfig()
 
-	if err := unpack.setupAdminAPIKey(); err != nil {
-		t.Fatal(err)
-	}
+	unpack.setupAdminAPIKey()
 
 	if unpack.adminKeyNotice == "" || !unpack.Webserver.hasAdminKey() {
 		t.Fatal("expected a generated admin key")
@@ -104,9 +102,7 @@ func TestSetupAdminAPIKeySkipsDisabled(t *testing.T) {
 	unpack := New()
 	unpack.Webserver.ListenAddr = ""
 
-	if err := unpack.setupAdminAPIKey(); err != nil {
-		t.Fatal(err)
-	}
+	unpack.setupAdminAPIKey()
 
 	if unpack.Webserver.hasAdminKey() {
 		t.Fatal("disabled server must not generate a key")
@@ -138,9 +134,7 @@ func TestSetupAdminAPIKeyUnwritableIsNotFatal(t *testing.T) {
 	unpack.Webserver.ListenAddr = "127.0.0.1:0"
 	unpack.snapshotFileConfig()
 
-	if err := unpack.setupAdminAPIKey(); err != nil {
-		t.Fatal(err)
-	}
+	unpack.setupAdminAPIKey()
 
 	if unpack.configWriteErr == nil {
 		t.Fatal("expected persist error")

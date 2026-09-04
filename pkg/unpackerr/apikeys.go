@@ -272,7 +272,7 @@ func (w *WebServer) unusedKeyName(want string) string {
 	}
 }
 
-func (u *Unpackerr) setupAdminAPIKey() error {
+func (u *Unpackerr) setupAdminAPIKey() {
 	if u.Webserver == nil || !u.Webserver.Enabled() || u.Webserver.hasAdminKey() {
 		return nil
 	}
@@ -286,6 +286,4 @@ func (u *Unpackerr) setupAdminAPIKey() error {
 	u.adminKeyNotice = name
 	u.syncFileAPIKeys()
 	u.persistConfigFile()
-
-	return nil
 }

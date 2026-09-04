@@ -174,3 +174,24 @@ func TestLoadHistoryKeepsRecordsAfterBadLine(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestLoadHistorySkipsOversizedLineWithoutNewline(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), historyFileName)
+	body := `{"id":"a","path":"a","status":"imported"}` + "\n" + strings.Repeat("x", historyScanMax+16)
+
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = path
+	unpack.loadHistory()
+
+	got := unpack.historySnapshot()
+	if len(got) != 1 || got[0].ID != "a" {
+		t.Fatalf("%+v", got)
+	}
+}

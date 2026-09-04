@@ -19,6 +19,8 @@ const (
 	historyScanMax  = 1024 * 1024
 )
 
+var errHistoryLineTooLong = errors.New("history line exceeds maximum")
+
 // HistoryRecord is one completed or failed pipeline item (JSONL + API).
 type HistoryRecord struct {
 	ID         string        `json:"id"`
@@ -127,32 +129,25 @@ func (u *Unpackerr) readHistoryRecords() []HistoryRecord {
 	var records []HistoryRecord
 
 	for {
-		line, readErr := reader.ReadBytes('\n')
-		records = u.appendHistoryLine(records, line)
-
-		if errors.Is(readErr, io.EOF) {
-			break
-		}
-
-		if readErr != nil {
+		line, readErr := readBoundedLine(reader, historyScanMax)
+		switch {
+		case errors.Is(readErr, errHistoryLineTooLong):
+			u.Errorf("Skipping oversized history line")
+		case errors.Is(readErr, io.EOF):
+			return u.appendHistoryLine(records, line)
+		case readErr != nil:
 			u.Errorf("Reading history file: %v", readErr)
 
-			break
+			return records
+		default:
+			records = u.appendHistoryLine(records, line)
 		}
 	}
-
-	return records
 }
 
 func (u *Unpackerr) appendHistoryLine(records []HistoryRecord, line []byte) []HistoryRecord {
 	line = bytes.TrimSpace(line)
 	if len(line) == 0 {
-		return records
-	}
-
-	if len(line) > historyScanMax {
-		u.Errorf("Skipping oversized history line")
-
 		return records
 	}
 
@@ -164,6 +159,38 @@ func (u *Unpackerr) appendHistoryLine(records []HistoryRecord, line []byte) []Hi
 	}
 
 	return append(records, rec)
+}
+
+func readBoundedLine(reader *bufio.Reader, maxLen int) ([]byte, error) {
+	var line []byte
+
+	for {
+		chunk, err := reader.ReadSlice('\n')
+		if len(line)+len(chunk) > maxLen {
+			for errors.Is(err, bufio.ErrBufferFull) {
+				_, err = reader.ReadSlice('\n')
+			}
+
+			if err == nil || errors.Is(err, io.EOF) {
+				return nil, errHistoryLineTooLong
+			}
+
+			return nil, fmt.Errorf("reading history line: %w", err)
+		}
+
+		line = append(line, chunk...)
+
+		switch {
+		case errors.Is(err, bufio.ErrBufferFull):
+			continue
+		case err == nil:
+			return bytes.TrimSpace(line), nil
+		case errors.Is(err, io.EOF):
+			return bytes.TrimSpace(line), io.EOF
+		default:
+			return nil, fmt.Errorf("reading history line: %w", err)
+		}
+	}
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {

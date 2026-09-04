@@ -303,13 +303,23 @@ func (u *Unpackerr) setupAdminAPIKey() {
 
 func (u *Unpackerr) adoptFileAdminKey() bool {
 	for _, key := range u.fileAPIKeys() {
-		if !slices.Contains(key.Roles, RoleAdmin) {
+		if !slices.Contains(key.Roles, RoleAdmin) || u.liveKeyCollision(key) {
 			continue
 		}
 
 		u.installAdminKey(key, false)
 
 		return true
+	}
+
+	return false
+}
+
+func (u *Unpackerr) liveKeyCollision(key APIKey) bool {
+	for _, live := range u.Webserver.APIKeys {
+		if live.Name == key.Name || live.Key == key.Key {
+			return true
+		}
 	}
 
 	return false
@@ -324,17 +334,23 @@ func (u *Unpackerr) fileAPIKeys() []APIKey {
 }
 
 func (u *Unpackerr) installAdminKey(key APIKey, persist bool) {
+	prev := u.Webserver.APIKeys
 	cloned := cloneAPIKeys([]APIKey{key})
 	u.Webserver.APIKeys = append(u.Webserver.APIKeys, cloned...)
+
+	if u.Webserver.keyPerms != nil {
+		if err := u.Webserver.validateAuth(); err != nil {
+			u.Webserver.APIKeys = prev
+			u.adminKeyErr = err
+
+			return
+		}
+	}
 
 	if persist {
 		u.adminKeyNotice = key.Name
 		u.appendFileAPIKey(key)
 		u.persistConfigFile()
-	}
-
-	if u.Webserver.keyPerms != nil {
-		u.Webserver.keyPerms[key.Key] = append([]string(nil), AllPermissions()...)
 	}
 }
 

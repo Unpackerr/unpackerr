@@ -24,6 +24,7 @@ var (
 	errEmptyKeyRoles   = errors.New("api key needs at least one role")
 	errInvalidRoleName = errors.New("role name must be letters, digits, underscore, or hyphen")
 	errReservedPerm    = errors.New("permission * is reserved for built-in admin")
+	errReservedRole    = errors.New("role is built in and cannot be redefined")
 )
 
 // APIKey is a named secret assigned one or more roles.
@@ -74,7 +75,7 @@ func (r Role) validate(name string) error {
 	}
 
 	if name == RoleAdmin {
-		return fmt.Errorf("role %q is built in and cannot be redefined", name)
+		return fmt.Errorf("%w: %s", errReservedRole, name)
 	}
 
 	if len(r.Permissions) == 0 {

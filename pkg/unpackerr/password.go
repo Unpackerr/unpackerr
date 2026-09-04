@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -40,8 +41,9 @@ const (
 )
 
 var (
-	errShortUIPassword = errors.New("ui password must be at least 8 characters")
-	errEmptyAuthHeader = errors.New("auth header may not be empty")
+	errShortUIPassword     = errors.New("ui password must be at least 8 characters")
+	errEmptyAuthHeader     = errors.New("auth header may not be empty")
+	errMalformedUIPassword = errors.New("ui_password stored hash is invalid")
 )
 
 func (t AuthType) String() string {
@@ -71,14 +73,18 @@ func GeneratePassword() string {
 	return base64.RawURLEncoding.EncodeToString(raw)
 }
 
-func splitUserPass(input string) (string, string) {
+func splitUserPass(input, fallback string) (string, string) {
+	if fallback == "" {
+		fallback = defaultUIUser
+	}
+
 	user, pass, found := strings.Cut(strings.TrimSpace(input), ":")
 	if !found {
-		return defaultUIUser, user
+		return fallback, user
 	}
 
 	if user == "" {
-		user = defaultUIUser
+		user = fallback
 	}
 
 	return user, pass
@@ -122,7 +128,7 @@ func (p CryptPass) Username() string {
 		rest := strings.TrimPrefix(p.Val(), authPassword)
 
 		user, _, found := strings.Cut(rest, ":")
-		if found && user != "" && !strings.HasPrefix(user, "$") {
+		if found && user != "" && !isBcryptHash(user) {
 			return user
 		}
 
@@ -133,7 +139,7 @@ func (p CryptPass) Username() string {
 		return defaultUIUser
 	}
 
-	user, _ := splitUserPass(p.Val())
+	user, _ := splitUserPass(p.Val(), defaultUIUser)
 
 	return user
 }
@@ -213,13 +219,54 @@ func (p CryptPass) ValidPlain(username, password string) bool {
 	return p.Valid(username, DeriveKDF(username, password))
 }
 
-func (u *Unpackerr) setupUIPassword() error {
-	if u.setUIPassword != "" || u.Webserver == nil || !u.Webserver.Enabled() {
+func isBcryptHash(value string) bool {
+	return (strings.HasPrefix(value, "$2a$") ||
+		strings.HasPrefix(value, "$2b$") ||
+		strings.HasPrefix(value, "$2y$")) &&
+		len(value) >= 59
+}
+
+func (p CryptPass) checkStored() error {
+	if !p.IsCrypted() {
 		return nil
 	}
 
+	rest := strings.TrimPrefix(p.Val(), authPassword)
+	if isBcryptHash(rest) {
+		return nil
+	}
+
+	_, hash, found := strings.Cut(rest, ":")
+	if !found || !isBcryptHash(hash) {
+		return errMalformedUIPassword
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) setupUIPassword() error {
+	if u.reset || u.Webserver == nil || !u.Webserver.Enabled() {
+		return nil
+	}
+
+	if err := u.expandUIPasswordFile(); err != nil {
+		return err
+	}
+
 	pass := u.Webserver.UIPassword
-	if pass.Webauth() || pass.IsCrypted() {
+	if err := pass.checkStored(); err != nil {
+		return err
+	}
+
+	if pass.Webauth() {
+		if pass.Type() == AuthHeader && pass.Header() == "" {
+			return errEmptyAuthHeader
+		}
+
+		return nil
+	}
+
+	if pass.IsCrypted() {
 		return nil
 	}
 
@@ -230,50 +277,97 @@ func (u *Unpackerr) setupUIPassword() error {
 		}
 
 		u.uiPasswordNotice = plain
+		u.syncFileUIPassword()
 
 		return u.writeUIPasswordConfig()
 	}
 
-	user, plain := splitUserPass(pass.Val())
+	user, plain := splitUserPass(pass.Val(), defaultUIUser)
 	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
 		return err
 	}
 
+	u.syncFileUIPassword()
+
 	return u.writeUIPasswordConfig()
+}
+
+func (u *Unpackerr) expandUIPasswordFile() error {
+	pass := u.Webserver.UIPassword.Val()
+	if !strings.HasPrefix(pass, filePrefix) {
+		return nil
+	}
+
+	data, err := os.ReadFile(strings.TrimPrefix(pass, filePrefix))
+	if err != nil {
+		return fmt.Errorf("reading ui_password file: %w", err)
+	}
+
+	u.Webserver.UIPassword = CryptPass(strings.TrimSpace(string(data)))
+
+	return nil
 }
 
 func (u *Unpackerr) writeUIPasswordConfig() error {
 	if err := u.writeConfigFile(); err != nil && !errors.Is(err, errNoConfigFile) {
-		return err
+		u.uiPasswordWriteErr = err
 	}
 
 	return nil
 }
 
-func (u *Unpackerr) applyCLIPassword(input string) error {
-	user, plain := splitUserPass(input)
+func (u *Unpackerr) resetUIPassword() error {
+	user := defaultUIUser
+
+	if u.Webserver != nil {
+		if name := u.Webserver.UIPassword.Username(); name != "" {
+			user = name
+		}
+	}
+
+	plain := GeneratePassword()
 	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
 		return err
 	}
+
+	u.syncFileUIPassword()
 
 	if err := u.writeConfigFile(); err != nil {
 		return err
 	}
 
-	u.Printf("Updated UI password for user %q and wrote %s", user, u.ConfigFile)
+	u.Printf("Reset UI password for user %q and wrote %s", user, u.ConfigFile)
+	u.Printf("New %q user password: %s", user, plain)
 
 	return nil
 }
 
 func (u *Unpackerr) handleStartupPassword() error {
-	if u.setUIPassword != "" {
-		return u.applyCLIPassword(u.setUIPassword)
+	if u.reset {
+		return u.resetUIPassword()
 	}
 
 	if u.uiPasswordNotice != "" {
 		u.Printf("Generated temporary UI password for user %s: %s", defaultUIUser, u.uiPasswordNotice)
-		u.Printf("Change it with --set-ui-password or the tray menu. It will not be shown again.")
+		u.Printf("Change it with --reset or the tray menu. It will not be shown again.")
+	}
+
+	if u.uiPasswordWriteErr != nil {
+		u.Errorf("Could not persist UI password to %s: %v", u.ConfigFile, u.uiPasswordWriteErr)
+	}
+
+	if _, set := os.LookupEnv(u.uiPasswordEnvName()); set {
+		u.Printf("%s is set; it overrides the config file on every start.", u.uiPasswordEnvName())
 	}
 
 	return nil
+}
+
+func (u *Unpackerr) uiPasswordEnvName() string {
+	prefix := u.EnvPrefix
+	if prefix == "" {
+		prefix = "UN"
+	}
+
+	return strings.ToUpper(prefix) + "_WEBSERVER_UI_PASSWORD"
 }

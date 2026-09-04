@@ -80,6 +80,10 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 			continue
 		}
 
+		if param.OmitCompose && !bare {
+			continue
+		}
+
 		if h.Kind == list {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {

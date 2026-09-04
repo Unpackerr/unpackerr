@@ -694,3 +694,20 @@ func TestComposeListScalarDoesNotPanic(t *testing.T) {
 		}
 	}
 }
+
+func TestComposeOmitsUIPassword(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	dir := t.TempDir()
+	createCompose(config, "docker-compose.yml", dir)
+
+	body, err := os.ReadFile(filepath.Join(dir, "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(body), "UN_WEBSERVER_UI_PASSWORD") {
+		t.Fatal("empty UI password env must not appear in the compose example")
+	}
+}

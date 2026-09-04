@@ -25,6 +25,7 @@ const (
 	msgConfigFailed = "Using env variables only. Could not create config file: "
 	msgConfigCreate = "Created new config file: "
 	msgConfigFound  = "Using Config File: "
+	filePrefix      = "filepath:"
 )
 
 var errNoConfigFile = errors.New("no config file path")
@@ -64,6 +65,8 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	if _, err := cnfg.UnmarshalENV(u.Config, u.EnvPrefix); err != nil {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
 	}
+
+	u.snapshotFileConfig()
 
 	if err := u.setPasswords(); err != nil {
 		return 0, 0, msg, err
@@ -229,7 +232,7 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 	return file, nil
 }
 
-// writeConfigFile atomically rewrites the active config file from live values.
+// writeConfigFile atomically rewrites the active config file from the on-disk snapshot.
 func (u *Unpackerr) writeConfigFile() error {
 	if strings.TrimSpace(u.ConfigFile) == "" {
 		return errNoConfigFile
@@ -240,12 +243,12 @@ func (u *Unpackerr) writeConfigFile() error {
 		return fmt.Errorf("definitions: %w", err)
 	}
 
-	live := *u.Config
-	if u.passwordSources != nil {
-		live.Passwords = u.passwordSources
+	src := u.Config
+	if u.fileConfig != nil {
+		src = u.fileConfig
 	}
 
-	body := schema.RenderTOML(&live, configdef.RenderOpts{Mode: configdef.RenderLive})
+	body := schema.RenderTOML(src, configdef.RenderOpts{Mode: configdef.RenderLive})
 
 	if err := configdef.AtomicWrite(u.ConfigFile, []byte(body)); err != nil {
 		return fmt.Errorf("writing config file: %w", err)
@@ -254,12 +257,25 @@ func (u *Unpackerr) writeConfigFile() error {
 	return nil
 }
 
+func (u *Unpackerr) snapshotFileConfig() {
+	u.fileConfig = cloneConfig(u.Config)
+}
+
+func (u *Unpackerr) syncFileUIPassword() {
+	if u.fileConfig == nil || u.Webserver == nil {
+		return
+	}
+
+	if u.fileConfig.Webserver == nil {
+		u.fileConfig.Webserver = &WebServer{}
+	}
+
+	u.fileConfig.Webserver.UIPassword = u.Webserver.UIPassword
+}
+
 // This function checks if rar passwords need to be read from a file path.
 // Only runs once at startup to load passwords into memory.
 func (u *Unpackerr) setPasswords() error {
-	const filePrefix = "filepath:"
-
-	u.passwordSources = append(StringSlice(nil), u.Passwords...)
 	newPasswords := []string{}
 
 	for _, pass := range u.Passwords {

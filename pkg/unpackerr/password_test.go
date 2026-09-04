@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -8,11 +10,15 @@ import (
 func TestDeriveKDFDeterministic(t *testing.T) {
 	t.Parallel()
 
-	one := DeriveKDF("admin", "secret-password")
+	const want = "c94fa10532fb8e444bb8fc1f0dbacb53f0505f3209ca0ff93aa6d5c7bc2b83bd"
 
-	two := DeriveKDF("admin", "secret-password")
-	if one != two || len(one) != 64 {
-		t.Fatalf("kdf %s vs %s", one, two)
+	one := DeriveKDF("admin", "secret-password")
+	if one != want {
+		t.Fatalf("kdf %s want %s", one, want)
+	}
+
+	if DeriveKDF("admin", "secret-password") != one {
+		t.Fatal("kdf must be deterministic")
 	}
 
 	if DeriveKDF("other", "secret-password") == one {
@@ -128,5 +134,152 @@ func TestGeneratePasswordLength(t *testing.T) {
 
 	if strings.Contains(pass, ":") {
 		t.Fatalf("generated password should not include a colon: %q", pass)
+	}
+}
+
+func TestCryptPassDollarUsername(t *testing.T) {
+	t.Parallel()
+
+	var pass CryptPass
+	if err := pass.SetPlain("$bob", "correct-horse"); err != nil {
+		t.Fatal(err)
+	}
+
+	if pass.Username() != "$bob" {
+		t.Fatalf("username %q", pass.Username())
+	}
+
+	if !pass.ValidPlain("$bob", "correct-horse") {
+		t.Fatal("expected valid $bob password")
+	}
+}
+
+func TestSplitUserPassKeepsFallback(t *testing.T) {
+	t.Parallel()
+
+	user, plain := splitUserPass("brandnewpass1", "dave")
+	if user != "dave" || plain != "brandnewpass1" {
+		t.Fatalf("got %q %q", user, plain)
+	}
+
+	user, plain = splitUserPass("other:secret12", "dave")
+	if user != "other" || plain != "secret12" {
+		t.Fatalf("got %q %q", user, plain)
+	}
+}
+
+func TestSetupUIPasswordRejectsMalformedHash(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.UIPassword = "!!cryptd!!$2a$10$notahash"
+
+	if err := unpack.setupUIPassword(); err == nil {
+		t.Fatal("expected malformed hash error")
+	}
+}
+
+func TestSetupUIPasswordRejectsEmptyHeader(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.UIPassword = "webauth:"
+
+	if err := unpack.setupUIPassword(); err == nil {
+		t.Fatal("expected empty header error")
+	}
+}
+
+func TestSetupUIPasswordExpandsFilepath(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	passFile := dir + "/ui.pass"
+
+	if err := os.WriteFile(passFile, []byte("correct-horse\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.ConfigFile = dir + "/unpackerr.conf"
+	unpack.Webserver.UIPassword = CryptPass(filePrefix + passFile)
+
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain("admin", "correct-horse") {
+		t.Fatal("filepath contents must become the password")
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(body), `ui_password = "filepath:`) ||
+		!strings.Contains(string(body), "!!cryptd!!") {
+		t.Fatal("hashed password should replace filepath: on disk")
+	}
+}
+
+func TestResetUIPasswordWritesAndHashes(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.ConfigFile = t.TempDir() + "/unpackerr.conf"
+
+	unpack.snapshotFileConfig()
+
+	if err := unpack.resetUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !unpack.Webserver.UIPassword.IsCrypted() {
+		t.Fatal("expected hashed password")
+	}
+
+	if unpack.fileConfig == nil || !unpack.fileConfig.Webserver.UIPassword.IsCrypted() {
+		t.Fatal("file snapshot must get the hashed password")
+	}
+}
+
+func TestSetupUIPasswordUnwritableIsNotFatal(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows {
+		t.Skip("directory permissions are not unix-like")
+	}
+
+	dir := t.TempDir()
+	conf := dir + "/unpackerr.conf"
+
+	if err := os.WriteFile(conf, []byte("debug = false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore after the read-only test
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.uiPasswordWriteErr == nil {
+		t.Fatal("expected persist error")
+	}
+
+	if unpack.uiPasswordNotice == "" {
+		t.Fatal("expected generated password in memory")
 	}
 }

@@ -274,7 +274,7 @@ func (w *WebServer) unusedKeyName(want string) string {
 
 func (u *Unpackerr) setupAdminAPIKey() {
 	if u.Webserver == nil || !u.Webserver.Enabled() || u.Webserver.hasAdminKey() {
-		return nil
+		return
 	}
 
 	name := u.Webserver.unusedKeyName(defaultAdminKeyName)

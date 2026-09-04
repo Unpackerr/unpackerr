@@ -77,6 +77,24 @@ func TestGenerateAPIKeyLength(t *testing.T) {
 	}
 }
 
+func TestRequestAPIKeyPrefersHeader(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(headerAPIKey, "from-header")
+	req.Header.Set("Authorization", authHeaderBearer+"from-bearer")
+
+	if got := requestAPIKey(req); got != "from-header" {
+		t.Fatalf("got %q", got)
+	}
+
+	req.Header.Del(headerAPIKey)
+
+	if got := requestAPIKey(req); got != "from-bearer" {
+		t.Fatalf("bearer %q", got)
+	}
+}
+
 func TestSetupAdminAPIKeyWritesTables(t *testing.T) {
 	t.Parallel()
 
@@ -183,6 +201,55 @@ func TestSetupAdminAPIKeyAdoptsFileKey(t *testing.T) {
 
 	if count != 1 {
 		t.Fatalf("file admin names %d", count)
+	}
+}
+
+func TestSetupAdminAPIKeySkipsDemotedFileSecret(t *testing.T) {
+	t.Parallel()
+
+	fileKey := strings.Repeat("F", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.Roles = map[string]Role{
+		"stats": {Permissions: []string{PermReadSystemStats}},
+	}
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   fileKey,
+		Roles: []string{RoleAdmin},
+	}}
+	unpack.snapshotFileConfig()
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   fileKey,
+		Roles: []string{"stats"},
+	}}
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.setupAdminAPIKey()
+
+	if unpack.Webserver.adminAPIKey() == fileKey {
+		t.Fatal("must not re-admin the env-demoted secret")
+	}
+
+	if !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected a newly generated admin key")
+	}
+
+	if unpack.Webserver.HasPermission(fileKey, PermAll) {
+		t.Fatal("demoted secret must not keep *")
+	}
+
+	if !unpack.Webserver.HasPermission(fileKey, PermReadSystemStats) {
+		t.Fatal("demoted secret must keep its env roles")
+	}
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -362,6 +429,59 @@ func TestNoauthMeFromUpstream(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUnrecognizedBearerFallsThroughToProxy(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = authNone
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+		req.Header.Set("Authorization", authHeaderBearer+"not-an-unpackerr-key")
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUnrecognizedBearerFallsThroughToSession(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	logged := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if logged.Code != http.StatusOK {
+		t.Fatalf("login %d %s", logged.Code, logged.Body.String())
+	}
+
+	res := logged.Result()
+	_ = res.Body.Close()
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+
+		req.Header.Set("Authorization", authHeaderBearer+"proxy-oauth-token")
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+
+	badKey := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+
+		req.Header.Set(headerAPIKey, strings.Repeat("x", apiKeyMinLen))
+	})
+	if badKey.Code != http.StatusUnauthorized {
+		t.Fatalf("explicit bad api key %d", badKey.Code)
 	}
 }
 

@@ -20,6 +20,7 @@ const (
 	headerForwardedProto = "X-Forwarded-Proto"
 	authHeaderBearer     = "Bearer "
 	loginFailDelay       = 3 * time.Second
+	loginReadTimeout     = 5 * time.Second
 	cookieHashBytes      = 32
 	cookieBlockBytes     = 32
 	maxLoginBody         = 4096
@@ -89,18 +90,14 @@ func (u *Unpackerr) requireAuth(next httprouter.Handle) httprouter.Handle {
 }
 
 func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
-	if key := requestAPIKey(request); key != "" {
-		if perms := u.Webserver.PermissionsForKey(key); perms != nil {
-			return authInfo{
-				Username:    u.Webserver.keyName(key),
-				APIKey:      key,
-				Auth:        u.Webserver.UIPassword.Type().String(),
-				Via:         "key",
-				Permissions: perms,
-			}, true
-		}
+	if key := strings.TrimSpace(request.Header.Get(headerAPIKey)); key != "" {
+		return u.authAPIKey(key)
+	}
 
-		return authInfo{}, false
+	if bearer := requestBearer(request); bearer != "" {
+		if info, ok := u.authAPIKey(bearer); ok {
+			return info, true
+		}
 	}
 
 	if info, ok := u.proxyAuth(request); ok {
@@ -114,11 +111,34 @@ func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
 	return authInfo{}, false
 }
 
+func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
+	if key == "" {
+		return authInfo{}, false
+	}
+
+	perms := u.Webserver.PermissionsForKey(key)
+	if perms == nil {
+		return authInfo{}, false
+	}
+
+	return authInfo{
+		Username:    u.Webserver.keyName(key),
+		APIKey:      key,
+		Auth:        u.Webserver.UIPassword.Type().String(),
+		Via:         "key",
+		Permissions: perms,
+	}, true
+}
+
 func requestAPIKey(request *http.Request) string {
 	if key := strings.TrimSpace(request.Header.Get(headerAPIKey)); key != "" {
 		return key
 	}
 
+	return requestBearer(request)
+}
+
+func requestBearer(request *http.Request) string {
 	auth := strings.TrimSpace(request.Header.Get("Authorization"))
 	if strings.HasPrefix(strings.ToLower(auth), strings.ToLower(authHeaderBearer)) {
 		return strings.TrimSpace(auth[len(authHeaderBearer):])
@@ -281,8 +301,15 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
+	ctrl := http.NewResponseController(response)
+	_ = ctrl.SetReadDeadline(time.Now().Add(loginReadTimeout))
+
 	var body loginRequest
-	if err := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxLoginBody)).Decode(&body); err != nil {
+
+	err := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxLoginBody)).Decode(&body)
+	_ = ctrl.SetReadDeadline(time.Time{})
+
+	if err != nil {
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return false
 	}

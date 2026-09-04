@@ -131,9 +131,13 @@ passwords = []
 ## characters. Names and key values must be unique. Built-in role `admin` grants every
 ## permission. Custom roles are listed under [webserver.roles].
 ## Env uses UN_WEBSERVER_API_KEYS_0_NAME, _KEY, and _ROLES_0.
-## File-only nested tables; roles cannot be set with environment variables.
-## Built-in admin cannot be redefined here. `*` is reserved for that built-in role.
+## Nested [webserver.roles.<name>] tables. Names are letters, digits, _ or -.
+## Built-in admin cannot be redefined. `*` is reserved for that built-in role.
 ## Each custom role needs at least one known permission.
+## Env works but is picky: do not set UN_WEBSERVER_ROLES itself. Role names are
+## case-sensitive and may contain underscores. Index permissions from 0:
+## UN_WEBSERVER_ROLES_stats_PERMISSIONS_0=read:system:stats
+## UN_WEBSERVER_ROLES_read_only_PERMISSIONS_0=read:system:stats
 ## [webserver.roles.stats]
 ## permissions = ["read:system:stats"]
 
@@ -475,4 +479,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 SEP 2026 04:46 UTC
+## => Content Auto Generated, 04 SEP 2026 07:36 UTC

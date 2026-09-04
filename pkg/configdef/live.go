@@ -324,7 +324,37 @@ func tomlKey(name string) string {
 		return name
 	}
 
-	return strconv.Quote(name)
+	return quoteTOMLString(name)
+}
+
+func quoteTOMLString(name string) string {
+	var buf strings.Builder
+
+	buf.Grow(len(name) + len(`""`))
+	buf.WriteByte('"')
+
+	for _, char := range name {
+		switch {
+		case char == '"':
+			buf.WriteString(`\"`)
+		case char == '\\':
+			buf.WriteString(`\\`)
+		case char == '\n':
+			buf.WriteString(`\n`)
+		case char == '\t':
+			buf.WriteString(`\t`)
+		case char == '\r':
+			buf.WriteString(`\r`)
+		case char < ' ':
+			fmt.Fprintf(&buf, `\u%04X`, char)
+		default:
+			buf.WriteRune(char)
+		}
+	}
+
+	buf.WriteByte('"')
+
+	return buf.String()
 }
 
 func isBareTOMLKey(name string) bool {
@@ -344,11 +374,12 @@ func (p *Param) defaultText() string {
 }
 
 func formatTOML(name string, val any) string {
-	if isNilish(reflect.ValueOf(val)) {
-		return "''"
+	value := reflect.ValueOf(val)
+	if isNilish(value) {
+		return emptyCollectionTOML(value)
 	}
 
-	value := derefValue(reflect.ValueOf(val))
+	value = derefValue(value)
 	if !value.IsValid() {
 		return "''"
 	}
@@ -357,9 +388,26 @@ func formatTOML(name string, val any) string {
 		return "{}"
 	}
 
+	if (value.Kind() == reflect.Slice || value.Kind() == reflect.Array) && value.Len() == 0 {
+		return "[]"
+	}
+
 	out := marshalTOML(value)
 
 	return strings.TrimSpace(string(preferPathQuotes(name, out)))
+}
+
+func emptyCollectionTOML(value reflect.Value) string {
+	if value.IsValid() {
+		switch value.Kind() {
+		case reflect.Slice, reflect.Array:
+			return "[]"
+		case reflect.Map:
+			return "{}"
+		}
+	}
+
+	return "''"
 }
 
 func marshalTOML(value reflect.Value) []byte {

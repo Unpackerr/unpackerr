@@ -281,6 +281,55 @@ func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
 	}
 }
 
+func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n"
+
+	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	key := strings.Repeat("Z", apiKeyMinLen)
+
+	t.Setenv("UN_WEBSERVER_ROLES_stats_PERMISSIONS_0", PermReadSystemStats)
+	t.Setenv("UN_WEBSERVER_ROLES_env_only_PERMISSIONS_0", PermReadSystemStats)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_NAME", "envhome")
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_KEY", key)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_ROLES_0", "env_only")
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Webserver.Roles["stats"].Permissions[0] != PermReadSystemStats {
+		t.Fatalf("stats role %+v", unpack.Webserver.Roles)
+	}
+
+	if unpack.Webserver.Roles["env_only"].Permissions[0] != PermReadSystemStats {
+		t.Fatalf("env_only role %+v", unpack.Webserver.Roles)
+	}
+
+	if !unpack.Webserver.HasPermission(key, PermReadSystemStats) {
+		t.Fatal("env api key should get env_only")
+	}
+
+	written, err := os.ReadFile(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "\n[[webserver.api_keys]]") ||
+		strings.Contains(text, "[webserver.roles.env_only]") ||
+		strings.Contains(text, key) || strings.Contains(text, "envhome") {
+		t.Fatalf("env auth leaked into the config file:\n%s", text)
+	}
+}
+
 func TestConfigTOMLTagsInSchema(t *testing.T) {
 	t.Parallel()
 

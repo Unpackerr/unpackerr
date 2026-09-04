@@ -161,6 +161,32 @@ func TestValidateAuthRejectsDuplicateNamesAndNonASCII(t *testing.T) {
 	}
 }
 
+func TestValidateAuthRejectsEmptyKeyRoles(t *testing.T) {
+	t.Parallel()
+
+	web := &WebServer{
+		APIKeys: []APIKey{{Name: "home", Key: strings.Repeat("k", apiKeyMinLen)}},
+	}
+
+	if err := web.validateAuth(); err == nil {
+		t.Fatal("api key with no roles must fail")
+	}
+}
+
+func TestValidateAuthRejectsInvalidRoleName(t *testing.T) {
+	t.Parallel()
+
+	web := &WebServer{
+		Roles: map[string]Role{
+			"not valid": {Permissions: []string{PermReadSystemStats}},
+		},
+	}
+
+	if err := web.validateAuth(); err == nil {
+		t.Fatal("role names with spaces must fail")
+	}
+}
+
 func TestUnknownPermissionOnRole(t *testing.T) {
 	t.Parallel()
 

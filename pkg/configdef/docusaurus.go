@@ -130,8 +130,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 		}
 
 		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
-		if param.Kind == list || param.Kind == tables {
+		switch param.Kind {
+		case list:
 			envVar += "0"
+		case tables:
+			envVar += "0_*"
 		}
 
 		def := "No Default"

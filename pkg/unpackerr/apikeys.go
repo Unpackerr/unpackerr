@@ -1,15 +1,22 @@
 package unpackerr
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
 
 const (
-	apiKeyMinLen = 60
-	apiKeyMaxLen = 150
+	apiKeyMinLen        = 60
+	apiKeyMaxLen        = 150
+	apiKeyRandN         = 45 // RawURL base64 of 45 bytes is 60 characters.
+	defaultAdminKeyName = "admin"
+	fallbackAdminKey    = "ui"
+	keyNameSeqStart     = 2
 )
 
 var (
@@ -214,4 +221,156 @@ func (w *WebServer) HasPermission(key, perm string) bool {
 	}
 
 	return false
+}
+
+// GenerateAPIKey returns a random 60-character URL-safe API key.
+func GenerateAPIKey() (string, error) {
+	raw := make([]byte, apiKeyRandN)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generating api key: %w", err)
+	}
+
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+func (w *WebServer) hasAdminKey() bool {
+	return w.adminAPIKey() != ""
+}
+
+func (w *WebServer) adminAPIKey() string {
+	if w == nil {
+		return ""
+	}
+
+	for idx := range w.APIKeys {
+		if slices.Contains(w.APIKeys[idx].Roles, RoleAdmin) {
+			return w.APIKeys[idx].Key
+		}
+	}
+
+	return ""
+}
+
+func (w *WebServer) unusedKeyName(want string, extra []APIKey) string {
+	used := make(map[string]struct{}, len(w.APIKeys)+len(extra))
+
+	for _, key := range w.APIKeys {
+		used[key.Name] = struct{}{}
+	}
+
+	for _, key := range extra {
+		used[key.Name] = struct{}{}
+	}
+
+	if _, exists := used[want]; !exists {
+		return want
+	}
+
+	if _, exists := used[fallbackAdminKey]; !exists {
+		return fallbackAdminKey
+	}
+
+	for idx := keyNameSeqStart; ; idx++ {
+		name := fmt.Sprintf("%s-%d", fallbackAdminKey, idx)
+		if _, exists := used[name]; !exists {
+			return name
+		}
+	}
+}
+
+func (u *Unpackerr) setupAdminAPIKey() {
+	if u.Webserver == nil || !u.Webserver.Enabled() || u.Webserver.hasAdminKey() {
+		return
+	}
+
+	if u.adoptFileAdminKey() {
+		return
+	}
+
+	secret, err := GenerateAPIKey()
+	if err != nil {
+		u.adminKeyErr = err
+		return
+	}
+
+	key := APIKey{
+		Name:  u.Webserver.unusedKeyName(defaultAdminKeyName, u.fileAPIKeys()),
+		Key:   secret,
+		Roles: []string{RoleAdmin},
+	}
+	if err := u.installAdminKey(key, true); err != nil {
+		u.adminKeyErr = err
+	}
+}
+
+func (u *Unpackerr) adoptFileAdminKey() bool {
+	for _, key := range u.fileAPIKeys() {
+		if !slices.Contains(key.Roles, RoleAdmin) || u.liveKeyCollision(key) {
+			continue
+		}
+
+		if err := u.installAdminKey(key, false); err != nil {
+			continue
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func (u *Unpackerr) liveKeyCollision(key APIKey) bool {
+	for _, live := range u.Webserver.APIKeys {
+		if live.Name == key.Name || live.Key == key.Key {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (u *Unpackerr) fileAPIKeys() []APIKey {
+	if u.fileConfig == nil || u.fileConfig.Webserver == nil {
+		return nil
+	}
+
+	return u.fileConfig.Webserver.APIKeys
+}
+
+func (u *Unpackerr) installAdminKey(key APIKey, persist bool) error {
+	prev := u.Webserver.APIKeys
+	cloned := cloneAPIKeys([]APIKey{key})
+	u.Webserver.APIKeys = append(u.Webserver.APIKeys, cloned...)
+
+	if u.Webserver.keyPerms != nil {
+		if err := u.Webserver.validateAuth(); err != nil {
+			u.Webserver.APIKeys = prev
+
+			return err
+		}
+	}
+
+	if persist {
+		u.adminKeyNotice = key.Name
+		u.appendFileAPIKey(key)
+		u.persistConfigFile()
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) logAdminAPIKey() {
+	if u.adminKeyErr != nil {
+		u.Errorf("Could not generate admin API key: %v", u.adminKeyErr)
+	}
+
+	if u.adminKeyNotice == "" {
+		return
+	}
+
+	u.Printf("Generated an admin API key named %q.", u.adminKeyNotice)
+
+	if u.configWriteErr != nil {
+		u.Errorf("Could not persist config to %s: %v", u.ConfigFile, u.configWriteErr)
+	}
 }

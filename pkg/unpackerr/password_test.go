@@ -4,6 +4,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -363,4 +364,45 @@ func TestSetupUIPasswordUnwritableIsNotFatal(t *testing.T) {
 	if unpack.uiPasswordNotice == "" {
 		t.Fatal("expected generated password in memory")
 	}
+}
+
+func TestUIPasswordConcurrentReplace(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+
+	if err := unpack.mutateUIPassword(func(p *CryptPass) error {
+		return p.SetPlain(defaultUIUser, "correct-horse")
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var wait sync.WaitGroup
+
+	wait.Add(2)
+
+	go func() {
+		defer wait.Done()
+
+		for range 1000 {
+			pass := unpack.uiPassword()
+			_ = pass.Type()
+			_ = pass.Val()
+			_ = pass.Webauth()
+		}
+	}()
+
+	go func() {
+		defer wait.Done()
+
+		for range 1000 {
+			_ = unpack.mutateUIPassword(func(p *CryptPass) error {
+				*p = "!!cryptd!!admin:$2a$10$notahashbutlongenoughxx"
+				return nil
+			})
+		}
+	}()
+
+	wait.Wait()
 }

@@ -8,7 +8,9 @@ import (
 	"net/http/pprof"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/gorilla/securecookie"
 	"github.com/julienschmidt/httprouter"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -32,6 +34,8 @@ type WebServer struct {
 	router     *httprouter.Router
 	server     *http.Server
 	keyPerms   map[string][]string
+	cookies    *securecookie.SecureCookie
+	failDelay  time.Duration
 }
 
 func (w *WebServer) listenAddr() string {
@@ -77,7 +81,7 @@ func (u *Unpackerr) logWebserver() {
 	}
 
 	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams) auth:%s",
-		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.Webserver.UIPassword.Type())
+		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.uiPassword().Type())
 
 	if u.Webserver.Metrics {
 		u.Printf(" => Prometheus metrics enabled at %s", path.Join(u.Webserver.URLBase, "metrics"))
@@ -89,15 +93,24 @@ func (u *Unpackerr) startWebServer() {
 		return
 	}
 
+	u.setupAdminAPIKey()
+	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = httprouter.New()
+
+	if err := u.Webserver.initCookies(); err != nil {
+		u.Errorf("Could not initialize session cookies: %v", err)
+	}
+
+	u.Webserver.failDelay = loginFailDelay
 	apache, _ := apachelog.New(`%{X-Forwarded-For}i %l - %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"`)
 
 	// Make a multiplexer because websockets can't use apache log.
+	// Login deadline must wrap apachelog: its ResponseWriter does not Unwrap.
 	smx := http.NewServeMux()
 	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
+	smx.Handle("/", u.fixForwardedFor(u.withLoginReadDeadline(apache.Wrap(u.Webserver.router, u.HTTP.Writer()))))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
@@ -115,6 +128,7 @@ func (u *Unpackerr) startWebServer() {
 
 func (u *Unpackerr) webRoutes() {
 	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
+	u.registerAuthRoutes()
 
 	if u.Webserver.Pprof {
 		u.registerPprof()

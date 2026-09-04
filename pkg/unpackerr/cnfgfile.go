@@ -291,7 +291,20 @@ func (u *Unpackerr) syncFileUIPassword() {
 		u.fileConfig.Webserver = &WebServer{}
 	}
 
-	u.fileConfig.Webserver.UIPassword = u.Webserver.UIPassword
+	u.fileConfig.Webserver.UIPassword = u.uiPassword()
+}
+
+func (u *Unpackerr) appendFileAPIKey(key APIKey) {
+	if u.fileConfig == nil {
+		return
+	}
+
+	if u.fileConfig.Webserver == nil {
+		u.fileConfig.Webserver = &WebServer{}
+	}
+
+	cloned := cloneAPIKeys([]APIKey{key})
+	u.fileConfig.Webserver.APIKeys = append(u.fileConfig.Webserver.APIKeys, cloned...)
 }
 
 // This function checks if rar passwords need to be read from a file path.

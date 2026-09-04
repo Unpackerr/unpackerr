@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
 	unpack.KeepHistory = 200
+	unpack.snapshotFileConfig()
 
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
@@ -45,6 +47,16 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	if unpack.KeepHistory != 50 || !unpack.Config.Debug {
 		t.Fatalf("applied %+v debug %v", unpack.KeepHistory, unpack.Config.Debug)
 	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if !strings.Contains(text, "keep_history = 50") || !strings.Contains(text, "debug = true") {
+		t.Fatalf("fileConfig write missed PUT:\n%s", text)
+	}
 }
 
 func TestConfigPutSonarrValidates(t *testing.T) {
@@ -52,6 +64,7 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
 
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
@@ -71,6 +84,15 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 
 	if len(unpack.Sonarr) != 1 || unpack.Sonarr[0].URL != "http://127.0.0.1:8989" {
 		t.Fatalf("sonarr %+v", unpack.Sonarr)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(written), "http://127.0.0.1:8989") {
+		t.Fatalf("sonarr PUT missed fileConfig:\n%s", written)
 	}
 }
 

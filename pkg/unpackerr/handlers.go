@@ -294,8 +294,13 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	u.lockHistory()
 
 	item := u.Map[resp.X.Name]
+	if item == nil {
+		u.unlockHistory()
+		return
+	}
+
 	if !resp.Done {
-		if item != nil {
+		if item.XProg != nil {
 			item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 		}
 
@@ -306,25 +311,13 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		return
 	}
 
-	var (
-		app      starr.App
-		url      string
-		preFiles map[string]os.FileInfo
-		retries  uint
-	)
-
-	if item != nil {
-		app = item.App
-		url = item.URL
-		preFiles = item.PreFiles
-		retries = item.Retries
-	}
+	app := item.App
+	url := item.URL
+	preFiles := item.PreFiles
+	retries := item.Retries
 
 	u.unlockHistory()
-
-	if item != nil {
-		u.updateMetrics(resp, app, url)
-	}
+	u.updateMetrics(resp, app, url)
 
 	remnantStatus, remnants := u.handleRemnants(resp, preFiles, retries)
 
@@ -337,13 +330,12 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	defer u.unlockHistory()
 
 	item = u.Map[resp.X.Name]
+	if item == nil {
+		return
+	}
 
 	switch {
 	case remnants && remnantStatus == WAITING:
-		if item == nil {
-			return
-		}
-
 		// Every blocker was cleared; re-extract into the empty destination.
 		// This case wins over resp.Error, so log a password/corrupt-archive
 		// error here the way the folder callback logs before remnant cleanup.
@@ -358,10 +350,6 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
 	case remnants:
-		if item == nil {
-			return
-		}
-
 		if remnantAction(u.RemnantAction) == "off" {
 			item.NoRetry = true
 		}
@@ -369,7 +357,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
-		if item != nil && xtractr.IsLimitError(resp.Error) {
+		if xtractr.IsLimitError(resp.Error) {
 			item.NoRetry = true
 		}
 
@@ -382,7 +370,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 
-		if item != nil && item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
+		if item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}

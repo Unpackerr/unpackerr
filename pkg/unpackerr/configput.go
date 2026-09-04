@@ -86,29 +86,8 @@ func (u *Unpackerr) putGeneral(request *http.Request) (bool, error) {
 		next.LogQueues != u.LogQueues ||
 		next.Parallel != u.Parallel
 
-	u.Config.Debug = next.Debug
-	u.Quiet = next.Quiet
-	u.Activity = next.Activity
-	u.Parallel = next.Parallel
-	u.ErrorStdErr = next.ErrorStdErr
-	u.LogFile = next.LogFile
-	u.LogFiles = next.LogFiles
-	u.LogFileMb = next.LogFileMb
-	u.LogFileMode = next.LogFileMode
-	u.MaxRetries = next.MaxRetries
-	u.RemnantAction = next.RemnantAction
-	u.FileMode = next.FileMode
-	u.DirMode = next.DirMode
-	u.LogQueues = next.LogQueues
-	u.Interval = next.Interval
-	u.Timeout = next.Timeout
-	u.DeleteDelay = next.DeleteDelay
-	u.StartDelay = next.StartDelay
-	u.RetryDelay = next.RetryDelay
-	u.Progress = next.Progress
-	u.KeepHistory = next.KeepHistory
-	u.Passwords = next.Passwords
-
+	applyGeneral(u.Config, next)
+	applyGeneral(u.fileConfig, next)
 	u.validateConfig()
 
 	if err := u.validateRemnantAction(); err != nil {
@@ -137,7 +116,7 @@ func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
 
 	if next.UIPassword.Val() == "" && u.Webserver != nil {
 		next.UIPassword = u.Webserver.UIPassword
-	} else if err := normalizeStoredPassword(&next.UIPassword); err != nil {
+	} else if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser()); err != nil {
 		return false, err
 	}
 
@@ -156,15 +135,58 @@ func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
 
 	u.Webserver = &next
 
+	if u.fileConfig != nil {
+		u.fileConfig.Webserver = cloneWebserver(&next)
+	}
+
 	return restart, nil
 }
 
-func normalizeStoredPassword(pass *CryptPass) error {
+func applyGeneral(dst *Config, next generalConfig) {
+	if dst == nil {
+		return
+	}
+
+	dst.Debug = next.Debug
+	dst.Quiet = next.Quiet
+	dst.Activity = next.Activity
+	dst.Parallel = next.Parallel
+	dst.ErrorStdErr = next.ErrorStdErr
+	dst.LogFile = next.LogFile
+	dst.LogFiles = next.LogFiles
+	dst.LogFileMb = next.LogFileMb
+	dst.LogFileMode = next.LogFileMode
+	dst.MaxRetries = next.MaxRetries
+	dst.RemnantAction = next.RemnantAction
+	dst.FileMode = next.FileMode
+	dst.DirMode = next.DirMode
+	dst.LogQueues = next.LogQueues
+	dst.Interval = next.Interval
+	dst.Timeout = next.Timeout
+	dst.DeleteDelay = next.DeleteDelay
+	dst.StartDelay = next.StartDelay
+	dst.RetryDelay = next.RetryDelay
+	dst.Progress = next.Progress
+	dst.KeepHistory = next.KeepHistory
+	dst.Passwords = append(StringSlice(nil), next.Passwords...)
+}
+
+func (u *Unpackerr) uiPasswordUser() string {
+	if u.Webserver != nil {
+		if name := u.Webserver.UIPassword.Username(); name != "" {
+			return name
+		}
+	}
+
+	return defaultUIUser
+}
+
+func normalizeStoredPassword(pass *CryptPass, fallback string) error {
 	if pass.Val() == "" || pass.IsCrypted() || pass.Webauth() {
 		return nil
 	}
 
-	user, plain := splitUserPass(pass.Val())
+	user, plain := splitUserPass(pass.Val(), fallback)
 
 	return pass.SetPlain(user, plain)
 }
@@ -185,6 +207,10 @@ func (u *Unpackerr) putSonarr(request *http.Request) error {
 
 	u.Sonarr = list
 
+	if u.fileConfig != nil {
+		u.fileConfig.Sonarr = cloneSonarrList(list)
+	}
+
 	return nil
 }
 
@@ -203,6 +229,10 @@ func (u *Unpackerr) putRadarr(request *http.Request) error {
 	}
 
 	u.Radarr = list
+
+	if u.fileConfig != nil {
+		u.fileConfig.Radarr = cloneRadarrList(list)
+	}
 
 	return nil
 }
@@ -223,6 +253,10 @@ func (u *Unpackerr) putLidarr(request *http.Request) error {
 
 	u.Lidarr = list
 
+	if u.fileConfig != nil {
+		u.fileConfig.Lidarr = cloneLidarrList(list)
+	}
+
 	return nil
 }
 
@@ -241,6 +275,10 @@ func (u *Unpackerr) putReadarr(request *http.Request) error {
 	}
 
 	u.Readarr = list
+
+	if u.fileConfig != nil {
+		u.fileConfig.Readarr = cloneReadarrList(list)
+	}
 
 	return nil
 }
@@ -261,6 +299,10 @@ func (u *Unpackerr) putWhisparr(request *http.Request) error {
 
 	u.Whisparr = list
 
+	if u.fileConfig != nil {
+		u.fileConfig.Whisparr = cloneRadarrList(list)
+	}
+
 	return nil
 }
 
@@ -274,6 +316,12 @@ func (u *Unpackerr) putFolders(request *http.Request) (bool, error) {
 	u.Folder.Buffer = next.Buffer
 	u.Folders = next.Folder
 
+	if u.fileConfig != nil {
+		u.fileConfig.Folder.Interval = next.Interval
+		u.fileConfig.Folder.Buffer = next.Buffer
+		u.fileConfig.Folders = cloneFolderList(next.Folder)
+	}
+
 	return true, u.validateFolders()
 }
 
@@ -285,6 +333,10 @@ func (u *Unpackerr) putWebhooks(request *http.Request) error {
 
 	u.Webhook = list
 
+	if u.fileConfig != nil {
+		u.fileConfig.Webhook = cloneHookList(list)
+	}
+
 	return u.validateWebhook()
 }
 
@@ -295,6 +347,10 @@ func (u *Unpackerr) putCmdhooks(request *http.Request) error {
 	}
 
 	u.Cmdhook = list
+
+	if u.fileConfig != nil {
+		u.fileConfig.Cmdhook = cloneHookList(list)
+	}
 
 	return u.validateCmdhook()
 }

@@ -31,8 +31,13 @@ func testAuthUnpackerr(t *testing.T) *Unpackerr {
 		Key:   strings.Repeat("A", apiKeyMinLen),
 		Roles: []string{RoleAdmin},
 	}}
+
 	unpack.Webserver.router = httprouter.New()
-	unpack.Webserver.initCookies()
+
+	if err := unpack.Webserver.initCookies(); err != nil {
+		t.Fatal(err)
+	}
+
 	unpack.webRoutes()
 
 	return unpack
@@ -62,7 +67,11 @@ func doAuth(
 func TestGenerateAPIKeyLength(t *testing.T) {
 	t.Parallel()
 
-	key := GenerateAPIKey()
+	key, err := GenerateAPIKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if len(key) < apiKeyMinLen || len(key) > apiKeyMaxLen {
 		t.Fatalf("len %d", len(key))
 	}
@@ -131,6 +140,74 @@ func TestSetupAdminAPIKeyDoesNotPersistEnvKeys(t *testing.T) {
 
 	if strings.Contains(string(body), envKey) {
 		t.Fatalf("env API key leaked into the config file:\n%s", body)
+	}
+}
+
+func TestSetupAdminAPIKeyAdoptsFileKey(t *testing.T) {
+	t.Parallel()
+
+	fileKey := strings.Repeat("F", apiKeyMinLen)
+	envKey := strings.Repeat("E", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   fileKey,
+		Roles: []string{RoleAdmin},
+	}}
+	unpack.snapshotFileConfig()
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  "from-env",
+		Key:   envKey,
+		Roles: []string{"stats"},
+	}}
+
+	unpack.setupAdminAPIKey()
+
+	if unpack.Webserver.adminAPIKey() != fileKey {
+		t.Fatalf("live admin %q", unpack.Webserver.adminAPIKey())
+	}
+
+	if unpack.adminKeyNotice != "" {
+		t.Fatal("must not generate a second on-disk admin key")
+	}
+
+	count := 0
+
+	for _, key := range unpack.fileConfig.Webserver.APIKeys {
+		if key.Name == defaultAdminKeyName {
+			count++
+		}
+	}
+
+	if count != 1 {
+		t.Fatalf("file admin names %d", count)
+	}
+}
+
+func TestSetupAdminAPIKeyAvoidsFileNames(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   strings.Repeat("a", apiKeyMinLen),
+		Roles: []string{"stats"},
+	}}
+	unpack.snapshotFileConfig()
+	unpack.Webserver.APIKeys = nil
+
+	unpack.setupAdminAPIKey()
+
+	if !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected a generated admin key")
+	}
+
+	if unpack.Webserver.APIKeys[len(unpack.Webserver.APIKeys)-1].Name == defaultAdminKeyName {
+		t.Fatal("must not reuse the file's non-admin name")
 	}
 }
 
@@ -340,6 +417,21 @@ func TestLoginSessionEncodeError(t *testing.T) {
 	}
 }
 
+func TestLoginUnregisteredWithoutCookies(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.URLBase = "/"
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.router = httprouter.New()
+	unpack.webRoutes()
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", `{}`, nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("got %d", rec.Code)
+	}
+}
+
 func TestSessionCookieSecureFromForwardedProto(t *testing.T) {
 	t.Parallel()
 
@@ -360,6 +452,39 @@ func TestSessionCookieSecureFromForwardedProto(t *testing.T) {
 	cookies := res.Cookies()
 	if len(cookies) != 1 || !cookies[0].Secure {
 		t.Fatalf("trusted https proto should set Secure, cookies=%v", cookies)
+	}
+}
+
+func TestSessionCookieUsesNearestForwardedProto(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		proto  string
+		secure bool
+	}{
+		{proto: "http, https", secure: true},
+		{proto: "https, http", secure: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.proto, func(t *testing.T) {
+			t.Parallel()
+
+			unpack := testAuthUnpackerr(t)
+			unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+			payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+			rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, func(req *http.Request) {
+				req.Header.Set(headerForwardedProto, test.proto)
+			})
+
+			res := rec.Result()
+			_ = res.Body.Close()
+
+			cookies := res.Cookies()
+			if rec.Code != http.StatusOK || len(cookies) != 1 || cookies[0].Secure != test.secure {
+				t.Fatalf("proto %q code %d cookies=%v", test.proto, rec.Code, cookies)
+			}
+		})
 	}
 }
 

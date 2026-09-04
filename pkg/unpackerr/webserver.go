@@ -98,7 +98,11 @@ func (u *Unpackerr) startWebServer() {
 	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = httprouter.New()
-	u.Webserver.initCookies()
+
+	if err := u.Webserver.initCookies(); err != nil {
+		u.Errorf("Could not initialize session cookies: %v", err)
+	}
+
 	u.Webserver.failDelay = loginFailDelay
 	apache, _ := apachelog.New(`%{X-Forwarded-For}i %l - %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"`)
 

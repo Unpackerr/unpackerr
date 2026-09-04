@@ -81,6 +81,7 @@ type Unpackerr struct {
 	uiPasswordGenErr error
 	configWriteErr   error
 	adminKeyNotice   string
+	adminKeyErr      error
 }
 
 type fileDeleteReq struct {

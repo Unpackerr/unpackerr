@@ -308,8 +308,8 @@
     "/api/queue/forget": {
       "post": {
         "tags": ["queue"],
-        "summary": "Drop an in-flight item from tracking",
-        "description": "Requires write:system:queue",
+        "summary": "Drop a terminal queue item from tracking",
+        "description": "Requires write:system:queue. Only extractfailed, extractednothing, imported, deleted, and deletefailed items can be forgotten.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
@@ -320,6 +320,7 @@
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
           "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Still in progress", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -355,6 +356,7 @@
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
           "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "500": {"description": "Failed to persist", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -370,6 +372,7 @@
             "description": "Cleared",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
+          "500": {"description": "Failed to persist", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

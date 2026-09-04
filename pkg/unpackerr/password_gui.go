@@ -11,7 +11,7 @@ import (
 func (u *Unpackerr) changePasswordDialog() {
 	current := defaultUIUser
 	if u.Webserver != nil {
-		current = u.Webserver.UIPassword.Username()
+		current = u.uiPassword().Username()
 	}
 
 	value, accepted, err := ui.Password("Unpackerr",
@@ -28,7 +28,10 @@ func (u *Unpackerr) changePasswordDialog() {
 	}
 
 	user, plain := splitUserPass(value, current)
-	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
+
+	if err := u.mutateUIPassword(func(p *CryptPass) error {
+		return p.SetPlain(user, plain)
+	}); err != nil {
 		u.Errorf("Setting UI password: %v", err)
 		_, _ = ui.Error("Unpackerr", "Could not set password: %v", err)
 

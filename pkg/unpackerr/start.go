@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -76,7 +77,8 @@ type Unpackerr struct {
 	rotatorr         *rotatorr.Logger
 	httpLog          *rotatorr.Logger
 	menu             map[string]ui.MenuItem
-	fileConfig       *Config // on-disk shape (filepath: values). Config is the live expanded copy.
+	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
+	uiPassMu         sync.RWMutex // guards Webserver.UIPassword
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error

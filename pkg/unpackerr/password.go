@@ -251,7 +251,7 @@ func (u *Unpackerr) setupUIPassword() error {
 		return nil
 	}
 
-	fromFile := strings.HasPrefix(u.Webserver.UIPassword.Val(), filePrefix)
+	fromFile := strings.HasPrefix(u.uiPassword().Val(), filePrefix)
 	if err := u.expandUIPasswordFile(); err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (u *Unpackerr) setupUIPassword() error {
 		return nil
 	}
 
-	pass := u.Webserver.UIPassword
+	pass := u.uiPassword()
 	if err := pass.checkStored(); err != nil {
 		return err
 	}
@@ -284,7 +284,9 @@ func (u *Unpackerr) setupUIPassword() error {
 			return nil //nolint:nilerr // logged after setupLogging; do not fail startup
 		}
 
-		if err := u.Webserver.UIPassword.SetPlain(defaultUIUser, plain); err != nil {
+		if err := u.mutateUIPassword(func(p *CryptPass) error {
+			return p.SetPlain(defaultUIUser, plain)
+		}); err != nil {
 			return err
 		}
 
@@ -295,7 +297,10 @@ func (u *Unpackerr) setupUIPassword() error {
 	}
 
 	user, plain := splitUserPass(pass.Val(), defaultUIUser)
-	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
+
+	if err := u.mutateUIPassword(func(p *CryptPass) error {
+		return p.SetPlain(user, plain)
+	}); err != nil {
 		return err
 	}
 
@@ -321,7 +326,7 @@ func expandCryptPassFile(pass *CryptPass) error {
 }
 
 func (u *Unpackerr) expandUIPasswordFile() error {
-	return expandCryptPassFile(&u.Webserver.UIPassword)
+	return u.mutateUIPassword(expandCryptPassFile)
 }
 
 func (u *Unpackerr) persistHashedUIPassword(keepFilepath bool) {
@@ -336,10 +341,8 @@ func (u *Unpackerr) persistHashedUIPassword(keepFilepath bool) {
 func (u *Unpackerr) resetUIPassword() error {
 	user := defaultUIUser
 
-	if u.Webserver != nil {
-		if name := u.Webserver.UIPassword.Username(); name != "" {
-			user = name
-		}
+	if name := u.uiPassword().Username(); name != "" {
+		user = name
 	}
 
 	plain, err := GeneratePassword()
@@ -347,7 +350,9 @@ func (u *Unpackerr) resetUIPassword() error {
 		return err
 	}
 
-	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
+	if err := u.mutateUIPassword(func(p *CryptPass) error {
+		return p.SetPlain(user, plain)
+	}); err != nil {
 		return err
 	}
 
@@ -401,4 +406,28 @@ func (u *Unpackerr) uiPasswordEnvName() string {
 	}
 
 	return strings.ToUpper(prefix) + "_WEBSERVER_UI_PASSWORD"
+}
+
+// uiPassword snapshots the live UI credential. Tray writes and HTTP reads
+// must go through this (or mutateUIPassword) so they cannot race.
+func (u *Unpackerr) uiPassword() CryptPass {
+	if u == nil || u.Webserver == nil {
+		return ""
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.UIPassword
+}
+
+func (u *Unpackerr) mutateUIPassword(mutate func(*CryptPass) error) error {
+	if u == nil || u.Webserver == nil {
+		return nil
+	}
+
+	u.uiPassMu.Lock()
+	defer u.uiPassMu.Unlock()
+
+	return mutate(&u.Webserver.UIPassword)
 }

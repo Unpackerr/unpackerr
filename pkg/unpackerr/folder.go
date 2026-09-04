@@ -338,12 +338,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	u.folders.Folders[name].updated = now
 	u.folders.Folders[name].status = QUEUED
 
-	// Do not extract r00 file if rar file with same name exists.
-	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
-		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
-		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
-		u.folders.Folders[name].status = EXTRACTEDNOTHING
-
+	if u.skipR00WhenRarExists(name, now) {
 		return
 	}
 
@@ -398,6 +393,24 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+}
+
+// skipR00WhenRarExists records a completed no-op when a .r00 companion is skipped
+// because the matching .rar is already present.
+func (u *Unpackerr) skipR00WhenRarExists(name string, now time.Time) bool {
+	if !strings.HasSuffix(strings.ToLower(name), ".r00") ||
+		!xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
+		return false
+	}
+
+	u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
+	u.folders.Folders[name].status = EXTRACTEDNOTHING
+	u.lockHistory()
+	_ = u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, now, false)
+	u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTEDNOTHING}, now, true)
+	u.unlockHistory()
+
+	return true
 }
 
 // folderExcludeSuffixes returns archive suffixes to ignore when scanning for items to extract.
@@ -812,6 +825,8 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])
 	}
+
+	u.maybeRecordHistory(data.Name, u.Map[data.Name])
 
 	return u.Map[data.Name]
 }

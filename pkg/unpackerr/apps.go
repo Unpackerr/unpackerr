@@ -66,7 +66,7 @@ type Config struct {
 	StartDelay    cnfg.Duration    `json:"startDelay"         toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
 	RetryDelay    cnfg.Duration    `json:"retryDelay"         toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
 	Progress      cnfg.Duration    `json:"progress"           toml:"progress"       xml:"progress"       yaml:"progress"`
-	KeepHistory   uint             `json:"keepHistory"        toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"` // undocumented.
+	KeepHistory   uint             `json:"keepHistory"        toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"`
 	Passwords     StringSlice      `json:"passwords"          toml:"passwords"      xml:"password"       yaml:"passwords"`
 	Webserver     *WebServer       `json:"webserver"          toml:"webserver"      xml:"webserver"      yaml:"webserver"`
 	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`

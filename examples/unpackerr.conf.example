@@ -42,6 +42,11 @@ log_files = 10
 log_file_mb = 10
 log_file_mode = "0600"
 
+## How many completed or failed items to keep in unpackerr.history.jsonl
+## (next to the log file, or the config file if logs go to stdout).
+## The tray menu still shows only the last 10 names. `0` disables history.
+keep_history = 200
+
 ## How often to poll starr apps (sonarr, radarr, etc).
 ## Recommend 1m-5m. Uses Go Duration.
 interval = "2m"

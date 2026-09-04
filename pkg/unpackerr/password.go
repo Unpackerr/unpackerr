@@ -431,3 +431,16 @@ func (u *Unpackerr) mutateUIPassword(mutate func(*CryptPass) error) error {
 
 	return mutate(&u.Webserver.UIPassword)
 }
+
+// cloneLiveWebserver copies the running webserver under the password mutex so
+// HTTP GETs cannot race tray updates of UIPassword.
+func (u *Unpackerr) cloneLiveWebserver() *WebServer {
+	if u == nil || u.Webserver == nil {
+		return &WebServer{}
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return cloneWebserver(u.Webserver)
+}

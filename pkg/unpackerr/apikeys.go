@@ -287,4 +287,20 @@ func (u *Unpackerr) setupAdminAPIKey() {
 	u.adminKeyNotice = name
 	u.appendFileAPIKey(key)
 	u.persistConfigFile()
+
+	if u.Webserver.keyPerms != nil {
+		u.Webserver.keyPerms[key.Key] = append([]string(nil), AllPermissions()...)
+	}
+}
+
+func (u *Unpackerr) logAdminAPIKey() {
+	if u.adminKeyNotice == "" {
+		return
+	}
+
+	u.Printf("Generated an admin API key named %q.", u.adminKeyNotice)
+
+	if u.configWriteErr != nil {
+		u.Errorf("Could not persist config to %s: %v", u.ConfigFile, u.configWriteErr)
+	}
 }

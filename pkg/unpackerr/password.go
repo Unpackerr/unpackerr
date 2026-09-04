@@ -385,10 +385,6 @@ func (u *Unpackerr) handleStartupPassword() error {
 		u.Printf("%s is set; it overrides the config file on every start.", u.uiPasswordEnvName())
 	}
 
-	if u.adminKeyNotice != "" {
-		u.Printf("Generated an admin API key named %q.", u.adminKeyNotice)
-	}
-
 	return nil
 }
 

@@ -93,6 +93,8 @@ func (u *Unpackerr) startWebServer() {
 		return
 	}
 
+	u.setupAdminAPIKey()
+	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = httprouter.New()

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/securecookie"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -284,5 +285,126 @@ func TestNoauthMeFromUpstream(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAuthJSONNotCached(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	logged := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if logged.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("login cache %q", logged.Header().Get("Cache-Control"))
+	}
+
+	res := logged.Result()
+	_ = res.Body.Close()
+
+	meRec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+	})
+	if meRec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("me cache %q", meRec.Header().Get("Cache-Control"))
+	}
+}
+
+func TestSessionCookieNotSecureOnHTTP(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+	res := rec.Result()
+	_ = res.Body.Close()
+
+	cookies := res.Cookies()
+	if rec.Code != http.StatusOK || len(cookies) != 1 || cookies[0].Secure {
+		t.Fatalf("plaintext login %d cookies=%v", rec.Code, cookies)
+	}
+}
+
+func TestLoginSessionEncodeError(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.cookies = securecookie.New(nil, nil)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSessionCookieSecureFromForwardedProto(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, func(req *http.Request) {
+		req.Header.Set(headerForwardedProto, "https")
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login %d %s", rec.Code, rec.Body.String())
+	}
+
+	res := rec.Result()
+	_ = res.Body.Close()
+
+	cookies := res.Cookies()
+	if len(cookies) != 1 || !cookies[0].Secure {
+		t.Fatalf("trusted https proto should set Secure, cookies=%v", cookies)
+	}
+}
+
+func TestSessionCookieIgnoresUntrustedForwardedProto(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, func(req *http.Request) {
+		req.RemoteAddr = "198.51.100.1:9"
+		req.Header.Set(headerForwardedProto, "https")
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login %d %s", rec.Code, rec.Body.String())
+	}
+
+	res := rec.Result()
+	_ = res.Body.Close()
+
+	cookies := res.Cookies()
+	if len(cookies) != 1 || cookies[0].Secure {
+		t.Fatalf("untrusted proto must not set Secure, cookies=%v", cookies)
+	}
+}
+
+func TestSessionCookieSecureFromTLSFiles(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.SSLCrtFile = "cert.pem"
+	unpack.Webserver.SSLKeyFile = "key.pem"
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login %d %s", rec.Code, rec.Body.String())
+	}
+
+	res := rec.Result()
+	_ = res.Body.Close()
+
+	cookies := res.Cookies()
+	if len(cookies) != 1 || !cookies[0].Secure {
+		t.Fatalf("local TLS should set Secure, cookies=%v", cookies)
 	}
 }

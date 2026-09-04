@@ -85,12 +85,20 @@ func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 	config := loadTestConfig(t)
 	example := config.ExampleTOML()
 
-	if !strings.Contains(example, "api_keys = []") {
-		t.Fatal("example conf must include api_keys")
+	if strings.Contains(example, "api_keys =") {
+		t.Fatal("api_keys must not be inlined; use [[webserver.api_keys]] tables")
 	}
 
-	if !strings.Contains(example, "roles = {}") {
-		t.Fatal("empty roles maps must render as {}")
+	if !strings.Contains(example, "[[webserver.api_keys]]") {
+		t.Fatal("example conf must document nested api_keys tables")
+	}
+
+	if strings.Contains(example, "\n roles =") || strings.Contains(example, "\nroles =") {
+		t.Fatal("roles must not be inlined; use [webserver.roles.x] tables")
+	}
+
+	if !strings.Contains(example, "[webserver.roles.stats]") {
+		t.Fatal("example conf must document nested role tables")
 	}
 
 	dir := t.TempDir()
@@ -103,6 +111,21 @@ func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 
 	if strings.Contains(string(compose), "UN_WEBSERVER_ROLES") {
 		t.Fatal("role maps are nested TOML tables, not compose env vars")
+	}
+
+	createDocusaurus(config, dir)
+
+	docs, err := os.ReadFile(filepath.Join(dir, "webserver.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(docs), "`UN_WEBSERVER_ROLES`") {
+		t.Fatal("docs must not advertise UN_WEBSERVER_ROLES")
+	}
+
+	if !strings.Contains(string(docs), "file only") {
+		t.Fatal("roles should be marked file only in the docs table")
 	}
 }
 

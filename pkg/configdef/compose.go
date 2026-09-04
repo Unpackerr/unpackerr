@@ -117,7 +117,7 @@ func (p *Param) Compose(prefix string) string {
 	switch p.Kind {
 	default:
 		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
-	case "map":
+	case "map", tables:
 		return ""
 	case list:
 		items, ok := val.([]any)

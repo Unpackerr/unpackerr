@@ -31,6 +31,7 @@ type WebServer struct {
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server
+	keyPerms   map[string][]string
 }
 
 func (w *WebServer) listenAddr() string {

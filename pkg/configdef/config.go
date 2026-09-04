@@ -106,6 +106,10 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 			buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
 		}
 
+		if param.isNested() {
+			continue
+		}
+
 		switch {
 		default:
 			fallthrough
@@ -132,6 +136,10 @@ func (p *Param) Value() string {
 	}
 
 	return formatTOML(p.Name, p.Default)
+}
+
+func (p *Param) isNested() bool {
+	return p != nil && (p.Kind == "map" || p.Kind == tables)
 }
 
 // makeDefinedSection duplicates sections from overrides, and prints it once for each override.

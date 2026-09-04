@@ -19,6 +19,7 @@ import (
 
 const (
 	list           = "list"
+	tables         = "tables"
 	dirMode        = 0o755
 	fileMode       = 0o644
 	outputDir      = "generated/"
@@ -65,7 +66,7 @@ type Param struct {
 	Example     any      `yaml:"example"`
 	Short       string   `yaml:"short"`
 	Desc        string   `yaml:"desc"`
-	Kind        string   `yaml:"kind"` // "", list, conlist, map
+	Kind        string   `yaml:"kind"` // "", list, conlist, map, tables
 	Recommend   []Option `yaml:"recommend"`
 	Apps        []string `yaml:"apps"` // If set, param only appears for these starr app names (e.g. lidarr).
 	OmitCompose bool     `yaml:"omit_compose"`

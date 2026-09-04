@@ -127,13 +127,15 @@ passwords = []
 ## In the future it may control auth proxy trust. Must be a list of strings.
 ## example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
  upstreams = []
-## Nested [[webserver.api_keys]] tables. Each key is 60–150 characters.
-## Built-in role `admin` grants every permission. Custom roles are listed under [webserver.roles].
- api_keys = []
-## Built-in admin is not listed here. Example Homepage role:
+## Nested [[webserver.api_keys]] tables, not an inline array. Each key is 60–150 ASCII
+## characters. Names and key values must be unique. Built-in role `admin` grants every
+## permission. Custom roles are listed under [webserver.roles].
+## Env uses UN_WEBSERVER_API_KEYS_0_NAME, _KEY, and _ROLES_0.
+## File-only nested tables; roles cannot be set with environment variables.
+## Built-in admin cannot be redefined here. `*` is reserved for that built-in role.
+## Each custom role needs at least one known permission.
 ## [webserver.roles.stats]
 ## permissions = ["read:system:stats"]
- roles = {}
 
 ## Global Folder configuration that affects all watched folders.
 [folders]
@@ -473,4 +475,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 SEP 2026 04:23 UTC
+## => Content Auto Generated, 04 SEP 2026 04:46 UTC

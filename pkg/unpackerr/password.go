@@ -245,13 +245,17 @@ func (p CryptPass) checkStored() error {
 }
 
 func (u *Unpackerr) setupUIPassword() error {
-	if u.reset || u.Webserver == nil || !u.Webserver.Enabled() {
+	if u.Webserver == nil {
 		return nil
 	}
 
 	fromFile := strings.HasPrefix(u.Webserver.UIPassword.Val(), filePrefix)
 	if err := u.expandUIPasswordFile(); err != nil {
 		return err
+	}
+
+	if u.reset || !u.Webserver.Enabled() {
+		return nil
 	}
 
 	pass := u.Webserver.UIPassword
@@ -314,7 +318,7 @@ func (u *Unpackerr) expandUIPasswordFile() error {
 }
 
 func (u *Unpackerr) persistHashedUIPassword(keepFilepath bool) {
-	if keepFilepath {
+	if keepFilepath || u.uiPasswordEnvSet() {
 		return
 	}
 
@@ -362,11 +366,17 @@ func (u *Unpackerr) handleStartupPassword() error {
 		u.Errorf("Could not persist config to %s: %v", u.ConfigFile, u.configWriteErr)
 	}
 
-	if _, set := os.LookupEnv(u.uiPasswordEnvName()); set {
+	if u.uiPasswordEnvSet() {
 		u.Printf("%s is set; it overrides the config file on every start.", u.uiPasswordEnvName())
 	}
 
 	return nil
+}
+
+func (u *Unpackerr) uiPasswordEnvSet() bool {
+	_, set := os.LookupEnv(u.uiPasswordEnvName())
+
+	return set
 }
 
 func (u *Unpackerr) uiPasswordEnvName() string {

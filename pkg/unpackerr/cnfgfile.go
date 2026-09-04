@@ -28,7 +28,10 @@ const (
 	filePrefix      = "filepath:"
 )
 
-var errNoConfigFile = errors.New("no config file path")
+var (
+	errNoConfigFile   = errors.New("no config file path")
+	errNoFileSnapshot = errors.New("no on-disk config snapshot")
+)
 
 func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	var configFile, msg string
@@ -62,11 +65,12 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		msg = msgConfigCreate + u.ConfigFileWithAge()
 	}
 
+	// File snapshot first so UN_* overlays stay on the live Config and never get written back.
+	u.snapshotFileConfig()
+
 	if _, err := cnfg.UnmarshalENV(u.Config, u.EnvPrefix); err != nil {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
 	}
-
-	u.snapshotFileConfig()
 
 	if err := u.setPasswords(); err != nil {
 		return 0, 0, msg, err
@@ -243,12 +247,11 @@ func (u *Unpackerr) writeConfigFile() error {
 		return fmt.Errorf("definitions: %w", err)
 	}
 
-	src := u.Config
-	if u.fileConfig != nil {
-		src = u.fileConfig
+	if u.fileConfig == nil {
+		return errNoFileSnapshot
 	}
 
-	body := schema.RenderTOML(src, configdef.RenderOpts{Mode: configdef.RenderLive})
+	body := schema.RenderTOML(u.fileConfig, configdef.RenderOpts{Mode: configdef.RenderLive})
 
 	if err := configdef.AtomicWrite(u.ConfigFile, []byte(body)); err != nil {
 		return fmt.Errorf("writing config file: %w", err)

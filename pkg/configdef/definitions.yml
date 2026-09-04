@@ -204,7 +204,7 @@ sections:
       ##       Unpackerr Example Configuration File        ##
       #######################################################
       ##  The values are a mix of defaults and examples.   ##
-      ##  Environment Variables may override all values.   ##
+      ##  Env vars overlay the process, not this file.     ##
       ##  More configuration help: https://unpackerr.zip   ##
       ## Config Generator: https://notifiarr.com/unpackerr ##
       #######################################################

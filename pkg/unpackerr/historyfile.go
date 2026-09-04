@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/Unpackerr/unpackerr/pkg/configdef"
 )
 
 const (
@@ -61,7 +64,7 @@ func (status ExtractStatus) isDurableHistory() bool {
 }
 
 func (u *Unpackerr) historyFilePath() string {
-	if u.LogFile != "" {
+	if u.LogFile != "" && u.rotatorr != nil {
 		return filepath.Join(filepath.Dir(u.LogFile), historyFileName)
 	}
 
@@ -69,7 +72,7 @@ func (u *Unpackerr) historyFilePath() string {
 		return filepath.Join(filepath.Dir(u.ConfigFile), historyFileName)
 	}
 
-	return ""
+	return expandHomedir(filepath.Join("~", ".unpackerr", historyFileName))
 }
 
 func (u *Unpackerr) loadHistory() {
@@ -77,70 +80,108 @@ func (u *Unpackerr) loadHistory() {
 		return
 	}
 
-	if path := u.historyFilePath(); path != "" {
-		u.histPath = path
+	if u.histPath == "" {
+		u.histPath = u.historyFilePath()
 	}
 
 	if u.histPath == "" {
+		u.Printf("[Unpackerr] History file disabled; keep_history=%d but no log, config, or home path", u.KeepHistory)
+
 		return
 	}
 
+	records := u.readHistoryRecords()
+	trimmed := false
+
+	if limit := int(u.KeepHistory); limit > 0 && len(records) > limit {
+		records = records[len(records)-limit:]
+		trimmed = true
+	}
+
+	u.histMu.Lock()
+	u.records = records
+
+	if trimmed {
+		if err := u.writeHistoryLocked(); err != nil {
+			u.Errorf("Writing history file: %v", err)
+		}
+	}
+
+	u.histMu.Unlock()
+}
+
+func (u *Unpackerr) readHistoryRecords() []HistoryRecord {
 	file, err := os.Open(u.histPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			u.Errorf("Opening history file: %v", err)
 		}
 
-		return
+		return nil
 	}
 
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(nil, historyScanMax)
+	reader := bufio.NewReader(file)
 
 	var records []HistoryRecord
 
-	for scanner.Scan() {
-		line := bytes.TrimSpace(scanner.Bytes())
-		if len(line) == 0 {
-			continue
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		records = u.appendHistoryLine(records, line)
+
+		if errors.Is(readErr, io.EOF) {
+			break
 		}
 
-		var rec HistoryRecord
-		if err := json.Unmarshal(line, &rec); err != nil {
-			u.Errorf("Skipping bad history line: %v", err)
-			continue
+		if readErr != nil {
+			u.Errorf("Reading history file: %v", readErr)
+
+			break
 		}
-
-		records = append(records, rec)
 	}
 
-	if err := scanner.Err(); err != nil {
-		u.Errorf("Reading history file: %v", err)
-	}
-
-	if limit := int(u.KeepHistory); limit > 0 && len(records) > limit {
-		records = records[len(records)-limit:]
-	}
-
-	u.histMu.Lock()
-	u.records = records
-	u.histMu.Unlock()
+	return records
 }
 
-func (u *Unpackerr) maybeRecordHistory(item *Extract) {
+func (u *Unpackerr) appendHistoryLine(records []HistoryRecord, line []byte) []HistoryRecord {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return records
+	}
+
+	if len(line) > historyScanMax {
+		u.Errorf("Skipping oversized history line")
+
+		return records
+	}
+
+	var rec HistoryRecord
+	if err := json.Unmarshal(line, &rec); err != nil {
+		u.Errorf("Skipping bad history line: %v", err)
+
+		return records
+	}
+
+	return append(records, rec)
+}
+
+func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
 	if item == nil || u.KeepHistory == 0 || !item.Status.isDurableHistory() {
 		return
 	}
 
-	u.upsertHistory(historyFromExtract(item))
+	u.upsertHistory(historyFromExtract(itemID, item))
 }
 
-func historyFromExtract(item *Extract) HistoryRecord {
+func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 	now := item.Updated
+	if itemID == "" {
+		itemID = item.Path
+	}
+
 	rec := HistoryRecord{
-		ID:         item.Path,
+		ID:         itemID,
 		App:        string(item.App),
 		URL:        item.URL,
 		Path:       item.Path,
@@ -234,7 +275,7 @@ func (u *Unpackerr) writeHistoryLocked() error {
 		}
 	}
 
-	if err := os.WriteFile(u.histPath, buf.Bytes(), defaultLogFileMode); err != nil {
+	if err := configdef.AtomicWrite(u.histPath, buf.Bytes()); err != nil {
 		return fmt.Errorf("writing history file: %w", err)
 	}
 

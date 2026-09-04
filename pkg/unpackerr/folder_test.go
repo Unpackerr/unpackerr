@@ -200,3 +200,36 @@ func newTestFolders(t *testing.T, cfg *FolderConfig) *Folders {
 
 	return folders
 }
+
+func TestExtractTrackedItemR00WithRarRecordsHistory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	r00 := filepath.Join(dir, "show.r00")
+	rar := filepath.Join(dir, "show.rar")
+
+	if err := os.WriteFile(r00, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(rar, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.folders = &Folders{
+		Logs: noopLogger{},
+		Folders: map[string]*Folder{
+			r00: {config: &FolderConfig{}, status: WAITING},
+		},
+	}
+
+	unpack.extractTrackedItem(r00, unpack.folders.Folders[r00], time.Now())
+
+	got := unpack.historySnapshot()
+	if len(got) != 1 || got[0].Status != EXTRACTEDNOTHING || got[0].ID != r00 {
+		t.Fatalf("%+v", got)
+	}
+}

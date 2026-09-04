@@ -72,7 +72,7 @@ func TestWriteConfigFilePreservesLiveValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertLiveWriteBody(t, string(body), passFile)
+	assertLiveWriteBody(t, string(body))
 
 	loaded := New()
 	if err := cnfgfile.Unmarshal(loaded.Config, unpack.ConfigFile); err != nil {
@@ -101,10 +101,6 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	skip := map[string]struct{}{
 		"keep_history": {}, // undocumented until the history API
 		"path":         {}, // legacy StarrConfig alias for paths
-		"http_pass":    {},
-		"http_user":    {},
-		"username":     {},
-		"password":     {},
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)
@@ -128,6 +124,10 @@ func liveWriteUnpackerr(dir, passFile string) *Unpackerr {
 	unpack.Sonarr = []*SonarrConfig{{
 		URL:      "http://127.0.0.1:8989",
 		APIKey:   strings.Repeat("a", 32),
+		HTTPUser: "basicuser",
+		HTTPPass: "basicpass",
+		Username: "nativeuser",
+		Password: "nativepass",
 		ValidSSL: true,
 		Paths:    StringSlice{"/custom"},
 	}}
@@ -135,11 +135,11 @@ func liveWriteUnpackerr(dir, passFile string) *Unpackerr {
 	return unpack
 }
 
-func assertLiveWriteBody(t *testing.T, text, passFile string) {
+func assertLiveWriteBody(t *testing.T, text string) {
 	t.Helper()
 
 	switch {
-	case !strings.Contains(text, "filepath:"+passFile):
+	case !strings.Contains(text, `filepath:`):
 		t.Fatal("filepath: password source must be preserved")
 	case strings.Contains(text, "secret"):
 		t.Fatal("expanded password leaked into the config file")
@@ -153,6 +153,10 @@ func assertLiveWriteBody(t *testing.T, text, passFile string) {
 		t.Fatal("missing live webhook token")
 	case !strings.Contains(text, "valid_ssl = true"):
 		t.Fatal("missing live valid_ssl")
+	case !strings.Contains(text, `http_user = "basicuser"`) || !strings.Contains(text, `http_pass = "basicpass"`):
+		t.Fatal("missing live http basic auth")
+	case !strings.Contains(text, `username = "nativeuser"`) || !strings.Contains(text, `password = "nativepass"`):
+		t.Fatal("missing live native auth")
 	}
 }
 
@@ -177,6 +181,10 @@ func assertLiveWriteLoaded(t *testing.T, loaded *Unpackerr, passFile string) {
 		t.Fatalf("webhook events %v", loaded.Webhook[0].Events)
 	case len(loaded.Sonarr) != 1 || !loaded.Sonarr[0].ValidSSL:
 		t.Fatal("valid_ssl")
+	case loaded.Sonarr[0].HTTPUser != "basicuser" || loaded.Sonarr[0].HTTPPass != "basicpass":
+		t.Fatal("http basic auth")
+	case loaded.Sonarr[0].Username != "nativeuser" || loaded.Sonarr[0].Password != "nativepass":
+		t.Fatal("native auth")
 	}
 }
 

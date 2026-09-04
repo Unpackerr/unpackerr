@@ -13,15 +13,17 @@ const (
 )
 
 var (
-	errAPIKeyLength  = errors.New("api key must be 60–150 ASCII characters")
-	errAPIKeyASCII   = errors.New("api key must be ASCII")
-	errAPIKeyName    = errors.New("api key name is required")
-	errAPIKeyDup     = errors.New("duplicate api key")
-	errAPIKeyNameDup = errors.New("duplicate api key name")
-	errUnknownRole   = errors.New("unknown role")
-	errUnknownPerm   = errors.New("unknown permission")
-	errEmptyRole     = errors.New("role has no permissions")
-	errReservedPerm  = errors.New("permission * is reserved for built-in admin")
+	errAPIKeyLength    = errors.New("api key must be 60–150 ASCII characters")
+	errAPIKeyASCII     = errors.New("api key must be ASCII")
+	errAPIKeyName      = errors.New("api key name is required")
+	errAPIKeyDup       = errors.New("duplicate api key")
+	errAPIKeyNameDup   = errors.New("duplicate api key name")
+	errUnknownRole     = errors.New("unknown role")
+	errUnknownPerm     = errors.New("unknown permission")
+	errEmptyRole       = errors.New("role has no permissions")
+	errEmptyKeyRoles   = errors.New("api key needs at least one role")
+	errInvalidRoleName = errors.New("role name must be letters, digits, underscore, or hyphen")
+	errReservedPerm    = errors.New("permission * is reserved for built-in admin")
 )
 
 // APIKey is a named secret assigned one or more roles.
@@ -49,6 +51,10 @@ func (k APIKey) validate(roles map[string]Role) error {
 		return fmt.Errorf("%w: %s is %d", errAPIKeyLength, k.Name, length)
 	}
 
+	if len(k.Roles) == 0 {
+		return fmt.Errorf("%w: %s", errEmptyKeyRoles, k.Name)
+	}
+
 	for _, role := range k.Roles {
 		if role == RoleAdmin {
 			continue
@@ -63,6 +69,10 @@ func (k APIKey) validate(roles map[string]Role) error {
 }
 
 func (r Role) validate(name string) error {
+	if !validRoleName(name) {
+		return fmt.Errorf("%w: %q", errInvalidRoleName, name)
+	}
+
 	if name == RoleAdmin {
 		return fmt.Errorf("%w: %s is built in and cannot be redefined", errUnknownRole, name)
 	}
@@ -143,6 +153,23 @@ func (w *WebServer) PermissionsForKey(key string) []string {
 func isASCII(value string) bool {
 	for idx := range len(value) {
 		if value[idx] > unicode.MaxASCII {
+			return false
+		}
+	}
+
+	return true
+}
+
+func validRoleName(name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for _, char := range name {
+		switch {
+		case char >= 'A' && char <= 'Z', char >= 'a' && char <= 'z',
+			char >= '0' && char <= '9', char == '_', char == '-':
+		default:
 			return false
 		}
 	}

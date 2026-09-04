@@ -121,11 +121,15 @@ func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 	}
 
 	if strings.Contains(string(docs), "`UN_WEBSERVER_ROLES`") {
-		t.Fatal("docs must not advertise UN_WEBSERVER_ROLES")
+		t.Fatal("docs must not advertise the bare UN_WEBSERVER_ROLES prefix")
 	}
 
-	if !strings.Contains(string(docs), "file only") {
-		t.Fatal("roles should be marked file only in the docs table")
+	if !strings.Contains(string(docs), "`UN_WEBSERVER_ROLES_*_PERMISSIONS_0`") {
+		t.Fatal("docs must show the nested roles env form")
+	}
+
+	if !strings.Contains(string(docs), "`UN_WEBSERVER_API_KEYS_0_*`") {
+		t.Fatal("docs must show the nested api_keys env form")
 	}
 }
 

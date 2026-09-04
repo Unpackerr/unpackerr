@@ -224,6 +224,55 @@ func TestRenderLiveAPIKeysAndRoles(t *testing.T) {
 	}
 }
 
+func TestFormatTOMLNilCollections(t *testing.T) {
+	t.Parallel()
+
+	if got := formatTOML("roles", []string(nil)); got != "[]" {
+		t.Fatalf("nil slice: %s", got)
+	}
+
+	if got := formatTOML("roles", map[string]string(nil)); got != "{}" {
+		t.Fatalf("nil map: %s", got)
+	}
+}
+
+func TestTOMLKeyQuotesControlChars(t *testing.T) {
+	t.Parallel()
+
+	got := tomlKey("\x01")
+	if strings.Contains(got, `\x`) {
+		t.Fatalf("TOML does not allow Go \\x escapes: %s", got)
+	}
+
+	if got != `"\u0001"` {
+		t.Fatalf("got %s", got)
+	}
+}
+
+func TestRenderLiveNilAPIKeyRoles(t *testing.T) {
+	t.Parallel()
+
+	schema := MustLoad(t)
+	live := &liveRoot{
+		Webserver: &liveWeb{
+			ListenAddr: "127.0.0.1:5656",
+			APIKeys: []liveAPIKey{{
+				Name: "home",
+				Key:  strings.Repeat("f", 60),
+			}},
+		},
+	}
+
+	body := schema.RenderTOML(live, RenderOpts{Mode: RenderLive})
+	if strings.Contains(body, "roles = ''") {
+		t.Fatalf("nil roles must not stringify:\n%s", snippet(body, "roles"))
+	}
+
+	if !strings.Contains(body, "roles = []") {
+		t.Fatalf("nil roles must be an array:\n%s", snippet(body, "api_keys"))
+	}
+}
+
 func TestFormatTOMLDoesNotSprintStructs(t *testing.T) {
 	t.Parallel()
 

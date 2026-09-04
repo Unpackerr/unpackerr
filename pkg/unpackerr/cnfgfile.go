@@ -80,8 +80,6 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, err
 	}
 
-	u.setupAdminAPIKey()
-
 	if err := u.Webserver.validateAuth(); err != nil {
 		return 0, 0, msg, err
 	}

@@ -3,6 +3,8 @@ package unpackerr
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"path"
 	"strings"
@@ -13,14 +15,17 @@ import (
 )
 
 const (
-	sessionCookie    = "session"
-	headerAPIKey     = "X-Api-Key" //nolint:gosec // HTTP header name, not a secret
-	authHeaderBearer = "Bearer "
-	loginFailDelay   = 3 * time.Second
-	cookieHashBytes  = 32
-	cookieBlockBytes = 32
-	maxLoginBody     = 4096
+	sessionCookie        = "session"
+	headerAPIKey         = "X-Api-Key" //nolint:gosec // HTTP header name, not a secret
+	headerForwardedProto = "X-Forwarded-Proto"
+	authHeaderBearer     = "Bearer "
+	loginFailDelay       = 3 * time.Second
+	cookieHashBytes      = 32
+	cookieBlockBytes     = 32
+	maxLoginBody         = 4096
 )
+
+var errSessionCodec = errors.New("session codec is not initialized")
 
 type ctxKey int
 
@@ -44,10 +49,14 @@ func (w *WebServer) initCookies() {
 		return
 	}
 
-	w.cookies = securecookie.New(
-		securecookie.GenerateRandomKey(cookieHashBytes),
-		securecookie.GenerateRandomKey(cookieBlockBytes),
-	)
+	hash := securecookie.GenerateRandomKey(cookieHashBytes)
+	block := securecookie.GenerateRandomKey(cookieBlockBytes)
+
+	if hash == nil || block == nil {
+		return
+	}
+
+	w.cookies = securecookie.New(hash, block)
 }
 
 func (u *Unpackerr) registerAuthRoutes() {
@@ -177,24 +186,72 @@ func (u *Unpackerr) sessionUser(request *http.Request) (string, bool) {
 	return user, true
 }
 
-func (u *Unpackerr) setSession(response http.ResponseWriter, user string) {
+func (u *Unpackerr) setSession(response http.ResponseWriter, request *http.Request, user string) error {
 	if u.Webserver.cookies == nil {
-		return
+		return errSessionCodec
 	}
 
 	encoded, err := u.Webserver.cookies.Encode(sessionCookie, map[string]string{"username": user})
 	if err != nil {
-		return
+		return fmt.Errorf("encoding session: %w", err)
 	}
 
-	http.SetCookie(response, &http.Cookie{ //nolint:gosec // Secure follows TLS; plaintext LAN HTTP is supported
+	http.SetCookie(response, u.sessionCookie(request, encoded, 0))
+
+	return nil
+}
+
+func (u *Unpackerr) sessionCookie(request *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{ //nolint:gosec // Secure follows TLS or a trusted X-Forwarded-Proto
 		Name:     sessionCookie,
-		Value:    encoded,
+		Value:    value,
 		Path:     u.Webserver.URLBase,
+		MaxAge:   maxAge,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "",
-	})
+		Secure:   u.cookieSecure(request),
+	}
+}
+
+func (u *Unpackerr) cookieSecure(request *http.Request) bool {
+	if u.Webserver != nil && u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "" {
+		return true
+	}
+
+	if request == nil {
+		return false
+	}
+
+	if request.TLS != nil {
+		return true
+	}
+
+	return u.trustedForwardedHTTPS(request)
+}
+
+func (u *Unpackerr) trustedForwardedHTTPS(request *http.Request) bool {
+	if u.Webserver == nil || strings.LastIndex(request.RemoteAddr, ":") < 0 {
+		return false
+	}
+
+	if !u.Webserver.allow.Contains(request.RemoteAddr) {
+		return false
+	}
+
+	return forwardedProto(request) == "https"
+}
+
+func forwardedProto(request *http.Request) string {
+	proto := strings.TrimSpace(request.Header.Get(headerForwardedProto))
+	if proto == "" {
+		return ""
+	}
+
+	if idx := strings.IndexByte(proto, ','); idx >= 0 {
+		proto = proto[:idx]
+	}
+
+	return strings.ToLower(strings.TrimSpace(proto))
 }
 
 func (u *Unpackerr) loginHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
@@ -232,22 +289,18 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
-	u.setSession(response, name)
+	if err := u.setSession(response, request, name); err != nil {
+		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": "session"})
+		return false
+	}
+
 	writeJSON(response, http.StatusOK, u.sessionAuth(name))
 
 	return true
 }
 
-func (u *Unpackerr) logoutHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	http.SetCookie(response, &http.Cookie{ //nolint:gosec // clearing the session cookie; Secure follows TLS
-		Name:     sessionCookie,
-		Value:    "",
-		Path:     u.Webserver.URLBase,
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "",
-	})
+func (u *Unpackerr) logoutHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+	http.SetCookie(response, u.sessionCookie(request, "", -1))
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -265,6 +318,7 @@ func writeJSON(response http.ResponseWriter, code int, msg any) {
 	}
 
 	response.Header().Set("Content-Type", "application/json")
+	response.Header().Set("Cache-Control", "no-store")
 	response.WriteHeader(code)
 	_, _ = response.Write(append(body, '\n'))
 }

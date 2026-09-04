@@ -323,7 +323,8 @@ func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
 	}
 
 	text := string(written)
-	if strings.Contains(text, "[webserver.roles.env_only]") ||
+	if strings.Contains(text, "\n[[webserver.api_keys]]") ||
+		strings.Contains(text, "[webserver.roles.env_only]") ||
 		strings.Contains(text, key) || strings.Contains(text, "envhome") {
 		t.Fatalf("env auth leaked into the config file:\n%s", text)
 	}

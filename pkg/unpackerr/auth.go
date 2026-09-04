@@ -25,7 +25,10 @@ const (
 	maxLoginBody         = 4096
 )
 
-var errSessionCodec = errors.New("session codec is not initialized")
+var (
+	errSessionCodec   = errors.New("session codec is not initialized")
+	errSessionEntropy = errors.New("could not generate session keys")
+)
 
 type ctxKey int
 
@@ -44,25 +47,30 @@ type loginRequest struct {
 	KDF  string `json:"kdf"`
 }
 
-func (w *WebServer) initCookies() {
+func (w *WebServer) initCookies() error {
 	if w == nil || w.cookies != nil {
-		return
+		return nil
 	}
 
 	hash := securecookie.GenerateRandomKey(cookieHashBytes)
 	block := securecookie.GenerateRandomKey(cookieBlockBytes)
 
 	if hash == nil || block == nil {
-		return
+		return errSessionEntropy
 	}
 
 	w.cookies = securecookie.New(hash, block)
+
+	return nil
 }
 
 func (u *Unpackerr) registerAuthRoutes() {
 	base := path.Join(u.Webserver.URLBase, "api", "auth")
-	u.Webserver.router.POST(path.Join(base, "login"), u.loginHandler)
-	u.Webserver.router.POST(path.Join(base, "logout"), u.logoutHandler)
+	if u.Webserver.cookies != nil {
+		u.Webserver.router.POST(path.Join(base, "login"), u.loginHandler)
+		u.Webserver.router.POST(path.Join(base, "logout"), u.logoutHandler)
+	}
+
 	u.Webserver.router.GET(path.Join(base, "me"), u.requireAuth(u.meHandler))
 }
 
@@ -247,8 +255,8 @@ func forwardedProto(request *http.Request) string {
 		return ""
 	}
 
-	if idx := strings.IndexByte(proto, ','); idx >= 0 {
-		proto = proto[:idx]
+	if idx := strings.LastIndexByte(proto, ','); idx >= 0 {
+		proto = proto[idx+1:]
 	}
 
 	return strings.ToLower(strings.TrimSpace(proto))

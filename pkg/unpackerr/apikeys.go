@@ -224,11 +224,13 @@ func (w *WebServer) HasPermission(key, perm string) bool {
 }
 
 // GenerateAPIKey returns a random 60-character URL-safe API key.
-func GenerateAPIKey() string {
+func GenerateAPIKey() (string, error) {
 	raw := make([]byte, apiKeyRandN)
-	_, _ = rand.Read(raw)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generating api key: %w", err)
+	}
 
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
 func (w *WebServer) hasAdminKey() bool {
@@ -249,10 +251,14 @@ func (w *WebServer) adminAPIKey() string {
 	return ""
 }
 
-func (w *WebServer) unusedKeyName(want string) string {
-	used := make(map[string]struct{}, len(w.APIKeys))
+func (w *WebServer) unusedKeyName(want string, extra []APIKey) string {
+	used := make(map[string]struct{}, len(w.APIKeys)+len(extra))
 
 	for _, key := range w.APIKeys {
+		used[key.Name] = struct{}{}
+	}
+
+	for _, key := range extra {
 		used[key.Name] = struct{}{}
 	}
 
@@ -277,16 +283,55 @@ func (u *Unpackerr) setupAdminAPIKey() {
 		return
 	}
 
-	name := u.Webserver.unusedKeyName(defaultAdminKeyName)
+	if u.adoptFileAdminKey() {
+		return
+	}
+
+	secret, err := GenerateAPIKey()
+	if err != nil {
+		u.adminKeyErr = err
+		return
+	}
+
 	key := APIKey{
-		Name:  name,
-		Key:   GenerateAPIKey(),
+		Name:  u.Webserver.unusedKeyName(defaultAdminKeyName, u.fileAPIKeys()),
+		Key:   secret,
 		Roles: []string{RoleAdmin},
 	}
-	u.Webserver.APIKeys = append(u.Webserver.APIKeys, key)
-	u.adminKeyNotice = name
-	u.appendFileAPIKey(key)
-	u.persistConfigFile()
+	u.installAdminKey(key, true)
+}
+
+func (u *Unpackerr) adoptFileAdminKey() bool {
+	for _, key := range u.fileAPIKeys() {
+		if !slices.Contains(key.Roles, RoleAdmin) {
+			continue
+		}
+
+		u.installAdminKey(key, false)
+
+		return true
+	}
+
+	return false
+}
+
+func (u *Unpackerr) fileAPIKeys() []APIKey {
+	if u.fileConfig == nil || u.fileConfig.Webserver == nil {
+		return nil
+	}
+
+	return u.fileConfig.Webserver.APIKeys
+}
+
+func (u *Unpackerr) installAdminKey(key APIKey, persist bool) {
+	cloned := cloneAPIKeys([]APIKey{key})
+	u.Webserver.APIKeys = append(u.Webserver.APIKeys, cloned...)
+
+	if persist {
+		u.adminKeyNotice = key.Name
+		u.appendFileAPIKey(key)
+		u.persistConfigFile()
+	}
 
 	if u.Webserver.keyPerms != nil {
 		u.Webserver.keyPerms[key.Key] = append([]string(nil), AllPermissions()...)
@@ -294,6 +339,10 @@ func (u *Unpackerr) setupAdminAPIKey() {
 }
 
 func (u *Unpackerr) logAdminAPIKey() {
+	if u.adminKeyErr != nil {
+		u.Errorf("Could not generate admin API key: %v", u.adminKeyErr)
+	}
+
 	if u.adminKeyNotice == "" {
 		return
 	}

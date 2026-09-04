@@ -86,6 +86,9 @@ func (u *Unpackerr) getLidarrQueue(server *LidarrConfig, start time.Time) {
 
 // checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
 func (u *Unpackerr) checkLidarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Lidarr {
 		if server.Queue == nil {
 			continue

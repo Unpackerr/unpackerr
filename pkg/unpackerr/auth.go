@@ -133,9 +133,12 @@ func (u *Unpackerr) requirePerm(perm string, next httprouter.Handle) httprouter.
 	})
 }
 
+// requirePermHTTP guards net/http handlers such as Prometheus /metrics.
+// Only an API key with the requested permission is accepted; UI session
+// cookies and trusted-proxy webauth/noauth are ignored.
 func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		info, ok := u.authenticate(request)
+		info, ok := u.authAPIKey(requestAPIKey(request))
 		if !ok {
 			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 
@@ -150,6 +153,25 @@ func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler
 
 		next.ServeHTTP(response, request)
 	})
+}
+
+func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
+	if key == "" {
+		return authInfo{}, false
+	}
+
+	perms := u.Webserver.PermissionsForKey(key)
+	if perms == nil {
+		return authInfo{}, false
+	}
+
+	return authInfo{
+		Username:    u.Webserver.keyName(key),
+		APIKey:      key,
+		Auth:        u.uiPassword().Type().String(),
+		Via:         "key",
+		Permissions: perms,
+	}, true
 }
 
 func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
@@ -172,25 +194,6 @@ func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
 	}
 
 	return authInfo{}, false
-}
-
-func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
-	if key == "" {
-		return authInfo{}, false
-	}
-
-	perms := u.Webserver.PermissionsForKey(key)
-	if perms == nil {
-		return authInfo{}, false
-	}
-
-	return authInfo{
-		Username:    u.Webserver.keyName(key),
-		APIKey:      key,
-		Auth:        u.uiPassword().Type().String(),
-		Via:         "key",
-		Permissions: perms,
-	}, true
 }
 
 func requestAPIKey(request *http.Request) string {

@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"strconv"
+	"sync"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 )
@@ -13,11 +14,31 @@ const (
 )
 
 // History holds the history of extracted items.
+// mu guards Map, Finished, Retries, and per-item Status/Updated so HTTP stats
+// and Prometheus Collect can snapshot without racing the main loop. It is not
+// reentrant; do not lock inside a caller that already holds it.
 type History struct {
+	mu       sync.RWMutex
 	Items    []string
 	Finished uint
 	Retries  uint
 	Map      map[string]*Extract
+}
+
+func (h *History) lockHistory() {
+	h.mu.Lock()
+}
+
+func (h *History) unlockHistory() {
+	h.mu.Unlock()
+}
+
+func (h *History) rLockHistory() {
+	h.mu.RLock()
+}
+
+func (h *History) rUnlockHistory() {
+	h.mu.RUnlock()
 }
 
 // This is called every time an item is queued.

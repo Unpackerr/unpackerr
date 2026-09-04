@@ -64,6 +64,9 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 }
 
 func (u *Unpackerr) printProgress(now time.Time) {
+	u.rLockHistory()
+	defer u.rUnlockHistory()
+
 	for name, data := range u.Map {
 		if data.Status != EXTRACTING {
 			continue

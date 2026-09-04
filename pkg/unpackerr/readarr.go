@@ -77,6 +77,9 @@ func (u *Unpackerr) getReadarrQueue(server *ReadarrConfig, start time.Time) {
 
 // checkReadarQueue saves completed Readarr-queued downloads to u.Map.
 func (u *Unpackerr) checkReadarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Readarr {
 		if server.Queue == nil {
 			continue

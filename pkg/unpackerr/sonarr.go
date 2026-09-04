@@ -77,6 +77,9 @@ func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 
 // checkSonarrQueue saves completed Sonarr-queued downloads to u.Map.
 func (u *Unpackerr) checkSonarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Sonarr {
 		if server.Queue == nil {
 			continue

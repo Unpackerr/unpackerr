@@ -124,7 +124,7 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 
 	u.Printf("[Unpackerr] Totals: %d retries, %d finished, %d|%d webhooks,"+
 		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
-		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
+		stats.Retries, stats.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
 		carbon.CreateFromStdTime(version.Started).DiffAbsInString(carbon.CreateFromStdTime(now)))
 	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))

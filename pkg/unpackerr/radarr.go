@@ -77,6 +77,9 @@ func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
 
 // checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
 func (u *Unpackerr) checkRadarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Radarr {
 		if server.Queue == nil {
 			continue

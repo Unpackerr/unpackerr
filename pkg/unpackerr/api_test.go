@@ -110,3 +110,48 @@ func TestMetricsRequiresMetricsPermission(t *testing.T) {
 		t.Fatalf("admin bearer metrics %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestMetricsRejectsSessionAndProxyAuth(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.router.Handler(http.MethodGet, "/metrics", unpack.requirePermHTTP(
+		PermReadSystemMetrics,
+		http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusOK)
+		}),
+	))
+
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+
+	logged := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+	if logged.Code != http.StatusOK {
+		t.Fatalf("login %d %s", logged.Code, logged.Body.String())
+	}
+
+	res := logged.Result()
+	_ = res.Body.Close()
+
+	withCookie := func(req *http.Request) {
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+	}
+
+	if rec := doAuth(t, unpack, http.MethodGet, "/metrics", "", withCookie); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("session metrics %d", rec.Code)
+	}
+
+	if rec := doAuth(t, unpack, http.MethodGet, "/api/stats", "", withCookie); rec.Code != http.StatusOK {
+		t.Fatalf("session stats %d", rec.Code)
+	}
+
+	unpack.Webserver.UIPassword = authNone
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	if rec := doAuth(t, unpack, http.MethodGet, "/metrics", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+	}); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("proxy metrics %d", rec.Code)
+	}
+}

@@ -128,7 +128,7 @@ func (u *Unpackerr) startWebServer() {
 }
 
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
+	u.Webserver.router.GET(u.Webserver.URLBase, Index)
 	u.registerAuthRoutes()
 	u.registerAPIRoutes()
 

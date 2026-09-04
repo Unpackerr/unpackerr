@@ -1,6 +1,12 @@
 package unpackerr
 
-import "testing"
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/julienschmidt/httprouter"
+)
 
 func TestWebServerEnabled(t *testing.T) {
 	t.Parallel()
@@ -53,5 +59,28 @@ func TestWebServerNormalizeURLBase(t *testing.T) {
 
 	if server.URLBase != "/custom/" {
 		t.Fatalf("urlbase %q", server.URLBase)
+	}
+}
+
+func TestWebRoutesIndexHonorsURLBase(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.URLBase = "/unpackerr/"
+	unpack.Webserver.router = httprouter.New()
+	unpack.webRoutes()
+
+	rec := httptest.NewRecorder()
+	unpack.Webserver.router.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/unpackerr/", nil))
+
+	if rec.Code != http.StatusOK || rec.Body.String() != "Welcome!\n" {
+		t.Fatalf("urlbase index %d %q", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	unpack.Webserver.router.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("root index %d %q", rec.Code, rec.Body.String())
 	}
 }

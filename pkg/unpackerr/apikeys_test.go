@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -121,6 +122,8 @@ func TestValidateAuthRejectsAdminRoleRedefine(t *testing.T) {
 
 	if err := web.validateAuth(); err == nil {
 		t.Fatal("redefining admin must fail")
+	} else if !errors.Is(err, errReservedRole) {
+		t.Fatalf("got %v", err)
 	}
 }
 

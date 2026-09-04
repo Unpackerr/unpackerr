@@ -204,7 +204,7 @@ sections:
       ##       Unpackerr Example Configuration File        ##
       #######################################################
       ##  The values are a mix of defaults and examples.   ##
-      ##  Environment Variables may override all values.   ##
+      ##  Env vars overlay the process, not this file.     ##
       ##  More configuration help: https://unpackerr.zip   ##
       ## Config Generator: https://notifiarr.com/unpackerr ##
       #######################################################
@@ -442,6 +442,19 @@ sections:
         desc: |
           This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
           Set this to an empty string to disable the HTTP server.
+      - name: ui_password
+        envvar: UI_PASSWORD
+        default: ''
+        omit_compose: true
+        short: Web UI password (user:pass, hashed, proxy header, or noauth).
+        desc: |
+          Local UI login (HTTP auth is the next PR; this stores the credential). Use user:pass
+          (hashed on startup), !!cryptd!!user:$2a$... for a stored hash, webauth:X-Webauth-User
+          for a reverse-proxy header, or noauth.
+          filepath:/path reads that file for the live password and keeps filepath: in the
+          config. Empty generates a temporary password when the HTTP server is enabled.
+          Reset with --reset. Do not set an empty
+          UN_WEBSERVER_UI_PASSWORD; a present empty env value wipes a stored hash.
       - name: log_file
         envvar: LOG_FILE
         default: ''

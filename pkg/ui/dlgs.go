@@ -62,6 +62,24 @@ func Entry(title, msg, val string) (string, bool, error) {
 	return value, true, nil
 }
 
+// Password wraps a hidden-text entry dialog.
+func Password(title, msg string) (string, bool, error) {
+	if !HasGUI() {
+		return "", true, nil
+	}
+
+	value, err := zenity.Entry(msg, zenity.Title(title), zenity.HideText())
+	if errors.Is(err, zenity.ErrCanceled) {
+		return "", false, nil
+	}
+
+	if err != nil {
+		return value, false, fmt.Errorf("show password dialog: %w", err)
+	}
+
+	return value, true, nil
+}
+
 // Question wraps a question dialog.
 func Question(title string, defaultCancel bool, text string, args ...any) (bool, error) {
 	if !HasGUI() {

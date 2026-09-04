@@ -73,10 +73,13 @@ type Unpackerr struct {
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
 	*Logger
-	rotatorr        *rotatorr.Logger
-	httpLog         *rotatorr.Logger
-	menu            map[string]ui.MenuItem
-	passwordSources StringSlice
+	rotatorr         *rotatorr.Logger
+	httpLog          *rotatorr.Logger
+	menu             map[string]ui.MenuItem
+	fileConfig       *Config // on-disk shape (filepath: values). Config is the live expanded copy.
+	uiPasswordNotice string
+	uiPasswordGenErr error
+	configWriteErr   error
 }
 
 type fileDeleteReq struct {
@@ -101,6 +104,7 @@ type Flags struct {
 	ConfigFile string
 	EnvPrefix  string
 	webhook    uint
+	reset      bool
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -146,7 +150,7 @@ func New() *Unpackerr {
 
 // Start runs the app.
 //
-//nolint:gosec // not too concerned with possible integer overflows reading user-provided config files.
+//nolint:gosec,funlen // not too concerned with possible integer overflows reading user-provided config files.
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
@@ -172,6 +176,14 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+
+	if err := unpackerr.handleStartupPassword(); err != nil {
+		return err
+	}
+
+	if unpackerr.reset {
+		return nil
+	}
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",
@@ -342,7 +354,7 @@ func (u *Unpackerr) watchCmdAndWebhooks() {
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.Usage = func() {
-		fmt.Println("Usage: unpackerr [--config=filepath] [--version]") //nolint:forbidigo
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version] [--reset]") //nolint:forbidigo
 		flag.PrintDefaults()
 	}
 
@@ -350,6 +362,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.StringVarP(&u.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
 	flag.UintVarP(&u.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
+	flag.BoolVar(&u.reset, "reset", false, "Reset the web UI password, write it to the config file, and exit")
 	flag.Parse()
 
 	return u // so you can chain into ParseConfig.

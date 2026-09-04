@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/securecookie"
 	"github.com/julienschmidt/httprouter"
@@ -651,5 +653,73 @@ func TestSessionCookieSecureFromTLSFiles(t *testing.T) {
 	cookies := res.Cookies()
 	if len(cookies) != 1 || !cookies[0].Secure {
 		t.Fatalf("local TLS should set Secure, cookies=%v", cookies)
+	}
+}
+
+type deadlineRecorder struct {
+	http.ResponseWriter
+	deadline time.Time
+}
+
+func (rec *deadlineRecorder) SetReadDeadline(deadline time.Time) error {
+	rec.deadline = deadline
+	return nil
+}
+
+type opaqueWriter struct {
+	http.ResponseWriter
+}
+
+func TestLoginReadDeadlineAppliesOutsideLogger(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	raw := &deadlineRecorder{ResponseWriter: httptest.NewRecorder()}
+
+	var (
+		seen     time.Time
+		innerErr error
+	)
+
+	handler := unpack.withLoginReadDeadline(http.HandlerFunc(
+		func(response http.ResponseWriter, _ *http.Request) {
+			seen = raw.deadline
+			innerErr = http.NewResponseController(opaqueWriter{ResponseWriter: response}).
+				SetReadDeadline(time.Time{})
+		}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, unpack.loginPath(), nil)
+	handler.ServeHTTP(raw, req)
+
+	if seen.IsZero() {
+		t.Fatal("login deadline must be set on the raw writer before apachelog wraps it")
+	}
+
+	if !errors.Is(innerErr, http.ErrNotSupported) {
+		t.Fatalf("logged writer should hide SetReadDeadline, got %v", innerErr)
+	}
+
+	raw = &deadlineRecorder{ResponseWriter: httptest.NewRecorder()}
+	seen = time.Time{}
+	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/me", nil)
+	handler.ServeHTTP(raw, req)
+
+	if !seen.IsZero() {
+		t.Fatal("non-login requests must not get a login read deadline")
+	}
+}
+
+func TestLoginSucceedsThroughReadDeadlineMiddleware(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.failDelay = 0
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, unpack.loginPath(), strings.NewReader(payload))
+	rec := httptest.NewRecorder()
+	unpack.withLoginReadDeadline(unpack.Webserver.router).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login %d %s", rec.Code, rec.Body.String())
 	}
 }

@@ -93,6 +93,55 @@ func TestWriteConfigFileRequiresPath(t *testing.T) {
 	}
 }
 
+func TestWriteConfigFileAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	key := strings.Repeat("k", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  "home",
+		Key:   key,
+		Roles: []string{"stats"},
+	}}
+	unpack.Webserver.Roles = map[string]Role{
+		"stats": {Permissions: []string{PermReadSystemStats}},
+	}
+	unpack.snapshotFileConfig()
+
+	if err := unpack.writeConfigFile(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(body)
+	if strings.Contains(text, "api_keys =") || strings.Contains(text, "roles = {") ||
+		strings.Contains(text, "roles = [stats]") {
+		t.Fatalf("auth tables must not be inlined:\n%s", text)
+	}
+
+	if !strings.Contains(text, "[[webserver.api_keys]]") || !strings.Contains(text, "[webserver.roles.stats]") {
+		t.Fatalf("missing nested auth tables:\n%s", text)
+	}
+
+	loaded := New()
+	if err := cnfgfile.Unmarshal(loaded.Config, unpack.ConfigFile); err != nil {
+		t.Fatalf("decode: %v\n%s", err, text)
+	}
+
+	if err := loaded.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !loaded.Webserver.HasPermission(key, PermReadSystemStats) {
+		t.Fatal("reloaded key should keep its role")
+	}
+}
+
 func TestWriteConfigFileKeepsFilepathAfterParse(t *testing.T) {
 	t.Parallel()
 
@@ -232,6 +281,55 @@ func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
 	}
 }
 
+func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n"
+
+	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	key := strings.Repeat("Z", apiKeyMinLen)
+
+	t.Setenv("UN_WEBSERVER_ROLES_stats_PERMISSIONS_0", PermReadSystemStats)
+	t.Setenv("UN_WEBSERVER_ROLES_env_only_PERMISSIONS_0", PermReadSystemStats)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_NAME", "envhome")
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_KEY", key)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_ROLES_0", "env_only")
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Webserver.Roles["stats"].Permissions[0] != PermReadSystemStats {
+		t.Fatalf("stats role %+v", unpack.Webserver.Roles)
+	}
+
+	if unpack.Webserver.Roles["env_only"].Permissions[0] != PermReadSystemStats {
+		t.Fatalf("env_only role %+v", unpack.Webserver.Roles)
+	}
+
+	if !unpack.Webserver.HasPermission(key, PermReadSystemStats) {
+		t.Fatal("env api key should get env_only")
+	}
+
+	written, err := os.ReadFile(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "\n[[webserver.api_keys]]") ||
+		strings.Contains(text, "[webserver.roles.env_only]") ||
+		strings.Contains(text, key) || strings.Contains(text, "envhome") {
+		t.Fatalf("env auth leaked into the config file:\n%s", text)
+	}
+}
+
 func TestConfigTOMLTagsInSchema(t *testing.T) {
 	t.Parallel()
 
@@ -243,6 +341,7 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	skip := map[string]struct{}{
 		"keep_history": {}, // undocumented until the history API
 		"path":         {}, // legacy StarrConfig alias for paths
+		"key":          {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)

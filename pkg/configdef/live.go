@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -159,38 +160,213 @@ func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Val
 	live = derefValue(live)
 
 	for _, param := range h.Params {
-		if param == nil {
-			continue
-		}
-
-		if h.NoHeader && param.Desc != "" {
-			buf.WriteString("\n")
-		}
-
-		if param.Desc != "" {
-			buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
-		}
-
-		field, ok := fieldByTOML(live, param.Name)
-		text := param.defaultText()
-		atDefault := true
-
-		if ok && field.IsValid() && field.CanInterface() && !isNilish(field) {
-			text = formatTOML(param.Name, field.Interface())
-			atDefault = valuesEqual(field, param.Default)
-		}
-
-		comment := ""
-		if atDefault && !persist.has(name, param.Name) {
-			comment = "#"
-		}
-
-		fmt.Fprintf(&buf, "%s%s%s = %s\n", comment, space, param.Name, text)
+		writeLiveParam(&buf, name, space, live, persist, h.NoHeader, param)
 	}
 
 	buf.WriteString("\n")
+	buf.WriteString(h.renderNestedLive(name, live))
 
 	return buf.String()
+}
+
+func writeLiveParam(
+	buf *bytes.Buffer,
+	name section,
+	space string,
+	live reflect.Value,
+	persist persistSet,
+	noHeader bool,
+	param *Param,
+) {
+	if param == nil {
+		return
+	}
+
+	if noHeader && param.Desc != "" {
+		buf.WriteString("\n")
+	}
+
+	if param.Desc != "" {
+		buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
+	}
+
+	if param.isNested() {
+		return
+	}
+
+	field, ok := fieldByTOML(live, param.Name)
+	text := param.defaultText()
+	atDefault := true
+
+	if ok && field.IsValid() && field.CanInterface() && !isNilish(field) {
+		text = formatTOML(param.Name, field.Interface())
+		atDefault = valuesEqual(field, param.Default)
+	}
+
+	comment := ""
+	if atDefault && !persist.has(name, param.Name) {
+		comment = "#"
+	}
+
+	fmt.Fprintf(buf, "%s%s%s = %s\n", comment, space, param.Name, text)
+}
+
+func (h *Header) renderNestedLive(section section, live reflect.Value) string {
+	live = derefValue(live)
+	if !live.IsValid() {
+		return ""
+	}
+
+	var buf bytes.Buffer
+
+	for _, param := range h.Params {
+		if !param.isNested() {
+			continue
+		}
+
+		field, ok := fieldByTOML(live, param.Name)
+		if !ok {
+			continue
+		}
+
+		buf.WriteString(renderNestedValue(section, param.Name, param.Kind, derefValue(field)))
+	}
+
+	return buf.String()
+}
+
+func renderNestedValue(section section, name, kind string, value reflect.Value) string {
+	if !value.IsValid() || isNilish(value) {
+		return ""
+	}
+
+	switch value.Kind() {
+	case reflect.Slice, reflect.Map:
+		if value.Len() == 0 {
+			return ""
+		}
+	default:
+		return ""
+	}
+
+	switch kind {
+	case tables:
+		return renderNestedTables(section, name, value)
+	case "map":
+		return renderNestedMap(section, name, value)
+	default:
+		return ""
+	}
+}
+
+func renderNestedTables(section section, name string, value reflect.Value) string {
+	if value.Kind() != reflect.Slice {
+		return ""
+	}
+
+	var buf bytes.Buffer
+
+	for idx := range value.Len() {
+		fmt.Fprintf(&buf, "[[%s.%s]]\n", section, name)
+		writeStructFields(&buf, derefValue(value.Index(idx)))
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
+}
+
+func renderNestedMap(section section, name string, value reflect.Value) string {
+	if value.Kind() != reflect.Map {
+		return ""
+	}
+
+	keys := value.MapKeys()
+	slices.SortFunc(keys, func(left, right reflect.Value) int {
+		return strings.Compare(left.String(), right.String())
+	})
+
+	var buf bytes.Buffer
+
+	for _, key := range keys {
+		fmt.Fprintf(&buf, "[%s.%s.%s]\n", section, name, tomlKey(key.String()))
+		writeStructFields(&buf, derefValue(value.MapIndex(key)))
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
+}
+
+func writeStructFields(buf *bytes.Buffer, value reflect.Value) {
+	value = derefValue(value)
+	if !value.IsValid() || value.Kind() != reflect.Struct {
+		return
+	}
+
+	typ := value.Type()
+
+	for idx := range typ.NumField() {
+		field := typ.Field(idx)
+		if !field.IsExported() {
+			continue
+		}
+
+		tag, _, _ := strings.Cut(field.Tag.Get("toml"), ",")
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		fmt.Fprintf(buf, " %s = %s\n", tag, formatTOML(tag, value.Field(idx).Interface()))
+	}
+}
+
+func tomlKey(name string) string {
+	if name != "" && isBareTOMLKey(name) {
+		return name
+	}
+
+	return quoteTOMLString(name)
+}
+
+func quoteTOMLString(name string) string {
+	var buf strings.Builder
+
+	buf.Grow(len(name) + len(`""`))
+	buf.WriteByte('"')
+
+	for _, char := range name {
+		switch {
+		case char == '"':
+			buf.WriteString(`\"`)
+		case char == '\\':
+			buf.WriteString(`\\`)
+		case char == '\n':
+			buf.WriteString(`\n`)
+		case char == '\t':
+			buf.WriteString(`\t`)
+		case char == '\r':
+			buf.WriteString(`\r`)
+		case char < ' ':
+			fmt.Fprintf(&buf, `\u%04X`, char)
+		default:
+			buf.WriteRune(char)
+		}
+	}
+
+	buf.WriteByte('"')
+
+	return buf.String()
+}
+
+func isBareTOMLKey(name string) bool {
+	for _, char := range name {
+		switch {
+		case char >= 'A' && char <= 'Z', char >= 'a' && char <= 'z', char >= '0' && char <= '9', char == '_', char == '-':
+		default:
+			return false
+		}
+	}
+
+	return true
 }
 
 func (p *Param) defaultText() string {
@@ -198,18 +374,40 @@ func (p *Param) defaultText() string {
 }
 
 func formatTOML(name string, val any) string {
-	if isNilish(reflect.ValueOf(val)) {
-		return "''\n"
+	value := reflect.ValueOf(val)
+	if isNilish(value) {
+		return emptyCollectionTOML(value)
 	}
 
-	value := derefValue(reflect.ValueOf(val))
+	value = derefValue(value)
 	if !value.IsValid() {
-		return "''\n"
+		return "''"
+	}
+
+	if value.Kind() == reflect.Map && value.Len() == 0 {
+		return "{}"
+	}
+
+	if (value.Kind() == reflect.Slice || value.Kind() == reflect.Array) && value.Len() == 0 {
+		return "[]"
 	}
 
 	out := marshalTOML(value)
 
-	return string(preferPathQuotes(name, out))
+	return strings.TrimSpace(string(preferPathQuotes(name, out)))
+}
+
+func emptyCollectionTOML(value reflect.Value) string {
+	if value.IsValid() {
+		switch value.Kind() {
+		case reflect.Slice, reflect.Array:
+			return "[]"
+		case reflect.Map:
+			return "{}"
+		}
+	}
+
+	return "''"
 }
 
 func marshalTOML(value reflect.Value) []byte {
@@ -217,12 +415,51 @@ func marshalTOML(value reflect.Value) []byte {
 		return out
 	}
 
+	if !canInlineTOML(value) {
+		return []byte("''")
+	}
+
 	out, err := toml.Marshal(value.Interface())
 	if err != nil {
-		out, _ = toml.Marshal(fmt.Sprint(value.Interface()))
+		return []byte("''")
 	}
 
 	return out
+}
+
+func canInlineTOML(value reflect.Value) bool {
+	value = derefValue(value)
+	if !value.IsValid() {
+		return true
+	}
+
+	if _, ok := reflect.TypeAssert[encoding.TextMarshaler](value); ok {
+		return true
+	}
+
+	switch value.Kind() {
+	case reflect.Struct:
+		return false
+	case reflect.Map:
+		if value.Len() == 0 {
+			return true
+		}
+
+		iter := value.MapRange()
+		if iter.Next() {
+			return canInlineTOML(iter.Value())
+		}
+
+		return true
+	case reflect.Slice, reflect.Array:
+		if value.Len() == 0 {
+			return true
+		}
+
+		return canInlineTOML(value.Index(0))
+	default:
+		return true
+	}
 }
 
 // namedUint8TOML converts a named []uint8 (ExtractStatus, etc) to ints so TOML

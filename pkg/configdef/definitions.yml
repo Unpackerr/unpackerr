@@ -497,6 +497,31 @@ sections:
           Setting this correctly allows X-Forwarded-For to be used in logs.
           In the future it may control auth proxy trust. Must be a list of strings.
           example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+      - name: api_keys
+        envvar: API_KEYS_
+        default: []
+        kind: tables
+        short: Named API keys assigned to roles.
+        desc: |
+          Nested [[webserver.api_keys]] tables, not an inline array. Each key is 60–150 ASCII
+          characters. Names and key values must be unique. Built-in role `admin` grants every
+          permission. Custom roles are listed under [webserver.roles].
+          Env uses UN_WEBSERVER_API_KEYS_0_NAME, _KEY, and _ROLES_0.
+      - name: roles
+        envvar: ROLES_*_PERMISSIONS_0
+        default: {}
+        kind: map
+        short: Custom roles mapped to permission names.
+        desc: |
+          Nested [webserver.roles.<name>] tables. Names are letters, digits, _ or -.
+          Built-in admin cannot be redefined. `*` is reserved for that built-in role.
+          Each custom role needs at least one known permission.
+          Env works but is picky: do not set UN_WEBSERVER_ROLES itself. Role names are
+          case-sensitive and may contain underscores. Index permissions from 0:
+          UN_WEBSERVER_ROLES_stats_PERMISSIONS_0=read:system:stats
+          UN_WEBSERVER_ROLES_read_only_PERMISSIONS_0=read:system:stats
+          [webserver.roles.stats]
+          permissions = ["read:system:stats"]
 
   starr_header:
     no_header: true

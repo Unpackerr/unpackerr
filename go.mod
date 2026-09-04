@@ -18,7 +18,7 @@ require (
 	golang.org/x/crypto v0.56.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/sys v0.47.0
-	golift.io/cnfg v0.2.5
+	golift.io/cnfg v0.3.0
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20260901062538-fc9f05905af3
 	golift.io/starr v1.3.1

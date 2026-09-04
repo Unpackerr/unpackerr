@@ -15,20 +15,23 @@ import (
 )
 
 type WebServer struct {
-	Metrics    bool        `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
-	Pprof      bool        `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
-	LogFiles   int         `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
-	LogFileMb  int         `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
-	ListenAddr string      `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
-	LogFile    string      `json:"logFile"     toml:"log_file"      xml:"log_file"      yaml:"logFile"`
-	SSLCrtFile string      `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
-	SSLKeyFile string      `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
-	URLBase    string      `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
-	Upstreams  StringSlice `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
-	UIPassword CryptPass   `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
+	Metrics    bool            `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
+	Pprof      bool            `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
+	LogFiles   int             `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
+	LogFileMb  int             `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
+	ListenAddr string          `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
+	LogFile    string          `json:"logFile"     toml:"log_file"      xml:"log_file"      yaml:"logFile"`
+	SSLCrtFile string          `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
+	SSLKeyFile string          `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
+	URLBase    string          `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
+	Upstreams  StringSlice     `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	UIPassword CryptPass       `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
+	APIKeys    []APIKey        `json:"apiKeys"     toml:"api_keys"      xml:"api_keys"      yaml:"apiKeys"`
+	Roles      map[string]Role `json:"roles"       toml:"roles"         xml:"roles"         yaml:"roles"`
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server
+	keyPerms   map[string][]string
 }
 
 func (w *WebServer) listenAddr() string {

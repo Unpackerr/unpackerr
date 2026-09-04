@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 )
 
 /* This file creates an example config file: unpackerr.conf.example */
@@ -108,6 +106,10 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 			buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
 		}
 
+		if param.isNested() {
+			continue
+		}
+
 		switch {
 		default:
 			fallthrough
@@ -129,13 +131,15 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 }
 
 func (p *Param) Value() string {
-	// If example is not empty, use that commented out, otherwise use the default.
-	out, _ := toml.Marshal(p.Default)
 	if p.Example != nil {
-		out, _ = toml.Marshal(p.Example)
+		return formatTOML(p.Name, p.Example)
 	}
 
-	return string(preferPathQuotes(p.Name, out))
+	return formatTOML(p.Name, p.Default)
+}
+
+func (p *Param) isNested() bool {
+	return p != nil && (p.Kind == "map" || p.Kind == tables)
 }
 
 // makeDefinedSection duplicates sections from overrides, and prints it once for each override.

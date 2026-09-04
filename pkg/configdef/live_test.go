@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/BurntSushi/toml"
 )
 
 type liveRoot struct {
@@ -19,8 +21,20 @@ type liveRoot struct {
 }
 
 type liveWeb struct {
-	Metrics    bool   `toml:"metrics"`
-	ListenAddr string `toml:"listen_addr"`
+	Metrics    bool                `toml:"metrics"`
+	ListenAddr string              `toml:"listen_addr"`
+	APIKeys    []liveAPIKey        `toml:"api_keys"`
+	Roles      map[string]liveRole `toml:"roles"`
+}
+
+type liveAPIKey struct {
+	Name  string   `toml:"name"`
+	Key   string   `toml:"key"`
+	Roles []string `toml:"roles"`
+}
+
+type liveRole struct {
+	Permissions []string `toml:"permissions"`
 }
 
 type liveStarr struct {
@@ -155,6 +169,116 @@ func TestRenderLiveEventsStayNumeric(t *testing.T) {
 
 	if !strings.Contains(body, `token = "tok"`) {
 		t.Fatalf("missing live webhook token:\n%s", snippet(body, "token"))
+	}
+}
+
+func TestRenderLiveAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	schema := MustLoad(t)
+	live := &liveRoot{
+		Webserver: &liveWeb{
+			ListenAddr: "127.0.0.1:5656",
+			APIKeys: []liveAPIKey{{
+				Name:  "home",
+				Key:   strings.Repeat("f", 60),
+				Roles: []string{"stats"},
+			}},
+			Roles: map[string]liveRole{
+				"stats": {Permissions: []string{"read:system:stats"}},
+			},
+		},
+	}
+
+	body := schema.RenderTOML(live, RenderOpts{Mode: RenderLive})
+
+	if strings.Contains(body, "api_keys =") {
+		t.Fatalf("api_keys must be nested tables, got:\n%s", snippet(body, "api_keys"))
+	}
+
+	if strings.Contains(body, "roles = {") || strings.Contains(body, "roles = [stats]") {
+		t.Fatalf("roles must be nested tables, got:\n%s", snippet(body, "roles"))
+	}
+
+	if !strings.Contains(body, "[[webserver.api_keys]]") {
+		t.Fatalf("missing [[webserver.api_keys]]:\n%s", snippet(body, "webserver"))
+	}
+
+	if !strings.Contains(body, "[webserver.roles.stats]") {
+		t.Fatalf("missing [webserver.roles.stats]:\n%s", snippet(body, "roles"))
+	}
+
+	decoded := struct {
+		Webserver liveWeb `toml:"webserver"`
+	}{}
+	if err := toml.Unmarshal([]byte(body), &decoded); err != nil {
+		t.Fatalf("written TOML must parse: %v\n%s", err, snippet(body, "webserver"))
+	}
+
+	if len(decoded.Webserver.APIKeys) != 1 || decoded.Webserver.APIKeys[0].Name != "home" {
+		t.Fatalf("decoded keys %+v", decoded.Webserver.APIKeys)
+	}
+
+	if decoded.Webserver.Roles["stats"].Permissions[0] != "read:system:stats" {
+		t.Fatalf("decoded roles %+v", decoded.Webserver.Roles)
+	}
+}
+
+func TestFormatTOMLNilCollections(t *testing.T) {
+	t.Parallel()
+
+	if got := formatTOML("roles", []string(nil)); got != "[]" {
+		t.Fatalf("nil slice: %s", got)
+	}
+
+	if got := formatTOML("roles", map[string]string(nil)); got != "{}" {
+		t.Fatalf("nil map: %s", got)
+	}
+}
+
+func TestTOMLKeyQuotesControlChars(t *testing.T) {
+	t.Parallel()
+
+	got := tomlKey("\x01")
+	if strings.Contains(got, `\x`) {
+		t.Fatalf("TOML does not allow Go \\x escapes: %s", got)
+	}
+
+	if got != `"\u0001"` {
+		t.Fatalf("got %s", got)
+	}
+}
+
+func TestRenderLiveNilAPIKeyRoles(t *testing.T) {
+	t.Parallel()
+
+	schema := MustLoad(t)
+	live := &liveRoot{
+		Webserver: &liveWeb{
+			ListenAddr: "127.0.0.1:5656",
+			APIKeys: []liveAPIKey{{
+				Name: "home",
+				Key:  strings.Repeat("f", 60),
+			}},
+		},
+	}
+
+	body := schema.RenderTOML(live, RenderOpts{Mode: RenderLive})
+	if strings.Contains(body, "roles = ''") {
+		t.Fatalf("nil roles must not stringify:\n%s", snippet(body, "roles"))
+	}
+
+	if !strings.Contains(body, "roles = []") {
+		t.Fatalf("nil roles must be an array:\n%s", snippet(body, "api_keys"))
+	}
+}
+
+func TestFormatTOMLDoesNotSprintStructs(t *testing.T) {
+	t.Parallel()
+
+	got := formatTOML("api_keys", []liveAPIKey{{Name: "home"}})
+	if strings.Contains(got, "{") || strings.Contains(got, "home") {
+		t.Fatalf("struct slices must not use fmt.Sprint, got %q", got)
 	}
 }
 

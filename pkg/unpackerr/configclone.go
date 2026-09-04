@@ -27,10 +27,43 @@ func cloneWebserver(src *WebServer) *WebServer {
 
 	dst := *src
 	dst.Upstreams = append(StringSlice(nil), src.Upstreams...)
+	dst.APIKeys = cloneAPIKeys(src.APIKeys)
+	dst.Roles = cloneRoles(src.Roles)
 	dst.router = nil
 	dst.server = nil
+	dst.keyPerms = nil
 
 	return &dst
+}
+
+func cloneAPIKeys(src []APIKey) []APIKey {
+	if src == nil {
+		return nil
+	}
+
+	out := make([]APIKey, len(src))
+	for idx, key := range src {
+		out[idx] = APIKey{
+			Name:  key.Name,
+			Key:   key.Key,
+			Roles: append([]string(nil), key.Roles...),
+		}
+	}
+
+	return out
+}
+
+func cloneRoles(src map[string]Role) map[string]Role {
+	if src == nil {
+		return nil
+	}
+
+	out := make(map[string]Role, len(src))
+	for name, role := range src {
+		out[name] = Role{Permissions: append([]string(nil), role.Permissions...)}
+	}
+
+	return out
 }
 
 func cloneStarrConfig(src StarrConfig) StarrConfig {

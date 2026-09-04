@@ -217,7 +217,7 @@ func (h *Header) validate(name section) []string {
 			errs = append(errs, string(name)+": param missing name")
 		}
 
-		if param.EnvVar == "" {
+		if param.EnvVar == "" && !param.isNested() {
 			errs = append(errs, string(name)+"."+param.Name+": missing envvar")
 		}
 
@@ -226,7 +226,7 @@ func (h *Header) validate(name section) []string {
 		}
 
 		switch param.Kind {
-		case "", list, "conlist":
+		case "", list, "conlist", "map", tables:
 		default:
 			errs = append(errs, string(name)+"."+param.Name+": unknown kind "+param.Kind)
 		}

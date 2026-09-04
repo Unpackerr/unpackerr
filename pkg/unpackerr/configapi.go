@@ -64,11 +64,23 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 }
 
 func (u *Unpackerr) configGetHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
-	writeConfigSection(response, u.fileConfigOrLive(), ConfigSection(params.ByName("section")))
+	section := ConfigSection(params.ByName("section"))
+	if section == SectionWebserver && u.fileConfig == nil {
+		writeJSON(response, http.StatusOK, u.cloneLiveWebserver())
+		return
+	}
+
+	writeConfigSection(response, u.fileConfigOrLive(), section)
 }
 
 func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
-	writeConfigSection(response, u.Config, ConfigSection(params.ByName("section")))
+	section := ConfigSection(params.ByName("section"))
+	if section == SectionWebserver {
+		writeJSON(response, http.StatusOK, u.cloneLiveWebserver())
+		return
+	}
+
+	writeConfigSection(response, u.Config, section)
 }
 
 func (u *Unpackerr) fileConfigOrLive() *Config {

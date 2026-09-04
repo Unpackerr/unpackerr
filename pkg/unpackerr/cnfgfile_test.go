@@ -55,6 +55,8 @@ func TestWriteConfigFilePreservesLiveValues(t *testing.T) {
 	}
 
 	unpack := liveWriteUnpackerr(dir, passFile)
+	unpack.snapshotFileConfig()
+
 	if err := unpack.setPasswords(); err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +89,58 @@ func TestWriteConfigFileRequiresPath(t *testing.T) {
 
 	if err := New().writeConfigFile(); err == nil {
 		t.Fatal("expected an error without ConfigFile")
+	}
+}
+
+func TestWriteConfigFileKeepsFilepathAfterParse(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "sonarr.key")
+	secret := strings.Repeat("k", 32)
+
+	if err := os.WriteFile(keyFile, []byte(secret), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
+	unpack.Sonarr = []*SonarrConfig{{
+		URL:    "http://127.0.0.1:8989",
+		APIKey: filePrefix + keyFile,
+	}}
+
+	unpack.snapshotFileConfig()
+
+	if _, err := cnfgfile.Parse(unpack.Config, &cnfgfile.Opts{Prefix: filePrefix}); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Sonarr[0].APIKey != secret {
+		t.Fatalf("Parse should expand api_key, got %q", unpack.Sonarr[0].APIKey)
+	}
+
+	if err := unpack.writeConfigFile(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(body)
+	if strings.Contains(text, secret) {
+		t.Fatal("expanded api key leaked into the config file")
+	}
+
+	loaded := New()
+	if err := cnfgfile.Unmarshal(loaded.Config, unpack.ConfigFile); err != nil {
+		t.Fatalf("decode: %v\n%s", err, text)
+	}
+
+	if len(loaded.Sonarr) != 1 || loaded.Sonarr[0].APIKey != filePrefix+keyFile {
+		t.Fatalf("api_key %q", loaded.Sonarr[0].APIKey)
 	}
 }
 

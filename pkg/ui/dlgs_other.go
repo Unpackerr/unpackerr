@@ -22,6 +22,11 @@ func Entry(_, _, val string) (string, bool, error) {
 	return val, false, nil
 }
 
+// Password wraps a hidden-text entry dialog.
+func Password(_, _ string) (string, bool, error) {
+	return "", false, nil
+}
+
 // Question wraps dlgs.Question.
 func Question(_ string, _ bool, _ string, _ ...any) (bool, error) {
 	return true, nil

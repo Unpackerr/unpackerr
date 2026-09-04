@@ -46,7 +46,6 @@ services:
     - UN_WEBSERVER_METRICS=false
     - UN_WEBSERVER_PPROF=false
     - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
-    - UN_WEBSERVER_UI_PASSWORD=
     - UN_WEBSERVER_LOG_FILE=
     - UN_WEBSERVER_LOG_FILES=10
     - UN_WEBSERVER_LOG_FILE_MB=10
@@ -178,4 +177,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 04 SEP 2026 02:17 UTC
+## => Content Auto Generated, 04 SEP 2026 03:07 UTC

@@ -14,8 +14,8 @@ func (u *Unpackerr) changePasswordDialog() {
 		current = u.Webserver.UIPassword.Username()
 	}
 
-	value, accepted, err := ui.Entry("Unpackerr",
-		"New web UI password. Prefix with username: to also change the user (current: "+current+").", "")
+	value, accepted, err := ui.Password("Unpackerr",
+		"New web UI password. Prefix with username: to also change the user (current: "+current+").")
 	if err != nil {
 		u.Errorf("Password dialog: %v", err)
 		_, _ = ui.Error("Unpackerr", "Password dialog failed: %v", err)
@@ -27,13 +27,15 @@ func (u *Unpackerr) changePasswordDialog() {
 		return
 	}
 
-	user, plain := splitUserPass(value)
+	user, plain := splitUserPass(value, current)
 	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
 		u.Errorf("Setting UI password: %v", err)
 		_, _ = ui.Error("Unpackerr", "Could not set password: %v", err)
 
 		return
 	}
+
+	u.syncFileUIPassword()
 
 	if err := u.writeConfigFile(); err != nil {
 		u.Errorf("Writing config after password change: %v", err)

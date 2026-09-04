@@ -17,6 +17,7 @@ func TestWriteConfigFileRoundTrip(t *testing.T) {
 	unpack := New()
 	unpack.Config.Debug = true
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
 
 	if err := unpack.writeConfigFile(); err != nil {
 		t.Fatal(err)
@@ -141,6 +142,93 @@ func TestWriteConfigFileKeepsFilepathAfterParse(t *testing.T) {
 
 	if len(loaded.Sonarr) != 1 || loaded.Sonarr[0].APIKey != filePrefix+keyFile {
 		t.Fatalf("api_key %q", loaded.Sonarr[0].APIKey)
+	}
+}
+
+func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	body := "debug = false\n[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n"
+
+	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	secret := strings.Repeat("E", 32)
+
+	t.Setenv("UN_DEBUG", "true")
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+	t.Setenv("UN_SONARR_0_API_KEY", secret)
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !unpack.Config.Debug {
+		t.Fatal("live config should take UN_DEBUG")
+	}
+
+	if len(unpack.Sonarr) != 1 || unpack.Sonarr[0].APIKey != secret {
+		t.Fatalf("live sonarr %+v", unpack.Sonarr)
+	}
+
+	if unpack.fileConfig == nil || unpack.fileConfig.Debug || len(unpack.fileConfig.Sonarr) != 0 {
+		t.Fatalf("file snapshot took env values: %+v", unpack.fileConfig)
+	}
+
+	written, err := os.ReadFile(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, secret) || strings.Contains(text, "debug = true") {
+		t.Fatalf("env values leaked into the config file:\n%s", text)
+	}
+}
+
+func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"fileuser:filepass99\"\n"
+
+	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("UN_WEBSERVER_UI_PASSWORD", "envuser:envsecret1")
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain("envuser", "envsecret1") {
+		t.Fatal("live password should come from the env overlay")
+	}
+
+	stored := unpack.fileConfig.Webserver.UIPassword.Val()
+	if stored != "fileuser:filepass99" {
+		t.Fatalf("file snapshot password %q", stored)
+	}
+
+	written, err := os.ReadFile(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "envuser") || strings.Contains(text, "envsecret1") {
+		t.Fatalf("env ui_password leaked into the config file:\n%s", text)
+	}
+
+	if !strings.Contains(text, "fileuser:filepass99") {
+		t.Fatalf("file ui_password should be unchanged:\n%s", text)
 	}
 }
 

@@ -245,11 +245,44 @@ func TestResetUIPasswordWritesAndHashes(t *testing.T) {
 	}
 }
 
+func TestResetUIPasswordUsesFilepathUser(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	passFile := dir + "/ui.pass"
+
+	if err := os.WriteFile(passFile, []byte("dave:topsecret99\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.reset = true
+	unpack.ConfigFile = dir + "/unpackerr.conf"
+	unpack.Webserver.UIPassword = CryptPass(filePrefix + passFile)
+	unpack.snapshotFileConfig()
+
+	if err := unpack.setupUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := unpack.resetUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Webserver.UIPassword.Username() != "dave" {
+		t.Fatalf("reset user %q", unpack.Webserver.UIPassword.Username())
+	}
+}
+
 func TestSetupUIPasswordUnwritableIsNotFatal(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == windows {
 		t.Skip("directory permissions are not unix-like")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
 	}
 
 	dir := t.TempDir()

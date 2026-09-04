@@ -2,7 +2,7 @@
 ##       Unpackerr Example Configuration File        ##
 #######################################################
 ##  The values are a mix of defaults and examples.   ##
-##  Environment Variables may override all values.   ##
+##  Env vars overlay the process, not this file.     ##
 ##  More configuration help: https://unpackerr.zip   ##
 ## Config Generator: https://notifiarr.com/unpackerr ##
 #######################################################
@@ -465,4 +465,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 SEP 2026 03:24 UTC
+## => Content Auto Generated, 04 SEP 2026 03:54 UTC

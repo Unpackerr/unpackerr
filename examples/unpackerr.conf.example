@@ -97,6 +97,9 @@ passwords = []
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
 ## this only controls the /metrics route.
  metrics = false
+## Expose Go pprof handlers at /debug/pprof/. Leave this false unless you
+## are debugging the running process.
+ pprof = false
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
 ## Set this to an empty string to disable the HTTP server.
  listen_addr = "0.0.0.0:5656"
@@ -147,6 +150,14 @@ passwords = []
 [[sonarr]]
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -167,6 +178,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -177,6 +191,14 @@ passwords = []
 [[radarr]]
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -197,6 +219,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -205,6 +230,14 @@ passwords = []
 #[[lidarr]]
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -225,6 +258,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -236,6 +272,14 @@ passwords = []
 #[[readarr]]
 # url = "http://127.0.0.1:8787"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -256,6 +300,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -264,6 +311,14 @@ passwords = []
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -284,6 +339,9 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## When true, Unpackerr verifies the Starr app HTTPS certificate.
+## The default is false for backward compatibility.
+# valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
 ## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
@@ -361,6 +419,8 @@ passwords = []
 # nickname = "Unpackerr"
 ## Also passed into templates. Used in Slack templates for destination channel.
 # channel = ""
+## Passed into webhook templates. Used by Discord, Telegram, and Slack.
+# token = ""
 ## List of apps to exclude. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
 ## Override internal webhook template for discord.com or other hooks.
@@ -398,4 +458,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 03 SEP 2026 08:08 UTC
+## => Content Auto Generated, 04 SEP 2026 02:17 UTC

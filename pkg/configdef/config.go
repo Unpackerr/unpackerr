@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -12,23 +12,59 @@ import (
 /* This file creates an example config file: unpackerr.conf.example */
 
 func createConfFile(config *Config, output, dir string) {
-	buf := bytes.Buffer{}
+	buf := bytes.NewBufferString(config.ExampleTOML())
+	writeFile(dir, output, buf)
+}
 
-	// Loop the 'Order' list.
-	for _, section := range config.Order {
-		// If Order contains a missing section, bail.
-		if config.Sections[section] == nil {
-			log.Fatalln(section + ": in order, but missing from sections. This is a bug in definitions.yml.")
+// ExampleTOML renders the commented example configuration (go generate / first-run).
+func (c *Config) ExampleTOML() string {
+	var buf bytes.Buffer
+
+	for _, name := range c.Order {
+		header := c.Sections[name]
+		if header == nil {
+			log.Fatalln(name + ": in order, but missing from sections. This is a bug in definitions.yml.")
 		}
 
-		if config.Defs[section] != nil {
-			buf.WriteString(config.Sections[section].makeDefinedSection(config.Defs[section], config.DefOrder[section], false))
+		if c.Defs[name] != nil {
+			buf.WriteString(header.makeDefinedSection(c.Defs[name], c.DefOrder[name], false))
 		} else {
-			buf.WriteString(config.Sections[section].makeSection(section, false, false))
+			buf.WriteString(header.makeSection(name, false, false))
 		}
 	}
 
-	writeFile(dir, output, &buf)
+	return buf.String()
+}
+
+// ParamNames is the set of every schema parameter name across sections.
+func (c *Config) ParamNames() map[string]struct{} {
+	out := make(map[string]struct{})
+
+	for name, header := range c.Sections {
+		if name != "" {
+			out[string(name)] = struct{}{}
+		}
+
+		if header == nil {
+			continue
+		}
+
+		for _, param := range header.Params {
+			if param != nil && param.Name != "" {
+				out[param.Name] = struct{}{}
+			}
+		}
+	}
+
+	for _, defs := range c.Defs {
+		for name := range defs {
+			if name != "" {
+				out[string(name)] = struct{}{}
+			}
+		}
+	}
+
+	return out
 }
 
 // Not all sections have defs, and it may be nil. Defs only work on 'list' sections.
@@ -99,12 +135,7 @@ func (p *Param) Value() string {
 		out, _ = toml.Marshal(p.Example)
 	}
 
-	// The toml marshaller uses only regular quotes " which kinda suck, so replace them with single quotes ' on file paths.
-	if strings.Contains(p.Name, "path") || strings.HasSuffix(p.Name, "file") || p.Name == "command" {
-		return string(bytes.ReplaceAll(out, []byte{'"'}, []byte("'")))
-	}
-
-	return string(out)
+	return string(preferPathQuotes(p.Name, out))
 }
 
 // makeDefinedSection duplicates sections from overrides, and prints it once for each override.

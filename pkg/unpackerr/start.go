@@ -73,9 +73,10 @@ type Unpackerr struct {
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
 	*Logger
-	rotatorr *rotatorr.Logger
-	httpLog  *rotatorr.Logger
-	menu     map[string]ui.MenuItem
+	rotatorr        *rotatorr.Logger
+	httpLog         *rotatorr.Logger
+	menu            map[string]ui.MenuItem
+	passwordSources StringSlice
 }
 
 type fileDeleteReq struct {

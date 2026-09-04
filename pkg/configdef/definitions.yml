@@ -427,6 +427,14 @@ sections:
         desc: |
           Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
           this only controls the /metrics route.
+      - name: pprof
+        envvar: PPROF
+        default: false
+        recommend: *BOOLEAN
+        short: Enable Go pprof debug endpoints at /debug/pprof/.
+        desc: |
+          Expose Go pprof handlers at /debug/pprof/. Leave this false unless you
+          are debugging the running process.
       - name: listen_addr
         envvar: LISTEN_ADDR
         default: 0.0.0.0:5656
@@ -508,6 +516,26 @@ sections:
         default: ''
         example: 0123456789abcdef0123456789abcdef
         short: Provide URL and API key if you use this app.
+      - name: http_user
+        envvar: HTTP_USER
+        default: ''
+        short: Optional HTTP basic-auth username.
+        desc: Username for HTTP basic authentication on the Starr app, if enabled.
+      - name: http_pass
+        envvar: HTTP_PASS
+        default: ''
+        short: Optional HTTP basic-auth password.
+        desc: Password for HTTP basic authentication on the Starr app, if enabled.
+      - name: username
+        envvar: USERNAME
+        default: ''
+        short: Optional native-auth username.
+        desc: Username for Starr native (forms) authentication, if enabled.
+      - name: password
+        envvar: PASSWORD
+        default: ''
+        short: Optional native-auth password.
+        desc: Password for Starr native (forms) authentication, if enabled.
       - name: paths
         envvar: PATHS_
         default: ['/downloads']
@@ -561,6 +589,14 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: valid_ssl
+        envvar: VALID_SSL
+        default: false
+        recommend: *BOOLEAN
+        short: Verify the Starr app TLS certificate.
+        desc: |
+          When true, Unpackerr verifies the Starr app HTTPS certificate.
+          The default is false for backward compatibility.
       - name: max_bytes
         envvar: MAX_BYTES
         default: ''
@@ -831,6 +867,11 @@ sections:
         default: ''
         short: Passed into templates for slack.com webhooks.
         desc: Also passed into templates. Used in Slack templates for destination channel.
+      - name: token
+        envvar: TOKEN
+        default: ''
+        short: Bot token for Discord, Telegram, Slack, and similar templates.
+        desc: Passed into webhook templates. Used by Discord, Telegram, and Slack.
       - name: exclude
         envvar: EXCLUDE_
         default: []

@@ -82,6 +82,8 @@ func replaceFile(path, tmpName string, mode os.FileMode) error {
 	_ = os.Remove(path)
 
 	if err := os.Rename(tmpName, path); err != nil {
+		_ = copyFile(bak, path, mode)
+
 		return fmt.Errorf("replacing config: %w", err)
 	}
 

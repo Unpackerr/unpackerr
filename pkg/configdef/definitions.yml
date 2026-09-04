@@ -516,6 +516,26 @@ sections:
         default: ''
         example: 0123456789abcdef0123456789abcdef
         short: Provide URL and API key if you use this app.
+      - name: http_user
+        envvar: HTTP_USER
+        default: ''
+        short: Optional HTTP basic-auth username.
+        desc: Username for HTTP basic authentication on the Starr app, if enabled.
+      - name: http_pass
+        envvar: HTTP_PASS
+        default: ''
+        short: Optional HTTP basic-auth password.
+        desc: Password for HTTP basic authentication on the Starr app, if enabled.
+      - name: username
+        envvar: USERNAME
+        default: ''
+        short: Optional native-auth username.
+        desc: Username for Starr native (forms) authentication, if enabled.
+      - name: password
+        envvar: PASSWORD
+        default: ''
+        short: Optional native-auth password.
+        desc: Password for Starr native (forms) authentication, if enabled.
       - name: paths
         envvar: PATHS_
         default: ['/downloads']

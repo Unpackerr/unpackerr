@@ -150,6 +150,14 @@ passwords = []
 [[sonarr]]
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -183,6 +191,14 @@ passwords = []
 [[radarr]]
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -214,6 +230,14 @@ passwords = []
 #[[lidarr]]
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -248,6 +272,14 @@ passwords = []
 #[[readarr]]
 # url = "http://127.0.0.1:8787"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -279,6 +311,14 @@ passwords = []
 #[[whisparr]]
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abcdef"
+## Username for HTTP basic authentication on the Starr app, if enabled.
+# http_user = ""
+## Password for HTTP basic authentication on the Starr app, if enabled.
+# http_pass = ""
+## Username for Starr native (forms) authentication, if enabled.
+# username = ""
+## Password for Starr native (forms) authentication, if enabled.
+# password = ""
 ## List of paths where content is downloaded for this app.
 ## Used as fallback if the path the Starr app reports does not exist or is not accessible.
 # paths = ['/downloads']
@@ -418,4 +458,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 03 SEP 2026 16:55 UTC
+## => Content Auto Generated, 04 SEP 2026 02:17 UTC

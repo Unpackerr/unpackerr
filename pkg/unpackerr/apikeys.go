@@ -278,12 +278,13 @@ func (u *Unpackerr) setupAdminAPIKey() {
 	}
 
 	name := u.Webserver.unusedKeyName(defaultAdminKeyName)
-	u.Webserver.APIKeys = append(u.Webserver.APIKeys, APIKey{
+	key := APIKey{
 		Name:  name,
 		Key:   GenerateAPIKey(),
 		Roles: []string{RoleAdmin},
-	})
+	}
+	u.Webserver.APIKeys = append(u.Webserver.APIKeys, key)
 	u.adminKeyNotice = name
-	u.syncFileAPIKeys()
+	u.appendFileAPIKey(key)
 	u.persistConfigFile()
 }

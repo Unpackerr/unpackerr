@@ -96,6 +96,43 @@ func TestSetupAdminAPIKeyWritesTables(t *testing.T) {
 	}
 }
 
+func TestSetupAdminAPIKeyDoesNotPersistEnvKeys(t *testing.T) {
+	t.Parallel()
+
+	envKey := strings.Repeat("E", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.snapshotFileConfig()
+
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  "from-env",
+		Key:   envKey,
+		Roles: []string{"stats"},
+	}}
+
+	unpack.setupAdminAPIKey()
+
+	if !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected a generated admin key")
+	}
+
+	for _, key := range unpack.fileConfig.Webserver.APIKeys {
+		if key.Key == envKey {
+			t.Fatal("env API key leaked into the file snapshot")
+		}
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(body), envKey) {
+		t.Fatalf("env API key leaked into the config file:\n%s", body)
+	}
+}
+
 func TestSetupAdminAPIKeySkipsDisabled(t *testing.T) {
 	t.Parallel()
 
@@ -114,6 +151,10 @@ func TestSetupAdminAPIKeyUnwritableIsNotFatal(t *testing.T) {
 
 	if runtime.GOOS == windows {
 		t.Skip("directory permissions are not unix-like")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
 	}
 
 	dir := t.TempDir()

@@ -107,9 +107,10 @@ func (u *Unpackerr) startWebServer() {
 	apache, _ := apachelog.New(`%{X-Forwarded-For}i %l - %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"`)
 
 	// Make a multiplexer because websockets can't use apache log.
+	// Login deadline must wrap apachelog: its ResponseWriter does not Unwrap.
 	smx := http.NewServeMux()
 	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
+	smx.Handle("/", u.fixForwardedFor(u.withLoginReadDeadline(apache.Wrap(u.Webserver.router, u.HTTP.Writer()))))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{

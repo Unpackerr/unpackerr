@@ -65,6 +65,10 @@ func (w *WebServer) initCookies() error {
 	return nil
 }
 
+func (u *Unpackerr) loginPath() string {
+	return path.Join(u.Webserver.URLBase, "api", "auth", "login")
+}
+
 func (u *Unpackerr) registerAuthRoutes() {
 	base := path.Join(u.Webserver.URLBase, "api", "auth")
 	if u.Webserver.cookies != nil {
@@ -73,6 +77,21 @@ func (u *Unpackerr) registerAuthRoutes() {
 	}
 
 	u.Webserver.router.GET(path.Join(base, "me"), u.requireAuth(u.meHandler))
+}
+
+// withLoginReadDeadline bounds the unauthenticated login body read. apachelog.Wrap
+// hides SetReadDeadline, so this must sit outside that wrapper on the raw writer.
+func (u *Unpackerr) withLoginReadDeadline(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodPost && path.Clean("/"+request.URL.Path) == path.Clean("/"+u.loginPath()) {
+			ctrl := http.NewResponseController(response)
+			defer func() { _ = ctrl.SetReadDeadline(time.Time{}) }()
+
+			_ = ctrl.SetReadDeadline(time.Now().Add(loginReadTimeout))
+		}
+
+		next.ServeHTTP(response, request)
+	})
 }
 
 func (u *Unpackerr) requireAuth(next httprouter.Handle) httprouter.Handle {
@@ -301,14 +320,9 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
-	ctrl := http.NewResponseController(response)
-	_ = ctrl.SetReadDeadline(time.Now().Add(loginReadTimeout))
-
 	var body loginRequest
 
 	err := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxLoginBody)).Decode(&body)
-	_ = ctrl.SetReadDeadline(time.Time{})
-
 	if err != nil {
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return false

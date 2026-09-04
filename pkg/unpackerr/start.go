@@ -66,14 +66,15 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics  *metrics
-	folders  *Folders
-	sigChan  chan os.Signal
-	updates  chan *xtractr.Response
-	progChan chan *ExtractProgress
-	hookChan chan *hookQueueItem
-	delChan  chan *fileDeleteReq
-	workChan chan []func()
+	metrics      *metrics
+	folders      *Folders
+	sigChan      chan os.Signal
+	updates      chan *xtractr.Response
+	progChan     chan *ExtractProgress
+	hookChan     chan *hookQueueItem
+	delChan      chan *fileDeleteReq
+	queueActChan chan *queueAction
+	workChan     chan []func()
 	*Logger
 	rotatorr         *rotatorr.Logger
 	httpLog          *rotatorr.Logger
@@ -119,15 +120,16 @@ type Flags struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:    &Flags{EnvPrefix: "UN"},
-		hookChan: make(chan *hookQueueItem, updateChanBuf),
-		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal, signalBuf),
-		workChan: make(chan []func(), 1),
-		History:  &History{Map: make(map[string]*Extract)},
-		updates:  make(chan *xtractr.Response, updateChanBuf),
-		progChan: make(chan *ExtractProgress),
-		menu:     make(map[string]ui.MenuItem),
+		Flags:        &Flags{EnvPrefix: "UN"},
+		hookChan:     make(chan *hookQueueItem, updateChanBuf),
+		delChan:      make(chan *fileDeleteReq, updateChanBuf),
+		queueActChan: make(chan *queueAction, updateChanBuf),
+		sigChan:      make(chan os.Signal, signalBuf),
+		workChan:     make(chan []func(), 1),
+		History:      &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		updates:      make(chan *xtractr.Response, updateChanBuf),
+		progChan:     make(chan *ExtractProgress),
+		menu:         make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -423,6 +425,9 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
+		case action := <-u.queueActChan:
+			// HTTP retry/forget must mutate Map and Folders on this goroutine.
+			action.result <- u.applyQueueAction(action)
 		case now := <-logger:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)

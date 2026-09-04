@@ -249,6 +249,7 @@ func (u *Unpackerr) setupUIPassword() error {
 		return nil
 	}
 
+	fromFile := strings.HasPrefix(u.Webserver.UIPassword.Val(), filePrefix)
 	if err := u.expandUIPasswordFile(); err != nil {
 		return err
 	}
@@ -277,9 +278,9 @@ func (u *Unpackerr) setupUIPassword() error {
 		}
 
 		u.uiPasswordNotice = plain
-		u.syncFileUIPassword()
+		u.persistHashedUIPassword(false)
 
-		return u.writeUIPasswordConfig()
+		return nil
 	}
 
 	user, plain := splitUserPass(pass.Val(), defaultUIUser)
@@ -287,33 +288,38 @@ func (u *Unpackerr) setupUIPassword() error {
 		return err
 	}
 
-	u.syncFileUIPassword()
+	u.persistHashedUIPassword(fromFile)
 
-	return u.writeUIPasswordConfig()
+	return nil
 }
 
-func (u *Unpackerr) expandUIPasswordFile() error {
-	pass := u.Webserver.UIPassword.Val()
-	if !strings.HasPrefix(pass, filePrefix) {
+func expandCryptPassFile(pass *CryptPass) error {
+	raw := pass.Val()
+	if !strings.HasPrefix(raw, filePrefix) {
 		return nil
 	}
 
-	data, err := os.ReadFile(strings.TrimPrefix(pass, filePrefix))
+	data, err := os.ReadFile(strings.TrimPrefix(raw, filePrefix))
 	if err != nil {
 		return fmt.Errorf("reading ui_password file: %w", err)
 	}
 
-	u.Webserver.UIPassword = CryptPass(strings.TrimSpace(string(data)))
+	*pass = CryptPass(strings.TrimSpace(string(data)))
 
 	return nil
 }
 
-func (u *Unpackerr) writeUIPasswordConfig() error {
-	if err := u.writeConfigFile(); err != nil && !errors.Is(err, errNoConfigFile) {
-		u.uiPasswordWriteErr = err
+func (u *Unpackerr) expandUIPasswordFile() error {
+	return expandCryptPassFile(&u.Webserver.UIPassword)
+}
+
+func (u *Unpackerr) persistHashedUIPassword(keepFilepath bool) {
+	if keepFilepath {
+		return
 	}
 
-	return nil
+	u.syncFileUIPassword()
+	u.persistConfigFile()
 }
 
 func (u *Unpackerr) resetUIPassword() error {
@@ -352,8 +358,8 @@ func (u *Unpackerr) handleStartupPassword() error {
 		u.Printf("Change it with --reset or the tray menu. It will not be shown again.")
 	}
 
-	if u.uiPasswordWriteErr != nil {
-		u.Errorf("Could not persist UI password to %s: %v", u.ConfigFile, u.uiPasswordWriteErr)
+	if u.configWriteErr != nil {
+		u.Errorf("Could not persist config to %s: %v", u.ConfigFile, u.configWriteErr)
 	}
 
 	if _, set := os.LookupEnv(u.uiPasswordEnvName()); set {

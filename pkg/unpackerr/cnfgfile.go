@@ -257,6 +257,20 @@ func (u *Unpackerr) writeConfigFile() error {
 	return nil
 }
 
+// persistConfigFile writes the on-disk snapshot. Failure is recorded, not returned,
+// so a read-only config (puppet, container) still starts with in-memory values.
+func (u *Unpackerr) persistConfigFile() {
+	err := u.writeConfigFile()
+	switch {
+	case err == nil:
+		u.configWriteErr = nil
+	case errors.Is(err, errNoConfigFile):
+		return
+	default:
+		u.configWriteErr = err
+	}
+}
+
 func (u *Unpackerr) snapshotFileConfig() {
 	u.fileConfig = cloneConfig(u.Config)
 }

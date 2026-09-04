@@ -214,14 +214,13 @@ func TestSetupUIPasswordExpandsFilepath(t *testing.T) {
 		t.Fatal("filepath contents must become the password")
 	}
 
-	body, err := os.ReadFile(unpack.ConfigFile)
-	if err != nil {
-		t.Fatal(err)
+	stored := unpack.fileConfig.Webserver.UIPassword.Val()
+	if stored != filePrefix+passFile {
+		t.Fatalf("file snapshot must keep filepath:, got %q", stored)
 	}
 
-	if strings.Contains(string(body), `ui_password = "filepath:`) ||
-		!strings.Contains(string(body), "!!cryptd!!") {
-		t.Fatal("hashed password should replace filepath: on disk")
+	if _, err := os.Stat(unpack.ConfigFile); !os.IsNotExist(err) {
+		t.Fatal("expanding filepath: must not rewrite the config file")
 	}
 }
 
@@ -275,7 +274,7 @@ func TestSetupUIPasswordUnwritableIsNotFatal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if unpack.uiPasswordWriteErr == nil {
+	if unpack.configWriteErr == nil {
 		t.Fatal("expected persist error")
 	}
 

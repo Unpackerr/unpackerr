@@ -73,12 +73,12 @@ type Unpackerr struct {
 	delChan  chan *fileDeleteReq
 	workChan chan []func()
 	*Logger
-	rotatorr           *rotatorr.Logger
-	httpLog            *rotatorr.Logger
-	menu               map[string]ui.MenuItem
-	fileConfig         *Config // on-disk shape (filepath: values). Config is the live expanded copy.
-	uiPasswordNotice   string
-	uiPasswordWriteErr error
+	rotatorr         *rotatorr.Logger
+	httpLog          *rotatorr.Logger
+	menu             map[string]ui.MenuItem
+	fileConfig       *Config // on-disk shape (filepath: values). Config is the live expanded copy.
+	uiPasswordNotice string
+	configWriteErr   error
 }
 
 type fileDeleteReq struct {

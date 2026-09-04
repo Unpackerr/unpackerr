@@ -288,33 +288,65 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 
 // handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
-func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
+func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:funlen
+	now := resp.Started.Add(resp.Elapsed)
+
 	u.lockHistory()
-	defer u.unlockHistory()
 
 	item := u.Map[resp.X.Name]
-	if resp.Done && item != nil {
-		u.updateMetrics(resp, item.App, item.URL)
-	} else if item != nil {
-		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
+	if !resp.Done {
+		if item != nil {
+			item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
+		}
+
+		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+		u.unlockHistory()
+
+		return
 	}
 
 	var (
-		remnantStatus ExtractStatus
-		remnants      bool
+		app      starr.App
+		url      string
+		preFiles map[string]os.FileInfo
+		retries  uint
 	)
-	if resp.Done && item != nil {
-		remnantStatus, remnants = u.handleRemnants(resp, item.PreFiles, item.Retries)
+
+	if item != nil {
+		app = item.App
+		url = item.URL
+		preFiles = item.PreFiles
+		retries = item.Retries
 	}
 
-	switch now := resp.Started.Add(resp.Elapsed); {
-	case !resp.Done:
-		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+	u.unlockHistory()
+
+	if item != nil {
+		u.updateMetrics(resp, app, url)
+	}
+
+	remnantStatus, remnants := u.handleRemnants(resp, preFiles, retries)
+
+	var files []string
+	if !remnants && resp.Error == nil {
+		files = fileList(resp.X.Path)
+	}
+
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	item = u.Map[resp.X.Name]
+
+	switch {
 	case remnants && remnantStatus == WAITING:
+		if item == nil {
+			return
+		}
+
 		// Every blocker was cleared; re-extract into the empty destination.
 		// This case wins over resp.Error, so log a password/corrupt-archive
-		// error here the way finishFolderExtract does before handleRemnants.
+		// error here the way the folder callback logs before remnant cleanup.
 		if resp.Error != nil {
 			u.Errorf("[%s] Extraction Failed: %s: %v", item.App, resp.X.Name, resp.Error)
 		}
@@ -326,6 +358,10 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
 	case remnants:
+		if item == nil {
+			return
+		}
+
 		if remnantAction(u.RemnantAction) == "off" {
 			item.NoRetry = true
 		}
@@ -340,7 +376,6 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:
-		files := fileList(resp.X.Path)
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %sB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))

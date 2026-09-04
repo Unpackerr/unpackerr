@@ -255,6 +255,74 @@ func TestSetupAdminAPIKeySkipsDemotedFileSecret(t *testing.T) {
 	}
 }
 
+func TestSetupAdminAPIKeyGeneratesAfterRejectedFileKey(t *testing.T) {
+	t.Parallel()
+
+	fileKey := strings.Repeat("F", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  "file-admin",
+		Key:   fileKey,
+		Roles: []string{RoleAdmin, "gone"},
+	}}
+	unpack.snapshotFileConfig()
+	unpack.Webserver.APIKeys = nil
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.setupAdminAPIKey()
+
+	if unpack.adminKeyErr != nil {
+		t.Fatalf("rejected file key must not stick: %v", unpack.adminKeyErr)
+	}
+
+	if !unpack.Webserver.hasAdminKey() {
+		t.Fatal("expected a generated admin key after rejected file adoption")
+	}
+
+	if unpack.Webserver.adminAPIKey() == fileKey {
+		t.Fatal("must not adopt a key that failed validation")
+	}
+}
+
+func TestSetupAdminAPIKeyAdoptsLaterFileKeyAfterRejected(t *testing.T) {
+	t.Parallel()
+
+	badKey := strings.Repeat("B", apiKeyMinLen)
+	goodKey := strings.Repeat("G", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.ListenAddr = "127.0.0.1:0"
+	unpack.Webserver.APIKeys = []APIKey{
+		{Name: "bad-admin", Key: badKey, Roles: []string{RoleAdmin, "gone"}},
+		{Name: "good-admin", Key: goodKey, Roles: []string{RoleAdmin}},
+	}
+	unpack.snapshotFileConfig()
+	unpack.Webserver.APIKeys = nil
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.setupAdminAPIKey()
+
+	if unpack.adminKeyErr != nil {
+		t.Fatalf("leftover adoption error: %v", unpack.adminKeyErr)
+	}
+
+	if unpack.Webserver.adminAPIKey() != goodKey {
+		t.Fatalf("live admin %q", unpack.Webserver.adminAPIKey())
+	}
+
+	if unpack.adminKeyNotice != "" {
+		t.Fatal("must not generate after adopting a later file key")
+	}
+}
+
 func TestSetupAdminAPIKeyAvoidsFileNames(t *testing.T) {
 	t.Parallel()
 
@@ -721,5 +789,29 @@ func TestLoginSucceedsThroughReadDeadlineMiddleware(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("login %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestLoginRejectsUnknownJSONFields(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `","extra":true}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("unknown field %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestLoginRejectsTrailingJSON(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}{"kdf":"nope"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("trailing json %d %s", rec.Code, rec.Body.String())
 	}
 }

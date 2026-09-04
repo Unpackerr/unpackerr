@@ -289,7 +289,7 @@ func (u *Unpackerr) setupUIPassword() error {
 		}
 
 		u.uiPasswordNotice = plain
-		u.persistHashedUIPassword(false)
+		u.persistHashedUIPassword(fromFile)
 
 		return nil
 	}

@@ -105,8 +105,9 @@ passwords = []
  listen_addr = "0.0.0.0:5656"
 ## Local UI login. Use user:pass (hashed on startup), !!cryptd!!user:$2a$... for a
 ## stored hash, webauth:X-Webauth-User for a reverse-proxy header, or noauth.
-## filepath:/path reads that file then hashes. Empty generates a temporary password
-## when the HTTP server is enabled. Reset with --reset. Do not set an empty
+## filepath:/path reads that file for the live password and keeps filepath: in the
+## config. Empty generates a temporary password when the HTTP server is enabled.
+## Reset with --reset. Do not set an empty
 ## UN_WEBSERVER_UI_PASSWORD; a present empty env value wipes a stored hash.
  ui_password = ""
 ## Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
@@ -464,4 +465,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 SEP 2026 03:07 UTC
+## => Content Auto Generated, 04 SEP 2026 03:24 UTC

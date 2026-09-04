@@ -81,7 +81,7 @@ func (u *Unpackerr) logWebserver() {
 	}
 
 	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams) auth:%s",
-		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.Webserver.UIPassword.Type())
+		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.uiPassword().Type())
 
 	if u.Webserver.Metrics {
 		u.Printf(" => Prometheus metrics enabled at %s", path.Join(u.Webserver.URLBase, "metrics"))

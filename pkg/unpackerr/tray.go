@@ -70,7 +70,7 @@ func (u *Unpackerr) makeChannels() {
 	u.menu["pass"] = ui.WrapMenu(conf.AddSubMenuItem("Change Password", "set the web UI password"))
 
 	if u.Webserver == nil || !u.Webserver.Enabled() ||
-		u.Webserver.UIPassword.Type() != AuthPassword || u.uiPasswordEnvSet() {
+		u.uiPassword().Type() != AuthPassword || u.uiPasswordEnvSet() {
 		u.menu["pass"].Hide()
 	}
 

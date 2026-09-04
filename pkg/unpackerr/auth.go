@@ -145,7 +145,7 @@ func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
 	return authInfo{
 		Username:    u.Webserver.keyName(key),
 		APIKey:      key,
-		Auth:        u.Webserver.UIPassword.Type().String(),
+		Auth:        u.uiPassword().Type().String(),
 		Via:         "key",
 		Permissions: perms,
 	}, true
@@ -169,7 +169,7 @@ func requestBearer(request *http.Request) string {
 }
 
 func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
-	pass := u.Webserver.UIPassword
+	pass := u.uiPassword()
 	if !pass.Webauth() || !u.Webserver.allow.Contains(request.RemoteAddr) {
 		return authInfo{}, false
 	}
@@ -188,15 +188,17 @@ func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
 }
 
 func (u *Unpackerr) sessionAuth(user string) authInfo {
+	pass := u.uiPassword()
+
 	info := authInfo{
 		Username:    user,
 		APIKey:      u.Webserver.adminAPIKey(),
-		Auth:        u.Webserver.UIPassword.Type().String(),
+		Auth:        pass.Type().String(),
 		Via:         "session",
 		Permissions: AllPermissions(),
 	}
-	if u.Webserver.UIPassword.Webauth() {
-		info.Via = u.Webserver.UIPassword.Type().String()
+	if pass.Webauth() {
+		info.Via = pass.Type().String()
 	}
 
 	return info
@@ -317,7 +319,8 @@ func (u *Unpackerr) loginHandler(response http.ResponseWriter, request *http.Req
 }
 
 func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Request) bool {
-	if u.Webserver.UIPassword.Webauth() {
+	pass := u.uiPassword()
+	if pass.Webauth() {
 		writeJSON(response, http.StatusForbidden, map[string]string{"error": "password login is disabled"})
 		return false
 	}
@@ -333,7 +336,7 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		name = defaultUIUser
 	}
 
-	if !u.Webserver.UIPassword.Valid(name, strings.TrimSpace(body.KDF)) {
+	if !pass.Valid(name, strings.TrimSpace(body.KDF)) {
 		writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return false
 	}

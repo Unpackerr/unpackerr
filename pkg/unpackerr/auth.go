@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"path"
 	"strings"
@@ -29,6 +30,7 @@ const (
 var (
 	errSessionCodec   = errors.New("session codec is not initialized")
 	errSessionEntropy = errors.New("could not generate session keys")
+	errExtraJSON      = errors.New("extra json")
 )
 
 type ctxKey int
@@ -320,9 +322,7 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
-	var body loginRequest
-
-	err := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxLoginBody)).Decode(&body)
+	body, err := decodeLoginBody(response, request)
 	if err != nil {
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return false
@@ -346,6 +346,26 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 	writeJSON(response, http.StatusOK, u.sessionAuth(name))
 
 	return true
+}
+
+func decodeLoginBody(response http.ResponseWriter, request *http.Request) (loginRequest, error) {
+	var body loginRequest
+
+	decoder := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxLoginBody))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&body); err != nil {
+		return loginRequest{}, fmt.Errorf("login json: %w", err)
+	}
+
+	switch err := decoder.Decode(&struct{}{}); {
+	case errors.Is(err, io.EOF):
+		return body, nil
+	case err != nil:
+		return loginRequest{}, fmt.Errorf("login json: %w", err)
+	default:
+		return loginRequest{}, errExtraJSON
+	}
 }
 
 func (u *Unpackerr) logoutHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {

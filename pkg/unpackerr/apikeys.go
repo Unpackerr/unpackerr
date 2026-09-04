@@ -298,7 +298,9 @@ func (u *Unpackerr) setupAdminAPIKey() {
 		Key:   secret,
 		Roles: []string{RoleAdmin},
 	}
-	u.installAdminKey(key, true)
+	if err := u.installAdminKey(key, true); err != nil {
+		u.adminKeyErr = err
+	}
 }
 
 func (u *Unpackerr) adoptFileAdminKey() bool {
@@ -307,7 +309,9 @@ func (u *Unpackerr) adoptFileAdminKey() bool {
 			continue
 		}
 
-		u.installAdminKey(key, false)
+		if err := u.installAdminKey(key, false); err != nil {
+			continue
+		}
 
 		return true
 	}
@@ -333,7 +337,7 @@ func (u *Unpackerr) fileAPIKeys() []APIKey {
 	return u.fileConfig.Webserver.APIKeys
 }
 
-func (u *Unpackerr) installAdminKey(key APIKey, persist bool) {
+func (u *Unpackerr) installAdminKey(key APIKey, persist bool) error {
 	prev := u.Webserver.APIKeys
 	cloned := cloneAPIKeys([]APIKey{key})
 	u.Webserver.APIKeys = append(u.Webserver.APIKeys, cloned...)
@@ -341,9 +345,8 @@ func (u *Unpackerr) installAdminKey(key APIKey, persist bool) {
 	if u.Webserver.keyPerms != nil {
 		if err := u.Webserver.validateAuth(); err != nil {
 			u.Webserver.APIKeys = prev
-			u.adminKeyErr = err
 
-			return
+			return err
 		}
 	}
 
@@ -352,6 +355,8 @@ func (u *Unpackerr) installAdminKey(key APIKey, persist bool) {
 		u.appendFileAPIKey(key)
 		u.persistConfigFile()
 	}
+
+	return nil
 }
 
 func (u *Unpackerr) logAdminAPIKey() {

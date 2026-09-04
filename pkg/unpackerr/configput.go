@@ -135,8 +135,10 @@ func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
 		u.Webserver.Metrics != next.Metrics ||
 		u.Webserver.Pprof != next.Pprof
 
+	u.uiPassMu.Lock()
 	u.Webserver = &next
-	u.storeFileWebserver(&next, submitted, fromFile, omitted)
+	u.uiPassMu.Unlock()
+	u.storeFileWebserver(submitted, fromFile, omitted)
 
 	return restart, nil
 }
@@ -146,7 +148,7 @@ func (u *Unpackerr) prepareWebserverPassword(next *WebServer) (CryptPass, bool, 
 	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)
 
 	if submitted.Val() == "" && u.Webserver != nil {
-		next.UIPassword = u.Webserver.UIPassword
+		next.UIPassword = u.uiPassword()
 		return submitted, false, nil
 	}
 
@@ -161,12 +163,12 @@ func (u *Unpackerr) prepareWebserverPassword(next *WebServer) (CryptPass, bool, 
 	return submitted, fromFile, nil
 }
 
-func (u *Unpackerr) storeFileWebserver(live *WebServer, submitted CryptPass, fromFile, omitted bool) {
+func (u *Unpackerr) storeFileWebserver(submitted CryptPass, fromFile, omitted bool) {
 	if u.fileConfig == nil {
 		return
 	}
 
-	cloned := cloneWebserver(live)
+	cloned := u.cloneLiveWebserver()
 
 	switch {
 	case omitted && u.fileConfig.Webserver != nil:
@@ -208,10 +210,8 @@ func applyGeneral(dst *Config, next generalConfig) {
 }
 
 func (u *Unpackerr) uiPasswordUser() string {
-	if u.Webserver != nil {
-		if name := u.Webserver.UIPassword.Username(); name != "" {
-			return name
-		}
+	if name := u.uiPassword().Username(); name != "" {
+		return name
 	}
 
 	return defaultUIUser

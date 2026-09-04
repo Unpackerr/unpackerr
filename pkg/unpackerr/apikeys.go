@@ -74,7 +74,7 @@ func (r Role) validate(name string) error {
 	}
 
 	if name == RoleAdmin {
-		return fmt.Errorf("%w: %s is built in and cannot be redefined", errUnknownRole, name)
+		return fmt.Errorf("role %q is built in and cannot be redefined", name)
 	}
 
 	if len(r.Permissions) == 0 {

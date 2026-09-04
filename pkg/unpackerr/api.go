@@ -37,6 +37,10 @@ func (u *Unpackerr) registerAPIRoutes() {
 		u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler),
 	)
 	u.Webserver.router.GET(
+		path.Join(base, "config", ":section", "live"),
+		u.requireConfigPerm(false, u.configGetLiveHandler),
+	)
+	u.Webserver.router.GET(
 		path.Join(base, "config", ":section"),
 		u.requireConfigPerm(false, u.configGetHandler),
 	)

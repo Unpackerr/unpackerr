@@ -84,4 +84,50 @@ func TestConfigGetPermission(t *testing.T) {
 	if rec := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withKey); rec.Code != http.StatusForbidden {
 		t.Fatalf("webserver %d", rec.Code)
 	}
+
+	liveRec := doAuth(t, unpack, http.MethodGet, "/api/config/webserver/live", "", withKey)
+	if liveRec.Code != http.StatusForbidden {
+		t.Fatalf("webserver live %d", liveRec.Code)
+	}
+}
+
+func TestConfigGetFileVsLive(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Passwords = StringSlice{"filepath:/secrets"}
+	unpack.snapshotFileConfig()
+	unpack.Passwords = StringSlice{"expanded-secret"}
+	unpack.fileConfig.Webserver.UIPassword = CryptPass(filePrefix + "/ui.pass")
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	fileGen := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	liveGen := doAuth(t, unpack, http.MethodGet, "/api/config/general/live", "", withKey)
+
+	if fileGen.Code != http.StatusOK || liveGen.Code != http.StatusOK {
+		t.Fatalf("file %d live %d", fileGen.Code, liveGen.Code)
+	}
+
+	if !strings.Contains(fileGen.Body.String(), "filepath:/secrets") {
+		t.Fatalf("file general %s", fileGen.Body.String())
+	}
+
+	if !strings.Contains(liveGen.Body.String(), "expanded-secret") ||
+		strings.Contains(liveGen.Body.String(), "filepath:/secrets") {
+		t.Fatalf("live general %s", liveGen.Body.String())
+	}
+
+	fileWeb := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withKey)
+	liveWeb := doAuth(t, unpack, http.MethodGet, "/api/config/webserver/live", "", withKey)
+
+	if !strings.Contains(fileWeb.Body.String(), filePrefix+"/ui.pass") {
+		t.Fatalf("file webserver %s", fileWeb.Body.String())
+	}
+
+	if !strings.Contains(liveWeb.Body.String(), `"uiPassword":"!!cryptd!!`) {
+		t.Fatalf("live webserver %s", liveWeb.Body.String())
+	}
 }

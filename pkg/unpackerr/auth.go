@@ -138,13 +138,21 @@ func (u *Unpackerr) requirePerm(perm string, next httprouter.Handle) httprouter.
 // cookies and trusted-proxy webauth/noauth are ignored.
 func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		info, ok := u.authAPIKey(requestAPIKey(request))
-		if !ok {
+		key := requestAPIKey(request)
+		if key == "" {
 			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 
 			return
 		}
 
+		perms := u.Webserver.PermissionsForKey(key)
+		if perms == nil {
+			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+
+			return
+		}
+
+		info := authInfo{Permissions: perms}
 		if !info.allows(perm) {
 			writeJSON(response, http.StatusForbidden, map[string]string{"error": "forbidden"})
 

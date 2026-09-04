@@ -100,6 +100,18 @@ func TestSetupUIPasswordSkipsDisabledServer(t *testing.T) {
 	}
 }
 
+func TestSetupUIPasswordSkipsMissingFilepathWhenDisabled(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webserver.ListenAddr = ""
+	unpack.Webserver.UIPassword = CryptPass(filePrefix + "/no/such/ui.pass")
+
+	if err := unpack.setupUIPassword(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSetupUIPasswordHashesPlaintext(t *testing.T) {
 	t.Parallel()
 
@@ -127,7 +139,11 @@ func TestSetupUIPasswordHashesPlaintext(t *testing.T) {
 func TestGeneratePasswordLength(t *testing.T) {
 	t.Parallel()
 
-	pass := GeneratePassword()
+	pass, err := GeneratePassword()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if len(pass) < minUIPassword {
 		t.Fatalf("short generated password %q", pass)
 	}

@@ -78,6 +78,7 @@ type Unpackerr struct {
 	menu             map[string]ui.MenuItem
 	fileConfig       *Config // on-disk shape (filepath: values). Config is the live expanded copy.
 	uiPasswordNotice string
+	uiPasswordGenErr error
 	configWriteErr   error
 }
 

@@ -66,11 +66,13 @@ func DeriveKDF(username, password string) string {
 }
 
 // GeneratePassword returns a random URL-safe temporary password.
-func GeneratePassword() string {
+func GeneratePassword() (string, error) {
 	raw := make([]byte, genPasswordN)
-	_, _ = rand.Read(raw)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generating password: %w", err)
+	}
 
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
 func splitUserPass(input, fallback string) (string, string) {
@@ -245,7 +247,7 @@ func (p CryptPass) checkStored() error {
 }
 
 func (u *Unpackerr) setupUIPassword() error {
-	if u.Webserver == nil {
+	if u.Webserver == nil || (!u.reset && !u.Webserver.Enabled()) {
 		return nil
 	}
 
@@ -276,7 +278,12 @@ func (u *Unpackerr) setupUIPassword() error {
 	}
 
 	if pass.Val() == "" {
-		plain := GeneratePassword()
+		plain, genErr := GeneratePassword()
+		if genErr != nil {
+			u.uiPasswordGenErr = genErr
+			return nil //nolint:nilerr // logged after setupLogging; do not fail startup
+		}
+
 		if err := u.Webserver.UIPassword.SetPlain(defaultUIUser, plain); err != nil {
 			return err
 		}
@@ -335,7 +342,11 @@ func (u *Unpackerr) resetUIPassword() error {
 		}
 	}
 
-	plain := GeneratePassword()
+	plain, err := GeneratePassword()
+	if err != nil {
+		return err
+	}
+
 	if err := u.Webserver.UIPassword.SetPlain(user, plain); err != nil {
 		return err
 	}
@@ -360,6 +371,10 @@ func (u *Unpackerr) handleStartupPassword() error {
 	if u.uiPasswordNotice != "" {
 		u.Printf("Generated temporary UI password for user %s: %s", defaultUIUser, u.uiPasswordNotice)
 		u.Printf("Change it with --reset or the tray menu. It will not be shown again.")
+	}
+
+	if u.uiPasswordGenErr != nil {
+		u.Errorf("Could not generate UI password: %v", u.uiPasswordGenErr)
 	}
 
 	if u.configWriteErr != nil {

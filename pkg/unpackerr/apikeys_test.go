@@ -110,6 +110,57 @@ func TestPermissionsForKeyAdminAndCustom(t *testing.T) {
 	}
 }
 
+func TestValidateAuthRejectsAdminRoleRedefine(t *testing.T) {
+	t.Parallel()
+
+	web := &WebServer{
+		Roles: map[string]Role{
+			RoleAdmin: {Permissions: []string{PermReadSystemStats}},
+		},
+	}
+
+	if err := web.validateAuth(); err == nil {
+		t.Fatal("redefining admin must fail")
+	}
+}
+
+func TestValidateAuthRejectsStarAndEmptyRole(t *testing.T) {
+	t.Parallel()
+
+	if err := (&WebServer{Roles: map[string]Role{
+		"gods": {Permissions: []string{PermAll}},
+	}}).validateAuth(); err == nil {
+		t.Fatal("custom role with * must fail")
+	}
+
+	if err := (&WebServer{Roles: map[string]Role{
+		"empty": {Permissions: nil},
+	}}).validateAuth(); err == nil {
+		t.Fatal("empty role must fail")
+	}
+}
+
+func TestValidateAuthRejectsDuplicateNamesAndNonASCII(t *testing.T) {
+	t.Parallel()
+
+	ascii := strings.Repeat("a", apiKeyMinLen)
+	web := &WebServer{
+		APIKeys: []APIKey{
+			{Name: "home", Key: ascii, Roles: []string{RoleAdmin}},
+			{Name: "home", Key: strings.Repeat("b", apiKeyMinLen), Roles: []string{RoleAdmin}},
+		},
+	}
+
+	if err := web.validateAuth(); err == nil {
+		t.Fatal("duplicate names must fail")
+	}
+
+	if err := (APIKey{Name: "home", Key: strings.Repeat("é", 60), Roles: []string{RoleAdmin}}).
+		validate(nil); err == nil {
+		t.Fatal("non-ASCII key must fail")
+	}
+}
+
 func TestUnknownPermissionOnRole(t *testing.T) {
 	t.Parallel()
 

@@ -130,7 +130,7 @@ func (h *Header) makeDocsTable(prefix string) string {
 		}
 
 		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
-		if param.Kind == list {
+		if param.Kind == list || param.Kind == tables {
 			envVar += "0"
 		}
 
@@ -140,6 +140,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 			if t, _ := toml.Marshal(param.Default); len(t) > 0 {
 				def = "`" + string(t) + "`"
 			}
+		}
+
+		if param.EnvVar == "" {
+			fmt.Fprintf(&buf, "|%s|file only|%v / %s|\n", param.Name, def, param.Short)
+			continue
 		}
 
 		fmt.Fprintf(&buf, tableFormat, param.Name, envVar, def, param.Short)

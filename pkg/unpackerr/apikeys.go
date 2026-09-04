@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -12,11 +13,15 @@ const (
 )
 
 var (
-	errAPIKeyLength = errors.New("api key must be 60–150 characters")
-	errAPIKeyName   = errors.New("api key name is required")
-	errAPIKeyDup    = errors.New("duplicate api key")
-	errUnknownRole  = errors.New("unknown role")
-	errUnknownPerm  = errors.New("unknown permission")
+	errAPIKeyLength  = errors.New("api key must be 60–150 ASCII characters")
+	errAPIKeyASCII   = errors.New("api key must be ASCII")
+	errAPIKeyName    = errors.New("api key name is required")
+	errAPIKeyDup     = errors.New("duplicate api key")
+	errAPIKeyNameDup = errors.New("duplicate api key name")
+	errUnknownRole   = errors.New("unknown role")
+	errUnknownPerm   = errors.New("unknown permission")
+	errEmptyRole     = errors.New("role has no permissions")
+	errReservedPerm  = errors.New("permission * is reserved for built-in admin")
 )
 
 // APIKey is a named secret assigned one or more roles.
@@ -34,6 +39,10 @@ type Role struct {
 func (k APIKey) validate(roles map[string]Role) error {
 	if strings.TrimSpace(k.Name) == "" {
 		return errAPIKeyName
+	}
+
+	if !isASCII(k.Key) {
+		return fmt.Errorf("%w: %s", errAPIKeyASCII, k.Name)
 	}
 
 	if length := len(k.Key); length < apiKeyMinLen || length > apiKeyMaxLen {
@@ -54,7 +63,19 @@ func (k APIKey) validate(roles map[string]Role) error {
 }
 
 func (r Role) validate(name string) error {
+	if name == RoleAdmin {
+		return fmt.Errorf("%w: %s is built in and cannot be redefined", errUnknownRole, name)
+	}
+
+	if len(r.Permissions) == 0 {
+		return fmt.Errorf("%w: %s", errEmptyRole, name)
+	}
+
 	for _, perm := range r.Permissions {
+		if perm == PermAll {
+			return fmt.Errorf("%w: on role %s", errReservedPerm, name)
+		}
+
 		if !KnownPermission(perm) {
 			return fmt.Errorf("%w: %s on role %s", errUnknownPerm, perm, name)
 		}
@@ -74,18 +95,26 @@ func (w *WebServer) validateAuth() error {
 		}
 	}
 
-	seen := make(map[string]struct{}, len(w.APIKeys))
+	seenKeys := make(map[string]struct{}, len(w.APIKeys))
+	seenNames := make(map[string]struct{}, len(w.APIKeys))
+	w.keyPerms = make(map[string][]string, len(w.APIKeys))
 
 	for _, key := range w.APIKeys {
 		if err := key.validate(w.Roles); err != nil {
 			return err
 		}
 
-		if _, dup := seen[key.Key]; dup {
+		if _, dup := seenNames[key.Name]; dup {
+			return fmt.Errorf("%w: %s", errAPIKeyNameDup, key.Name)
+		}
+
+		if _, dup := seenKeys[key.Key]; dup {
 			return fmt.Errorf("%w: %s", errAPIKeyDup, key.Name)
 		}
 
-		seen[key.Key] = struct{}{}
+		seenNames[key.Name] = struct{}{}
+		seenKeys[key.Key] = struct{}{}
+		w.keyPerms[key.Key] = w.permissionsForRoles(key.Roles)
 	}
 
 	return nil
@@ -98,20 +127,27 @@ func (w *WebServer) PermissionsForKey(key string) []string {
 		return nil
 	}
 
-	var found *APIKey
+	if w.keyPerms != nil {
+		return append([]string(nil), w.keyPerms[key]...)
+	}
 
 	for idx := range w.APIKeys {
 		if w.APIKeys[idx].Key == key {
-			found = &w.APIKeys[idx]
-			break
+			return w.permissionsForRoles(w.APIKeys[idx].Roles)
 		}
 	}
 
-	if found == nil {
-		return nil
+	return nil
+}
+
+func isASCII(value string) bool {
+	for idx := range len(value) {
+		if value[idx] > unicode.MaxASCII {
+			return false
+		}
 	}
 
-	return w.permissionsForRoles(found.Roles)
+	return true
 }
 
 func (w *WebServer) permissionsForRoles(roles []string) []string {

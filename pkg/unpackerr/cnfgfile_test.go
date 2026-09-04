@@ -93,6 +93,55 @@ func TestWriteConfigFileRequiresPath(t *testing.T) {
 	}
 }
 
+func TestWriteConfigFileAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	key := strings.Repeat("k", apiKeyMinLen)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  "home",
+		Key:   key,
+		Roles: []string{"stats"},
+	}}
+	unpack.Webserver.Roles = map[string]Role{
+		"stats": {Permissions: []string{PermReadSystemStats}},
+	}
+	unpack.snapshotFileConfig()
+
+	if err := unpack.writeConfigFile(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(body)
+	if strings.Contains(text, "api_keys =") || strings.Contains(text, "roles = {") ||
+		strings.Contains(text, "roles = [stats]") {
+		t.Fatalf("auth tables must not be inlined:\n%s", text)
+	}
+
+	if !strings.Contains(text, "[[webserver.api_keys]]") || !strings.Contains(text, "[webserver.roles.stats]") {
+		t.Fatalf("missing nested auth tables:\n%s", text)
+	}
+
+	loaded := New()
+	if err := cnfgfile.Unmarshal(loaded.Config, unpack.ConfigFile); err != nil {
+		t.Fatalf("decode: %v\n%s", err, text)
+	}
+
+	if err := loaded.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !loaded.Webserver.HasPermission(key, PermReadSystemStats) {
+		t.Fatal("reloaded key should keep its role")
+	}
+}
+
 func TestWriteConfigFileKeepsFilepathAfterParse(t *testing.T) {
 	t.Parallel()
 

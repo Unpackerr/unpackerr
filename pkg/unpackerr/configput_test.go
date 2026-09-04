@@ -116,3 +116,62 @@ func TestConfigPutNeedsWritePerm(t *testing.T) {
 		t.Fatalf("readonly put %d", rec.Code)
 	}
 }
+
+func TestConfigPutWebserverFilepathPassword(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	passFile := filepath.Join(dir, "ui.pass")
+
+	if err := os.WriteFile(passFile, []byte("correct-horse\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withKey)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.UIPassword = CryptPass(filePrefix + passFile)
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), withKey)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain(defaultUIUser, "correct-horse") {
+		t.Fatal("live password must expand filepath:")
+	}
+
+	stored := unpack.fileConfig.Webserver.UIPassword.Val()
+	if stored != filePrefix+passFile {
+		t.Fatalf("file snapshot must keep filepath:, got %q", stored)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(written), `filepath:`) {
+		t.Fatalf("config write dropped filepath:\n%s", written)
+	}
+}

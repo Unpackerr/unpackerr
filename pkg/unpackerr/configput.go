@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"golift.io/starr"
@@ -114,9 +115,10 @@ func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
 		next.failDelay = u.Webserver.failDelay
 	}
 
-	if next.UIPassword.Val() == "" && u.Webserver != nil {
-		next.UIPassword = u.Webserver.UIPassword
-	} else if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser()); err != nil {
+	omitted := next.UIPassword.Val() == ""
+
+	submitted, fromFile, err := u.prepareWebserverPassword(&next)
+	if err != nil {
 		return false, err
 	}
 
@@ -134,12 +136,46 @@ func (u *Unpackerr) putWebserver(request *http.Request) (bool, error) {
 		u.Webserver.Pprof != next.Pprof
 
 	u.Webserver = &next
-
-	if u.fileConfig != nil {
-		u.fileConfig.Webserver = cloneWebserver(&next)
-	}
+	u.storeFileWebserver(&next, submitted, fromFile, omitted)
 
 	return restart, nil
+}
+
+func (u *Unpackerr) prepareWebserverPassword(next *WebServer) (CryptPass, bool, error) {
+	submitted := next.UIPassword
+	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)
+
+	if submitted.Val() == "" && u.Webserver != nil {
+		next.UIPassword = u.Webserver.UIPassword
+		return submitted, false, nil
+	}
+
+	if err := expandCryptPassFile(&next.UIPassword); err != nil {
+		return submitted, fromFile, err
+	}
+
+	if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser()); err != nil {
+		return submitted, fromFile, err
+	}
+
+	return submitted, fromFile, nil
+}
+
+func (u *Unpackerr) storeFileWebserver(live *WebServer, submitted CryptPass, fromFile, omitted bool) {
+	if u.fileConfig == nil {
+		return
+	}
+
+	cloned := cloneWebserver(live)
+
+	switch {
+	case omitted && u.fileConfig.Webserver != nil:
+		cloned.UIPassword = u.fileConfig.Webserver.UIPassword
+	case fromFile:
+		cloned.UIPassword = submitted
+	}
+
+	u.fileConfig.Webserver = cloned
 }
 
 func applyGeneral(dst *Config, next generalConfig) {

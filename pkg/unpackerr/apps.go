@@ -131,6 +131,7 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	u.checkReadarrQueue(now)
 	u.checkSonarrQueue(now)
 	u.checkWhisparrQueue(now)
+	u.sweepForgotten()
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

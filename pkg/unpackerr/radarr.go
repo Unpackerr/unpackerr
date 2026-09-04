@@ -89,7 +89,7 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 			switch x, ok := u.Map[record.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
 				u.Map[record.Title] = &Extract{ // Save the download to our map.
 					App:         starr.Radarr,
 					URL:         server.URL,

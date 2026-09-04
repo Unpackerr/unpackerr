@@ -14,15 +14,16 @@ const (
 )
 
 // History holds the history of extracted items.
-// mu guards Map, Finished, Retries, per-item Status/Updated, and XProg progress
-// so HTTP stats, queue snapshots, and Prometheus Collect cannot race the main loop.
-// It is not reentrant; do not lock inside a caller that already holds it.
+// mu guards Map, Finished, Retries, forgotten, per-item Status/Updated, and XProg
+// progress so HTTP stats, queue snapshots, and Prometheus Collect cannot race
+// the main loop. It is not reentrant; do not lock inside a caller that already holds it.
 type History struct {
-	mu       sync.RWMutex
-	Items    []string
-	Finished uint
-	Retries  uint
-	Map      map[string]*Extract
+	mu        sync.RWMutex
+	Items     []string
+	Finished  uint
+	Retries   uint
+	Map       map[string]*Extract
+	forgotten map[string]struct{}
 }
 
 func (h *History) lockHistory() {

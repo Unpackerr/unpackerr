@@ -38,7 +38,7 @@ func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request,
 		Uptime:     time.Since(version.Started).Round(time.Second).String(),
 		ListenAddr: u.Webserver.ListenAddr,
 		URLBase:    u.Webserver.URLBase,
-		Auth:       u.Webserver.UIPassword.Type().String(),
+		Auth:       u.uiPassword().Type().String(),
 		Metrics:    u.Webserver.Metrics,
 	})
 }

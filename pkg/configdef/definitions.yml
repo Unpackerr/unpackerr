@@ -426,7 +426,8 @@ sections:
         short: Enable the Prometheus metrics endpoint.
         desc: |
           Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
-          this only controls the /metrics route.
+          this only controls the /metrics route. Scrapes must send an API key with
+          read:system:metrics via Authorization: Bearer or X-Api-Key.
       - name: pprof
         envvar: PPROF
         default: false

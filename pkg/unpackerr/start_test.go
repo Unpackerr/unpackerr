@@ -308,6 +308,31 @@ func TestHandleXtractrCallbackLimitNoRetry(t *testing.T) {
 	}
 }
 
+func TestHandleXtractrCallbackUnknownNameDoesNotCreateFolder(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "ghost"},
+	})
+
+	if item := unpack.Map["ghost"]; item != nil {
+		t.Fatalf("start callback created %s entry: %+v", item.App, item)
+	}
+
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:    true,
+		Started: time.Now(),
+		X:       &xtractr.Xtract{Name: "ghost"},
+		Error:   os.ErrNotExist,
+	})
+
+	if item := unpack.Map["ghost"]; item != nil {
+		t.Fatalf("failed callback created %s entry: %+v", item.App, item)
+	}
+}
+
 func TestCheckExtractDoneExhaustedStaysFailed(t *testing.T) {
 	t.Parallel()
 

@@ -95,7 +95,8 @@ func runExtraction(t *testing.T, archivePath string, disableRecursion bool) *xtr
 
 	_, err := queue.Extract(&xtractr.Xtract{
 		Name:             archivePath,
-		Filter:           xtractr.Filter{Path: archivePath, ExcludeSuffix: exclude},
+		Path:             archivePath,
+		ExcludeSuffix:    exclude,
 		TempFolder:       true,
 		DeleteOrig:       false,
 		CBChannel:        callbacks,

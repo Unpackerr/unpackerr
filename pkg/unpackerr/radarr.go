@@ -95,6 +95,7 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 					DeleteOrig:  server.DeleteOrig,
 					DeleteDelay: server.DeleteDelay.Duration,
 					Syncthing:   server.Syncthing,
+					MaxBytes:    server.maxBytes,
 					Path:        u.getDownloadPath(record.OutputPath, starr.Radarr, record.Title, server.Paths),
 					IDs: map[string]any{
 						"downloadId": record.DownloadID,

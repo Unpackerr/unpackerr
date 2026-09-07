@@ -5,9 +5,7 @@ package unpackerr
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 
 	"github.com/Unpackerr/unpackerr/pkg/bindata"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -22,13 +20,23 @@ func (u *Unpackerr) startTray() {
 	if !ui.HasGUI() {
 		go u.Run()
 
-		signal.Notify(u.sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, <-u.sigChan)
+		u.waitForExit()
 
 		return
 	}
 
 	systray.Run(u.readyTray, u.exitTray)
+}
+
+// showTrayMenu pops the tray menu. energye/systray does not attach the menu to
+// the status item the way getlantern did, so a click does nothing unless we
+// call ShowMenu. Windows left-click has the same requirement.
+func showTrayMenu(menu systray.IMenu) {
+	if menu == nil {
+		return
+	}
+
+	_ = menu.ShowMenu()
 }
 
 func (u *Unpackerr) exitTray() {
@@ -41,6 +49,8 @@ func (u *Unpackerr) exitTray() {
 func (u *Unpackerr) readyTray() {
 	systray.SetTemplateIcon(bindata.SystrayIcon, bindata.SystrayIcon)
 	systray.SetTooltip("Unpackerr" + " v" + version.Version)
+	systray.SetOnClick(showTrayMenu)
+	systray.SetOnRClick(showTrayMenu)
 	u.makeChannels()
 
 	u.menu["info"].Disable()
@@ -202,7 +212,14 @@ func (u *Unpackerr) watchKillerChannels() {
 	for {
 		select {
 		case sigc := <-u.sigChan:
+			if isHangup(sigc) {
+				u.reopenLogs()
+
+				continue
+			}
+
 			u.Printf("Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, sigc)
+
 			return
 		case <-u.menu["exit"].Clicked():
 			u.Printf("Need help? %s\n=====> Exiting! User Requested", helpLink)
@@ -213,6 +230,10 @@ func (u *Unpackerr) watchKillerChannels() {
 
 func (u *Unpackerr) rotateLogs() {
 	u.Printf("User Requested: Rotate Log File!")
+
+	if u.rotatorr == nil {
+		return
+	}
 
 	if _, err := u.rotatorr.Rotate(); err != nil {
 		u.Errorf("Rotating Log Files: %v", err)

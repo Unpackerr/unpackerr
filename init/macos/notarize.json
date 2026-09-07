@@ -1,7 +1,0 @@
-{
-    "notarize": [{
-      "path": "release/Unpackerr.dmg",
-      "bundle_id": "io.golift.unpackerr",
-      "staple": true
-    }]
-}

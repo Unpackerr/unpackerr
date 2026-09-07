@@ -813,3 +813,44 @@ func TestConfigPutSonarrDoesNotRacePoller(t *testing.T) {
 
 	wait.Wait()
 }
+
+func TestConfigGetDoesNotRacePut(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	admin := unpack.Webserver.adminAPIKey()
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+
+	var wait sync.WaitGroup
+	wait.Add(2)
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			for _, target := range []string{"/api/config/sonarr", "/api/config/sonarr/live", "/api/config/general"} {
+				req := httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+				req.Header.Set(headerAPIKey, admin)
+				unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+			}
+		}
+	}()
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/sonarr", strings.NewReader(body))
+			req.Header.Set(headerAPIKey, admin)
+			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+		}
+	}()
+
+	wait.Wait()
+}

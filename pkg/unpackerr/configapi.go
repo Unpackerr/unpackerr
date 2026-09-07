@@ -73,9 +73,10 @@ func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http
 	}
 
 	u.configMu.RLock()
-	defer u.configMu.RUnlock()
+	cfg := cloneConfig(u.fileConfigOrLive())
+	u.configMu.RUnlock()
 
-	writeConfigSection(response, u.fileConfigOrLive(), section)
+	writeConfigSection(response, cfg, section)
 }
 
 func (u *Unpackerr) configGetLiveHandler(
@@ -90,14 +91,19 @@ func (u *Unpackerr) configGetLiveHandler(
 	}
 
 	u.configMu.RLock()
-	defer u.configMu.RUnlock()
 
 	if section == SectionGeneral {
-		writeJSON(response, http.StatusOK, u.liveGeneralConfig())
+		payload := u.liveGeneralConfig()
+		u.configMu.RUnlock()
+		writeJSON(response, http.StatusOK, payload)
+
 		return
 	}
 
-	writeConfigSection(response, u.Config, section)
+	cfg := cloneConfig(u.Config)
+	u.configMu.RUnlock()
+
+	writeConfigSection(response, cfg, section)
 }
 
 func (u *Unpackerr) fileConfigOrLive() *Config {

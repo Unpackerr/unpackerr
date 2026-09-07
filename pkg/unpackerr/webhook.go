@@ -139,13 +139,13 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 
 	for _, hook := range u.hookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
+			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
 		}
 	}
 
 	for _, hook := range u.cmdhookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
+			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
 		}
 	}
 }

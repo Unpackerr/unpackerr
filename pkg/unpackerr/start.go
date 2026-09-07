@@ -88,7 +88,7 @@ type Unpackerr struct {
 	configMu         sync.RWMutex
 	tickers          *loopTickers
 	pendingRestart   bool
-	inFlight         atomic.Int64 // delete and hook work a worker already received.
+	inFlight         atomic.Int64 // queued-or-running delete and hook work.
 	workThreads      int
 	hookOnce         sync.Once
 	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
@@ -263,21 +263,27 @@ func fileList(paths ...string) []string {
 	return files
 }
 
+// queueDelete publishes a delete request and counts it in flight. Counting at
+// the send keeps it atomic with respect to idle(): both run on the main loop,
+// so a restart can never observe the gap between a send and its receive.
+func (u *Unpackerr) queueDelete(req *fileDeleteReq) {
+	u.inFlight.Add(1)
+
+	u.delChan <- req
+}
+
 func (u *Unpackerr) watchDeleteChannel() {
 	for input := range u.delChan {
-		if len(input.Paths) == 0 {
-			continue
-		}
-
 		u.deleteRequest(input)
 	}
 }
 
-// deleteRequest counts itself in flight so an idle-gated restart cannot land
-// between the receive and the last file being removed.
 func (u *Unpackerr) deleteRequest(input *fileDeleteReq) {
-	u.inFlight.Add(1)
-	defer u.inFlight.Add(-1)
+	defer u.inFlight.Add(-1) // paired with queueDelete.
+
+	if len(input.Paths) == 0 {
+		return
+	}
 
 	u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
 	u.DeleteFiles(input.Paths...)
@@ -377,17 +383,21 @@ func (u *Unpackerr) ensureHookWorker() {
 	})
 }
 
+// queueHook publishes a hook and counts it in flight. See queueDelete.
+func (u *Unpackerr) queueHook(item *hookQueueItem) {
+	u.inFlight.Add(1)
+
+	u.hookChan <- item
+}
+
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for hook := range u.hookChan {
 		u.runHook(hook)
 	}
 }
 
-// runHook counts itself in flight so an idle-gated restart cannot drop a
-// webhook or command that is already running.
 func (u *Unpackerr) runHook(hook *hookQueueItem) {
-	u.inFlight.Add(1)
-	defer u.inFlight.Add(-1)
+	defer u.inFlight.Add(-1) // paired with queueHook.
 
 	if hook.URL != "" {
 		u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)

@@ -1153,3 +1153,27 @@ func TestHistoryWriteFailureReportsError(t *testing.T) {
 		t.Fatalf("clear with an unwritable history file: %d %s", cleared.Code, cleared.Body.String())
 	}
 }
+
+// A PUT whose caller went away reports the main-loop timeout the way the queue
+// and live-config handlers do, instead of blaming the payload with a 400.
+func TestConfigPutCanceledRequestIsGatewayTimeout(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	req := httptest.NewRequestWithContext(ctx, http.MethodPut,
+		"/api/config/general", strings.NewReader(`{"interval":"2m"}`))
+	req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+
+	rec := httptest.NewRecorder()
+	unpack.Webserver.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusGatewayTimeout {
+		t.Fatalf("canceled PUT should be 504: %d %s", rec.Code, rec.Body.String())
+	}
+}

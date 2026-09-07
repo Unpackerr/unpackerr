@@ -269,15 +269,15 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			var webhook bool
 
 			if item.DeleteOrig {
-				u.delChan <- &fileDeleteReq{Paths: []string{item.Path}}
+				u.queueDelete(&fileDeleteReq{Paths: []string{item.Path}})
 				webhook = true //nolint:wsl_v5
 			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
 				// Delete extracted files and purge empty parents up to and including the download path.
-				u.delChan <- &fileDeleteReq{
+				u.queueDelete(&fileDeleteReq{
 					Paths:            item.Resp.NewFiles,
 					PurgeEmptyParent: true,
 					PurgeEmptyRoot:   item.Path,
-				}
+				})
 				webhook = true //nolint:wsl_v5
 			}
 

@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,11 +63,14 @@ func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http
 }
 
 func statusForConfigPut(err error) int {
-	if errors.Is(err, errPersistConfig) {
+	switch {
+	case errors.Is(err, errPersistConfig):
 		return http.StatusInternalServerError
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return http.StatusGatewayTimeout
+	default:
+		return http.StatusBadRequest
 	}
-
-	return http.StatusBadRequest
 }
 
 // replaceConfigSection runs on the main loop. Sections that need a process

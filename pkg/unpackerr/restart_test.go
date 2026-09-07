@@ -33,7 +33,7 @@ func TestIdleBlocksOnInFlightWork(t *testing.T) {
 	}
 
 	unpack.folders.Folders["/watch/x"].status = WAITING
-	unpack.delChan <- &fileDeleteReq{}
+	unpack.queueDelete(&fileDeleteReq{})
 
 	if unpack.idle() {
 		t.Fatal("a pending delete must block a restart")

@@ -48,13 +48,13 @@ func (u *Unpackerr) maybeRestart() {
 // pending delete. WAITING and EXTRACTFAILED items are rediscovered from the
 // next Starr poll, so they do not block.
 func (u *Unpackerr) idle() bool {
-	if len(u.updates)+len(u.folders.Updates)+len(u.folders.Events)+len(u.hookChan)+len(u.delChan) > 0 {
+	// inFlight covers deletes and hooks from the send until the worker is
+	// done, so their channel depth is already accounted for.
+	if u.inFlight.Load() > 0 {
 		return false
 	}
 
-	// Channel length misses an item a worker already received, so a delete or
-	// a hook that is running right now also has to hold the restart off.
-	if u.inFlight.Load() > 0 {
+	if len(u.updates)+len(u.folders.Updates)+len(u.folders.Events) > 0 {
 		return false
 	}
 

@@ -205,17 +205,21 @@ func (u *Unpackerr) putGeneral(response http.ResponseWriter, request *http.Reque
 	}
 
 	submittedPasswords := append(StringSlice(nil), next.Passwords...)
-	restart := generalRestartRequired(u.Config, next)
 
-	return restart, u.commitConfig(func(cfg *Config) {
+	var restart bool
+
+	err = u.commitConfig(func(cfg *Config) {
 		applyGeneral(cfg, next)
 	}, func() {
+		restart = generalRestartRequired(u.Config, next)
 		applyGeneral(u.Config, next)
 		u.livePasswords = submittedPasswords
 		u.Passwords = expanded
 		u.RemnantAction = remnantAction(next.RemnantAction)
 		u.clampConfig()
 	})
+
+	return restart, err
 }
 
 func generalRestartRequired(cur *Config, next generalConfig) bool {

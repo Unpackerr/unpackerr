@@ -582,6 +582,85 @@ func TestConfigPutDebugQuietRequiresRestart(t *testing.T) {
 	}
 }
 
+func TestConfigPutGeneralDoesNotRaceRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	admin := unpack.Webserver.adminAPIKey()
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, admin)
+	})
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	body := got.Body.String()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+
+	var wait sync.WaitGroup
+	wait.Add(4)
+
+	hit := func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/general", strings.NewReader(body))
+			req.Header.Set(headerAPIKey, admin)
+			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+		}
+	}
+
+	go hit()
+	go hit()
+	go hit()
+	go hit()
+
+	wait.Wait()
+}
+
+func TestConfigPutLidarrDoesNotRaceServerLookup(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	url := "http://127.0.0.1:8686"
+	body := `[{"url":"` + url + `","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+	admin := unpack.Webserver.adminAPIKey()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+
+	var wait sync.WaitGroup
+	wait.Add(2)
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/lidarr", strings.NewReader(body))
+			req.Header.Set(headerAPIKey, admin)
+			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+		}
+	}()
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			_ = unpack.lidarrServerByURL(url)
+		}
+	}()
+
+	wait.Wait()
+}
+
 func TestConfigPutWebserverKeepsFileKeysOffLiveOverlay(t *testing.T) {
 	t.Parallel()
 
@@ -702,6 +781,7 @@ func TestConfigPutSonarrDoesNotRacePoller(t *testing.T) {
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
 	unpack.snapshotFileConfig()
 	unpack.watchWorkThread()
+	unpack.forgotten = map[string]struct{}{"queued-title": {}}
 
 	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
 

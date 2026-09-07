@@ -152,8 +152,11 @@ func (u *Unpackerr) haveLidarrQitem(name string) bool {
 
 // lidarrServerByURL returns the Lidarr server config that matches the given URL, or nil.
 func (u *Unpackerr) lidarrServerByURL(url string) *LidarrConfig {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
 	for _, server := range u.Lidarr {
-		if server.URL == url {
+		if server != nil && server.URL == url {
 			return server
 		}
 	}

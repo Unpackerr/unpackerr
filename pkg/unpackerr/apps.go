@@ -163,8 +163,8 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	u.checkWhisparrQueue(now)
 	u.Lidarr, u.Radarr, u.Readarr, u.Sonarr, u.Whisparr =
 		liveLidarr, liveRadarr, liveReadarr, liveSonarr, liveWhisparr
-	u.configMu.Unlock()
 	u.sweepForgotten()
+	u.configMu.Unlock()
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

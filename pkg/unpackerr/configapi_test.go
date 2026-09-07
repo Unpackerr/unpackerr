@@ -138,6 +138,40 @@ func TestConfigGetFileVsLive(t *testing.T) {
 	}
 }
 
+func TestConfigGetFileHidesPlainUIPassword(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.snapshotFileConfig()
+	unpack.fileConfig.Webserver.UIPassword = CryptPass("fileuser:filepass99")
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	fileWeb := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withKey)
+	if fileWeb.Code != http.StatusOK {
+		t.Fatalf("file %d %s", fileWeb.Code, fileWeb.Body.String())
+	}
+
+	if strings.Contains(fileWeb.Body.String(), "filepass99") {
+		t.Fatalf("file GET leaked plaintext ui_password: %s", fileWeb.Body.String())
+	}
+
+	if unpack.fileConfig.Webserver.UIPassword.Val() != "fileuser:filepass99" {
+		t.Fatal("sanitizing GET must not rewrite the file snapshot")
+	}
+
+	liveWeb := doAuth(t, unpack, http.MethodGet, "/api/config/webserver/live", "", withKey)
+	if !strings.Contains(liveWeb.Body.String(), `"uiPassword":"!!cryptd!!`) {
+		t.Fatalf("live webserver %s", liveWeb.Body.String())
+	}
+
+	if strings.Contains(liveWeb.Body.String(), "filepass99") {
+		t.Fatalf("live GET leaked file password: %s", liveWeb.Body.String())
+	}
+}
+
 func TestConfigGetLiveInlinePasswords(t *testing.T) {
 	t.Parallel()
 

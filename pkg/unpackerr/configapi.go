@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"golift.io/cnfg"
@@ -65,8 +66,8 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 
 func (u *Unpackerr) configGetHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
 	section := ConfigSection(params.ByName("section"))
-	if section == SectionWebserver && u.fileConfig == nil {
-		writeJSON(response, http.StatusOK, u.cloneLiveWebserver())
+	if section == SectionWebserver {
+		writeJSON(response, http.StatusOK, u.cloneFileWebserver())
 		return
 	}
 
@@ -77,6 +78,11 @@ func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, _ *http.R
 	section := ConfigSection(params.ByName("section"))
 	if section == SectionWebserver {
 		writeJSON(response, http.StatusOK, u.cloneLiveWebserver())
+		return
+	}
+
+	if section == SectionGeneral {
+		writeJSON(response, http.StatusOK, u.liveGeneralConfig())
 		return
 	}
 
@@ -161,6 +167,27 @@ func generalConfigFrom(cfg *Config) generalConfig {
 		KeepHistory:   cfg.KeepHistory,
 		Passwords:     emptyIfNil(cfg.Passwords),
 	}
+}
+
+func (u *Unpackerr) liveGeneralConfig() generalConfig {
+	cfg := generalConfigFrom(u.Config)
+	if u.fileConfig != nil {
+		cfg.Passwords = passwordsForLive(u.fileConfig.Passwords, u.Passwords)
+	}
+
+	return cfg
+}
+
+// passwordsForLive keeps filepath: archive passwords from the file snapshot so
+// /live does not serialize secret-file contents. Inline and env-only values stay live.
+func passwordsForLive(file, live StringSlice) StringSlice {
+	for _, pass := range file {
+		if strings.HasPrefix(pass, filePrefix) {
+			return emptyIfNil(append(StringSlice(nil), file...))
+		}
+	}
+
+	return emptyIfNil(append(StringSlice(nil), live...))
 }
 
 func foldersConfigFrom(cfg *Config) foldersConfigAPI {

@@ -115,9 +115,9 @@ func TestConfigGetFileVsLive(t *testing.T) {
 		t.Fatalf("file general %s", fileGen.Body.String())
 	}
 
-	if !strings.Contains(liveGen.Body.String(), "expanded-secret") ||
-		strings.Contains(liveGen.Body.String(), "filepath:/secrets") {
-		t.Fatalf("live general %s", liveGen.Body.String())
+	if !strings.Contains(liveGen.Body.String(), "filepath:/secrets") ||
+		strings.Contains(liveGen.Body.String(), "expanded-secret") {
+		t.Fatalf("live general must not expand filepath: passwords: %s", liveGen.Body.String())
 	}
 
 	fileWeb := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withKey)
@@ -129,5 +129,27 @@ func TestConfigGetFileVsLive(t *testing.T) {
 
 	if !strings.Contains(liveWeb.Body.String(), `"uiPassword":"!!cryptd!!`) {
 		t.Fatalf("live webserver %s", liveWeb.Body.String())
+	}
+}
+
+func TestConfigGetLiveInlinePasswords(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Passwords = StringSlice{"inline-secret"}
+	unpack.snapshotFileConfig()
+	unpack.Passwords = StringSlice{"env-overlay-secret"}
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	liveGen := doAuth(t, unpack, http.MethodGet, "/api/config/general/live", "", withKey)
+	if liveGen.Code != http.StatusOK {
+		t.Fatalf("live %d %s", liveGen.Code, liveGen.Body.String())
+	}
+
+	if !strings.Contains(liveGen.Body.String(), "env-overlay-secret") {
+		t.Fatalf("live inline/env passwords %s", liveGen.Body.String())
 	}
 }

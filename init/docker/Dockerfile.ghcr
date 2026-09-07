@@ -6,7 +6,7 @@
 #
 # --platform=$BUILDPLATFORM: run the Go toolchain natively on the runner and
 # cross-compile via TARGETOS/TARGETARCH instead of emulating it under QEMU.
-FROM --platform=$BUILDPLATFORM golang:1-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125 AS builder
 
 WORKDIR /src
 COPY main.go go.mod go.sum ./
@@ -47,10 +47,10 @@ ARG COMMIT
 ARG VERSION
 ARG ITERATION
 ARG LICENSE=MIT
-ARG SOURCE_URL=http://github.com/golift/application-builder
-ARG DESC=application-builder
-ARG VENDOR=golift
-ARG AUTHOR=golift
+ARG SOURCE_URL=https://github.com/Unpackerr/unpackerr
+ARG DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
+ARG VENDOR="Go Lift <code@golift.io>"
+ARG AUTHOR="David Newhall II <captain at golift dot io>"
 # Build-time metadata as defined at https://github.com/opencontainers/image-spec/blob/master/annotations.md
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title="Unpackerr" \

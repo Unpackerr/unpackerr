@@ -23,9 +23,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -80,7 +77,9 @@ jobs:
           [ -n "${VERSION}" ] || VERSION=development
           ITERATION="$(git rev-list --count --all || echo 0)"
           COMMIT="$(git rev-parse --short HEAD || echo 0)"
-          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          # BRANCH ends up inside the Dockerfile's RUN go build -ldflags string,
+          # so keep only characters that are safe in a shell double-quoted string.
+          BRANCH="$(printf '%s' "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" | tr -cd 'A-Za-z0-9._/-')"
           LICENSE=MIT
           DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
           VENDOR="Go Lift <code@golift.io>"

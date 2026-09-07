@@ -108,7 +108,7 @@ func TestMetricsRequiresMetricsPermission(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Webserver.router.Handler(http.MethodGet, "/metrics", unpack.requirePermHTTP(
+	unpack.Webserver.router.Handle("GET /metrics", unpack.requirePermHTTP(
 		PermReadSystemMetrics,
 		http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusOK)
@@ -147,7 +147,7 @@ func TestMetricsRejectsSessionAndProxyAuth(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Webserver.router.Handler(http.MethodGet, "/metrics", unpack.requirePermHTTP(
+	unpack.Webserver.router.Handle("GET /metrics", unpack.requirePermHTTP(
 		PermReadSystemMetrics,
 		http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusOK)

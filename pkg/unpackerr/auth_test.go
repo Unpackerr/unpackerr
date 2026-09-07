@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/securecookie"
-	"github.com/julienschmidt/httprouter"
 )
 
 func testAuthUnpackerr(t *testing.T) *Unpackerr {
@@ -34,7 +33,7 @@ func testAuthUnpackerr(t *testing.T) *Unpackerr {
 		Roles: []string{RoleAdmin},
 	}}
 
-	unpack.Webserver.router = httprouter.New()
+	unpack.Webserver.router = http.NewServeMux()
 
 	if err := unpack.Webserver.initCookies(); err != nil {
 		t.Fatal(err)
@@ -618,7 +617,7 @@ func TestLoginUnregisteredWithoutCookies(t *testing.T) {
 	unpack := New()
 	unpack.Webserver.URLBase = "/"
 	unpack.Webserver.ListenAddr = "127.0.0.1:0"
-	unpack.Webserver.router = httprouter.New()
+	unpack.Webserver.router = http.NewServeMux()
 	unpack.webRoutes()
 
 	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", `{}`, nil)

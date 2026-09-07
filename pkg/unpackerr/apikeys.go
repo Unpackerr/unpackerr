@@ -13,14 +13,13 @@ import (
 const (
 	apiKeyMinLen        = 60
 	apiKeyMaxLen        = 150
-	apiKeyRandN         = 45 // RawURL base64 of 45 bytes is 60 characters.
 	defaultAdminKeyName = "admin"
 	fallbackAdminKey    = "ui"
 	keyNameSeqStart     = 2
 )
 
 var (
-	errAPIKeyLength    = errors.New("api key must be 60–150 ASCII characters")
+	errAPIKeyLength    = fmt.Errorf("api key must be %d-%d ASCII characters", apiKeyMinLen, apiKeyMaxLen)
 	errAPIKeyASCII     = errors.New("api key must be ASCII")
 	errAPIKeyName      = errors.New("api key name is required")
 	errAPIKeyDup       = errors.New("duplicate api key")
@@ -223,8 +222,10 @@ func (w *WebServer) HasPermission(key, perm string) bool {
 	return false
 }
 
-// GenerateAPIKey returns a random 60-character URL-safe API key.
+// GenerateAPIKey returns a random 64-character URL-safe API key.
 func GenerateAPIKey() (string, error) {
+	const apiKeyRandN = 48 // RawURL base64 of 48 bytes is 64 characters.
+
 	raw := make([]byte, apiKeyRandN)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("generating api key: %w", err)

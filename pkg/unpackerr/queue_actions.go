@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 const maxActionBody = 4096
@@ -53,7 +51,7 @@ func readIDRequest(response http.ResponseWriter, request *http.Request) (string,
 	}
 }
 
-func (u *Unpackerr) queueRetryHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) queueRetryHandler(response http.ResponseWriter, request *http.Request) {
 	itemID, ok := readIDRequest(response, request)
 	if !ok {
 		return
@@ -67,7 +65,7 @@ func (u *Unpackerr) queueRetryHandler(response http.ResponseWriter, request *htt
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": itemID})
 }
 
-func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *http.Request) {
 	itemID, ok := readIDRequest(response, request)
 	if !ok {
 		return
@@ -81,7 +79,7 @@ func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *ht
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": itemID})
 }
 
-func (u *Unpackerr) historyClearHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) historyClearHandler(response http.ResponseWriter, _ *http.Request) {
 	if err := u.clearHistory(); err != nil {
 		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -90,7 +88,7 @@ func (u *Unpackerr) historyClearHandler(response http.ResponseWriter, _ *http.Re
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (u *Unpackerr) historyDeleteHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) historyDeleteHandler(response http.ResponseWriter, request *http.Request) {
 	itemID, ok := readIDRequest(response, request)
 	if !ok {
 		return

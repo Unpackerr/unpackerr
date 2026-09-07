@@ -154,7 +154,11 @@ func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Val
 			comment = "#"
 		}
 
-		buf.WriteString(comment + left + string(name) + right + "\n")
+		buf.WriteString(comment)
+		buf.WriteString(left)
+		buf.WriteString(string(name))
+		buf.WriteString(right)
+		buf.WriteByte('\n')
 	}
 
 	live = derefValue(live)
@@ -192,7 +196,9 @@ func writeLiveParam(
 	}
 
 	if param.Desc != "" {
-		buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
+		buf.WriteString("## ")
+		buf.WriteString(strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## "))
+		buf.WriteByte('\n')
 	}
 
 	if param.isNested() {

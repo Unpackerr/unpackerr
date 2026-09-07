@@ -247,8 +247,9 @@ func writeFile(dir, output string, buf *bytes.Buffer) {
 	_ = os.Mkdir(dir, dirMode)
 	filePath := filepath.Join(dir, output)
 	log.Printf("Writing: %s, size: %d", filePath, buf.Len())
-	buf.WriteString("## => Content Auto Generated, " +
-		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")+"\n"))
+	buf.WriteString("## => Content Auto Generated, ")
+	buf.WriteString(strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC")))
+	buf.WriteByte('\n')
 
 	if err := os.WriteFile(filePath, buf.Bytes(), fileMode); err != nil {
 		log.Fatalln(err)

@@ -23,10 +23,11 @@ var OSsuffixMap = map[string]string{ //nolint:gochecknoglobals
 }
 
 // Latest is where we find the latest release.
-const Latest = "https://api.github.com/repos/%s/releases/latest"
-
-// GitHub API and JSON unmarshal timeout.
-const timeout = 10 * time.Second
+const (
+	Latest         = "https://api.github.com/repos/%s/releases/latest"
+	unknownVersion = "unknown"
+	timeout        = 10 * time.Second
+)
 
 // Update contains running Version, Current version and Download URL for Current version.
 // Outdate is true if the running version is older than the current version.
@@ -74,13 +75,14 @@ func GetRelease(uri string) (*GitHubReleasesLatest, error) {
 
 // FillUpdate compares a current version with the latest GitHub release.
 func FillUpdate(release *GitHubReleasesLatest, version string) *Update {
+	current := canonicalVersion(version)
 	update := &Update{
 		RelDate: release.PublishedAt,
 		CurrURL: release.HTMLURL,
 		Current: release.TagName,
-		Version: "v" + strings.TrimPrefix(version, "v"),
-		Outdate: semver.Compare("v"+strings.TrimPrefix(release.TagName, "v"),
-			"v"+strings.TrimPrefix(version, "v")) > 0,
+		Version: current,
+		Outdate: current != unknownVersion && semver.Compare(
+			"v"+strings.TrimPrefix(release.TagName, "v"), current) > 0,
 	}
 
 	arch := runtime.GOARCH
@@ -104,6 +106,20 @@ func FillUpdate(release *GitHubReleasesLatest, version string) *Update {
 	}
 
 	return update
+}
+
+func canonicalVersion(version string) string {
+	outputVersion := strings.TrimSpace(version)
+	if outputVersion == "" || outputVersion == "-" {
+		return unknownVersion
+	}
+
+	outputVersion = "v" + strings.TrimPrefix(outputVersion, "v")
+	if !semver.IsValid(outputVersion) {
+		return unknownVersion
+	}
+
+	return outputVersion
 }
 
 // GitHubReleasesLatest is the output from the releases/latest API on GitHub.

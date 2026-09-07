@@ -84,9 +84,14 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		space = " "
 
 		if h.Kind == list { // list sections are commented by default.
-			buf.WriteString(comment + "[[" + string(name) + "]]" + "\n") // list sections use double-brackets.
+			buf.WriteString(comment)
+			buf.WriteString("[[")
+			buf.WriteString(string(name))
+			buf.WriteString("]]\n") // list sections use double-brackets.
 		} else {
-			buf.WriteString("[" + string(name) + "]" + "\n") // non-list sections use single brackets.
+			buf.WriteByte('[')
+			buf.WriteString(string(name))
+			buf.WriteString("]\n") // non-list sections use single brackets.
 		}
 	}
 
@@ -103,7 +108,9 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		// Add ## to the beginning of each line in the description.
 		// Uses the newline \n character to figure out where each line begins.
 		if param.Desc != "" {
-			buf.WriteString("## " + strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## ") + "\n")
+			buf.WriteString("## ")
+			buf.WriteString(strings.ReplaceAll(strings.TrimSpace(param.Desc), "\n", "\n## "))
+			buf.WriteByte('\n')
 		}
 
 		if param.isNested() {

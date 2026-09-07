@@ -269,8 +269,8 @@ func (u *Unpackerr) checkForUpdate() {
 	}
 
 	yes, _ := ui.Question("Unpackerr", false,
-		"An Update is available! Download?\n\nYour Version: %s-%s\nNew Version: %s\nUpdated: %s (%s ago)",
-		version.Version, version.Revision, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
+		"An Update is available! Download?\n\nYour Version: %s\nNew Version: %s\nUpdated: %s (%s ago)",
+		update.Version, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
 	if yes {
 		_ = ui.OpenURL(update.CurrURL)
 	}

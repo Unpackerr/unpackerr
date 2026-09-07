@@ -173,7 +173,7 @@
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
       },
       "PersistError": {
-        "description": "Failed to persist to disk; live state unchanged",
+        "description": "Failed to write the change to disk; it will not survive a restart",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
       }
     }
@@ -208,7 +208,8 @@
           },
           "400": {"$ref": "#/components/responses/BadRequest"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
-          "403": {"description": "Password login is disabled (webauth or noauth)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+          "403": {"description": "Password login is disabled (webauth or noauth)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "500": {"description": "Could not encode the session cookie", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
         }
       }
     },
@@ -376,6 +377,7 @@
           },
           "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -391,6 +393,7 @@
             "description": "Cleared",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
+          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

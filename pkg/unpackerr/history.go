@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"strconv"
+	"sync"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 )
@@ -13,36 +14,61 @@ const (
 )
 
 // History holds the history of extracted items.
+// mu guards Map, Finished, Retries, forgotten, per-item Status/Updated, and XProg
+// progress so HTTP stats, queue snapshots, and Prometheus Collect cannot race
+// the main loop. It is not reentrant; do not lock inside a caller that already holds it.
 type History struct {
-	Items    []string
-	Finished uint
-	Retries  uint
-	Map      map[string]*Extract
+	mu        sync.RWMutex
+	Items     []string
+	Finished  uint
+	Retries   uint
+	Map       map[string]*Extract
+	forgotten map[string]struct{}
+}
+
+func (h *History) lockHistory() {
+	h.mu.Lock()
+}
+
+func (h *History) unlockHistory() {
+	h.mu.Unlock()
+}
+
+func (h *History) rLockHistory() {
+	h.mu.RLock()
+}
+
+func (h *History) rUnlockHistory() {
+	h.mu.RUnlock()
 }
 
 // This is called every time an item is queued.
 func (u *Unpackerr) updateHistory(item string) {
-	if u.KeepHistory == 0 {
+	if u.KeepHistory == 0 || len(u.Items) == 0 {
 		return
 	}
 
 	if ui.HasGUI() && item != "" {
-		u.menu[histNone].Hide()
+		if none := u.menu[histNone]; none != nil {
+			none.Hide()
+		}
 	}
 
 	u.Items[0] = item
 
 	// Do not process 0; this isn't an `intrange`.
 	for idx := len(u.Items) - 1; idx > 0; idx-- {
-		// u.History.Items is a slice with a set (identical) length and capacity.
-		switch u.Items[idx] = u.Items[idx-1]; {
-		case !ui.HasGUI():
+		u.Items[idx] = u.Items[idx-1]
+		menu := u.menu[hist+strconv.Itoa(idx)]
+
+		switch {
+		case !ui.HasGUI() || menu == nil:
 			continue
 		case u.Items[idx] != "":
-			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.Items[idx])
-			u.menu[hist+strconv.Itoa(idx)].Show()
+			menu.SetTitle(u.Items[idx])
+			menu.Show()
 		default:
-			u.menu[hist+strconv.Itoa(idx)].Hide()
+			menu.Hide()
 		}
 	}
 }

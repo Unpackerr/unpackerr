@@ -84,6 +84,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
+cp -f init/systemd/unpackerr.install "${stage}/unpackerr.install"
+
 # PKGBUILD functions keep ${pkgname}/${pkgver}/${pkgdir} for makepkg.
 cat > "${stage}/PKGBUILD" <<EOF
 # Maintainer: David Newhall II <captain at golift dot io>
@@ -106,6 +108,7 @@ optdepends=(
   'rtorrent: torrent downloader'
 )
 backup=('etc/unpackerr/unpackerr.conf')
+install=unpackerr.install
 source=("${pkgname}-${pkgver}.tar.gz::${source_url}")
 sha256sums=('${sum}')
 
@@ -171,6 +174,7 @@ EOF
   echo "	makedepends = gzip"
   echo "	provides = unpackerr"
   echo "	backup = etc/unpackerr/unpackerr.conf"
+  echo "	install = unpackerr.install"
   echo "	source = ${source_url}"
   echo "	sha256sums = ${sum}"
   echo
@@ -181,7 +185,7 @@ echo "AUR ${pkgname} ${pkgver}-${pkgrel} sha256=${sum}"
 
 if [ "${DRY_RUN:-}" = 1 ]; then
   mkdir -p "${dir}/aur"
-  cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${dir}/aur/"
+  cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${stage}/unpackerr.install" "${dir}/aur/"
   echo "DRY_RUN=1 wrote ${dir}/aur/PKGBUILD"
   exit 0
 fi
@@ -193,7 +197,7 @@ if [ -z "${AUR_DEPLOY_KEY:-}" ]; then
   fi
   echo "AUR_DEPLOY_KEY unset; wrote files without pushing:" >&2
   mkdir -p "${dir}/aur"
-  cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${dir}/aur/"
+  cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${stage}/unpackerr.install" "${dir}/aur/"
   ls -l "${dir}/aur"
   exit 0
 fi
@@ -206,10 +210,10 @@ export GIT_SSH_COMMAND="ssh -i ${keyfile} -o IdentitiesOnly=yes -o StrictHostKey
 
 clone="${stage}/repo"
 git clone --depth 1 "${aur_git}" "${clone}"
-cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${clone}/"
+cp -f "${stage}/PKGBUILD" "${stage}/.SRCINFO" "${stage}/unpackerr.install" "${clone}/"
 git -C "${clone}" config user.name goreleaserbot
 git -C "${clone}" config user.email bot@goreleaser.com
-git -C "${clone}" add PKGBUILD .SRCINFO
+git -C "${clone}" add PKGBUILD .SRCINFO unpackerr.install
 if git -C "${clone}" diff --cached --quiet; then
   echo "AUR already at ${pkgver}-${pkgrel}"
   exit 0

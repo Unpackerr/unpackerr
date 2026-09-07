@@ -204,7 +204,7 @@ sections:
       ##       Unpackerr Example Configuration File        ##
       #######################################################
       ##  The values are a mix of defaults and examples.   ##
-      ##  Environment Variables may override all values.   ##
+      ##  Env vars overlay the process, not this file.     ##
       ##  More configuration help: https://unpackerr.zip   ##
       ## Config Generator: https://notifiarr.com/unpackerr ##
       #######################################################
@@ -265,7 +265,9 @@ sections:
           The alternative is to use syslog to log the output of the application to a file.
           Default is no log file; this is unset.
           Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
-          log_files=0 turns off auto-rotation.
+          log_files=0 turns off auto-rotation so logrotate can own the file.
+          After logrotate renames the live file, send SIGHUP (`systemctl reload unpackerr`)
+          to close and reopen it. Use logrotate `create` plus postrotate HUP, not copytruncate.
           Default files is 10 and size(mb) is 10 Megabytes.
       - name: log_files
         envvar: LOG_FILES
@@ -294,6 +296,21 @@ sections:
           - value: '0644'
           - value: '0664'
         short: 'POSIX mode used for new log files; not for Windows'
+      - name: keep_history
+        envvar: KEEP_HISTORY
+        default: 200
+        recommend:
+          - value: 0
+          - value: 50
+          - value: 100
+          - value: 200
+          - value: 500
+          - value: 1000
+        short: Completed items kept in the history file and API.
+        desc: |
+          How many completed or failed items to keep in unpackerr.history.jsonl
+          (next to the log file, or the config file if logs go to stdout).
+          The tray menu still shows only the last 10 names. `0` disables history.
       - name: interval
         envvar: INTERVAL
         default: 2m
@@ -409,10 +426,11 @@ sections:
   webserver:
     title: Web Server
     docs: |
-      :::note[Metrics]
-      The web server currently only provides prometheus metrics, which you can display in
-      [Grafana](https://grafana.com/grafana/dashboards/18817-unpackerr/).
-      It provides no UI. This may change in the future. The web server was added in v0.12.0.
+      :::note[Web Server]
+      The HTTP server listens whenever `listen_addr` is set (default `0.0.0.0:5656`).
+      Set `listen_addr = ""` to turn it off. `metrics = true` exposes Prometheus
+      metrics at `/metrics` for [Grafana](https://grafana.com/grafana/dashboards/18817-unpackerr/).
+      The web server was added in v0.12.0.
       :::
     envvar_prefix: WEBSERVER_
     params:
@@ -421,12 +439,38 @@ sections:
         default: false
         recommend: *BOOLEAN
         short: Enable the Prometheus metrics endpoint.
-        desc: The web server currently only supports metrics; set this to true if you wish to use it.
+        desc: |
+          Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
+          this only controls the /metrics route. Scrapes must send an API key with
+          read:system:metrics via Authorization: Bearer or X-Api-Key.
+      - name: pprof
+        envvar: PPROF
+        default: false
+        recommend: *BOOLEAN
+        short: Enable Go pprof debug endpoints at /debug/pprof/.
+        desc: |
+          Expose Go pprof handlers at /debug/pprof/. Leave this false unless you
+          are debugging the running process.
       - name: listen_addr
         envvar: LISTEN_ADDR
         default: 0.0.0.0:5656
-        short: ip:port to listen on; `0.0.0.0` is all IPs.
-        desc: This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
+        short: ip:port to listen on; empty string disables the HTTP server.
+        desc: |
+          This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
+          Set this to an empty string to disable the HTTP server.
+      - name: ui_password
+        envvar: UI_PASSWORD
+        default: ''
+        omit_compose: true
+        short: Web UI password (user:pass, hashed, proxy header, or noauth).
+        desc: |
+          Local UI login (HTTP auth is the next PR; this stores the credential). Use user:pass
+          (hashed on startup), !!cryptd!!user:$2a$... for a stored hash, webauth:X-Webauth-User
+          for a reverse-proxy header, or noauth.
+          filepath:/path reads that file for the live password and keeps filepath: in the
+          config. Empty generates a temporary password when the HTTP server is enabled.
+          Reset with --reset. Do not set an empty
+          UN_WEBSERVER_UI_PASSWORD; a present empty env value wipes a stored hash.
       - name: log_file
         envvar: LOG_FILE
         default: ''
@@ -436,8 +480,10 @@ sections:
         envvar: LOG_FILES
         default: 10
         recommend: *NUMBERS
-        short: Log files to keep after rotating. `0` to disable.
-        desc: This app automatically rotates logs. Set these to the size and number to keep.
+        short: Log files to keep after rotating. `0` disables rotation
+        desc: |
+          This app automatically rotates logs. Set these to the size and number to keep.
+          log_files=0 disables auto-rotation; SIGHUP reopens the HTTP log too.
       - name: log_file_mb
         envvar: LOG_FILE_MB
         default: 10
@@ -467,6 +513,31 @@ sections:
           Setting this correctly allows X-Forwarded-For to be used in logs.
           In the future it may control auth proxy trust. Must be a list of strings.
           example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+      - name: api_keys
+        envvar: API_KEYS_
+        default: []
+        kind: tables
+        short: Named API keys assigned to roles.
+        desc: |
+          Nested [[webserver.api_keys]] tables, not an inline array. Each key is 60–150 ASCII
+          characters. Names and key values must be unique. Built-in role `admin` grants every
+          permission. Custom roles are listed under [webserver.roles].
+          Env uses UN_WEBSERVER_API_KEYS_0_NAME, _KEY, and _ROLES_0.
+      - name: roles
+        envvar: ROLES_*_PERMISSIONS_0
+        default: {}
+        kind: map
+        short: Custom roles mapped to permission names.
+        desc: |
+          Nested [webserver.roles.<name>] tables. Names are letters, digits, _ or -.
+          Built-in admin cannot be redefined. `*` is reserved for that built-in role.
+          Each custom role needs at least one known permission.
+          Env works but is picky: do not set UN_WEBSERVER_ROLES itself. Role names are
+          case-sensitive and may contain underscores. Index permissions from 0:
+          UN_WEBSERVER_ROLES_stats_PERMISSIONS_0=read:system:stats
+          UN_WEBSERVER_ROLES_read_only_PERMISSIONS_0=read:system:stats
+          [webserver.roles.stats]
+          permissions = ["read:system:stats"]
 
   starr_header:
     no_header: true
@@ -499,6 +570,26 @@ sections:
         default: ''
         example: 0123456789abcdef0123456789abcdef
         short: Provide URL and API key if you use this app.
+      - name: http_user
+        envvar: HTTP_USER
+        default: ''
+        short: Optional HTTP basic-auth username.
+        desc: Username for HTTP basic authentication on the Starr app, if enabled.
+      - name: http_pass
+        envvar: HTTP_PASS
+        default: ''
+        short: Optional HTTP basic-auth password.
+        desc: Password for HTTP basic authentication on the Starr app, if enabled.
+      - name: username
+        envvar: USERNAME
+        default: ''
+        short: Optional native-auth username.
+        desc: Username for Starr native (forms) authentication, if enabled.
+      - name: password
+        envvar: PASSWORD
+        default: ''
+        short: Optional native-auth password.
+        desc: Password for Starr native (forms) authentication, if enabled.
       - name: paths
         envvar: PATHS_
         default: ['/downloads']
@@ -552,6 +643,14 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: valid_ssl
+        envvar: VALID_SSL
+        default: false
+        recommend: *BOOLEAN
+        short: Verify the Starr app TLS certificate.
+        desc: |
+          When true, Unpackerr verifies the Starr app HTTPS certificate.
+          The default is false for backward compatibility.
       - name: max_bytes
         envvar: MAX_BYTES
         default: ''
@@ -822,6 +921,11 @@ sections:
         default: ''
         short: Passed into templates for slack.com webhooks.
         desc: Also passed into templates. Used in Slack templates for destination channel.
+      - name: token
+        envvar: TOKEN
+        default: ''
+        short: Bot token for Discord, Telegram, Slack, and similar templates.
+        desc: Passed into webhook templates. Used by Discord, Telegram, and Slack.
       - name: exclude
         envvar: EXCLUDE_
         default: []

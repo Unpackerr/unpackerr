@@ -77,7 +77,7 @@ func (u *Unpackerr) getLidarrQueue(server *LidarrConfig, start time.Time) {
 
 	// Only update if there was not an error fetching.
 	server.Queue = queue
-	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Lidarr, server.URL, nil)
+	u.saveQueueMetrics(queue.TotalRecords, start, starr.Lidarr, server.URL, nil)
 
 	if !u.Activity || queue.TotalRecords > 0 {
 		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -86,6 +86,9 @@ func (u *Unpackerr) getLidarrQueue(server *LidarrConfig, start time.Time) {
 
 // checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
 func (u *Unpackerr) checkLidarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Lidarr {
 		if server.Queue == nil {
 			continue
@@ -95,7 +98,7 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 			switch x, ok := u.Map[record.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
 				u.Map[record.Title] = &Extract{
 					App:         starr.Lidarr,
 					URL:         server.URL,

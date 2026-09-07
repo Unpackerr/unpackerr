@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -75,7 +75,7 @@ func makeGenerated(config *Config, output string) error {
 	}
 
 	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
-		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/pkg/configdef), "+
 		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))+"</font>\n")
 }
 
@@ -130,8 +130,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 		}
 
 		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
-		if param.Kind == list {
+		switch param.Kind {
+		case list:
 			envVar += "0"
+		case tables:
+			envVar += "0_*"
 		}
 
 		def := "No Default"
@@ -140,6 +143,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 			if t, _ := toml.Marshal(param.Default); len(t) > 0 {
 				def = "`" + string(t) + "`"
 			}
+		}
+
+		if param.EnvVar == "" {
+			fmt.Fprintf(&buf, "|%s|file only|%v / %s|\n", param.Name, def, param.Short)
+			continue
 		}
 
 		fmt.Fprintf(&buf, tableFormat, param.Name, envVar, def, param.Short)

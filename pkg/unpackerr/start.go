@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -44,9 +46,11 @@ const (
 	minimumDeleteDelay      = time.Second
 	defaultDeleteDelay      = 5 * time.Minute
 	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory          = 10             // items kept in history.
+	defaultHistory          = 200            // JSONL cap; tray still shows trayHistory names.
+	trayHistory             = 10             // items kept in the GUI history menu.
 	suffix                  = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf           = 100            // Size of xtractr callback update channels.
+	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
 	defaultFolderBuf        = 20000          // Channel queue size for file system events.
 	minimumFolderBuf        = 1000           // Minimum size of the folder event buffer.
 	defaultLogFileMb        = 10
@@ -70,10 +74,33 @@ type Unpackerr struct {
 	progChan chan *ExtractProgress
 	hookChan chan *hookQueueItem
 	delChan  chan *fileDeleteReq
+	taskChan chan *mainTask // HTTP hands config applies and queue actions to Run().
 	workChan chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
+	httpLog  *rotatorr.Logger
 	menu     map[string]ui.MenuItem
+	// Live Config is owned by the main goroutine in Run(). fileConfig is the
+	// on-disk shape (filepath: values kept) and is also written by the tray,
+	// so it and the hook slices that /api/stats counts sit under configMu.
+	fileConfig       *Config
+	livePasswords    StringSlice // post-env, pre-expansion; GET /live uses this
+	configMu         sync.RWMutex
+	tickers          *loopTickers
+	pendingRestart   bool
+	inFlight         atomic.Int64 // queued-or-running delete and hook work.
+	workThreads      int
+	hookOnce         sync.Once
+	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
+	uiPasswordNotice string
+	uiPasswordGenErr error
+	configWriteErr   error
+	adminKeyNotice   string
+	adminKeyErr      error
+	histPath         string
+	histMu           sync.Mutex // records and the JSONL file; HTTP reads, main loop appends.
+	histLines        int        // lines in the file since the last compaction.
+	records          []HistoryRecord
 }
 
 type fileDeleteReq struct {
@@ -98,6 +125,7 @@ type Flags struct {
 	ConfigFile string
 	EnvPrefix  string
 	webhook    uint
+	reset      bool
 }
 
 // New returns an UnpackerPoller struct full of defaults.
@@ -107,9 +135,11 @@ func New() *Unpackerr {
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal),
+		taskChan: make(chan *mainTask, updateChanBuf),
+		sigChan:  make(chan os.Signal, signalBuf),
 		workChan: make(chan []func(), 1),
-		History:  &History{Map: make(map[string]*Extract)},
+		History:  &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		folders:  &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
 		updates:  make(chan *xtractr.Response, updateChanBuf),
 		progChan: make(chan *ExtractProgress),
 		menu:     make(map[string]ui.MenuItem),
@@ -143,11 +173,14 @@ func New() *Unpackerr {
 
 // Start runs the app.
 //
-//nolint:gosec // not too concerned with possible integer overflows reading user-provided config files.
+//nolint:gosec,funlen // not too concerned with possible integer overflows reading user-provided config files.
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
-	unpackerr := New().ParseFlags() // Grab CLI args (like config file location).
+	unpackerr := New()
+	notifySignals(unpackerr.sigChan)
+	unpackerr.ParseFlags() // Grab CLI args (like config file location).
+
 	if unpackerr.verReq {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 		return nil                              // don't run anything else.
@@ -166,6 +199,16 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+
+	if err := unpackerr.handleStartupPassword(); err != nil {
+		return err
+	}
+
+	if unpackerr.reset {
+		return nil
+	}
+
+	unpackerr.loadHistory()
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",
@@ -194,9 +237,7 @@ func Start() error {
 		DirMode:  os.FileMode(dirMode),
 	})
 
-	if len(unpackerr.Webhook) > 0 || len(unpackerr.Cmdhook) > 0 {
-		go unpackerr.watchCmdAndWebhooks()
-	}
+	unpackerr.ensureHookWorker()
 
 	go unpackerr.watchDeleteChannel()
 
@@ -222,30 +263,45 @@ func fileList(paths ...string) []string {
 	return files
 }
 
+// queueDelete publishes a delete request and counts it in flight. Counting at
+// the send keeps it atomic with respect to idle(): both run on the main loop,
+// so a restart can never observe the gap between a send and its receive.
+func (u *Unpackerr) queueDelete(req *fileDeleteReq) {
+	u.inFlight.Add(1)
+
+	u.delChan <- req
+}
+
 func (u *Unpackerr) watchDeleteChannel() {
 	for input := range u.delChan {
-		if len(input.Paths) == 0 {
-			continue
-		}
+		u.deleteRequest(input)
+	}
+}
 
-		u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
-		u.DeleteFiles(input.Paths...)
+func (u *Unpackerr) deleteRequest(input *fileDeleteReq) {
+	defer u.inFlight.Add(-1) // paired with queueDelete.
 
-		if !input.PurgeEmptyParent {
-			continue
-		}
+	if len(input.Paths) == 0 {
+		return
+	}
 
-		root := input.PurgeEmptyRoot
+	u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
+	u.DeleteFiles(input.Paths...)
+
+	if !input.PurgeEmptyParent {
+		return
+	}
+
+	root := input.PurgeEmptyRoot
+	if root != "" {
+		root = filepath.Clean(root)
+	}
+
+	if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
 		if root != "" {
-			root = filepath.Clean(root)
-		}
-
-		if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
-			if root != "" {
-				u.Printf("Purged %d empty folder(s) up to %s", purged, root)
-			} else {
-				u.Printf("Purged %d empty folder(s)", purged)
-			}
+			u.Printf("Purged %d empty folder(s) up to %s", purged, root)
+		} else {
+			u.Printf("Purged %d empty folder(s)", purged)
 		}
 	}
 }
@@ -321,22 +377,41 @@ func dirIsEmpty(path string) bool {
 	return err == io.EOF //nolint:errorlint // this is still correct.
 }
 
+func (u *Unpackerr) ensureHookWorker() {
+	u.hookOnce.Do(func() {
+		go u.watchCmdAndWebhooks()
+	})
+}
+
+// queueHook publishes a hook and counts it in flight. See queueDelete.
+func (u *Unpackerr) queueHook(item *hookQueueItem) {
+	u.inFlight.Add(1)
+
+	u.hookChan <- item
+}
+
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for hook := range u.hookChan {
-		if hook.URL != "" {
-			u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-		}
+		u.runHook(hook)
+	}
+}
 
-		if hook.Command != "" {
-			u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-		}
+func (u *Unpackerr) runHook(hook *hookQueueItem) {
+	defer u.inFlight.Add(-1) // paired with queueHook.
+
+	if hook.URL != "" {
+		u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
+	}
+
+	if hook.Command != "" {
+		u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 	}
 }
 
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.Usage = func() {
-		fmt.Println("Usage: unpackerr [--config=filepath] [--version]") //nolint:forbidigo
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version] [--reset]") //nolint:forbidigo
 		flag.PrintDefaults()
 	}
 
@@ -344,26 +419,44 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.StringVarP(&u.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
 	flag.UintVarP(&u.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
+	flag.BoolVar(&u.reset, "reset", false, "Reset the web UI password, write it to the config file, and exit")
 	flag.Parse()
 
 	return u // so you can chain into ParseConfig.
 }
 
 // Run starts the loop that does the work.
-func (u *Unpackerr) Run() {
-	var (
-		poller   = time.NewTicker(u.Interval.Duration)   // poll apps at configured interval.
-		cleaner  = time.NewTicker(cleanerInterval)       // clean at a fast interval.
-		xtractr  = time.NewTicker(u.StartDelay.Duration) // Check if an extract needs to start.
-		progress = time.NewTicker(u.Progress.Duration)   // Progress update for extractions.
-		now      = version.Started                       // Used for file system event time stamps.
-	)
+// loopTickers are owned by Run(). A general config PUT resets them in place.
+type loopTickers struct {
+	poller   *time.Ticker // poll apps at configured interval.
+	xtractr  *time.Ticker // check if an extract needs to start.
+	progress *time.Ticker // progress update for extractions.
+	logger   *time.Ticker // log/print current queue counts.
+}
 
-	// Only start the queue/totals log timer when at least one app or folder is configured.
-	var logger <-chan time.Time
-	if len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr)+len(u.Folders) > 0 {
-		logger = time.NewTicker(u.Config.LogQueues.Duration).C
-	} else {
+func (u *Unpackerr) resetTickers() {
+	if u.tickers == nil {
+		return // PUT before Run(); tests do this.
+	}
+
+	u.tickers.poller.Reset(u.Interval.Duration)
+	u.tickers.xtractr.Reset(u.StartDelay.Duration)
+	u.tickers.progress.Reset(u.Progress.Duration)
+	u.tickers.logger.Reset(u.LogQueues.Duration)
+}
+
+func (u *Unpackerr) Run() {
+	u.tickers = &loopTickers{
+		poller:   time.NewTicker(u.Interval.Duration),
+		xtractr:  time.NewTicker(u.StartDelay.Duration),
+		progress: time.NewTicker(u.Progress.Duration),
+		logger:   time.NewTicker(u.LogQueues.Duration),
+	}
+
+	cleaner := time.NewTicker(cleanerInterval) // clean at a fast interval.
+	now := version.Started                     // Used for file system event time stamps.
+
+	if u.starrAppCount()+len(u.Folders) == 0 {
 		u.Printf("No Starr apps or folders configured. Shut down and add some apps or folders to your config file.")
 	}
 
@@ -373,18 +466,19 @@ func (u *Unpackerr) Run() {
 	// This is the "main go routine" in start.go.
 	for {
 		select {
-		case now = <-poller.C:
+		case now = <-u.tickers.poller.C:
 			// polling interval. pull queue data from all apps.
 			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges(now)
-		case now = <-xtractr.C:
+		case now = <-u.tickers.xtractr.C:
 			// Check if any completed items have elapsed their start delay.
 			u.extractCompletedDownloads(now)
 		case now = <-cleaner.C:
 			// Check for extraction state changes and act on them.
 			u.checkExtractDone(now)
 			u.checkFolderStats(now)
+			u.maybeRestart()
 		case resp := <-u.updates:
 			// xtractr callback for starr download extraction.
 			u.handleXtractrCallback(resp)
@@ -394,13 +488,18 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
-		case now := <-logger:
-			// Log/print current queue counts once in a while.
-			u.logCurrentQueue(now)
+		case task := <-u.taskChan:
+			// HTTP config PUT and queue retry/forget mutate live state on this goroutine.
+			task.result <- task.fn()
+		case now := <-u.tickers.logger.C:
+			// Log/print current queue counts once in a while, when something is configured.
+			if u.starrAppCount()+len(u.Folders) > 0 {
+				u.logCurrentQueue(now)
+			}
 		case prog := <-u.progChan:
 			// Update progress for in-process extractions.
 			u.handleProgress(prog)
-		case now = <-progress.C:
+		case now = <-u.tickers.progress.C:
 			// Print the collected progress info.
 			u.printProgress(now)
 		}

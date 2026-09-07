@@ -20,39 +20,46 @@ profile="${MACOS_NOTARY_PROFILE_NAME:-unpackerr}"
 password="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
 
 # Quill accepted "path or base64". GitHub secrets are either PEM text or
-# one-line base64. macOS openssl base64 -d without -A yields empty files
-# for long lines, and PEM is not base64 at all.
+# one-line (or wrapped) base64. macOS openssl base64 -d without -A yields
+# empty files for long lines; -A treats the whole buffer as one line.
 write_secret() {
-  local dest=$1 envname=$2
-  python3 - "${dest}" "${envname}" <<'PY'
-import base64, os, pathlib, sys
-
-dest, envname = sys.argv[1], sys.argv[2]
-raw = os.environ.get(envname, "")
-if not raw.strip():
-    sys.stderr.write(f"{envname} empty\n")
-    sys.exit(1)
-s = raw.strip().replace("\r", "")
-if "BEGIN " in s:
-    data = (s if s.endswith("\n") else s + "\n").encode()
-else:
-    compact = "".join(s.split())
-    compact += "=" * ((4 - len(compact) % 4) % 4)
-    try:
-        data = base64.b64decode(compact)
-    except Exception as exc:
-        sys.stderr.write(f"{envname} base64 decode failed: {exc}\n")
-        sys.exit(1)
-if not data:
-    sys.stderr.write(f"{envname} decoded to empty ({len(raw)} input chars)\n")
-    sys.exit(1)
-pathlib.Path(dest).write_bytes(data)
-print(f"{envname}: {len(raw)} chars -> {len(data)} bytes")
-PY
+  local dest=$1 envname=$2 raw=$3
+  local s compact mod
+  s="${raw//$'\r'/}"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  if [ -z "${s}" ]; then
+    echo "${envname} empty" >&2
+    exit 1
+  fi
+  if [[ "${s}" == *"BEGIN "* ]]; then
+    printf '%s\n' "${s}" > "${dest}"
+  else
+    compact="$(printf '%s' "${s}" | tr -d '[:space:]')"
+    mod=$(( ${#compact} % 4 ))
+    case "${mod}" in
+      0) ;;
+      2) compact="${compact}==" ;;
+      3) compact="${compact}=" ;;
+      *)
+        echo "${envname} base64 decode failed: length ${#compact} mod 4 = ${mod}" >&2
+        exit 1
+        ;;
+    esac
+    if ! printf '%s' "${compact}" | openssl base64 -d -A > "${dest}"; then
+      echo "${envname} base64 decode failed" >&2
+      exit 1
+    fi
+  fi
+  if [ ! -s "${dest}" ]; then
+    echo "${envname} decoded to empty (${#raw} input chars)" >&2
+    exit 1
+  fi
+  echo "${envname}: ${#raw} chars -> $(wc -c < "${dest}" | tr -d ' ') bytes"
 }
 
-write_secret "${cert}" MACOS_SIGN_P12
-write_secret "${key}" MACOS_NOTARY_KEY
+write_secret "${cert}" MACOS_SIGN_P12 "${MACOS_SIGN_P12}"
+write_secret "${key}" MACOS_NOTARY_KEY "${MACOS_NOTARY_KEY}"
 chmod 600 "${cert}" "${key}"
 echo "p12 $(wc -c < "${cert}" | tr -d ' ') bytes ($(file -b "${cert}"))"
 echo "p8 $(wc -c < "${key}" | tr -d ' ') bytes ($(file -b "${key}"))"

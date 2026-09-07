@@ -137,15 +137,15 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 		}
 	}
 
-	for _, hook := range u.Webhook {
+	for _, hook := range u.hookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
+			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
 		}
 	}
 
-	for _, hook := range u.Cmdhook {
+	for _, hook := range u.cmdhookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.hookChan <- &hookQueueItem{WebhookConfig: hook, WebhookPayload: payload}
+			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
 		}
 	}
 }
@@ -220,43 +220,65 @@ func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error
 	return reply, nil
 }
 
-func (u *Unpackerr) validateWebhook() error { //nolint:cyclop
-	for idx := range u.Webhook {
-		u.Webhook[idx].Command = ""
+func (u *Unpackerr) hookList() []*WebhookConfig {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
 
-		if u.Webhook[idx].URL == "" {
+	return u.Webhook
+}
+
+func (u *Unpackerr) cmdhookList() []*WebhookConfig {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	return u.Cmdhook
+}
+
+func (u *Unpackerr) validateWebhook() error {
+	return u.validateWebhookList(u.Webhook)
+}
+
+func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error { //nolint:cyclop
+	for idx := range list {
+		if list[idx] == nil {
+			return errNilConfigEntry
+		}
+
+		list[idx].Command = ""
+
+		if list[idx].URL == "" {
 			return ErrWebhookNoURL
 		}
 
-		if u.Webhook[idx].Name == "" {
-			u.Webhook[idx].Name = u.Webhook[idx].URL
+		if list[idx].Name == "" {
+			list[idx].Name = list[idx].URL
 		}
 
-		if u.Webhook[idx].Nickname == "" && u.Webhook[idx].TmplPath == "" &&
-			!strings.Contains(u.Webhook[idx].URL, "pushover.net") {
-			u.Webhook[idx].Nickname = "Unpackerr"
+		if list[idx].Nickname == "" && list[idx].TmplPath == "" &&
+			!strings.Contains(list[idx].URL, "pushover.net") {
+			list[idx].Nickname = "Unpackerr"
 		}
 
-		if u.Webhook[idx].CType == "" {
-			u.Webhook[idx].CType = "application/json"
-			if strings.Contains(u.Webhook[idx].URL, "pushover.net") {
-				u.Webhook[idx].CType = "application/x-www-form-urlencoded"
+		if list[idx].CType == "" {
+			list[idx].CType = "application/json"
+			if strings.Contains(list[idx].URL, "pushover.net") {
+				list[idx].CType = "application/x-www-form-urlencoded"
 			}
 		}
 
-		if u.Webhook[idx].Timeout.Duration == 0 {
-			u.Webhook[idx].Timeout.Duration = u.Timeout.Duration
+		if list[idx].Timeout.Duration == 0 {
+			list[idx].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if len(u.Webhook[idx].Events) == 0 {
-			u.Webhook[idx].Events = []ExtractStatus{WAITING}
+		if len(list[idx].Events) == 0 {
+			list[idx].Events = []ExtractStatus{WAITING}
 		}
 
-		if u.Webhook[idx].client == nil {
-			u.Webhook[idx].client = &http.Client{
-				Timeout: u.Webhook[idx].Timeout.Duration,
+		if list[idx].client == nil {
+			list[idx].client = &http.Client{
+				Timeout: list[idx].Timeout.Duration,
 				Transport: &http.Transport{TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: u.Webhook[idx].IgnoreSSL, //nolint:gosec
+					InsecureSkipVerify: list[idx].IgnoreSSL, //nolint:gosec
 				}},
 			}
 		}
@@ -343,7 +365,11 @@ func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
 func (u *Unpackerr) WebhookCounts() (uint, uint) {
 	var total, fails uint
 
-	for _, hook := range u.Webhook {
+	for _, hook := range u.hookList() {
+		if hook == nil {
+			continue
+		}
+
 		posts, failures := hook.Counts()
 		total += posts
 		fails += failures

@@ -1,0 +1,35 @@
+# Claim packaged paths that are still root:root. Same helper on install and
+# upgrade so existing AUR trees left root:root get migrated, and a User=
+# override (often root:www-data, or a non-root uid) is left alone.
+# Skip the path if it is a symlink, and skip child claims if /etc/unpackerr
+# is a symlink, so chown cannot follow a link outside the packaged tree.
+# Always return 0 so a missing example cannot fail pacman.
+
+chown_if_root_root() {
+  [ -L "$1" ] && return 0
+  [ -e "$1" ] || return 0
+  ug="$(stat -c '%u %g' "$1" 2>/dev/null || stat -f '%u %g' "$1")"
+  [ "${ug}" = "0 0" ] || return 0
+  chown unpackerr:unpackerr "$1" || true
+}
+
+claim_packaged_config() {
+  if command -v systemd-sysusers >/dev/null; then
+    systemd-sysusers unpackerr.conf || true
+  fi
+  chown_if_root_root /etc/unpackerr
+  if [ ! -L /etc/unpackerr ]; then
+    chown_if_root_root /etc/unpackerr/unpackerr.conf
+    chown_if_root_root /etc/unpackerr/unpackerr.conf.example
+  fi
+}
+
+post_install() {
+  claim_packaged_config
+  return 0
+}
+
+post_upgrade() {
+  claim_packaged_config
+  return 0
+}

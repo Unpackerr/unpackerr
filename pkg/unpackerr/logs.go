@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/ui"
@@ -71,6 +73,29 @@ func (status ExtractStatus) MarshalText() ([]byte, error) {
 	return []byte(status.String()), nil
 }
 
+// UnmarshalText turns a json identifier or TOML event ID back into a status.
+func (status *ExtractStatus) UnmarshalText(text []byte) error {
+	name := strings.TrimSpace(string(text))
+	if parsed, err := strconv.ParseUint(name, 10, 8); err == nil {
+		got := ExtractStatus(parsed)
+		if got <= EXTRACTEDNOTHING {
+			*status = got
+			return nil
+		}
+	}
+
+	for candidate := WAITING; candidate <= EXTRACTEDNOTHING; candidate++ {
+		if candidate.String() == name {
+			*status = candidate
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: %s", errUnknownExtractStatus, name)
+}
+
+var errUnknownExtractStatus = errors.New("unknown extract status")
+
 // String turns a status into a short string.
 func (status ExtractStatus) String() string {
 	if status > EXTRACTEDNOTHING {
@@ -124,7 +149,7 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 
 	u.Printf("[Unpackerr] Totals: %d retries, %d finished, %d|%d webhooks,"+
 		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
-		u.Retries, u.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
+		stats.Retries, stats.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
 		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), len(u.hookChan), len(u.delChan),
 		carbon.CreateFromStdTime(version.Started).DiffAbsInString(carbon.CreateFromStdTime(now)))
 	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+len(u.folders.Updates)+len(u.delChan)+len(u.hookChan)))
@@ -140,12 +165,12 @@ func (u *Unpackerr) setupLogging() {
 	u.LogFile = getLogFilePath(u.LogFile, "unpackerr.log")
 	fileMode, _ := strconv.ParseUint(u.LogFileMode, bits8, base32)
 	rotate := &rotatorr.Config{
-		Filepath: u.LogFile,                     // log file name.
-		FileSize: int64(u.LogFileMb) * megabyte, // megabytes
+		Filepath: u.LogFile,
+		FileSize: logFileSize(u.LogFiles, u.LogFileMb),
 		Rotatorr: &timerotator.Layout{
 			FileCount:  u.LogFiles,
 			PostRotate: u.postLogRotate,
-		}, // number of files to keep.
+		},
 		DirMode:  logsDirMode,
 		FileMode: os.FileMode(fileMode),
 	}
@@ -194,6 +219,56 @@ func getLogFilePath(logFile, base string) string {
 	return logFile
 }
 
+func logFileSize(files, megabytes int) int64 {
+	if files <= 0 {
+		return rotatorr.NoMaxSize
+	}
+
+	return int64(megabytes) * megabyte
+}
+
+func (u *Unpackerr) waitForExit() {
+	for {
+		sig := <-u.sigChan
+		if isHangup(sig) {
+			u.reopenLogs()
+
+			continue
+		}
+
+		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, sig)
+
+		return
+	}
+}
+
+func (u *Unpackerr) reopenLogs() {
+	reopened := true
+
+	if u.rotatorr != nil {
+		if err := u.rotatorr.Reopen(); err != nil {
+			u.Errorf("Reopening log file: %v", err)
+
+			reopened = false
+		}
+	}
+
+	if u.httpLog != nil {
+		if err := u.httpLog.Reopen(); err != nil {
+			u.Errorf("Reopening HTTP log file: %v", err)
+
+			reopened = false
+		}
+	}
+
+	if !reopened {
+		return
+	}
+
+	// After Reopen so this lands in the live file, not the one logrotate just moved.
+	u.Printf("Caught SIGHUP: reopened log files")
+}
+
 func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
@@ -214,26 +289,29 @@ func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
 func (u *Unpackerr) setupHTTPLogging() {
 	u.Webserver.LogFile = getLogFilePath(u.Webserver.LogFile, "http.log")
 	rotate := &rotatorr.Config{
-		Filepath: u.Webserver.LogFile,                     // log file name.
-		FileSize: int64(u.Webserver.LogFileMb) * megabyte, // megabytes
+		Filepath: u.Webserver.LogFile,
+		FileSize: logFileSize(u.Webserver.LogFiles, u.Webserver.LogFileMb),
 		Rotatorr: &timerotator.Layout{FileCount: u.Webserver.LogFiles},
 		DirMode:  logsDirMode,
 	}
 
+	u.httpLog = rotatorr.NewMust(rotate)
+
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Quiet && u.Webserver.LogFile != "":
-		u.HTTP.SetOutput(io.MultiWriter(rotatorr.NewMust(rotate), os.Stdout))
+		u.HTTP.SetOutput(io.MultiWriter(u.httpLog, os.Stdout))
 	case !u.Quiet && u.Webserver.LogFile == "":
 		u.HTTP.SetOutput(os.Stdout)
 	case u.Quiet && u.Webserver.LogFile == "":
 		u.HTTP.SetOutput(io.Discard)
 	default: // u.Config.Quiet && u.Webserver.LogFile != ""
-		u.HTTP.SetOutput(rotatorr.NewMust(rotate))
+		u.HTTP.SetOutput(u.httpLog)
 	}
 }
 
 func (u *Unpackerr) postLogRotate(_, newFile string) {
 	if newFile != "" {
+		// Post runs on rotatorr's dispatch goroutine; a sync Printf deadlocks.
 		go u.Printf("Rotated log file to: %s", newFile)
 	}
 

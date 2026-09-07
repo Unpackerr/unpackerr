@@ -278,6 +278,11 @@ nfpms:
       signature:
         key_file: "{{ .Env.GPG_SIGNING_KEY }}"
         type: origin
+    # nFPM maps scripts.postinstall to Arch post_install only. Upgrades must
+    # still claim leftover root:root configs (same script is idempotent).
+    archlinux:
+      scripts:
+        postupgrade: init/systemd/after-install.sh
     scripts:
       preinstall: init/systemd/before-install.sh
       postinstall: init/systemd/after-install.sh

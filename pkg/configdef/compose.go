@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -80,6 +80,10 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 			continue
 		}
 
+		if param.OmitCompose && !bare {
+			continue
+		}
+
 		if h.Kind == list {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {
@@ -113,6 +117,8 @@ func (p *Param) Compose(prefix string) string {
 	switch p.Kind {
 	default:
 		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
+	case "map", tables:
+		return ""
 	case list:
 		items, ok := val.([]any)
 		if !ok {

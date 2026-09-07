@@ -56,6 +56,13 @@ func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress)
 // exp.Progress = also what just came in, must set it here.
 // exp.XProg = what is saved in the map, update this one.
 func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
+	if exp == nil || exp.XProg == nil {
+		return
+	}
+
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
 		exp.XProg.Extracted++
 	}
@@ -64,6 +71,9 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 }
 
 func (u *Unpackerr) printProgress(now time.Time) {
+	u.rLockHistory()
+	defer u.rUnlockHistory()
+
 	for name, data := range u.Map {
 		if data.Status != EXTRACTING {
 			continue

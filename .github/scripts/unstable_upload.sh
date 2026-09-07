@@ -108,13 +108,16 @@ dest_name() {
 }
 
 zip_exe() {
-  local src=$1 dest=$2
-  python3 - "${src}" "${dest}" <<'PY'
-import sys, zipfile
-src, dest = sys.argv[1], sys.argv[2]
-with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-    zf.write(src, arcname="unpackerr.exe")
-PY
+  local src=$1 dest=$2 work
+  if ! command -v zip >/dev/null; then
+    echo "zip is required to stage Windows unstable artifacts" >&2
+    exit 1
+  fi
+  work="$(mktemp -d "${TMPDIR:-/tmp}/unpackerr-zip.XXXXXX")"
+  dest="$(cd "$(dirname "${dest}")" && pwd)/$(basename "${dest}")"
+  cp -f "${src}" "${work}/unpackerr.exe"
+  (cd "${work}" && zip -9q "${dest}" unpackerr.exe)
+  rm -rf "${work}"
 }
 
 # Prefer GOARM 7 over 6 when both exist (same dest name).

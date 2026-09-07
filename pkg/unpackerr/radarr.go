@@ -68,7 +68,7 @@ func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
 
 	// Only update if there was not an error fetching.
 	server.Queue = queue
-	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Radarr, server.URL, nil)
+	u.saveQueueMetrics(queue.TotalRecords, start, starr.Radarr, server.URL, nil)
 
 	if !u.Activity || queue.TotalRecords > 0 {
 		u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
@@ -77,6 +77,9 @@ func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
 
 // checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
 func (u *Unpackerr) checkRadarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Radarr {
 		if server.Queue == nil {
 			continue
@@ -86,7 +89,7 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 			switch x, ok := u.Map[record.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
 				u.Map[record.Title] = &Extract{ // Save the download to our map.
 					App:         starr.Radarr,
 					URL:         server.URL,

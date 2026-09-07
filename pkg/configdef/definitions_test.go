@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"os"
@@ -76,6 +76,60 @@ func TestDefinitionsFile(t *testing.T) {
 		if !validImportIdent(name) {
 			t.Errorf("section %q is not a valid JS import identifier (website will not compile)", name)
 		}
+	}
+}
+
+func TestExampleConfAPIKeysAndRoles(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	example := config.ExampleTOML()
+
+	if strings.Contains(example, "api_keys =") {
+		t.Fatal("api_keys must not be inlined; use [[webserver.api_keys]] tables")
+	}
+
+	if !strings.Contains(example, "[[webserver.api_keys]]") {
+		t.Fatal("example conf must document nested api_keys tables")
+	}
+
+	if strings.Contains(example, "\n roles =") || strings.Contains(example, "\nroles =") {
+		t.Fatal("roles must not be inlined; use [webserver.roles.x] tables")
+	}
+
+	if !strings.Contains(example, "[webserver.roles.stats]") {
+		t.Fatal("example conf must document nested role tables")
+	}
+
+	dir := t.TempDir()
+	createCompose(config, "docker-compose.yml", dir)
+
+	compose, err := os.ReadFile(filepath.Join(dir, "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(compose), "UN_WEBSERVER_ROLES") {
+		t.Fatal("role maps are nested TOML tables, not compose env vars")
+	}
+
+	createDocusaurus(config, dir)
+
+	docs, err := os.ReadFile(filepath.Join(dir, "webserver.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(docs), "`UN_WEBSERVER_ROLES`") {
+		t.Fatal("docs must not advertise the bare UN_WEBSERVER_ROLES prefix")
+	}
+
+	if !strings.Contains(string(docs), "`UN_WEBSERVER_ROLES_*_PERMISSIONS_0`") {
+		t.Fatal("docs must show the nested roles env form")
+	}
+
+	if !strings.Contains(string(docs), "`UN_WEBSERVER_API_KEYS_0_*`") {
+		t.Fatal("docs must show the nested api_keys env form")
 	}
 }
 
@@ -692,5 +746,22 @@ func TestComposeListScalarDoesNotPanic(t *testing.T) {
 		if got := param.Compose("UN_"); got != "" {
 			t.Fatalf("%s scalar compose should emit nothing, got %q", kind, got)
 		}
+	}
+}
+
+func TestComposeOmitsUIPassword(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	dir := t.TempDir()
+	createCompose(config, "docker-compose.yml", dir)
+
+	body, err := os.ReadFile(filepath.Join(dir, "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(body), "UN_WEBSERVER_UI_PASSWORD") {
+		t.Fatal("empty UI password env must not appear in the compose example")
 	}
 }

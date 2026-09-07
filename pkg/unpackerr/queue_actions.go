@@ -51,23 +51,21 @@ func readIDRequest(response http.ResponseWriter, request *http.Request) (string,
 		return "", false
 	}
 
-	err := decoder.Decode(&struct{}{})
-	if err != nil && !errors.Is(err, io.EOF) {
+	switch err := decoder.Decode(&struct{}{}); {
+	case errors.Is(err, io.EOF):
+		if strings.TrimSpace(body.ID) == "" {
+			writeJSON(response, http.StatusBadRequest, map[string]string{"error": errMissingID.Error()})
+			return "", false
+		}
+
+		return body.ID, true
+	case err != nil:
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return "", false
-	}
-
-	if err == nil {
+	default:
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errExtraJSON.Error()})
 		return "", false
 	}
-
-	if strings.TrimSpace(body.ID) == "" {
-		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errMissingID.Error()})
-		return "", false
-	}
-
-	return body.ID, true
 }
 
 func (u *Unpackerr) queueRetryHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
@@ -230,6 +228,9 @@ func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Tim
 	return nil
 }
 
+// forgetQueueID drops a terminal queue item. In-progress extracts return
+// errQueueNotForgettable (HTTP 409); Starr titles get a tombstone until they
+// leave the upstream queue so a poll cannot recreate them.
 func (u *Unpackerr) forgetQueueID(itemID string) error {
 	u.lockHistory()
 	defer u.unlockHistory()

@@ -291,7 +291,9 @@ func (u *Unpackerr) syncFileUIPassword() {
 		u.fileConfig.Webserver = &WebServer{}
 	}
 
-	u.fileConfig.Webserver.UIPassword = u.uiPassword()
+	u.uiPassMu.Lock()
+	u.fileConfig.Webserver.UIPassword = u.Webserver.UIPassword
+	u.uiPassMu.Unlock()
 }
 
 func (u *Unpackerr) appendFileAPIKey(key APIKey) {

@@ -142,16 +142,14 @@ func configFileLocactions() (string, []string) {
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
-	fileMode, dirMode := u.clampConfig()
-
-	if u.KeepHistory != 0 {
-		u.Items = make([]string, min(u.KeepHistory, trayHistory))
-	}
-
-	return fileMode, dirMode
+	return u.clampConfig()
 }
 
 func (u *Unpackerr) clampConfig() (uint64, uint64) { //nolint:cyclop
+	if u.KeepHistory != 0 && len(u.Items) == 0 {
+		u.Items = make([]string, min(u.KeepHistory, trayHistory))
+	}
+
 	if u.DeleteDelay.Duration > 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
@@ -416,11 +414,11 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 	}
 
 	if conf.Timeout.Duration == 0 {
-		conf.Timeout.Duration = u.Timeout.Duration
+		conf.Timeout.Duration = u.applied().Timeout
 	}
 
 	if conf.DeleteDelay.Duration == 0 {
-		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
+		conf.DeleteDelay.Duration = u.applied().DeleteDelay
 	}
 
 	if conf.Path != "" && !slices.Contains(conf.Paths, conf.Path) {

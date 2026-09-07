@@ -313,6 +313,10 @@ func (u *Unpackerr) prepareWebserverPut(
 	fileWeb := fileWebserverFromPut(next, submitted, fromFile, omitted, fileSnap)
 	fileWeb.APIKeys = cloneAPIKeys(fileOnly.APIKeys)
 
+	if err := fileWeb.validateAuth(); err != nil {
+		return nil, false, err
+	}
+
 	return fileWeb, webserverRestartRequired(liveSnap, next), nil
 }
 

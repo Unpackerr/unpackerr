@@ -24,6 +24,8 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
 	unpack.KeepHistory = 200
+	unpack.Items = make([]string, trayHistory)
+	unpack.Items[0] = "queued"
 	unpack.snapshotFileConfig()
 
 	withKey := func(req *http.Request) {
@@ -57,7 +59,7 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 		t.Fatalf("applied %+v snap %v debug %v", unpack.KeepHistory, unpack.applied().KeepHistory, unpack.Config.Debug)
 	}
 
-	if len(unpack.Items) != 0 {
+	if len(unpack.Items) != trayHistory || unpack.Items[0] != "queued" {
 		t.Fatalf("PUT resized history items: %+v", unpack.Items)
 	}
 
@@ -69,6 +71,123 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	text := string(written)
 	if !strings.Contains(text, "keep_history = 50") || !strings.Contains(text, "debug = true") {
 		t.Fatalf("fileConfig write missed PUT:\n%s", text)
+	}
+}
+
+func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.KeepHistory = 0
+	unpack.snapshotFileConfig()
+	unpack.publishAppliedGeneral()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	general.KeepHistory = 50
+
+	body, err := json.Marshal(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(body), withKey)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.applied().KeepHistory != 50 {
+		t.Fatalf("applied keep_history %d", unpack.applied().KeepHistory)
+	}
+
+	if len(unpack.Items) != trayHistory {
+		t.Fatalf("tray items after enabling history: %d", len(unpack.Items))
+	}
+
+	unpack.updateHistory("queued")
+
+	if unpack.Items[0] != "queued" {
+		t.Fatalf("updateHistory after enable: %+v", unpack.Items)
+	}
+}
+
+func TestConfigPutCmdhookRejectsWhitespaceCommand(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodPut, "/api/config/cmdhooks", `[{"command":"   "}]`, withKey)
+	if got.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace cmdhook %d %s", got.Code, got.Body.String())
+	}
+}
+
+func TestConfigPutWebserverRejectsFileKeyCollision(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	fileKey, liveKey := splitFileAndLiveAdminKeys(t, unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, liveKey)
+	})
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	for idx := range web.APIKeys {
+		web.APIKeys[idx].Key = ""
+	}
+
+	web.APIKeys = append(web.APIKeys, APIKey{
+		Name:  "extra",
+		Key:   fileKey,
+		Roles: []string{RoleAdmin},
+	})
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), func(req *http.Request) {
+		req.Header.Set(headerAPIKey, liveKey)
+	})
+	if put.Code != http.StatusBadRequest {
+		t.Fatalf("file key collision %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.Webserver.adminAPIKey() != liveKey {
+		t.Fatal("rejected PUT mutated live key")
+	}
+
+	if unpack.fileConfig.Webserver.APIKeys[0].Key != fileKey {
+		t.Fatalf("rejected PUT mutated file key %q", unpack.fileConfig.Webserver.APIKeys[0].Key)
 	}
 }
 

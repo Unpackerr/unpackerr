@@ -31,7 +31,7 @@ func (u *Unpackerr) validateCmdhookList(list []*WebhookConfig) error {
 
 		list[idx].URL = ""
 
-		list[idx].Command = expandHomedir(list[idx].Command)
+		list[idx].Command = strings.TrimSpace(expandHomedir(list[idx].Command))
 		if list[idx].Command == "" {
 			return ErrCmdhookNoCmd
 		}
@@ -41,7 +41,7 @@ func (u *Unpackerr) validateCmdhookList(list []*WebhookConfig) error {
 		}
 
 		if list[idx].Timeout.Duration == 0 {
-			list[idx].Timeout.Duration = u.Timeout.Duration
+			list[idx].Timeout.Duration = u.applied().Timeout
 		}
 
 		if len(list[idx].Events) == 0 {

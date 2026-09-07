@@ -267,7 +267,7 @@ func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error { //nolint:
 		}
 
 		if list[idx].Timeout.Duration == 0 {
-			list[idx].Timeout.Duration = u.Timeout.Duration
+			list[idx].Timeout.Duration = u.applied().Timeout
 		}
 
 		if len(list[idx].Events) == 0 {

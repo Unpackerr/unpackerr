@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"errors"
@@ -101,8 +101,14 @@ func (c *Config) makeIndexDocs() string {
 	for _, name := range c.Order {
 		header := c.Sections[name]
 		if header != nil && len(header.Params) > 0 && name != "global" {
-			first.WriteString("import G" + string(name) + " from './" + string(name) + ".md';\n")
-			second.WriteString("<G" + string(name) + "/>\n")
+			first.WriteString("import G")
+			first.WriteString(string(name))
+			first.WriteString(" from './")
+			first.WriteString(string(name))
+			first.WriteString(".md';\n")
+			second.WriteString("<G")
+			second.WriteString(string(name))
+			second.WriteString("/>\n")
 		}
 	}
 
@@ -217,7 +223,7 @@ func (h *Header) validate(name section) []string {
 			errs = append(errs, string(name)+": param missing name")
 		}
 
-		if param.EnvVar == "" {
+		if param.EnvVar == "" && !param.isNested() {
 			errs = append(errs, string(name)+"."+param.Name+": missing envvar")
 		}
 
@@ -226,7 +232,7 @@ func (h *Header) validate(name section) []string {
 		}
 
 		switch param.Kind {
-		case "", list, "conlist":
+		case "", list, "conlist", "map", tables:
 		default:
 			errs = append(errs, string(name)+"."+param.Name+": unknown kind "+param.Kind)
 		}

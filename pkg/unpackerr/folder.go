@@ -93,18 +93,26 @@ type eventData struct {
 }
 
 func (u *Unpackerr) validateFolders() error {
-	for idx := range u.Folders {
-		if u.Folders[idx].DeleteAfter == nil {
+	return validateFolderList(u.Folders)
+}
+
+func validateFolderList(folders []*FolderConfig) error {
+	for idx := range folders {
+		if folders[idx] == nil {
+			return errNilConfigEntry
+		}
+
+		if folders[idx].DeleteAfter == nil {
 			// If delete after wasn't set, then set it to 10 minutes.
-			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
+			folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
 
-		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		n, _, err := parseOptionalMaxBytes(folders[idx].MaxBytes)
 		if err != nil {
-			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
+			return fmt.Errorf("folder %s: %w", folders[idx].Path, err)
 		}
 
-		u.Folders[idx].maxBytes = n
+		folders[idx].maxBytes = n
 	}
 
 	return nil
@@ -154,11 +162,13 @@ func (u *Unpackerr) PollFolders() {
 
 	u.Folders, flist = checkFolders(u.Folders, u.Logger)
 
-	u.folders, err = u.Folder.newWatcher(u.Folders, u.Logger)
+	folders, err := u.Folder.newWatcher(u.Folders, u.Logger)
 	if err != nil {
 		u.Errorf("Watching Folders: %s", err)
 		return
 	}
+
+	u.folders = folders
 	// do not close either watcher.
 
 	if len(u.Folders) == 0 {
@@ -348,7 +358,9 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
+	u.lockHistory()
 	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].updated, true)
+	u.unlockHistory()
 	u.updateHistory(FolderString + ": " + name)
 
 	exclude := folderExcludeSuffixes(name, folder.config)
@@ -440,38 +452,72 @@ func getFileList(path string) []os.FileInfo {
 
 // folderXtractrCallback is run twice by the xtractr library when the extraction begins, and finishes.
 func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
-	folder, ok := u.folders.Folders[resp.X.Name]
+	now := resp.Started.Add(resp.Elapsed)
 
-	switch item := u.Map[resp.X.Name]; {
-	case !ok, item == nil:
-		// It doesn't exist? weird. delete it and bail out.
+	u.lockHistory()
+
+	folder, found := u.folders.Folders[resp.X.Name]
+	item := u.Map[resp.X.Name]
+
+	if !found || item == nil {
 		delete(u.folders.Folders, resp.X.Name)
 		delete(u.Map, resp.X.Name)
+		u.unlockHistory()
 
 		return
-	case !resp.Done:
+	}
+
+	if !resp.Done {
 		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
 		folder.status = EXTRACTING
 		u.Printf("[Folder] Extraction Started: %s, retries: %d, items in queue: %d", resp.X.Name, folder.retries, resp.Queued)
-	case errors.Is(resp.Error, xtractr.ErrNoCompressedFiles):
-		folder.status = EXTRACTEDNOTHING
-		u.Printf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
-	default: // this runs in a go routine
-		u.finishFolderExtract(folder, resp)
+		folder.updated = now
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
+		u.unlockHistory()
+
+		return
 	}
 
-	folder.updated = resp.Started.Add(resp.Elapsed)
+	if errors.Is(resp.Error, xtractr.ErrNoCompressedFiles) {
+		folder.status = EXTRACTEDNOTHING
+		u.Printf("[Folder] %s: %s: %v", folder.status.Desc(), resp.X.Name, resp.Error)
+		folder.updated = now
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
+		u.unlockHistory()
+
+		return
+	}
+
+	preFiles := folder.preFiles
+	retries := folder.retries
+	configPath := folder.config.Path
+
+	u.unlockHistory()
+
+	remnantStatus, remnants := u.finishFolderExtractWork(resp, preFiles, retries, configPath)
+
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	folder, found = u.folders.Folders[resp.X.Name]
+	if !found {
+		return
+	}
+
+	u.commitFolderExtract(folder, resp, remnantStatus, remnants)
+	folder.updated = now
 	u.updateQueueStatus(&newStatus{Name: resp.X.Name, Resp: resp, Status: folder.status}, folder.updated, true)
 }
 
-// finishFolderExtract classifies refusals on any terminal response (success or
-// error), then keeps EXTRACTFAILED when remnants remain or the original error
-// still requires a retry. Cleared remnants restart via EXTRACTFAILED so the
-// next pass is spaced by retry_delay. remnant_action=off sets noRetry so
-// checkFolderStats will not restart.
-func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) {
+// finishFolderExtractWork logs, records metrics, and classifies remnants without
+// holding History.mu — remnant cleanup may RemoveAll large trees.
+func (u *Unpackerr) finishFolderExtractWork(
+	resp *xtractr.Response,
+	preFiles map[string]os.FileInfo,
+	retries uint,
+	configPath string,
+) (ExtractStatus, bool) {
 	if resp.Error != nil {
-		folder.archives = resp.Archives
 		u.Errorf("[Folder] %s: %s: %v", EXTRACTFAILED.Desc(), resp.X.Name, resp.Error)
 	} else {
 		u.Printf("[Folder] Extraction Finished: %s => elapsed: %v, archives: %d, "+
@@ -480,9 +526,19 @@ func (u *Unpackerr) finishFolderExtract(folder *Folder, resp *xtractr.Response) 
 			resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 	}
 
-	u.updateMetrics(resp, FolderString, folder.config.Path)
+	u.updateMetrics(resp, FolderString, configPath)
 
-	if status, ok := u.handleRemnants(resp, folder.preFiles, folder.retries); ok {
+	return u.handleRemnants(resp, preFiles, retries)
+}
+
+// commitFolderExtract applies remnant/error/success status under History.mu.
+// remnant_action=off sets noRetry so checkFolderStats will not restart.
+func (u *Unpackerr) commitFolderExtract(folder *Folder, resp *xtractr.Response, status ExtractStatus, remnants bool) {
+	if resp.Error != nil {
+		folder.archives = resp.Archives
+	}
+
+	if remnants {
 		u.finishFolderRemnants(folder, resp, status)
 		return
 	}
@@ -656,16 +712,23 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
 			if now.Sub(folder.updated) > u.StartDelay.Duration {
 				// Ignore "no compressed files" errors for folders.
+				u.lockHistory()
 				delete(u.Map, name)
+				u.unlockHistory()
 				delete(u.folders.Folders, name)
 			}
 		case EXTRACTFAILED == folder.status && folder.noRetry:
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
 		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
 			folder.retries < u.maxRetries():
+			u.lockHistory()
 			u.Retries++
+			u.unlockHistory()
+
 			folder.retries++
 			folder.updated = now
 			folder.status = WAITING
@@ -675,12 +738,16 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			// This empty block is to avoid deleting an item that needs more retries.
 		case EXTRACTFAILED == folder.status && folder.retries >= u.maxRetries():
 			// Retries exhausted — clean up to prevent the item from staying in the map forever.
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, true)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Retries exhausted (%d/%d), giving up: %s", folder.retries, u.maxRetries(), name)
 		case EXTRACTED == folder.status && folder.config.DeleteAfter.Duration <= 0:
 			// if DeleteAfter is 0 we don't delete anything. we are done.
+			u.lockHistory()
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, false)
+			u.unlockHistory()
 			delete(u.folders.Folders, name)
 		case EXTRACTED == folder.status && elapsed >= folder.config.DeleteAfter.Duration:
 			u.deleteAfterReached(name, now, folder)
@@ -693,22 +760,24 @@ func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folde
 	var webhook bool
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.config.DeleteFiles && !folder.config.MoveBack {
-		u.delChan <- &fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}}
+		u.queueDelete(&fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}})
 		webhook = true
 	} else if folder.config.DeleteFiles && len(folder.files) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.files}
+		u.queueDelete(&fileDeleteReq{Paths: folder.files})
 		webhook = true
 	}
 
 	if folder.config.DeleteOrig && !folder.config.MoveBack {
-		u.delChan <- &fileDeleteReq{Paths: []string{name}}
+		u.queueDelete(&fileDeleteReq{Paths: []string{name}})
 		webhook = true
 	} else if folder.config.DeleteOrig && len(folder.archives) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.archives.List()}
+		u.queueDelete(&fileDeleteReq{Paths: folder.archives.List()})
 		webhook = true
 	}
 
+	u.lockHistory()
 	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: nil}, now, webhook)
+	u.unlockHistory()
 	// Folder reached delete delay (after extraction), nuke it.
 	delete(u.folders.Folders, name)
 }
@@ -753,6 +822,8 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])
 	}
+
+	u.maybeRecordHistory(data.Name, u.Map[data.Name])
 
 	return u.Map[data.Name]
 }

@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -64,8 +64,14 @@ func makeGenerated(config *Config, output string) error {
 
 	for _, section := range config.Order {
 		if len(config.Sections[section].Params) > 0 && section != "global" {
-			first.WriteString("import G" + string(section) + " from './" + string(section) + ".md';\n")
-			second.WriteString("<G" + string(section) + "/>\n")
+			first.WriteString("import G")
+			first.WriteString(string(section))
+			first.WriteString(" from './")
+			first.WriteString(string(section))
+			first.WriteString(".md';\n")
+			second.WriteString("<G")
+			second.WriteString(string(section))
+			second.WriteString("/>\n")
 		}
 	}
 
@@ -75,7 +81,7 @@ func makeGenerated(config *Config, output string) error {
 	}
 
 	return writeDocusaurus(output, "footer", `<font color="gray" style={{'float': 'right', 'font-style': 'italic'}}>`+
-		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/init/config), "+
+		"This page was [generated automatically](https://github.com/Unpackerr/unpackerr/tree/main/pkg/configdef), "+
 		strings.ToUpper(time.Now().UTC().Round(time.Second).Format("02 Jan 2006 15:04 UTC"))+"</font>\n")
 }
 
@@ -84,7 +90,10 @@ func (h *Header) makeDocs(prefix string, section section) string {
 	env := h.makeCompose(prefix, true)         // Generate this portion of the docker-compose example.
 
 	buf := bytes.Buffer{}
-	buf.WriteString("## " + h.Title + "\n\n<details>\n  <summary>Examples. Prefix: <b>" + prefix)
+	buf.WriteString("## ")
+	buf.WriteString(h.Title)
+	buf.WriteString("\n\n<details>\n  <summary>Examples. Prefix: <b>")
+	buf.WriteString(prefix)
 
 	if !h.NoHeader {
 		brace1, brace2 := "[", "]"
@@ -92,19 +101,31 @@ func (h *Header) makeDocs(prefix string, section section) string {
 			brace1, brace2 = "[[", "]]"
 		}
 
-		buf.WriteString(h.Prefix + "</b>, Header: <b> ")   // Add to the line above.
-		buf.WriteString(brace1 + string(section) + brace2) // Add to the line above.
+		buf.WriteString(h.Prefix)
+		buf.WriteString("</b>, Header: <b> ")
+		buf.WriteString(brace1)
+		buf.WriteString(string(section))
+		buf.WriteString(brace2)
 	}
 
-	buf.WriteString("</b></summary>\n\n") // Add to the line above.
+	buf.WriteString("</b></summary>\n\n")
 	buf.WriteString("- Using the config file:\n\n```yaml\n")
-	buf.WriteString(strings.TrimSpace(conf) + "\n```\n\n")
+	buf.WriteString(strings.TrimSpace(conf))
+	buf.WriteString("\n```\n\n")
 	buf.WriteString("- Using environment variables:\n\n```js\n")
-	buf.WriteString(env + "```\n\n</details>\n\n")
-	buf.WriteString(h.Docs + "\n" + h.makeDocsTable(prefix) + "\n" + h.Tail)
+	buf.WriteString(env)
+	buf.WriteString("```\n\n</details>\n\n")
+	buf.WriteString(h.Docs)
+	buf.WriteByte('\n')
+	buf.WriteString(h.makeDocsTable(prefix))
+	buf.WriteByte('\n')
+	buf.WriteString(h.Tail)
 
 	if h.Notes != "" { // Notes become a sub header.
-		buf.WriteString("### Notes for " + h.Title + "\n\n" + h.Notes)
+		buf.WriteString("### Notes for ")
+		buf.WriteString(h.Title)
+		buf.WriteString("\n\n")
+		buf.WriteString(h.Notes)
 	}
 
 	return buf.String()
@@ -130,8 +151,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 		}
 
 		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
-		if param.Kind == list {
+		switch param.Kind {
+		case list:
 			envVar += "0"
+		case tables:
+			envVar += "0_*"
 		}
 
 		def := "No Default"
@@ -140,6 +164,11 @@ func (h *Header) makeDocsTable(prefix string) string {
 			if t, _ := toml.Marshal(param.Default); len(t) > 0 {
 				def = "`" + string(t) + "`"
 			}
+		}
+
+		if param.EnvVar == "" {
+			fmt.Fprintf(&buf, "|%s|file only|%v / %s|\n", param.Name, def, param.Short)
+			continue
 		}
 
 		fmt.Fprintf(&buf, tableFormat, param.Name, envVar, def, param.Short)

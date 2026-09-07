@@ -56,9 +56,13 @@ func (u *Unpackerr) readyTray() {
 	u.menu["info"].Disable()
 
 	go u.watchKillerChannels()
-	go u.watchDebugChannels()
+
+	if u.menu["debug"] != nil {
+		go u.watchDebugChannels()
+	}
 	go u.Run()
 
+	u.showGeneratedPassword()
 	u.watchGuiChannels()
 }
 
@@ -66,6 +70,12 @@ func (u *Unpackerr) makeChannels() {
 	conf := systray.AddMenuItem("Config", "show configuration")
 	u.menu["conf"] = ui.WrapMenu(conf)
 	u.menu["edit"] = ui.WrapMenu(conf.AddSubMenuItem("Edit", "open configuration file"))
+	u.menu["pass"] = ui.WrapMenu(conf.AddSubMenuItem("Change Password", "set the web UI password"))
+
+	if u.Webserver == nil || !u.Webserver.Enabled() ||
+		u.uiPassword().Type() != AuthPassword || u.uiPasswordEnvSet() {
+		u.menu["pass"].Hide()
+	}
 
 	link := systray.AddMenuItem("Links", "external resources")
 	u.menu["link"] = ui.WrapMenu(link)
@@ -92,10 +102,6 @@ func (u *Unpackerr) makeChannels() {
 }
 
 func (u *Unpackerr) watchDebugChannels() {
-	if !u.Config.Debug {
-		return
-	}
-
 	for {
 		select {
 		case <-u.menu["debug"].Clicked():
@@ -116,6 +122,8 @@ func (u *Unpackerr) watchGuiChannels() {
 		case <-u.menu["edit"].Clicked():
 			u.Printf("User Editing Config File: %s", u.ConfigFile)
 			_ = ui.OpenFile(u.ConfigFile)
+		case <-u.menu["pass"].Clicked():
+			u.changePasswordDialog()
 		case <-u.menu["link"].Clicked():
 			// does nothing on purpose
 		case <-u.menu["info"].Clicked():
@@ -138,7 +146,7 @@ func (u *Unpackerr) watchGuiChannels() {
 }
 
 func (u *Unpackerr) makeHistoryChannels() {
-	history := systray.AddMenuItem("History", fmt.Sprintf("display last %d items queued", u.KeepHistory))
+	history := systray.AddMenuItem("History", fmt.Sprintf("display last %d items queued", len(u.Items)))
 	u.menu["history"] = ui.WrapMenu(history)
 	u.menu[histNone] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", "nothing has been queued yet"))
 	u.menu[histNone].Disable()
@@ -148,7 +156,7 @@ func (u *Unpackerr) makeHistoryChannels() {
 		u.menu[histNone].SetTooltip("history is disabled in the config")
 	}
 
-	for i := range u.KeepHistory {
+	for i := range u.Items {
 		u.menu[hist+strconv.FormatUint(uint64(i), 10)] = ui.WrapMenu(history.AddSubMenuItem("", ""))
 		u.menu[hist+strconv.FormatUint(uint64(i), 10)].Disable()
 		u.menu[hist+strconv.FormatUint(uint64(i), 10)].Hide()
@@ -199,8 +207,8 @@ func (u *Unpackerr) updateTray(stats *Stats, stacks uint) {
 	u.menu["stats_extracted"].SetTitle("Extracted: " + strconv.FormatUint(uint64(stats.Extracted), 10))
 	u.menu["stats_imported"].SetTitle("Imported: " + strconv.FormatUint(uint64(stats.Imported), 10))
 	u.menu["stats_deleted"].SetTitle("Deleted: " + strconv.FormatUint(uint64(stats.Deleted), 10))
-	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(u.Finished), 10))
-	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(u.Retries), 10))
+	u.menu["stats_finished"].SetTitle("Finished: " + strconv.FormatUint(uint64(stats.Finished), 10))
+	u.menu["stats_retries"].SetTitle("Retries: " + strconv.FormatUint(uint64(stats.Retries), 10))
 	u.menu["stats_hookOK"].SetTitle("Webhooks: " + strconv.FormatUint(uint64(stats.HookOK), 10))
 	u.menu["stats_hookFail"].SetTitle("Hook Errors: " + strconv.FormatUint(uint64(stats.HookFail), 10))
 	u.menu["stats_stacks"].SetTitle("Loop Stacks: " + strconv.FormatUint(uint64(stacks), 10))
@@ -261,8 +269,8 @@ func (u *Unpackerr) checkForUpdate() {
 	}
 
 	yes, _ := ui.Question("Unpackerr", false,
-		"An Update is available! Download?\n\nYour Version: %s-%s\nNew Version: %s\nUpdated: %s (%s ago)",
-		version.Version, version.Revision, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
+		"An Update is available! Download?\n\nYour Version: %s\nNew Version: %s\nUpdated: %s (%s ago)",
+		update.Version, update.Current, update.RelDate.Format("Jan 2, 2006"), ago)
 	if yes {
 		_ = ui.OpenURL(update.CurrURL)
 	}

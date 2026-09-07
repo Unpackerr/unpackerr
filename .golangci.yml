@@ -36,7 +36,7 @@ linters:
             - github.com/radovskyb/watcher
             - github.com/prometheus/client_golang/
             - github.com/spf13/pflag
-            - github.com/julienschmidt/httprouter
+            - github.com/gorilla/securecookie
             - github.com/BurntSushi/toml
             - golift.io
             - golang.org/x

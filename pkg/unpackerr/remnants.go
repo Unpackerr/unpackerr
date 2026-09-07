@@ -36,13 +36,21 @@ func remnantAction(s string) string {
 	}
 }
 
-func (u *Unpackerr) validateRemnantAction() error {
-	s := strings.TrimSpace(u.RemnantAction)
-	if s != "" && remnantAction(s) != strings.ToLower(s) {
-		return fmt.Errorf("%w: %q (want rename, delete, or off)", ErrInvalidRemnantAction, u.RemnantAction)
+func remnantActionError(s string) error {
+	trimmed := strings.TrimSpace(s)
+	if trimmed != "" && remnantAction(trimmed) != strings.ToLower(trimmed) {
+		return fmt.Errorf("%w: %q (want rename, delete, or off)", ErrInvalidRemnantAction, s)
 	}
 
-	u.RemnantAction = remnantAction(s)
+	return nil
+}
+
+func (u *Unpackerr) validateRemnantAction() error {
+	if err := remnantActionError(u.RemnantAction); err != nil {
+		return err
+	}
+
+	u.RemnantAction = remnantAction(u.RemnantAction)
 
 	return nil
 }

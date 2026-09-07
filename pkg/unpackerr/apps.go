@@ -66,7 +66,7 @@ type Config struct {
 	StartDelay    cnfg.Duration    `json:"startDelay"         toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
 	RetryDelay    cnfg.Duration    `json:"retryDelay"         toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
 	Progress      cnfg.Duration    `json:"progress"           toml:"progress"       xml:"progress"       yaml:"progress"`
-	KeepHistory   uint             `json:"keepHistory"        toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"` // undocumented.
+	KeepHistory   uint             `json:"keepHistory"        toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"`
 	Passwords     StringSlice      `json:"passwords"          toml:"passwords"      xml:"password"       yaml:"passwords"`
 	Webserver     *WebServer       `json:"webserver"          toml:"webserver"      xml:"webserver"      yaml:"webserver"`
 	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
@@ -86,8 +86,23 @@ type FoldersConfig struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
-	// 1 worker for each app, so they poll quickly.
-	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr) {
+	u.ensureWorkThreads(u.starrAppCount())
+}
+
+func (u *Unpackerr) starrAppCount() int {
+	return len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr)
+}
+
+// ensureWorkThreads grows the poll worker pool to one per Starr app so a PUT
+// that adds apps keeps polling them concurrently. Main loop only.
+func (u *Unpackerr) ensureWorkThreads(count int) {
+	if count < 1 {
+		count = 1
+	}
+
+	for u.workThreads < count {
+		u.workThreads++
+
 		go func() {
 			for funcs := range u.workChan {
 				for _, fn := range funcs {
@@ -100,6 +115,8 @@ func (u *Unpackerr) watchWorkThread() {
 
 // retrieveAppQueues polls all the starr app queues. At the same time.
 // Then calls the check methods to scan their queue contents for changes.
+// The app lists cannot change underneath this: a config PUT applies on this
+// same goroutine, and it is parked in wait.Wait() until every poll returns.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	wait := sync.WaitGroup{}
 	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
@@ -131,6 +148,7 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	u.checkReadarrQueue(now)
 	u.checkSonarrQueue(now)
 	u.checkWhisparrQueue(now)
+	u.sweepForgotten()
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

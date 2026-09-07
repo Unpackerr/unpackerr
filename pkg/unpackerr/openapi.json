@@ -393,7 +393,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",
@@ -439,7 +439,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the expanded running config section",
-        "description": "Requires read:config:{section}. Most filepath: values are expanded. Archive passwords that were filepath: stay as filepath: so secret-file contents are not returned. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
+        "description": "Requires read:config:{section}. Most filepath: values are expanded. Archive passwords are the post-env, pre-expansion slice, so filepath: from the file or UN_PASSWORDS is not replaced with secret-file contents. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
         "responses": {
           "200": {
             "description": "Live section payload",

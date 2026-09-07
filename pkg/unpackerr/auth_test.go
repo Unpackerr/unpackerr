@@ -41,7 +41,9 @@ func testAuthUnpackerr(t *testing.T) *Unpackerr {
 	}
 
 	unpack.webRoutes()
+	// Mirror unmarshalConfig: snapshot the file shape, then clamp live.
 	unpack.snapshotFileConfig()
+	clampConfig(unpack.Config)
 
 	go unpack.runMainTasks(t.Context())
 

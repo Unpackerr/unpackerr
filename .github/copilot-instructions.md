@@ -30,6 +30,11 @@ in mind; the items below have been raised and rejected before.
   execution on the main loop.
 - `New()` allocates `Config`, `Webserver`, `History`, and `folders`. Nil checks on
   those fields in HTTP handlers are dead code.
+- The tray builds its menus in `readyTray` before `go u.Run()`, and a config PUT
+  cannot apply until the loop drains `taskChan`, so those reads of live `Config`
+  are ordered before any possible write. They are not a race and do not need a
+  lock. When the web UI replaces the tray history menu it reads `/api/history`,
+  which is already guarded by `histMu`.
 - `filepath:` values are kept as written in `fileConfig` and expanded on the live
   copy only (`expandFilepaths`). That is intentional for every section.
 

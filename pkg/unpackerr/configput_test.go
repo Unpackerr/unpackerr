@@ -74,13 +74,10 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	}
 }
 
-func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
-	t.Parallel()
-
-	unpack := testAuthUnpackerr(t)
-	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
-	unpack.KeepHistory = 0
-	unpack.snapshotFileConfig()
+// enableHistoryPUT turns keep_history on through the API, the way the settings
+// UI will, on an instance that started with it disabled.
+func enableHistoryPUT(t *testing.T, unpack *Unpackerr, keep uint) {
+	t.Helper()
 
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
@@ -96,7 +93,7 @@ func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	general.KeepHistory = 50
+	general.KeepHistory = keep
 
 	body, err := json.Marshal(general)
 	if err != nil {
@@ -108,9 +105,20 @@ func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
 		t.Fatalf("put %d %s", put.Code, put.Body.String())
 	}
 
-	if unpack.KeepHistory != 50 {
+	if unpack.KeepHistory != keep {
 		t.Fatalf("applied keep_history %d", unpack.KeepHistory)
 	}
+}
+
+func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.KeepHistory = 0
+	unpack.snapshotFileConfig()
+
+	enableHistoryPUT(t, unpack, 50)
 
 	if len(unpack.Items) != trayHistory {
 		t.Fatalf("tray items after enabling history: %d", len(unpack.Items))
@@ -120,6 +128,38 @@ func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
 
 	if unpack.Items[0] != "queued" {
 		t.Fatalf("updateHistory after enable: %+v", unpack.Items)
+	}
+}
+
+// Enabling history at runtime also has to resolve the JSONL path, or rows would
+// stay in memory and vanish on the next restart.
+func TestConfigPutGeneralEnablesHistoryFile(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.KeepHistory = 0
+	unpack.snapshotFileConfig()
+
+	if unpack.histPath != "" {
+		t.Fatal("history path should be unset while keep_history is 0")
+	}
+
+	enableHistoryPUT(t, unpack, 50)
+
+	if unpack.histPath == "" {
+		t.Fatal("enabling keep_history did not resolve the history file path")
+	}
+
+	unpack.maybeRecordHistory("/dl/done", &Extract{Path: "/dl/done", Status: IMPORTED, Updated: time.Now()})
+
+	written, err := os.ReadFile(unpack.histPath)
+	if err != nil {
+		t.Fatalf("history file after enable: %v", err)
+	}
+
+	if !strings.Contains(string(written), `"id":"/dl/done"`) {
+		t.Fatalf("record was not persisted:\n%s", written)
 	}
 }
 
@@ -987,5 +1027,114 @@ func TestConfigPutSetsPendingRestart(t *testing.T) {
 
 	if !unpack.pendingRestart {
 		t.Fatal("a folder list change needs the watcher rebuilt, so it must request a restart")
+	}
+}
+
+// A general PUT that changes nothing must not schedule a re-exec, including on
+// the second pass, when clampConfig has already filled the omitted defaults.
+func TestConfigPutGeneralNoChangeNeedsNoRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	body := got.Body.String()
+
+	for pass := 1; pass <= 2; pass++ {
+		put := doAuth(t, unpack, http.MethodPut, "/api/config/general", body, withKey)
+		if put.Code != http.StatusOK {
+			t.Fatalf("pass %d put %d %s", pass, put.Code, put.Body.String())
+		}
+
+		var reply configWriteReply
+		if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+			t.Fatal(err)
+		}
+
+		if reply.RestartRequired || unpack.pendingRestart {
+			t.Fatalf("pass %d: unchanged general PUT scheduled a restart", pass)
+		}
+	}
+
+	// Dropping only the clamped mode fields must not restart either: the clamp
+	// refills them with the values live already has.
+	var fields map[string]any
+	if err := json.Unmarshal([]byte(body), &fields); err != nil {
+		t.Fatal(err)
+	}
+
+	delete(fields, "fileMode")
+	delete(fields, "dirMode")
+	delete(fields, "logFileMode")
+
+	trimmed, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(trimmed), withKey)
+	if put.Code != http.StatusOK {
+		t.Fatalf("omitted modes %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.pendingRestart {
+		t.Fatal("omitting the clamped mode fields must not schedule a restart")
+	}
+
+	if unpack.FileMode == "" || unpack.DirMode == "" || unpack.LogFileMode == "" {
+		t.Fatalf("clamp did not refill modes: %q %q %q", unpack.FileMode, unpack.DirMode, unpack.LogFileMode)
+	}
+}
+
+// A PUT that cannot persist must not leave a restart armed.
+func TestConfigPutWriteFailureDoesNotArmRestart(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod read-only dirs do not block writes on windows")
+	}
+
+	unpack := testAuthUnpackerr(t)
+	dir := filepath.Join(t.TempDir(), "ro")
+
+	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // test fixture
+		t.Fatal(err)
+	}
+
+	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore for cleanup
+
+	folders, err := json.Marshal(map[string]any{
+		"interval": "1s", "buffer": 1000, "folder": []map[string]string{{"path": t.TempDir()}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/folders", string(folders), func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("read-only config should 500: %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.pendingRestart {
+		t.Fatal("a failed PUT changed nothing, so it must not schedule a restart")
 	}
 }

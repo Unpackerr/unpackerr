@@ -45,11 +45,13 @@ func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http
 		var err error
 
 		restart, err = u.replaceConfigSection(section, raw)
-		if restart {
-			u.pendingRestart = true
+		if err != nil {
+			return err // nothing changed, so nothing needs a restart.
 		}
 
-		return err
+		u.pendingRestart = u.pendingRestart || restart
+
+		return nil
 	})
 	if err != nil {
 		writeJSON(response, statusForConfigPut(err), map[string]string{"error": err.Error()})
@@ -222,7 +224,15 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	restart := generalRestartRequired(u.Config, next)
+	// Decide the restart from a clamped copy. Comparing raw input against the
+	// live config would ask for a restart whenever a value was omitted, since
+	// clampConfig is about to fill it with the same default.
+	staged := *u.Config
+	applyGeneral(&staged, next)
+	clampConfig(&staged)
+
+	restart := generalRestartRequired(u.Config, &staged)
+	historyWasOff := u.KeepHistory == 0
 
 	return restart, u.commitConfig(func(cfg *Config) {
 		applyGeneral(cfg, next)
@@ -231,14 +241,20 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 		u.livePasswords = append(StringSlice(nil), next.Passwords...)
 		u.Passwords = expanded
 		u.RemnantAction = remnantAction(next.RemnantAction)
-		u.clampConfig()
+		clampConfig(u.Config)
+		u.ensureTrayRing()
 		u.resetTickers()
+
+		if historyWasOff && u.KeepHistory > 0 {
+			u.loadHistory() // histPath is only resolved while history is enabled.
+		}
 	})
 }
 
-// generalRestartRequired lists the general fields the main loop cannot
-// re-apply in place: logger construction and the xtractr instance.
-func generalRestartRequired(cur *Config, next generalConfig) bool {
+// generalRestartRequired lists the general fields the main loop cannot re-apply
+// in place: logger construction, the xtractr instance, and the defaults that
+// validation already copied into each Starr app and hook.
+func generalRestartRequired(cur, next *Config) bool {
 	return next.Debug != cur.Debug ||
 		next.Quiet != cur.Quiet ||
 		next.Parallel != cur.Parallel ||
@@ -248,7 +264,11 @@ func generalRestartRequired(cur *Config, next generalConfig) bool {
 		next.LogFileMode != cur.LogFileMode ||
 		next.ErrorStdErr != cur.ErrorStdErr ||
 		next.FileMode != cur.FileMode ||
-		next.DirMode != cur.DirMode
+		next.DirMode != cur.DirMode ||
+		// Both only seed per-app values in validateApp and validate*HookList,
+		// so running clients keep the old value until they are rebuilt.
+		next.Timeout != cur.Timeout ||
+		next.DeleteDelay != cur.DeleteDelay
 }
 
 func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {

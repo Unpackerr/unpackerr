@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -87,6 +88,7 @@ type Unpackerr struct {
 	configMu         sync.RWMutex
 	tickers          *loopTickers
 	pendingRestart   bool
+	inFlight         atomic.Int64 // delete and hook work a worker already received.
 	workThreads      int
 	hookOnce         sync.Once
 	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
@@ -267,24 +269,33 @@ func (u *Unpackerr) watchDeleteChannel() {
 			continue
 		}
 
-		u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
-		u.DeleteFiles(input.Paths...)
+		u.deleteRequest(input)
+	}
+}
 
-		if !input.PurgeEmptyParent {
-			continue
-		}
+// deleteRequest counts itself in flight so an idle-gated restart cannot land
+// between the receive and the last file being removed.
+func (u *Unpackerr) deleteRequest(input *fileDeleteReq) {
+	u.inFlight.Add(1)
+	defer u.inFlight.Add(-1)
 
-		root := input.PurgeEmptyRoot
+	u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
+	u.DeleteFiles(input.Paths...)
+
+	if !input.PurgeEmptyParent {
+		return
+	}
+
+	root := input.PurgeEmptyRoot
+	if root != "" {
+		root = filepath.Clean(root)
+	}
+
+	if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
 		if root != "" {
-			root = filepath.Clean(root)
-		}
-
-		if purged := u.purgeEmptyFolders(input.Paths, root); purged > 0 {
-			if root != "" {
-				u.Printf("Purged %d empty folder(s) up to %s", purged, root)
-			} else {
-				u.Printf("Purged %d empty folder(s)", purged)
-			}
+			u.Printf("Purged %d empty folder(s) up to %s", purged, root)
+		} else {
+			u.Printf("Purged %d empty folder(s)", purged)
 		}
 	}
 }
@@ -368,13 +379,22 @@ func (u *Unpackerr) ensureHookWorker() {
 
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for hook := range u.hookChan {
-		if hook.URL != "" {
-			u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-		}
+		u.runHook(hook)
+	}
+}
 
-		if hook.Command != "" {
-			u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-		}
+// runHook counts itself in flight so an idle-gated restart cannot drop a
+// webhook or command that is already running.
+func (u *Unpackerr) runHook(hook *hookQueueItem) {
+	u.inFlight.Add(1)
+	defer u.inFlight.Add(-1)
+
+	if hook.URL != "" {
+		u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
+	}
+
+	if hook.Command != "" {
+		u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
 	}
 }
 

@@ -7,12 +7,7 @@ import (
 )
 
 // restartProcess starts a fresh copy; the caller exits. Windows has no exec(2).
-func restartProcess() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("finding executable: %w", err)
-	}
-
+func restartProcess(exe string) error {
 	cmd := exec.Command(exe, os.Args[1:]...) //nolint:gosec,noctx // relaunching ourselves.
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 

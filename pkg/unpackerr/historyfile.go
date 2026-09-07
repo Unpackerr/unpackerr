@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -104,7 +105,9 @@ func (u *Unpackerr) loadHistory() {
 
 	// The file is append-only; fold duplicates and over-cap rows on startup.
 	if lines != len(u.records) {
-		u.compactHistoryLocked()
+		if err := u.compactHistoryLocked(); err != nil {
+			u.Errorf("Compacting history file: %v", err)
+		}
 	}
 }
 
@@ -249,7 +252,10 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	}
 
 	if limit := int(u.KeepHistory); limit > 0 && u.histLines >= limit*historyCompactFactor {
-		u.compactHistoryLocked()
+		if err := u.compactHistoryLocked(); err != nil {
+			u.Errorf("Compacting history file: %v", err)
+		}
+
 		return
 	}
 
@@ -275,9 +281,9 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 }
 
 // compactHistoryLocked rewrites the file from memory: one line per record.
-func (u *Unpackerr) compactHistoryLocked() {
+func (u *Unpackerr) compactHistoryLocked() error {
 	if u.histPath == "" {
-		return
+		return nil
 	}
 
 	var buf bytes.Buffer
@@ -288,16 +294,16 @@ func (u *Unpackerr) compactHistoryLocked() {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(u.histPath), logsDirMode); err != nil {
-		u.Errorf("Making history dir: %v", err)
-		return
+		return fmt.Errorf("making history dir: %w", err)
 	}
 
 	if err := os.WriteFile(u.histPath, buf.Bytes(), historyFileMode); err != nil {
-		u.Errorf("Writing history file: %v", err)
-		return
+		return fmt.Errorf("writing history file: %w", err)
 	}
 
 	u.histLines = len(u.records)
+
+	return nil
 }
 
 func (u *Unpackerr) historySnapshot() []HistoryRecord {
@@ -360,15 +366,15 @@ func (u *Unpackerr) deleteHistoryID(itemID string) error {
 	}
 
 	u.records = slices.Delete(u.records, idx, idx+1)
-	u.compactHistoryLocked()
 
-	return nil
+	return u.compactHistoryLocked()
 }
 
-func (u *Unpackerr) clearHistory() {
+func (u *Unpackerr) clearHistory() error {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
 	u.records = nil
-	u.compactHistoryLocked()
+
+	return u.compactHistoryLocked()
 }

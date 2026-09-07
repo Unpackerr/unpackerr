@@ -82,7 +82,11 @@ func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *ht
 }
 
 func (u *Unpackerr) historyClearHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	u.clearHistory()
+	if err := u.clearHistory(); err != nil {
+		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -92,12 +96,14 @@ func (u *Unpackerr) historyDeleteHandler(response http.ResponseWriter, request *
 		return
 	}
 
-	if err := u.deleteHistoryID(itemID); err != nil {
+	switch err := u.deleteHistoryID(itemID); {
+	case errors.Is(err, errHistoryNotFound):
 		writeJSON(response, http.StatusNotFound, map[string]string{"error": err.Error()})
-		return
+	case err != nil:
+		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	default:
+		writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": itemID})
 	}
-
-	writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": itemID})
 }
 
 func writeQueueActionError(response http.ResponseWriter, err error) {

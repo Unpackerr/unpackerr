@@ -16,6 +16,17 @@ func (u *Unpackerr) maybeRestart() {
 	}
 
 	u.pendingRestart = false
+
+	// Resolve the binary before anything is torn down. Past this point the
+	// listener is gone, so the only fallible step has to happen first.
+	exe, err := os.Executable()
+	if err != nil {
+		u.Errorf("Config saved, but the Unpackerr binary path is unknown, "+
+			"so it needs a manual restart to apply: %v", err)
+
+		return
+	}
+
 	u.Printf("[Unpackerr] Config change needs a restart and the queue is idle; restarting now.")
 
 	if u.Webserver != nil && u.Webserver.server != nil {
@@ -25,8 +36,8 @@ func (u *Unpackerr) maybeRestart() {
 		cancel()
 	}
 
-	if err := restartProcess(); err != nil {
-		u.Errorf("Restart failed, restart Unpackerr by hand to apply the saved config: %v", err)
+	if err := restartProcess(exe); err != nil {
+		u.Errorf("Restart failed; the saved config needs a manual restart to apply: %v", err)
 		return
 	}
 
@@ -38,6 +49,12 @@ func (u *Unpackerr) maybeRestart() {
 // next Starr poll, so they do not block.
 func (u *Unpackerr) idle() bool {
 	if len(u.updates)+len(u.folders.Updates)+len(u.folders.Events)+len(u.hookChan)+len(u.delChan) > 0 {
+		return false
+	}
+
+	// Channel length misses an item a worker already received, so a delete or
+	// a hook that is running right now also has to hold the restart off.
+	if u.inFlight.Load() > 0 {
 		return false
 	}
 

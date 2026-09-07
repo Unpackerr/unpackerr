@@ -141,68 +141,77 @@ func configFileLocactions() (string, []string) {
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
-	return u.clampConfig()
+	u.ensureTrayRing()
+
+	return clampConfig(u.Config)
 }
 
-func (u *Unpackerr) clampConfig() (uint64, uint64) { //nolint:cyclop
+// ensureTrayRing sizes the GUI history ring. This is tray-only; the API and web
+// UI read /api/history instead, so it goes away with the tray history menu.
+func (u *Unpackerr) ensureTrayRing() {
 	if u.KeepHistory != 0 && len(u.Items) == 0 {
 		u.Items = make([]string, min(u.KeepHistory, trayHistory))
 	}
+}
 
-	if u.DeleteDelay.Duration > 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
-		u.DeleteDelay.Duration = minimumDeleteDelay
+// clampConfig applies minimums and fills defaults for omitted values. It takes a
+// *Config so a config PUT can clamp a staged copy and compare that against live,
+// instead of comparing raw input against already-clamped values.
+func clampConfig(cfg *Config) (uint64, uint64) { //nolint:cyclop
+	if cfg.DeleteDelay.Duration > 0 && cfg.DeleteDelay.Duration < minimumDeleteDelay {
+		cfg.DeleteDelay.Duration = minimumDeleteDelay
 	}
 
-	if _, err := strconv.ParseUint(u.LogFileMode, bits8, base32); err != nil || u.LogFileMode == "" {
-		u.LogFileMode = strconv.FormatUint(defaultLogFileMode, bits8)
+	if _, err := strconv.ParseUint(cfg.LogFileMode, bits8, base32); err != nil || cfg.LogFileMode == "" {
+		cfg.LogFileMode = strconv.FormatUint(defaultLogFileMode, bits8)
 	}
 
-	fileMode, err := strconv.ParseUint(u.FileMode, bits8, base32)
-	if err != nil || u.FileMode == "" {
+	fileMode, err := strconv.ParseUint(cfg.FileMode, bits8, base32)
+	if err != nil || cfg.FileMode == "" {
 		fileMode = defaultFileMode
-		u.FileMode = strconv.FormatUint(fileMode, bits8)
+		cfg.FileMode = strconv.FormatUint(fileMode, bits8)
 	}
 
-	dirMode, err := strconv.ParseUint(u.DirMode, bits8, base32)
-	if err != nil || u.DirMode == "" {
+	dirMode, err := strconv.ParseUint(cfg.DirMode, bits8, base32)
+	if err != nil || cfg.DirMode == "" {
 		dirMode = defaultDirMode
-		u.DirMode = strconv.FormatUint(dirMode, bits8)
+		cfg.DirMode = strconv.FormatUint(dirMode, bits8)
 	}
 
-	if u.Parallel == 0 {
-		u.Parallel++
+	if cfg.Parallel == 0 {
+		cfg.Parallel++
 	}
 
-	if u.Progress.Duration == 0 {
-		u.Progress.Duration = defaultProgressInterval
-	} else if u.Progress.Duration < minimumProgressInterval {
-		u.Progress.Duration = minimumProgressInterval
+	if cfg.Progress.Duration == 0 {
+		cfg.Progress.Duration = defaultProgressInterval
+	} else if cfg.Progress.Duration < minimumProgressInterval {
+		cfg.Progress.Duration = minimumProgressInterval
 	}
 
-	if u.Folder.Buffer == 0 {
-		u.Folder.Buffer = defaultFolderBuf
-	} else if u.Folder.Buffer < minimumFolderBuf {
-		u.Folder.Buffer = minimumFolderBuf
+	if cfg.Folder.Buffer == 0 {
+		cfg.Folder.Buffer = defaultFolderBuf
+	} else if cfg.Folder.Buffer < minimumFolderBuf {
+		cfg.Folder.Buffer = minimumFolderBuf
 	}
 
-	if u.Interval.Duration < minimumInterval {
-		u.Interval.Duration = minimumInterval
+	if cfg.Interval.Duration < minimumInterval {
+		cfg.Interval.Duration = minimumInterval
 	}
 
-	if u.StartDelay.Duration < minimumInterval {
-		u.StartDelay.Duration = minimumInterval
+	if cfg.StartDelay.Duration < minimumInterval {
+		cfg.StartDelay.Duration = minimumInterval
 	}
 
-	if u.LogQueues.Duration < minimumInterval {
-		u.LogQueues.Duration = minimumInterval
+	if cfg.LogQueues.Duration < minimumInterval {
+		cfg.LogQueues.Duration = minimumInterval
 	}
 
-	if u.ErrorStdErr && runtime.GOOS == windows {
-		u.ErrorStdErr = false // no stderr on windows
+	if cfg.ErrorStdErr && runtime.GOOS == windows {
+		cfg.ErrorStdErr = false // no stderr on windows
 	}
 
-	if ui.HasGUI() && u.LogFile == "" {
-		u.LogFile = filepath.Join("~", ".unpackerr", "unpackerr.log")
+	if ui.HasGUI() && cfg.LogFile == "" {
+		cfg.LogFile = filepath.Join("~", ".unpackerr", "unpackerr.log")
 	}
 
 	return fileMode, dirMode

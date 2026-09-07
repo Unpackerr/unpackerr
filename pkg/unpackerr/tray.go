@@ -152,7 +152,7 @@ func (u *Unpackerr) makeHistoryChannels() {
 	u.menu[histNone] = ui.WrapMenu(history.AddSubMenuItem("-- there is no history --", "nothing has been queued yet"))
 	u.menu[histNone].Disable()
 
-	if u.KeepHistory == 0 {
+	if u.applied().KeepHistory == 0 {
 		u.menu[histNone].SetTitle("-- history disabled --")
 		u.menu[histNone].SetTooltip("history is disabled in the config")
 	}

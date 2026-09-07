@@ -170,8 +170,18 @@ func rejectNilPointers[T any](list []*T) error {
 // A write failure leaves live and fileConfig unchanged. Env-only (no config
 // path) still applies live.
 func (u *Unpackerr) commitConfig(mutateFile func(*Config), applyLive func()) error {
+	return u.commitPrepared(nil, mutateFile, applyLive)
+}
+
+func (u *Unpackerr) commitPrepared(prepare func() error, mutateFile func(*Config), applyLive func()) error {
 	u.configMu.Lock()
 	defer u.configMu.Unlock()
+
+	if prepare != nil {
+		if err := prepare(); err != nil {
+			return err
+		}
+	}
 
 	if u.fileConfig != nil {
 		staged := cloneConfig(u.fileConfig)
@@ -217,6 +227,7 @@ func (u *Unpackerr) putGeneral(response http.ResponseWriter, request *http.Reque
 		u.Passwords = expanded
 		u.RemnantAction = remnantAction(next.RemnantAction)
 		u.clampConfig()
+		u.publishAppliedGeneral()
 	})
 
 	return restart, err
@@ -251,14 +262,6 @@ func (u *Unpackerr) putWebserver(response http.ResponseWriter, request *http.Req
 
 	next.normalizeURLBase()
 
-	liveSnap := u.cloneLiveWebserver()
-	fileSnap := u.cloneStoredFileWebserver()
-
-	fileOnly := &WebServer{APIKeys: cloneAPIKeys(next.APIKeys)}
-	keepNamedAPIKeys(fileOnly, fileSnap)
-	dropEmptyAPIKeys(fileOnly)
-	keepNamedAPIKeys(&next, liveSnap, fileSnap)
-
 	omitted := next.UIPassword.Val() == ""
 
 	submitted, fromFile, err := u.prepareWebserverPassword(&next)
@@ -266,20 +269,51 @@ func (u *Unpackerr) putWebserver(response http.ResponseWriter, request *http.Req
 		return false, err
 	}
 
-	if err := next.validateAuth(); err != nil {
-		return false, err
-	}
+	var (
+		fileWeb *WebServer
+		restart bool
+	)
 
-	next.allow = MakeIPs(next.Upstreams)
-	restart := webserverRestartRequired(liveSnap, &next)
-	fileWeb := fileWebserverFromPut(&next, submitted, fromFile, omitted, fileSnap)
-	fileWeb.APIKeys = cloneAPIKeys(fileOnly.APIKeys)
+	err = u.commitPrepared(func() error {
+		var prepErr error
 
-	return restart, u.commitConfig(func(cfg *Config) {
+		fileWeb, restart, prepErr = u.prepareWebserverPut(&next, submitted, fromFile, omitted)
+
+		return prepErr
+	}, func(cfg *Config) {
 		cfg.Webserver = fileWeb
 	}, func() {
 		u.applyLiveWebserverAuth(&next)
 	})
+
+	return restart, err
+}
+
+func (u *Unpackerr) prepareWebserverPut(
+	next *WebServer,
+	submitted CryptPass,
+	fromFile, omitted bool,
+) (*WebServer, bool, error) {
+	liveSnap := u.cloneLiveWebserver()
+	fileSnap := u.fileWebserverLocked()
+	fileOnly := &WebServer{APIKeys: cloneAPIKeys(next.APIKeys)}
+	keepNamedAPIKeys(fileOnly, fileSnap)
+	dropEmptyAPIKeys(fileOnly)
+	keepNamedAPIKeys(next, liveSnap, fileSnap)
+
+	if omitted && liveSnap != nil {
+		next.UIPassword = liveSnap.UIPassword
+	}
+
+	if err := next.validateAuth(); err != nil {
+		return nil, false, err
+	}
+
+	next.allow = MakeIPs(next.Upstreams)
+	fileWeb := fileWebserverFromPut(next, submitted, fromFile, omitted, fileSnap)
+	fileWeb.APIKeys = cloneAPIKeys(fileOnly.APIKeys)
+
+	return fileWeb, webserverRestartRequired(liveSnap, next), nil
 }
 
 func webserverRestartRequired(cur, next *WebServer) bool {
@@ -388,9 +422,7 @@ func (u *Unpackerr) prepareWebserverPassword(next *WebServer) (CryptPass, bool, 
 	submitted := next.UIPassword
 	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)
 
-	if submitted.Val() == "" && u.Webserver != nil {
-		next.UIPassword = u.uiPassword()
-
+	if submitted.Val() == "" {
 		return submitted, false, nil
 	}
 

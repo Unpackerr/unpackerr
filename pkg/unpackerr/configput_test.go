@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -52,8 +53,8 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 		t.Fatalf("put %d %s", put.Code, put.Body.String())
 	}
 
-	if unpack.KeepHistory != 50 || !unpack.Config.Debug {
-		t.Fatalf("applied %+v debug %v", unpack.KeepHistory, unpack.Config.Debug)
+	if unpack.KeepHistory != 50 || unpack.applied().KeepHistory != 50 || !unpack.Config.Debug {
+		t.Fatalf("applied %+v snap %v debug %v", unpack.KeepHistory, unpack.applied().KeepHistory, unpack.Config.Debug)
 	}
 
 	if len(unpack.Items) != 0 {
@@ -814,7 +815,35 @@ func TestConfigPutSonarrDoesNotRacePoller(t *testing.T) {
 	wait.Wait()
 }
 
-func TestConfigGetDoesNotRacePut(t *testing.T) {
+type holdResponseWriter struct {
+	http.ResponseWriter
+	started chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (w *holdResponseWriter) hold() {
+	w.once.Do(func() { close(w.started) })
+	<-w.release
+}
+
+func (w *holdResponseWriter) WriteHeader(code int) {
+	w.hold()
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *holdResponseWriter) Write(p []byte) (int, error) {
+	w.hold()
+
+	wrote, err := w.ResponseWriter.Write(p)
+	if err != nil {
+		return wrote, fmt.Errorf("write response: %w", err)
+	}
+
+	return wrote, nil
+}
+
+func TestConfigGetReleasesLockBeforeWrite(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
@@ -822,7 +851,76 @@ func TestConfigGetDoesNotRacePut(t *testing.T) {
 	unpack.snapshotFileConfig()
 
 	admin := unpack.Webserver.adminAPIKey()
-	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+	hold := &holdResponseWriter{
+		ResponseWriter: httptest.NewRecorder(),
+		started:        make(chan struct{}),
+		release:        make(chan struct{}),
+	}
+
+	var finished sync.WaitGroup
+
+	finished.Go(func() {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/config/sonarr", nil)
+		req.Header.Set(headerAPIKey, admin)
+		unpack.Webserver.router.ServeHTTP(hold, req)
+	})
+
+	select {
+	case <-hold.started:
+	case <-time.After(2 * time.Second):
+		close(hold.release)
+		finished.Wait()
+		t.Fatal("GET never reached response write")
+	}
+
+	putBody := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+	putDone := make(chan int, 1)
+
+	go func() {
+		body := strings.NewReader(putBody)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/config/sonarr", body)
+		req.Header.Set(headerAPIKey, admin)
+
+		rec := httptest.NewRecorder()
+		unpack.Webserver.router.ServeHTTP(rec, req)
+
+		putDone <- rec.Code
+	}()
+
+	select {
+	case code := <-putDone:
+		if code != http.StatusOK {
+			close(hold.release)
+			finished.Wait()
+			t.Fatalf("PUT during GET write: %d", code)
+		}
+	case <-time.After(2 * time.Second):
+		close(hold.release)
+		finished.Wait()
+		t.Fatal("PUT blocked while GET held the response writer; configMu is still held across encode")
+	}
+
+	close(hold.release)
+	finished.Wait()
+}
+
+func TestAppliedGeneralDoesNotRacePut(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	unpack.publishAppliedGeneral()
+
+	admin := unpack.Webserver.adminAPIKey()
+	got := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/config/general", nil)
+	req.Header.Set(headerAPIKey, admin)
+	unpack.Webserver.router.ServeHTTP(got, req)
+
+	if got.Code != http.StatusOK {
+		t.Fatalf("get general %d %s", got.Code, got.Body.String())
+	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
 	defer cancel()
@@ -834,11 +932,10 @@ func TestConfigGetDoesNotRacePut(t *testing.T) {
 		defer wait.Done()
 
 		for ctx.Err() == nil {
-			for _, target := range []string{"/api/config/sonarr", "/api/config/sonarr/live", "/api/config/general"} {
-				req := httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-				req.Header.Set(headerAPIKey, admin)
-				unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
-			}
+			body := strings.NewReader(got.Body.String())
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/general", body)
+			req.Header.Set(headerAPIKey, admin)
+			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
 		}
 	}()
 
@@ -846,9 +943,16 @@ func TestConfigGetDoesNotRacePut(t *testing.T) {
 		defer wait.Done()
 
 		for ctx.Err() == nil {
-			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/sonarr", strings.NewReader(body))
-			req.Header.Set(headerAPIKey, admin)
-			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+			snap := unpack.applied()
+			_ = snap.Activity
+			_ = snap.MaxRetries
+			_ = snap.KeepHistory
+			_ = snap.RemnantAction
+			_ = snap.Timeout
+			_ = snap.DeleteDelay
+			_ = snap.StartDelay
+			_ = snap.RetryDelay
+			_ = len(snap.Passwords)
 		}
 	}()
 

@@ -82,7 +82,7 @@ func (u *Unpackerr) historyFilePath() string {
 }
 
 func (u *Unpackerr) loadHistory() {
-	if u.KeepHistory == 0 {
+	if u.applied().KeepHistory == 0 {
 		return
 	}
 
@@ -91,7 +91,8 @@ func (u *Unpackerr) loadHistory() {
 	}
 
 	if u.histPath == "" {
-		u.Printf("[Unpackerr] History file disabled; keep_history=%d but no log, config, or home path", u.KeepHistory)
+		u.Printf("[Unpackerr] History file disabled; keep_history=%d but no log, config, or home path",
+			u.applied().KeepHistory)
 
 		return
 	}
@@ -99,7 +100,7 @@ func (u *Unpackerr) loadHistory() {
 	records := u.readHistoryRecords()
 	trimmed := false
 
-	if limit := int(u.KeepHistory); limit > 0 && len(records) > limit {
+	if limit := int(u.applied().KeepHistory); limit > 0 && len(records) > limit {
 		records = records[len(records)-limit:]
 		trimmed = true
 	}
@@ -198,7 +199,7 @@ func readBoundedLine(reader *bufio.Reader, maxLen int) ([]byte, error) {
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
-	if item == nil || u.KeepHistory == 0 || !item.Status.isDurableHistory() {
+	if item == nil || u.applied().KeepHistory == 0 || !item.Status.isDurableHistory() {
 		return
 	}
 
@@ -282,7 +283,7 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 
 	u.records = append(u.records, rec)
 
-	if limit := int(u.KeepHistory); limit > 0 && len(u.records) > limit {
+	if limit := int(u.applied().KeepHistory); limit > 0 && len(u.records) > limit {
 		u.records = u.records[len(u.records)-limit:]
 	}
 

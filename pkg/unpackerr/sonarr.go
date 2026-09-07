@@ -72,7 +72,7 @@ func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 	u.configMu.Unlock()
 	u.saveQueueMetrics(queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
 
-	if !u.Activity || queue.TotalRecords > 0 {
+	if !u.applied().Activity || queue.TotalRecords > 0 {
 		u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }

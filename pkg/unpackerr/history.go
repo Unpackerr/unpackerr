@@ -44,7 +44,7 @@ func (h *History) rUnlockHistory() {
 
 // This is called every time an item is queued.
 func (u *Unpackerr) updateHistory(item string) {
-	if u.KeepHistory == 0 {
+	if u.applied().KeepHistory == 0 {
 		return
 	}
 

@@ -88,6 +88,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	}
 
 	fileMode, dirMode := u.validateConfig()
+	u.publishAppliedGeneral()
 
 	return fileMode, dirMode, msg, nil
 }

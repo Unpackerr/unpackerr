@@ -376,7 +376,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
 		Password:         u.getPasswordFromPath(name),
-		Passwords:        u.Passwords,
+		Passwords:        u.applied().Passwords,
 		Name:             name,
 		Path:             name,
 		ExcludeSuffix:    exclude,
@@ -573,7 +573,7 @@ func (u *Unpackerr) finishFolderRemnants(folder *Folder, resp *xtractr.Response,
 		return
 	}
 
-	if remnantAction(u.RemnantAction) == "off" {
+	if remnantAction(u.applied().RemnantAction) == "off" {
 		folder.noRetry = true
 	}
 
@@ -716,12 +716,12 @@ func (f *Folders) saveEvent(event *eventData, dirPath string, now time.Time) {
 func (u *Unpackerr) checkFolderStats(now time.Time) {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := now.Sub(folder.updated); {
-		case WAITING == folder.status && elapsed >= u.StartDelay.Duration:
+		case WAITING == folder.status && elapsed >= u.applied().StartDelay:
 			// The folder hasn't been written to in a while, extract it.
 			u.extractTrackedItem(name, folder, now)
 		case EXTRACTEDNOTHING == folder.status:
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
-			if now.Sub(folder.updated) > u.StartDelay.Duration {
+			if now.Sub(folder.updated) > u.applied().StartDelay {
 				// Ignore "no compressed files" errors for folders.
 				u.lockHistory()
 				delete(u.Map, name)
@@ -734,7 +734,7 @@ func (u *Unpackerr) checkFolderStats(now time.Time) {
 			u.unlockHistory()
 			delete(u.folders.Folders, name)
 			u.Printf("[Folder] Remnant left in place (remnant_action=off), giving up: %s", name)
-		case EXTRACTFAILED == folder.status && elapsed >= u.RetryDelay.Duration &&
+		case EXTRACTFAILED == folder.status && elapsed >= u.applied().RetryDelay &&
 			folder.retries < u.maxRetries():
 			u.lockHistory()
 			u.Retries++

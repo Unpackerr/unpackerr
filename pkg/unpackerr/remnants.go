@@ -243,7 +243,7 @@ func (u *Unpackerr) handleRemnants(
 		return 0, false
 	}
 
-	if remnantAction(u.RemnantAction) == "off" {
+	if remnantAction(u.applied().RemnantAction) == "off" {
 		for _, dest := range remnants {
 			u.Printf("Interrupted-extraction remnant left in place (remnant_action=off): %s", dest)
 		}
@@ -331,7 +331,7 @@ func (u *Unpackerr) clearRemnant(dest string) bool {
 		return false
 	}
 
-	if remnantAction(u.RemnantAction) == "delete" {
+	if remnantAction(u.applied().RemnantAction) == "delete" {
 		remove := os.Remove
 		if info.IsDir() {
 			remove = os.RemoveAll

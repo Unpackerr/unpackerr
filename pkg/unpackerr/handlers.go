@@ -129,7 +129,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 // extractCompletedDownload checks if a completed starr download needs to be queued for extraction.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
-	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
+	if d := u.applied().StartDelay - now.Sub(item.Updated); d > time.Second { // wiggle room.
 		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name, d.Round(time.Second))
 		return
 	}
@@ -167,7 +167,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:       u.getPasswordFromPath(item.Path),
-		Passwords:      u.Passwords,
+		Passwords:      u.applied().Passwords,
 		Name:           name,
 		Path:           item.Path,
 		ExcludeSuffix:  xtractr.AllExcept(archiveTypes...),
@@ -243,7 +243,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 		case item.Status == EXTRACTFAILED && item.NoRetry:
 			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
 			// would bounce a still-completed Starr item back to WAITING.
-		case item.Status == EXTRACTFAILED && elapsed >= u.RetryDelay.Duration &&
+		case item.Status == EXTRACTFAILED && elapsed >= u.applied().RetryDelay &&
 			item.Retries < u.maxRetries():
 			u.Retries++
 			item.Retries++
@@ -350,7 +350,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
 	case remnants:
-		if remnantAction(u.RemnantAction) == "off" {
+		if remnantAction(u.applied().RemnantAction) == "off" {
 			item.NoRetry = true
 		}
 

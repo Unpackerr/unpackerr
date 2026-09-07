@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -82,6 +83,7 @@ type Unpackerr struct {
 	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
 	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
 	configMu         sync.RWMutex // fileConfig, live Starr/folder/hook slices, and Starr Queue pointers
+	rtGeneral        atomic.Pointer[appliedGeneral]
 	workThreadMu     sync.Mutex
 	workThreads      int
 	hookOnce         sync.Once
@@ -451,11 +453,12 @@ func (u *Unpackerr) Run() {
 }
 
 func (u *Unpackerr) maxRetries() uint {
-	if u.MaxRetries == 0 {
+	n := u.applied().MaxRetries
+	if n == 0 {
 		return defaultMaxRetries
 	}
 
-	return u.MaxRetries
+	return n
 }
 
 var errInvalidMaxBytes = errors.New("invalid max_bytes")

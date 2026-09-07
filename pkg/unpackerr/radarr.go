@@ -72,7 +72,7 @@ func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
 	u.configMu.Unlock()
 	u.saveQueueMetrics(queue.TotalRecords, start, starr.Radarr, server.URL, nil)
 
-	if !u.Activity || queue.TotalRecords > 0 {
+	if !u.applied().Activity || queue.TotalRecords > 0 {
 		u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
 	}
 }

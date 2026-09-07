@@ -475,6 +475,10 @@ func (u *Unpackerr) cloneStoredFileWebserver() *WebServer {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
+	return u.fileWebserverLocked()
+}
+
+func (u *Unpackerr) fileWebserverLocked() *WebServer {
 	if u.fileConfig == nil || u.fileConfig.Webserver == nil {
 		return nil
 	}

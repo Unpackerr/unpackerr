@@ -111,7 +111,9 @@ func (u *Unpackerr) startWebServer() {
 	u.setupAdminAPIKey()
 	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
-	if err := u.Webserver.validateURLBase(); err != nil {
+
+	err := u.Webserver.validateURLBase()
+	if err != nil {
 		u.Errorf("Web Server Failed: %v", err)
 		return
 	}

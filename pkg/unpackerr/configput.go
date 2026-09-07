@@ -274,6 +274,7 @@ func generalRestartRequired(cur, next *Config) bool {
 		next.DeleteDelay != cur.DeleteDelay
 }
 
+//nolint:funlen // break it up more one day.
 func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 	var next WebServer
 	if err := unmarshalObject(raw, &next); err != nil {

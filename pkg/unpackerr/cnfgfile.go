@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -139,7 +140,15 @@ func configFileLocactions() (string, []string) {
 }
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
-func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
+func (u *Unpackerr) validateConfig() (uint64, uint64) {
+	return u.clampConfig()
+}
+
+func (u *Unpackerr) clampConfig() (uint64, uint64) { //nolint:cyclop
+	if u.KeepHistory != 0 && len(u.Items) == 0 {
+		u.Items = make([]string, min(u.KeepHistory, trayHistory))
+	}
+
 	if u.DeleteDelay.Duration > 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
@@ -196,10 +205,6 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.LogFile = filepath.Join("~", ".unpackerr", "unpackerr.log")
 	}
 
-	if u.KeepHistory != 0 {
-		u.Items = make([]string, min(u.KeepHistory, trayHistory))
-	}
-
 	return fileMode, dirMode
 }
 
@@ -244,23 +249,30 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 
 // writeConfigFile atomically rewrites the active config file from the on-disk snapshot.
 func (u *Unpackerr) writeConfigFile() error {
+	u.configMu.Lock()
+	defer u.configMu.Unlock()
+
+	return u.writeConfigFrom(u.fileConfig)
+}
+
+func (u *Unpackerr) writeConfigFrom(cfg *Config) error {
 	if strings.TrimSpace(u.ConfigFile) == "" {
 		return errNoConfigFile
 	}
 
 	schema, err := configdef.Load()
 	if err != nil {
-		return fmt.Errorf("definitions: %w", err)
+		return fmt.Errorf("%w: %w", errPersistConfig, err)
 	}
 
-	if u.fileConfig == nil {
+	if cfg == nil {
 		return errNoFileSnapshot
 	}
 
-	body := schema.RenderTOML(u.fileConfig, configdef.RenderOpts{Mode: configdef.RenderLive})
+	body := schema.RenderTOML(cfg, configdef.RenderOpts{Mode: configdef.RenderLive})
 
 	if err := configdef.AtomicWrite(u.ConfigFile, []byte(body)); err != nil {
-		return fmt.Errorf("writing config file: %w", err)
+		return fmt.Errorf("%w: %w", errPersistConfig, err)
 	}
 
 	return nil
@@ -285,7 +297,12 @@ func (u *Unpackerr) snapshotFileConfig() {
 }
 
 func (u *Unpackerr) syncFileUIPassword() {
-	if u.fileConfig == nil || u.Webserver == nil {
+	pass := u.uiPassword()
+
+	u.configMu.Lock()
+	defer u.configMu.Unlock()
+
+	if u.fileConfig == nil {
 		return
 	}
 
@@ -293,12 +310,13 @@ func (u *Unpackerr) syncFileUIPassword() {
 		u.fileConfig.Webserver = &WebServer{}
 	}
 
-	u.uiPassMu.Lock()
-	u.fileConfig.Webserver.UIPassword = u.Webserver.UIPassword
-	u.uiPassMu.Unlock()
+	u.fileConfig.Webserver.UIPassword = pass
 }
 
 func (u *Unpackerr) appendFileAPIKey(key APIKey) {
+	u.configMu.Lock()
+	defer u.configMu.Unlock()
+
 	if u.fileConfig == nil {
 		return
 	}
@@ -316,14 +334,10 @@ func (u *Unpackerr) snapshotLivePasswords() {
 	copy(u.livePasswords, u.Passwords)
 }
 
-// This function checks if rar passwords need to be read from a file path.
-// Only runs once at startup to load passwords into memory.
-func (u *Unpackerr) setPasswords() error {
-	u.snapshotLivePasswords()
-
+func expandPasswords(passwords StringSlice) (StringSlice, error) {
 	newPasswords := []string{}
 
-	for _, pass := range u.Passwords {
+	for _, pass := range passwords {
 		if !strings.HasPrefix(pass, filePrefix) {
 			newPasswords = append(newPasswords, pass)
 			continue
@@ -331,7 +345,7 @@ func (u *Unpackerr) setPasswords() error {
 
 		fileContent, err := os.ReadFile(strings.TrimPrefix(pass, filePrefix))
 		if err != nil {
-			return fmt.Errorf("reading password file: %w", err)
+			return nil, fmt.Errorf("reading password file: %w", err)
 		}
 
 		filePasswords := strings.Split(string(fileContent), "\n")
@@ -343,7 +357,20 @@ func (u *Unpackerr) setPasswords() error {
 		newPasswords = append(newPasswords, filePasswords...)
 	}
 
-	u.Passwords = newPasswords
+	return newPasswords, nil
+}
+
+// This function checks if rar passwords need to be read from a file path.
+// Only runs once at startup to load passwords into memory.
+func (u *Unpackerr) setPasswords() error {
+	u.snapshotLivePasswords()
+
+	expanded, err := expandPasswords(u.Passwords)
+	if err != nil {
+		return err
+	}
+
+	u.Passwords = expanded
 
 	return nil
 }
@@ -393,7 +420,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
 	}
 
-	if conf.Path != "" {
+	if conf.Path != "" && !slices.Contains(conf.Paths, conf.Path) {
 		conf.Paths = append(conf.Paths, conf.Path)
 	}
 

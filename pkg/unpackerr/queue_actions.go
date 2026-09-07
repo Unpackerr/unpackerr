@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -15,25 +14,10 @@ import (
 
 const maxActionBody = 4096
 
-type queueActionKind byte
-
-const (
-	queueRetry queueActionKind = iota + 1
-	queueForget
-)
-
-type queueAction struct {
-	kind   queueActionKind
-	id     string
-	errFn  func() error
-	result chan error
-}
-
 var (
 	errQueueNotFound       = errors.New("queue item not found")
 	errQueueNotFailed      = errors.New("queue item is not extractfailed")
 	errQueueNotForgettable = errors.New("queue item is still in progress")
-	errUnknownQueueAction  = errors.New("unknown queue action")
 	errMissingID           = errors.New("id is required")
 )
 
@@ -75,7 +59,7 @@ func (u *Unpackerr) queueRetryHandler(response http.ResponseWriter, request *htt
 		return
 	}
 
-	if err := u.dispatchQueueAction(request.Context(), queueRetry, itemID); err != nil {
+	if err := u.onMainLoop(request.Context(), func() error { return u.retryQueueID(itemID) }); err != nil {
 		writeQueueActionError(response, err)
 		return
 	}
@@ -89,7 +73,7 @@ func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *ht
 		return
 	}
 
-	if err := u.dispatchQueueAction(request.Context(), queueForget, itemID); err != nil {
+	if err := u.onMainLoop(request.Context(), func() error { return u.forgetQueueID(itemID) }); err != nil {
 		writeQueueActionError(response, err)
 		return
 	}
@@ -98,11 +82,7 @@ func (u *Unpackerr) queueForgetHandler(response http.ResponseWriter, request *ht
 }
 
 func (u *Unpackerr) historyClearHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	if err := u.clearHistory(); err != nil {
-		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-
+	u.clearHistory()
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -113,19 +93,11 @@ func (u *Unpackerr) historyDeleteHandler(response http.ResponseWriter, request *
 	}
 
 	if err := u.deleteHistoryID(itemID); err != nil {
-		writeJSON(response, historyDeleteCode(err), map[string]string{"error": err.Error()})
+		writeJSON(response, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
 
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": itemID})
-}
-
-func historyDeleteCode(err error) int {
-	if errors.Is(err, errHistoryNotFound) {
-		return http.StatusNotFound
-	}
-
-	return http.StatusInternalServerError
 }
 
 func writeQueueActionError(response http.ResponseWriter, err error) {
@@ -141,51 +113,7 @@ func writeQueueActionError(response http.ResponseWriter, err error) {
 	}
 }
 
-func (u *Unpackerr) dispatchQueueAction(ctx context.Context, kind queueActionKind, id string) error {
-	action := &queueAction{kind: kind, id: id, errFn: ctx.Err, result: make(chan error, 1)}
-
-	select {
-	case u.queueActChan <- action:
-	case <-ctx.Done():
-		return fmt.Errorf("queue action: %w", ctx.Err())
-	}
-
-	select {
-	case err := <-action.result:
-		return err
-	case <-ctx.Done():
-		return fmt.Errorf("queue action: %w", ctx.Err())
-	}
-}
-
-func (u *Unpackerr) runQueueActions(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case action := <-u.queueActChan:
-			action.result <- u.applyQueueAction(action)
-		}
-	}
-}
-
-func (u *Unpackerr) applyQueueAction(action *queueAction) error {
-	if action.errFn != nil {
-		if err := action.errFn(); err != nil {
-			return fmt.Errorf("queue action: %w", err)
-		}
-	}
-
-	switch action.kind {
-	case queueRetry:
-		return u.retryQueueID(action.id)
-	case queueForget:
-		return u.forgetQueueID(action.id)
-	default:
-		return errUnknownQueueAction
-	}
-}
-
+// retryQueueID runs on the main loop; History.mu covers the HTTP readers of Map.
 func (u *Unpackerr) retryQueueID(itemID string) error {
 	now := time.Now()
 
@@ -215,12 +143,8 @@ func (u *Unpackerr) retryQueueID(itemID string) error {
 }
 
 func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Time) error {
-	if u.folders == nil {
-		return errQueueNotFound
-	}
-
 	folder, ok := u.folders.Folders[itemID]
-	if !ok || folder == nil {
+	if !ok {
 		return errQueueNotFound
 	}
 
@@ -257,11 +181,9 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 		u.forgotten[itemID] = struct{}{}
 	}
 
-	if u.folders != nil {
-		if _, exists := u.folders.Folders[itemID]; exists {
-			u.folders.Remove(itemID)
-			delete(u.folders.Folders, itemID)
-		}
+	if _, exists := u.folders.Folders[itemID]; exists {
+		u.folders.Remove(itemID)
+		delete(u.folders.Folders, itemID)
 	}
 
 	return nil

@@ -1,18 +1,59 @@
 package unpackerr
 
-func cloneConfig(src *Config) *Config {
-	if src == nil {
-		return nil
-	}
+import (
+	"golift.io/starr/lidarr"
+	"golift.io/starr/radarr"
+	"golift.io/starr/readarr"
+	"golift.io/starr/sonarr"
+)
 
+// starrApp is what putStarrList and the clone/carry helpers need from each
+// Starr config type. P is the pointer type (*SonarrConfig), T the struct.
+type starrApp[T any] interface {
+	*T
+	conf() *StarrConfig
+	connect()         // build the API client from conf.
+	takeQueue(old *T) // keep the last polled queue from a matching old entry.
+	stripRuntime()    // nil the queue and client on a file-shaped clone.
+}
+
+func (s *SonarrConfig) conf() *StarrConfig { return &s.StarrConfig }
+func (s *SonarrConfig) connect()           { s.Sonarr = sonarr.New(&s.Config) }
+func (s *SonarrConfig) takeQueue(o *SonarrConfig) {
+	s.Queue = o.Queue
+}
+func (s *SonarrConfig) stripRuntime() { s.Queue, s.Sonarr = nil, nil }
+
+func (r *RadarrConfig) conf() *StarrConfig { return &r.StarrConfig }
+func (r *RadarrConfig) connect()           { r.Radarr = radarr.New(&r.Config) }
+func (r *RadarrConfig) takeQueue(o *RadarrConfig) {
+	r.Queue = o.Queue
+}
+func (r *RadarrConfig) stripRuntime() { r.Queue, r.Radarr = nil, nil }
+
+func (l *LidarrConfig) conf() *StarrConfig { return &l.StarrConfig }
+func (l *LidarrConfig) connect()           { l.Lidarr = lidarr.New(&l.Config) }
+func (l *LidarrConfig) takeQueue(o *LidarrConfig) {
+	l.Queue = o.Queue
+}
+func (l *LidarrConfig) stripRuntime() { l.Queue, l.Lidarr = nil, nil }
+
+func (r *ReadarrConfig) conf() *StarrConfig { return &r.StarrConfig }
+func (r *ReadarrConfig) connect()           { r.Readarr = readarr.New(&r.Config) }
+func (r *ReadarrConfig) takeQueue(o *ReadarrConfig) {
+	r.Queue = o.Queue
+}
+func (r *ReadarrConfig) stripRuntime() { r.Queue, r.Readarr = nil, nil }
+
+func cloneConfig(src *Config) *Config {
 	dst := *src
 	dst.Passwords = append(StringSlice(nil), src.Passwords...)
 	dst.Webserver = cloneWebserver(src.Webserver)
-	dst.Lidarr = cloneLidarrList(src.Lidarr)
-	dst.Radarr = cloneRadarrList(src.Radarr)
-	dst.Whisparr = cloneRadarrList(src.Whisparr)
-	dst.Readarr = cloneReadarrList(src.Readarr)
-	dst.Sonarr = cloneSonarrList(src.Sonarr)
+	dst.Lidarr = cloneStarrList(src.Lidarr)
+	dst.Radarr = cloneStarrList(src.Radarr)
+	dst.Whisparr = cloneStarrList(src.Whisparr)
+	dst.Readarr = cloneStarrList(src.Readarr)
+	dst.Sonarr = cloneStarrList(src.Sonarr)
 	dst.Folders = cloneFolderList(src.Folders)
 	dst.Webhook = cloneHookList(src.Webhook)
 	dst.Cmdhook = cloneHookList(src.Cmdhook)
@@ -67,92 +108,21 @@ func cloneRoles(src map[string]Role) map[string]Role {
 	return out
 }
 
-func cloneStarrConfig(src StarrConfig) StarrConfig {
-	dst := src
-	dst.Paths = append(StringSlice(nil), src.Paths...)
-
-	return dst
-}
-
-func cloneLidarrList(src []*LidarrConfig) []*LidarrConfig {
+// cloneStarrList copies a Starr list into its file shape: config only,
+// no queue, no client. Nil in, nil out so the TOML writer omits the table.
+func cloneStarrList[T any, P starrApp[T]](src []P) []P {
 	if src == nil {
 		return nil
 	}
 
-	out := make([]*LidarrConfig, len(src))
+	out := make([]P, len(src))
+
 	for idx, app := range src {
-		if app == nil {
-			continue
-		}
-
 		cloned := *app
-		cloned.StarrConfig = cloneStarrConfig(app.StarrConfig)
-		cloned.Queue = nil
-		cloned.Lidarr = nil
 		out[idx] = &cloned
-	}
 
-	return out
-}
-
-func cloneRadarrList(src []*RadarrConfig) []*RadarrConfig {
-	if src == nil {
-		return nil
-	}
-
-	out := make([]*RadarrConfig, len(src))
-	for idx, app := range src {
-		if app == nil {
-			continue
-		}
-
-		cloned := *app
-		cloned.StarrConfig = cloneStarrConfig(app.StarrConfig)
-		cloned.Queue = nil
-		cloned.Radarr = nil
-		out[idx] = &cloned
-	}
-
-	return out
-}
-
-func cloneReadarrList(src []*ReadarrConfig) []*ReadarrConfig {
-	if src == nil {
-		return nil
-	}
-
-	out := make([]*ReadarrConfig, len(src))
-	for idx, app := range src {
-		if app == nil {
-			continue
-		}
-
-		cloned := *app
-		cloned.StarrConfig = cloneStarrConfig(app.StarrConfig)
-		cloned.Queue = nil
-		cloned.Readarr = nil
-		out[idx] = &cloned
-	}
-
-	return out
-}
-
-func cloneSonarrList(src []*SonarrConfig) []*SonarrConfig {
-	if src == nil {
-		return nil
-	}
-
-	out := make([]*SonarrConfig, len(src))
-	for idx, app := range src {
-		if app == nil {
-			continue
-		}
-
-		cloned := *app
-		cloned.StarrConfig = cloneStarrConfig(app.StarrConfig)
-		cloned.Queue = nil
-		cloned.Sonarr = nil
-		out[idx] = &cloned
+		out[idx].conf().Paths = append(StringSlice(nil), app.conf().Paths...)
+		out[idx].stripRuntime()
 	}
 
 	return out
@@ -165,10 +135,6 @@ func cloneFolderList(src []*FolderConfig) []*FolderConfig {
 
 	out := make([]*FolderConfig, len(src))
 	for idx, folder := range src {
-		if folder == nil {
-			continue
-		}
-
 		cloned := *folder
 		if folder.DeleteAfter != nil {
 			dur := *folder.DeleteAfter
@@ -182,6 +148,7 @@ func cloneFolderList(src []*FolderConfig) []*FolderConfig {
 	return out
 }
 
+// cloneHookList copies hooks without the mutex, counters, client, or template.
 func cloneHookList(src []*WebhookConfig) []*WebhookConfig {
 	if src == nil {
 		return nil
@@ -189,11 +156,7 @@ func cloneHookList(src []*WebhookConfig) []*WebhookConfig {
 
 	out := make([]*WebhookConfig, len(src))
 	for idx, hook := range src {
-		if hook == nil {
-			continue
-		}
-
-		cloned := &WebhookConfig{
+		out[idx] = &WebhookConfig{
 			Name:      hook.Name,
 			URL:       hook.URL,
 			Command:   hook.Command,
@@ -210,7 +173,6 @@ func cloneHookList(src []*WebhookConfig) []*WebhookConfig {
 			Token:     hook.Token,
 			Channel:   hook.Channel,
 		}
-		out[idx] = cloned
 	}
 
 	return out

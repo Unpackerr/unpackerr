@@ -49,22 +49,26 @@ func (u *Unpackerr) updateHistory(item string) {
 	}
 
 	if ui.HasGUI() && item != "" {
-		u.menu[histNone].Hide()
+		if none := u.menu[histNone]; none != nil {
+			none.Hide()
+		}
 	}
 
 	u.Items[0] = item
 
 	// Do not process 0; this isn't an `intrange`.
 	for idx := len(u.Items) - 1; idx > 0; idx-- {
-		// u.History.Items is a slice with a set (identical) length and capacity.
-		switch u.Items[idx] = u.Items[idx-1]; {
-		case !ui.HasGUI():
+		u.Items[idx] = u.Items[idx-1]
+		menu := u.menu[hist+strconv.Itoa(idx)]
+
+		switch {
+		case !ui.HasGUI() || menu == nil:
 			continue
 		case u.Items[idx] != "":
-			u.menu[hist+strconv.Itoa(idx)].SetTitle(u.Items[idx])
-			u.menu[hist+strconv.Itoa(idx)].Show()
+			menu.SetTitle(u.Items[idx])
+			menu.Show()
 		default:
-			u.menu[hist+strconv.Itoa(idx)].Hide()
+			menu.Hide()
 		}
 	}
 }

@@ -16,8 +16,9 @@ func main() {
 		}
 	}()
 
-	if err := unpackerr.Start(); err != nil {
+	err := unpackerr.Start()
+	if err != nil {
 		_, _ = ui.Error("Unpackerr Error", "%v", err)
-		log.Fatalln("[ERROR]", err) //nolint:gocritic
+		log.Fatalln("[ERROR]", err) //nolint:gocritic // defer does not need to run.
 	}
 }

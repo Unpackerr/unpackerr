@@ -1,1 +1,3 @@
+# bindata
+
 The files in this folder are bundled into the compiled application binary.

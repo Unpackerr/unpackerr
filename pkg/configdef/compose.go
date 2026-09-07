@@ -1,4 +1,4 @@
-package main
+package configdef
 
 import (
 	"bytes"
@@ -40,7 +40,8 @@ services:
 
 func createCompose(config *Config, output, dir string) {
 	buf := bytes.Buffer{}
-	buf.WriteString(composeHeader + "\n")
+	buf.WriteString(composeHeader)
+	buf.WriteByte('\n')
 
 	// Loop the 'Order' list.
 	for _, section := range config.Order {
@@ -65,9 +66,14 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 	var buf bytes.Buffer
 
 	if len(h.Params) > 0 && bare {
-		buf.WriteString("## " + h.Title + "\n")
+		buf.WriteString("## ")
+		buf.WriteString(h.Title)
+		buf.WriteByte('\n')
 	} else if len(h.Params) > 0 {
-		buf.WriteString(space + " ## " + h.Title + "\n")
+		buf.WriteString(space)
+		buf.WriteString(" ## ")
+		buf.WriteString(h.Title)
+		buf.WriteByte('\n')
 	}
 
 	pfx := space + " - "
@@ -77,6 +83,10 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 
 	for _, param := range h.Params {
 		if param == nil {
+			continue
+		}
+
+		if param.OmitCompose && !bare {
 			continue
 		}
 
@@ -113,6 +123,8 @@ func (p *Param) Compose(prefix string) string {
 	switch p.Kind {
 	default:
 		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
+	case "map", tables:
+		return ""
 	case list:
 		items, ok := val.([]any)
 		if !ok {

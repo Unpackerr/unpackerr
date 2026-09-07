@@ -8,7 +8,7 @@
   "servers": [
     {
       "url": "/",
-      "description": "This Unpackerr instance (respect urlbase)"
+      "description": "This Unpackerr instance; url is rewritten to the configured urlbase when the spec is served"
     }
   ],
   "tags": [
@@ -49,10 +49,10 @@
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["name", "kdf"],
+        "required": ["kdf"],
         "properties": {
-          "name": {"type": "string", "description": "Username (default admin)"},
-          "kdf": {"type": "string", "description": "PBKDF2-HMAC-SHA-256 hex of the password; never send plaintext"}
+          "name": {"type": "string", "description": "Username; omitted or empty defaults to admin"},
+          "kdf": {"type": "string", "description": "PBKDF2-HMAC-SHA-256(password, salt=\"unpackerr:\"+username, 210000, 32) hex-encoded; never send plaintext"}
         }
       },
       "AuthInfo": {
@@ -163,6 +163,18 @@
       "Forbidden": {
         "description": "Authenticated but missing permission",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "BadRequest": {
+        "description": "Invalid JSON or validation error",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "GatewayTimeout": {
+        "description": "Request canceled or timed out while waiting on the main loop",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "PersistError": {
+        "description": "Failed to persist to disk; live state unchanged",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
       }
     }
   },
@@ -194,7 +206,9 @@
             "description": "Logged in",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthInfo"}}}
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"description": "Password login is disabled (webauth or noauth)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
         }
       }
     },
@@ -258,7 +272,8 @@
       "get": {
         "tags": ["system"],
         "summary": "Prometheus metrics (only registered when metrics = true)",
-        "description": "Requires read:system:metrics. Send Authorization: Bearer or X-Api-Key.",
+        "description": "Requires read:system:metrics. API key only: X-Api-Key or Authorization: Bearer. Session cookies and proxy/webauth are rejected.",
+        "security": [{"apiKey": []}, {"bearer": []}],
         "responses": {
           "200": {
             "description": "Prometheus text",
@@ -300,6 +315,8 @@
           },
           "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "409": {"description": "Not extractfailed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -321,6 +338,8 @@
           },
           "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "409": {"description": "Still in progress", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -356,7 +375,8 @@
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
           "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
-          "500": {"description": "Failed to persist", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -372,7 +392,7 @@
             "description": "Cleared",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
-          "500": {"description": "Failed to persist", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -393,7 +413,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",
@@ -417,8 +437,8 @@
             "description": "Saved",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigWriteReply"}}}
           },
-          "400": {"description": "Validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
-          "500": {"description": "Config file write failed; live state unchanged", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/PersistError"},
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}

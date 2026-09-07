@@ -1,12 +1,8 @@
 package unpackerr
 
 import (
-	"context"
-	"errors"
 	"net/http"
-	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,36 +10,6 @@ import (
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
-
-func TestQueueActionSkipsCanceled(t *testing.T) {
-	t.Parallel()
-
-	unpack := New()
-	unpack.queueActChan = make(chan *queueAction)
-	unpack.Map["/dl/fail"] = &Extract{Path: "/dl/fail", Status: EXTRACTFAILED, NoRetry: true}
-
-	ctx, cancel := context.WithCancel(t.Context())
-	errc := make(chan error, 1)
-
-	go func() {
-		errc <- unpack.dispatchQueueAction(ctx, queueRetry, "/dl/fail")
-	}()
-
-	action := <-unpack.queueActChan
-
-	cancel()
-
-	action.result <- unpack.applyQueueAction(action)
-
-	if err := <-errc; !errors.Is(err, context.Canceled) {
-		t.Fatalf("dispatch %v", err)
-	}
-
-	item := unpack.Map["/dl/fail"]
-	if item.Status != EXTRACTFAILED || item.Retries != 0 {
-		t.Fatalf("canceled retry applied %+v", item)
-	}
-}
 
 func TestQueueRetryAndForget(t *testing.T) {
 	t.Parallel()
@@ -263,10 +229,6 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
 	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: DELETED, Updated: time.Now()})
 
-	if err := os.WriteFile(unpack.histPath+".bak", []byte(`{"id":"stale"}`+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
 	}
@@ -281,10 +243,6 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 		t.Fatalf("after delete %+v", left)
 	}
 
-	if _, err := os.Stat(unpack.histPath + ".bak"); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("history bak: %v", err)
-	}
-
 	cleared := doAuth(t, unpack, http.MethodPost, "/api/history/clear", "", withKey)
 	if cleared.Code != http.StatusOK {
 		t.Fatalf("clear %d", cleared.Code)
@@ -292,61 +250,6 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 
 	if len(unpack.historySnapshot()) != 0 {
 		t.Fatal("history not cleared")
-	}
-}
-
-func TestHistoryWriteFailureRestores(t *testing.T) {
-	t.Parallel()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("unix directory permissions")
-	}
-
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory permissions")
-	}
-
-	unpack := testAuthUnpackerr(t)
-	unpack.KeepHistory = 10
-
-	dir := t.TempDir()
-
-	sub := filepath.Join(dir, "hist")
-	if err := os.Mkdir(sub, 0o700); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack.histPath = filepath.Join(sub, historyFileName)
-	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
-	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: DELETED, Updated: time.Now()})
-
-	if err := os.Chmod(sub, 0o555); err != nil { //nolint:gosec // need a read-only dir
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { _ = os.Chmod(sub, 0o755) }) //nolint:gosec // restore after the read-only test
-
-	withKey := func(req *http.Request) {
-		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
-	}
-
-	del := doAuth(t, unpack, http.MethodPost, "/api/history/delete", `{"id":"a"}`, withKey)
-	if del.Code != http.StatusInternalServerError {
-		t.Fatalf("delete fail %d %s", del.Code, del.Body.String())
-	}
-
-	left := unpack.historySnapshot()
-	if len(left) != 2 {
-		t.Fatalf("delete should restore %+v", left)
-	}
-
-	cleared := doAuth(t, unpack, http.MethodPost, "/api/history/clear", "", withKey)
-	if cleared.Code != http.StatusInternalServerError {
-		t.Fatalf("clear fail %d %s", cleared.Code, cleared.Body.String())
-	}
-
-	if len(unpack.historySnapshot()) != 2 {
-		t.Fatal("clear should restore")
 	}
 }
 

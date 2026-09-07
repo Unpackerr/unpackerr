@@ -409,67 +409,6 @@ func TestAtomicWriteBackup(t *testing.T) {
 	}
 }
 
-func TestAtomicReplaceNoBackup(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "unpackerr.history.jsonl")
-
-	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := AtomicReplace(path, []byte("new\n")); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if string(got) != "new\n" {
-		t.Fatalf("got %q", got)
-	}
-
-	if _, err := os.Stat(path + ".bak"); !os.IsNotExist(err) {
-		t.Fatalf("backup should not exist: %v", err)
-	}
-}
-
-func TestAtomicReplaceRemovesStaleBackup(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "unpackerr.history.jsonl")
-	bak := path + ".bak"
-
-	if err := os.WriteFile(path, []byte("keep-me\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := os.WriteFile(bak, []byte("drop-me\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := AtomicReplace(path, []byte("new\n")); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if string(got) != "new\n" {
-		t.Fatalf("got %q", got)
-	}
-
-	if _, err := os.Stat(bak); !os.IsNotExist(err) {
-		t.Fatalf("stale backup should not exist: %v", err)
-	}
-}
-
 func MustLoad(t *testing.T) *Config {
 	t.Helper()
 

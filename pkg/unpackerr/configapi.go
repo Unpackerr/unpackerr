@@ -72,7 +72,13 @@ func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http
 		return
 	}
 
-	writeConfigSection(response, u.fileConfigOrLive(), section)
+	// fileConfig is snapshotted in unmarshalConfig whether or not a file was found.
+	u.configMu.RLock()
+	cfg := cloneConfig(u.fileConfig)
+	u.configMu.RUnlock()
+
+	payload := configSectionFrom(cfg, section)
+	writeJSON(response, http.StatusOK, payload)
 }
 
 func (u *Unpackerr) configGetLiveHandler(
@@ -86,64 +92,56 @@ func (u *Unpackerr) configGetLiveHandler(
 		return
 	}
 
-	if section == SectionGeneral {
-		writeJSON(response, http.StatusOK, u.liveGeneralConfig())
-		return
-	}
+	// Live Config belongs to the main loop; snapshot it there.
+	var payload any
 
-	writeConfigSection(response, u.Config, section)
-}
+	err := u.onMainLoop(request.Context(), func() error {
+		if section == SectionGeneral {
+			payload = u.liveGeneralConfig()
+			return nil
+		}
 
-func (u *Unpackerr) fileConfigOrLive() *Config {
-	if u.fileConfig != nil {
-		return u.fileConfig
-	}
+		payload = configSectionFrom(cloneConfig(u.Config), section)
 
-	return u.Config
-}
-
-func writeConfigSection(response http.ResponseWriter, cfg *Config, section ConfigSection) {
-	payload, ok := configSectionFrom(cfg, section)
-	if !ok {
-		writeJSON(response, http.StatusNotFound, map[string]string{"error": "unknown section"})
+		return nil
+	})
+	if err != nil {
+		writeJSON(response, http.StatusGatewayTimeout, map[string]string{"error": err.Error()})
 		return
 	}
 
 	writeJSON(response, http.StatusOK, payload)
 }
 
-func configSectionFrom(cfg *Config, section ConfigSection) (any, bool) {
-	if cfg == nil {
-		return nil, false
-	}
-
+// configSectionFrom picks one section. requireConfigPerm already 404s unknown names.
+func configSectionFrom(cfg *Config, section ConfigSection) any {
 	switch section {
 	case SectionGeneral:
-		return generalConfigFrom(cfg), true
+		return generalConfigFrom(cfg)
 	case SectionWebserver:
 		if cfg.Webserver == nil {
-			return &WebServer{}, true
+			return &WebServer{}
 		}
 
-		return cfg.Webserver, true
+		return cfg.Webserver
 	case SectionSonarr:
-		return emptyIfNil(cfg.Sonarr), true
+		return emptyIfNil(cfg.Sonarr)
 	case SectionRadarr:
-		return emptyIfNil(cfg.Radarr), true
+		return emptyIfNil(cfg.Radarr)
 	case SectionLidarr:
-		return emptyIfNil(cfg.Lidarr), true
+		return emptyIfNil(cfg.Lidarr)
 	case SectionReadarr:
-		return emptyIfNil(cfg.Readarr), true
+		return emptyIfNil(cfg.Readarr)
 	case SectionWhisparr:
-		return emptyIfNil(cfg.Whisparr), true
+		return emptyIfNil(cfg.Whisparr)
 	case SectionFolders:
-		return foldersConfigFrom(cfg), true
+		return foldersConfigFrom(cfg)
 	case SectionWebhooks:
-		return emptyIfNil(cfg.Webhook), true
+		return emptyIfNil(cfg.Webhook)
 	case SectionCmdhooks:
-		return emptyIfNil(cfg.Cmdhook), true
+		return emptyIfNil(cfg.Cmdhook)
 	default:
-		return nil, false
+		return nil
 	}
 }
 

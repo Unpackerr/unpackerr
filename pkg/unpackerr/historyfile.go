@@ -11,19 +11,17 @@ import (
 	"path/filepath"
 	"slices"
 	"time"
-
-	"github.com/Unpackerr/unpackerr/pkg/configdef"
 )
 
 const (
 	historyFileName = "unpackerr.history.jsonl"
-	historyScanMax  = 1024 * 1024
+	historyFileMode = 0o600
+	// historyCompactFactor: rewrite the file once appended lines exceed this
+	// many times keep_history, so the on-disk log stays bounded.
+	historyCompactFactor = 2
 )
 
-var (
-	errHistoryLineTooLong = errors.New("history line exceeds maximum")
-	errHistoryNotFound    = errors.New("not found")
-)
+var errHistoryNotFound = errors.New("not found")
 
 // HistoryRecord is one completed or failed pipeline item (JSONL + API).
 type HistoryRecord struct {
@@ -91,114 +89,100 @@ func (u *Unpackerr) loadHistory() {
 	}
 
 	if u.histPath == "" {
-		u.Printf("[Unpackerr] History file disabled; keep_history=%d but no log, config, or home path", u.KeepHistory)
+		u.Printf("[Unpackerr] History file disabled; keep_history=%d but no log, config, or home path",
+			u.KeepHistory)
 
 		return
 	}
 
-	records := u.readHistoryRecords()
-	trimmed := false
-
-	if limit := int(u.KeepHistory); limit > 0 && len(records) > limit {
-		records = records[len(records)-limit:]
-		trimmed = true
-	}
+	lines, records := u.readHistoryRecords()
 
 	u.histMu.Lock()
-	u.records = records
+	defer u.histMu.Unlock()
 
-	if trimmed {
-		if err := u.writeHistoryLocked(); err != nil {
-			u.Errorf("Writing history file: %v", err)
+	u.records = u.capHistoryLocked(mergeHistory(nil, records...))
+	u.histLines = lines
+
+	// The file is append-only; fold duplicates and over-cap rows on startup.
+	if lines != len(u.records) {
+		if err := u.compactHistoryLocked(); err != nil {
+			u.Errorf("Compacting history file: %v", err)
 		}
 	}
-
-	u.histMu.Unlock()
 }
 
-func (u *Unpackerr) readHistoryRecords() []HistoryRecord {
+// readHistoryRecords returns the line count and every parseable record, in file
+// order. This is a file we write ourselves; bad lines are skipped, not fatal.
+func (u *Unpackerr) readHistoryRecords() (int, []HistoryRecord) {
 	file, err := os.Open(u.histPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			u.Errorf("Opening history file: %v", err)
 		}
 
-		return nil
+		return 0, nil
 	}
-
 	defer file.Close()
 
-	reader := bufio.NewReader(file)
-
-	var records []HistoryRecord
+	var (
+		reader  = bufio.NewReader(file)
+		records []HistoryRecord
+		lines   int
+	)
 
 	for {
-		line, readErr := readBoundedLine(reader, historyScanMax)
-		switch {
-		case errors.Is(readErr, errHistoryLineTooLong):
-			u.Errorf("Skipping oversized history line")
-		case errors.Is(readErr, io.EOF):
-			return u.appendHistoryLine(records, line)
-		case readErr != nil:
-			u.Errorf("Reading history file: %v", readErr)
+		line, err := reader.ReadBytes('\n')
+		if len(bytes.TrimSpace(line)) > 0 {
+			lines++
 
-			return records
-		default:
-			records = u.appendHistoryLine(records, line)
+			var rec HistoryRecord
+			if jsonErr := json.Unmarshal(line, &rec); jsonErr != nil {
+				u.Errorf("Skipping bad history line: %v", jsonErr)
+			} else {
+				records = append(records, rec)
+			}
+		}
+
+		if errors.Is(err, io.EOF) {
+			return lines, records
+		} else if err != nil {
+			u.Errorf("Reading history file: %v", err)
+			return lines, records
 		}
 	}
 }
 
-func (u *Unpackerr) appendHistoryLine(records []HistoryRecord, line []byte) []HistoryRecord {
-	line = bytes.TrimSpace(line)
-	if len(line) == 0 {
-		return records
+// mergeHistory upserts recs onto list by ID, keeping the earliest Started.
+func mergeHistory(list []HistoryRecord, recs ...HistoryRecord) []HistoryRecord {
+	for _, rec := range recs {
+		if rec.ID == "" {
+			rec.ID = rec.Path
+		}
+
+		if idx := slices.IndexFunc(list, func(r HistoryRecord) bool { return r.ID == rec.ID }); idx >= 0 {
+			if rec.Started.IsZero() {
+				rec.Started = list[idx].Started
+			}
+
+			list = slices.Delete(list, idx, idx+1)
+		}
+
+		list = append(list, rec)
 	}
 
-	var rec HistoryRecord
-	if err := json.Unmarshal(line, &rec); err != nil {
-		u.Errorf("Skipping bad history line: %v", err)
-
-		return records
-	}
-
-	return append(records, rec)
+	return list
 }
 
-func readBoundedLine(reader *bufio.Reader, maxLen int) ([]byte, error) {
-	var line []byte
-
-	for {
-		chunk, err := reader.ReadSlice('\n')
-		if len(line)+len(chunk) > maxLen {
-			for errors.Is(err, bufio.ErrBufferFull) {
-				_, err = reader.ReadSlice('\n')
-			}
-
-			if err == nil || errors.Is(err, io.EOF) {
-				return nil, errHistoryLineTooLong
-			}
-
-			return nil, fmt.Errorf("reading history line: %w", err)
-		}
-
-		line = append(line, chunk...)
-
-		switch {
-		case errors.Is(err, bufio.ErrBufferFull):
-			continue
-		case err == nil:
-			return bytes.TrimSpace(line), nil
-		case errors.Is(err, io.EOF):
-			return bytes.TrimSpace(line), io.EOF
-		default:
-			return nil, fmt.Errorf("reading history line: %w", err)
-		}
+func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
+	if limit := int(u.KeepHistory); limit > 0 && len(list) > limit {
+		return list[len(list)-limit:]
 	}
+
+	return list
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
-	if item == nil || u.KeepHistory == 0 || !item.Status.isDurableHistory() {
+	if u.KeepHistory == 0 || !item.Status.isDurableHistory() {
 		return
 	}
 
@@ -255,43 +239,49 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 	return rec
 }
 
+// upsertHistory records one durable transition: update memory, append one
+// line. The file is compacted only when appends outgrow the cap.
 func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
-	if rec.ID == "" {
-		rec.ID = rec.Path
-	}
-
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
-	found := -1
+	u.records = u.capHistoryLocked(mergeHistory(u.records, rec))
 
-	for idx := range u.records {
-		if u.records[idx].ID == rec.ID {
-			found = idx
-			if rec.Started.IsZero() {
-				rec.Started = u.records[idx].Started
-			}
+	if u.histPath == "" {
+		return
+	}
 
-			break
+	if limit := int(u.KeepHistory); limit > 0 && u.histLines >= limit*historyCompactFactor {
+		if err := u.compactHistoryLocked(); err != nil {
+			u.Errorf("Compacting history file: %v", err)
 		}
+
+		return
 	}
 
-	if found >= 0 {
-		u.records = append(u.records[:found], u.records[found+1:]...)
+	line, err := json.Marshal(u.records[len(u.records)-1])
+	if err != nil {
+		u.Errorf("Encoding history: %v", err)
+		return
 	}
 
-	u.records = append(u.records, rec)
-
-	if limit := int(u.KeepHistory); limit > 0 && len(u.records) > limit {
-		u.records = u.records[len(u.records)-limit:]
+	file, err := os.OpenFile(u.histPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, historyFileMode)
+	if err != nil {
+		u.Errorf("Opening history file: %v", err)
+		return
 	}
+	defer file.Close()
 
-	if err := u.writeHistoryLocked(); err != nil {
+	if _, err := file.Write(append(line, '\n')); err != nil {
 		u.Errorf("Writing history file: %v", err)
+		return
 	}
+
+	u.histLines++
 }
 
-func (u *Unpackerr) writeHistoryLocked() error {
+// compactHistoryLocked rewrites the file from memory: one line per record.
+func (u *Unpackerr) compactHistoryLocked() error {
 	if u.histPath == "" {
 		return nil
 	}
@@ -299,16 +289,19 @@ func (u *Unpackerr) writeHistoryLocked() error {
 	var buf bytes.Buffer
 
 	enc := json.NewEncoder(&buf)
-
 	for idx := range u.records {
-		if err := enc.Encode(u.records[idx]); err != nil {
-			return fmt.Errorf("encoding history: %w", err)
-		}
+		_ = enc.Encode(u.records[idx]) //nolint:errchkjson // ExtractStatus has a MarshalText that cannot fail.
 	}
 
-	if err := configdef.AtomicReplace(u.histPath, buf.Bytes()); err != nil {
+	if err := os.MkdirAll(filepath.Dir(u.histPath), logsDirMode); err != nil {
+		return fmt.Errorf("making history dir: %w", err)
+	}
+
+	if err := os.WriteFile(u.histPath, buf.Bytes(), historyFileMode); err != nil {
 		return fmt.Errorf("writing history file: %w", err)
 	}
+
+	u.histLines = len(u.records)
 
 	return nil
 }
@@ -367,41 +360,21 @@ func (u *Unpackerr) deleteHistoryID(itemID string) error {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
-	found := -1
-
-	for idx := range u.records {
-		if u.records[idx].ID == itemID {
-			found = idx
-			break
-		}
-	}
-
-	if found < 0 {
+	idx := slices.IndexFunc(u.records, func(r HistoryRecord) bool { return r.ID == itemID })
+	if idx < 0 {
 		return errHistoryNotFound
 	}
 
-	saved := u.records[found]
-	u.records = slices.Delete(u.records, found, found+1)
+	u.records = slices.Delete(u.records, idx, idx+1)
 
-	if err := u.writeHistoryLocked(); err != nil {
-		u.records = slices.Insert(u.records, found, saved)
-		return err
-	}
-
-	return nil
+	return u.compactHistoryLocked()
 }
 
 func (u *Unpackerr) clearHistory() error {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
-	saved := u.records
 	u.records = nil
 
-	if err := u.writeHistoryLocked(); err != nil {
-		u.records = saved
-		return err
-	}
-
-	return nil
+	return u.compactHistoryLocked()
 }

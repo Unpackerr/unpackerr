@@ -145,7 +145,7 @@ func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler
 			return
 		}
 
-		perms := u.Webserver.PermissionsForKey(key)
+		perms := u.webPermissionsForKey(key)
 		if perms == nil {
 			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 
@@ -168,18 +168,37 @@ func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
 		return authInfo{}, false
 	}
 
+	u.uiPassMu.RLock()
 	perms := u.Webserver.PermissionsForKey(key)
+	name := u.Webserver.keyName(key)
+	pass := u.Webserver.UIPassword
+	u.uiPassMu.RUnlock()
+
 	if perms == nil {
 		return authInfo{}, false
 	}
 
 	return authInfo{
-		Username:    u.Webserver.keyName(key),
+		Username:    name,
 		APIKey:      key,
-		Auth:        u.uiPassword().Type().String(),
+		Auth:        pass.Type().String(),
 		Via:         "key",
 		Permissions: perms,
 	}, true
+}
+
+func (u *Unpackerr) webPermissionsForKey(key string) []string {
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.PermissionsForKey(key)
+}
+
+func (u *Unpackerr) webAllowContains(addr string) bool {
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.allow.Contains(addr)
 }
 
 func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
@@ -222,8 +241,12 @@ func requestBearer(request *http.Request) string {
 }
 
 func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
-	pass := u.uiPassword()
-	if !pass.Webauth() || !u.Webserver.allow.Contains(request.RemoteAddr) {
+	u.uiPassMu.RLock()
+	pass := u.Webserver.UIPassword
+	allowed := u.Webserver.allow.Contains(request.RemoteAddr)
+	u.uiPassMu.RUnlock()
+
+	if !pass.Webauth() || !allowed {
 		return authInfo{}, false
 	}
 
@@ -241,11 +264,14 @@ func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
 }
 
 func (u *Unpackerr) sessionAuth(user string) authInfo {
-	pass := u.uiPassword()
+	u.uiPassMu.RLock()
+	pass := u.Webserver.UIPassword
+	admin := u.Webserver.adminAPIKey()
+	u.uiPassMu.RUnlock()
 
 	info := authInfo{
 		Username:    user,
-		APIKey:      u.Webserver.adminAPIKey(),
+		APIKey:      admin,
 		Auth:        pass.Type().String(),
 		Via:         "session",
 		Permissions: AllPermissions(),
@@ -338,7 +364,7 @@ func (u *Unpackerr) trustedForwardedHTTPS(request *http.Request) bool {
 		return false
 	}
 
-	if !u.Webserver.allow.Contains(request.RemoteAddr) {
+	if !u.webAllowContains(request.RemoteAddr) {
 		return false
 	}
 

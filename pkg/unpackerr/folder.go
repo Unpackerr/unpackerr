@@ -93,18 +93,26 @@ type eventData struct {
 }
 
 func (u *Unpackerr) validateFolders() error {
-	for idx := range u.Folders {
-		if u.Folders[idx].DeleteAfter == nil {
+	return validateFolderList(u.Folders)
+}
+
+func validateFolderList(folders []*FolderConfig) error {
+	for idx := range folders {
+		if folders[idx] == nil {
+			return errNilConfigEntry
+		}
+
+		if folders[idx].DeleteAfter == nil {
 			// If delete after wasn't set, then set it to 10 minutes.
-			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
+			folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
 
-		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		n, _, err := parseOptionalMaxBytes(folders[idx].MaxBytes)
 		if err != nil {
-			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
+			return fmt.Errorf("folder %s: %w", folders[idx].Path, err)
 		}
 
-		u.Folders[idx].maxBytes = n
+		folders[idx].maxBytes = n
 	}
 
 	return nil
@@ -154,11 +162,13 @@ func (u *Unpackerr) PollFolders() {
 
 	u.Folders, flist = checkFolders(u.Folders, u.Logger)
 
-	u.folders, err = u.Folder.newWatcher(u.Folders, u.Logger)
+	folders, err := u.Folder.newWatcher(u.Folders, u.Logger)
 	if err != nil {
 		u.Errorf("Watching Folders: %s", err)
 		return
 	}
+
+	u.folders = folders
 	// do not close either watcher.
 
 	if len(u.Folders) == 0 {
@@ -338,7 +348,12 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	u.folders.Folders[name].updated = now
 	u.folders.Folders[name].status = QUEUED
 
-	if u.skipR00WhenRarExists(name, now) {
+	// Do not extract r00 file if rar file with same name exists.
+	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
+		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
+		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
+		u.folders.Folders[name].status = EXTRACTEDNOTHING
+
 		return
 	}
 
@@ -393,24 +408,6 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
-}
-
-// skipR00WhenRarExists records a completed no-op when a .r00 companion is skipped
-// because the matching .rar is already present.
-func (u *Unpackerr) skipR00WhenRarExists(name string, now time.Time) bool {
-	if !strings.HasSuffix(strings.ToLower(name), ".r00") ||
-		!xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
-		return false
-	}
-
-	u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
-	u.folders.Folders[name].status = EXTRACTEDNOTHING
-	u.lockHistory()
-	_ = u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, now, false)
-	u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTEDNOTHING}, now, true)
-	u.unlockHistory()
-
-	return true
 }
 
 // folderExcludeSuffixes returns archive suffixes to ignore when scanning for items to extract.
@@ -763,18 +760,18 @@ func (u *Unpackerr) deleteAfterReached(name string, now time.Time, folder *Folde
 	var webhook bool
 	// Folder reached delete delay (after extraction), nuke it.
 	if folder.config.DeleteFiles && !folder.config.MoveBack {
-		u.delChan <- &fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}}
+		u.queueDelete(&fileDeleteReq{Paths: []string{strings.TrimRight(name, `/\`) + suffix}})
 		webhook = true
 	} else if folder.config.DeleteFiles && len(folder.files) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.files}
+		u.queueDelete(&fileDeleteReq{Paths: folder.files})
 		webhook = true
 	}
 
 	if folder.config.DeleteOrig && !folder.config.MoveBack {
-		u.delChan <- &fileDeleteReq{Paths: []string{name}}
+		u.queueDelete(&fileDeleteReq{Paths: []string{name}})
 		webhook = true
 	} else if folder.config.DeleteOrig && len(folder.archives) > 0 {
-		u.delChan <- &fileDeleteReq{Paths: folder.archives.List()}
+		u.queueDelete(&fileDeleteReq{Paths: folder.archives.List()})
 		webhook = true
 	}
 

@@ -56,7 +56,10 @@ func (u *Unpackerr) readyTray() {
 	u.menu["info"].Disable()
 
 	go u.watchKillerChannels()
-	go u.watchDebugChannels()
+
+	if u.menu["debug"] != nil {
+		go u.watchDebugChannels()
+	}
 	go u.Run()
 
 	u.showGeneratedPassword()
@@ -99,10 +102,6 @@ func (u *Unpackerr) makeChannels() {
 }
 
 func (u *Unpackerr) watchDebugChannels() {
-	if !u.Config.Debug {
-		return
-	}
-
 	for {
 		select {
 		case <-u.menu["debug"].Clicked():

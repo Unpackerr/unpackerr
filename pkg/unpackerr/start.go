@@ -86,6 +86,7 @@ type Unpackerr struct {
 	livePasswords    StringSlice // post-env, pre-expansion; GET /live uses this
 	configMu         sync.RWMutex
 	tickers          *loopTickers
+	pendingRestart   bool
 	workThreads      int
 	hookOnce         sync.Once
 	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
@@ -447,6 +448,7 @@ func (u *Unpackerr) Run() {
 			// Check for extraction state changes and act on them.
 			u.checkExtractDone(now)
 			u.checkFolderStats(now)
+			u.maybeRestart()
 		case resp := <-u.updates:
 			// xtractr callback for starr download extraction.
 			u.handleXtractrCallback(resp)

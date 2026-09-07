@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 func TestWebServerEnabled(t *testing.T) {
@@ -67,7 +65,7 @@ func TestWebRoutesIndexHonorsURLBase(t *testing.T) {
 
 	unpack := New()
 	unpack.Webserver.URLBase = "/unpackerr/"
-	unpack.Webserver.router = httprouter.New()
+	unpack.Webserver.router = http.NewServeMux()
 	unpack.webRoutes()
 
 	rec := httptest.NewRecorder()

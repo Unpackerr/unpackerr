@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/julienschmidt/httprouter"
 	"golift.io/cnfgfile"
 	"golift.io/starr"
 )
@@ -31,8 +30,8 @@ type configWriteReply struct {
 
 // configPutHandler reads the body on the HTTP goroutine, then decodes,
 // validates, writes the file, and applies live on the main loop.
-func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
-	section := ConfigSection(params.ByName("section"))
+func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http.Request) {
+	section := ConfigSection(request.PathValue("section"))
 
 	raw, err := decodeJSONBody(response, request)
 	if err != nil {
@@ -475,9 +474,7 @@ func putStarrList[T any, P starrApp[T]](
 		item.connect()
 	}
 
-	return unpackerr.commitConfig(func(cfg *Config) {
-		*field(cfg) = fileList
-	}, func() {
+	return unpackerr.commitConfig(func(cfg *Config) { *field(cfg) = fileList }, func() {
 		live := field(unpackerr.Config)
 		carryQueues(*live, list)
 		*live = list

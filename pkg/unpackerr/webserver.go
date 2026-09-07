@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/securecookie"
-	"github.com/julienschmidt/httprouter"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -31,7 +30,7 @@ type WebServer struct {
 	APIKeys    []APIKey        `json:"apiKeys"     toml:"api_keys"      xml:"api_keys"      yaml:"apiKeys"`
 	Roles      map[string]Role `json:"roles"       toml:"roles"         xml:"roles"         yaml:"roles"`
 	allow      AllowedIPs
-	router     *httprouter.Router
+	router     *http.ServeMux
 	server     *http.Server
 	keyPerms   map[string][]string
 	cookies    *securecookie.SecureCookie
@@ -98,7 +97,7 @@ func (u *Unpackerr) startWebServer() {
 	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
-	u.Webserver.router = httprouter.New()
+	u.Webserver.router = http.NewServeMux()
 
 	if err := u.Webserver.initCookies(); err != nil {
 		u.Errorf("Could not initialize session cookies: %v", err)
@@ -127,8 +126,24 @@ func (u *Unpackerr) startWebServer() {
 	go u.runWebServer()
 }
 
+func (w *WebServer) handle(method, route string, handler http.Handler) {
+	w.router.Handle(method+" "+route, handler)
+}
+
+func (w *WebServer) handleGet(route string, handler http.HandlerFunc) {
+	w.handle(http.MethodGet, route, handler)
+}
+
+func (w *WebServer) handlePost(route string, handler http.HandlerFunc) {
+	w.handle(http.MethodPost, route, handler)
+}
+
+func (w *WebServer) handlePut(route string, handler http.HandlerFunc) {
+	w.handle(http.MethodPut, route, handler)
+}
+
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.router.GET(u.Webserver.URLBase, Index)
+	u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", Index)
 	u.registerOpenAPIRoute()
 	u.registerAuthRoutes()
 	u.registerAPIRoutes()
@@ -144,31 +159,25 @@ func (u *Unpackerr) webRoutes() {
 
 	u.setupMetrics()
 	metrics := u.requirePermHTTP(PermReadSystemMetrics, promhttp.Handler())
-	u.Webserver.router.Handler(http.MethodGet, "/metrics", metrics)
+	u.Webserver.handleGet("/metrics", metrics.ServeHTTP)
 
 	if u.Webserver.URLBase != "/" {
 		// Metrics get served from both paths.
-		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), metrics)
+		u.Webserver.handleGet(path.Join(u.Webserver.URLBase, "/metrics"), metrics.ServeHTTP)
 	}
 }
 
 // registerPprof adds Go's built-in pprof handlers for runtime profiling.
 // Access heap profiles at /debug/pprof/heap, goroutine dumps at /debug/pprof/goroutine, etc.
 func (u *Unpackerr) registerPprof() {
-	wrap := func(h http.HandlerFunc) httprouter.Handle {
-		return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-			h(w, r)
-		}
-	}
-
-	u.Webserver.router.GET("/debug/pprof/", wrap(pprof.Index))
-	u.Webserver.router.GET("/debug/pprof/cmdline", wrap(pprof.Cmdline))
-	u.Webserver.router.GET("/debug/pprof/profile", wrap(pprof.Profile))
-	u.Webserver.router.GET("/debug/pprof/symbol", wrap(pprof.Symbol))
-	u.Webserver.router.GET("/debug/pprof/trace", wrap(pprof.Trace))
-	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/heap", pprof.Handler("heap"))
-	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	u.Webserver.router.Handler(http.MethodGet, "/debug/pprof/allocs", pprof.Handler("allocs"))
+	u.Webserver.handleGet("/debug/pprof/", pprof.Index)
+	u.Webserver.handleGet("/debug/pprof/cmdline", pprof.Cmdline)
+	u.Webserver.handleGet("/debug/pprof/profile", pprof.Profile)
+	u.Webserver.handleGet("/debug/pprof/symbol", pprof.Symbol)
+	u.Webserver.handleGet("/debug/pprof/trace", pprof.Trace)
+	u.Webserver.handleGet("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
+	u.Webserver.handleGet("/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
+	u.Webserver.handleGet("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 }
 
 // runWebServer starts the http or https listener.
@@ -187,7 +196,7 @@ func (u *Unpackerr) runWebServer() {
 	}
 }
 
-func Index(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func Index(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "Welcome!\n")
 }
 

@@ -3,7 +3,6 @@ package unpackerr
 import (
 	"net/http"
 
-	"github.com/julienschmidt/httprouter"
 	"golift.io/cnfg"
 )
 
@@ -40,9 +39,9 @@ type foldersConfigAPI struct {
 	Folder   []*FolderConfig `json:"folder"`
 }
 
-func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httprouter.Handle {
-	return u.requireAuth(func(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		section := ConfigSection(params.ByName("section"))
+func (u *Unpackerr) requireConfigPerm(write bool, next http.HandlerFunc) http.HandlerFunc {
+	return u.requireAuth(func(response http.ResponseWriter, request *http.Request) {
+		section := ConfigSection(request.PathValue("section"))
 		if !KnownSection(section) {
 			writeJSON(response, http.StatusNotFound, map[string]string{"error": "unknown section"})
 			return
@@ -59,12 +58,12 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 			return
 		}
 
-		next(response, request, params)
+		next(response, request)
 	})
 }
 
-func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
-	section := ConfigSection(params.ByName("section"))
+func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http.Request) {
+	section := ConfigSection(request.PathValue("section"))
 	if section == SectionWebserver {
 		web := publicWebserver(u.cloneFileWebserver())
 		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, web))
@@ -81,14 +80,10 @@ func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http
 	writeJSON(response, http.StatusOK, payload)
 }
 
-func (u *Unpackerr) configGetLiveHandler(
-	response http.ResponseWriter, request *http.Request, params httprouter.Params,
-) {
-	section := ConfigSection(params.ByName("section"))
+func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, request *http.Request) {
+	section := ConfigSection(request.PathValue("section"))
 	if section == SectionWebserver {
-		web := publicWebserver(u.cloneLiveWebserver())
-		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, web))
-
+		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, publicWebserver(u.cloneLiveWebserver())))
 		return
 	}
 

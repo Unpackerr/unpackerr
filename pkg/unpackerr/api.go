@@ -5,7 +5,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
 	"golift.io/version"
 )
 
@@ -22,47 +21,34 @@ type systemInfo struct {
 
 func (u *Unpackerr) registerAPIRoutes() {
 	base := path.Join(u.Webserver.URLBase, "api")
-	u.Webserver.router.GET(path.Join(base, "stats"), u.requirePerm(PermReadSystemStats, u.statsHandler))
-	u.Webserver.router.GET(path.Join(base, "system"), u.requirePerm(PermReadSystemInfo, u.systemHandler))
-	u.Webserver.router.GET(path.Join(base, "queue"), u.requirePerm(PermReadSystemQueue, u.queueHandler))
-	u.Webserver.router.POST(path.Join(base, "queue", "retry"), u.requirePerm(PermWriteSystemQueue, u.queueRetryHandler))
-	u.Webserver.router.POST(path.Join(base, "queue", "forget"), u.requirePerm(PermWriteSystemQueue, u.queueForgetHandler))
-	u.Webserver.router.GET(path.Join(base, "history"), u.requirePerm(PermReadSystemHistory, u.historyHandler))
-	u.Webserver.router.POST(
-		path.Join(base, "history", "clear"),
-		u.requirePerm(PermWriteSystemHistory, u.historyClearHandler),
-	)
-	u.Webserver.router.POST(
-		path.Join(base, "history", "delete"),
-		u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler),
-	)
-	u.Webserver.router.GET(
-		path.Join(base, "config", ":section", "live"),
-		u.requireConfigPerm(false, u.configGetLiveHandler),
-	)
-	u.Webserver.router.GET(
-		path.Join(base, "config", ":section"),
-		u.requireConfigPerm(false, u.configGetHandler),
-	)
-	u.Webserver.router.PUT(
-		path.Join(base, "config", ":section"),
-		u.requireConfigPerm(true, u.configPutHandler),
-	)
+	basePath := func(b string) string { return path.Join(base, b) }
+
+	u.Webserver.handleGet(basePath("stats"), u.requirePerm(PermReadSystemStats, u.statsHandler))
+	u.Webserver.handleGet(basePath("system"), u.requirePerm(PermReadSystemInfo, u.systemHandler))
+	u.Webserver.handleGet(basePath("queue"), u.requirePerm(PermReadSystemQueue, u.queueHandler))
+	u.Webserver.handlePost(basePath("queue/retry"), u.requirePerm(PermWriteSystemQueue, u.queueRetryHandler))
+	u.Webserver.handlePost(basePath("queue/forget"), u.requirePerm(PermWriteSystemQueue, u.queueForgetHandler))
+	u.Webserver.handleGet(basePath("history"), u.requirePerm(PermReadSystemHistory, u.historyHandler))
+	u.Webserver.handlePost(basePath("history/clear"), u.requirePerm(PermWriteSystemHistory, u.historyClearHandler))
+	u.Webserver.handlePost(basePath("history/delete"), u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler))
+	u.Webserver.handleGet(basePath("config/{section}/live"), u.requireConfigPerm(false, u.configGetLiveHandler))
+	u.Webserver.handleGet(basePath("config/{section}"), u.requireConfigPerm(false, u.configGetHandler))
+	u.Webserver.handlePut(basePath("config/{section}"), u.requireConfigPerm(true, u.configPutHandler))
 }
 
-func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request) {
 	writeJSON(response, http.StatusOK, u.stats())
 }
 
-func (u *Unpackerr) queueHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) queueHandler(response http.ResponseWriter, _ *http.Request) {
 	writeJSON(response, http.StatusOK, u.queueSnapshot())
 }
 
-func (u *Unpackerr) historyHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) historyHandler(response http.ResponseWriter, _ *http.Request) {
 	writeJSON(response, http.StatusOK, u.historySnapshot())
 }
 
-func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request) {
 	writeJSON(response, http.StatusOK, systemInfo{
 		Version:    version.Version,
 		Revision:   version.Revision,

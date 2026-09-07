@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gorilla/securecookie"
-	"github.com/julienschmidt/httprouter"
 )
 
 const (
@@ -74,11 +73,11 @@ func (u *Unpackerr) loginPath() string {
 func (u *Unpackerr) registerAuthRoutes() {
 	base := path.Join(u.Webserver.URLBase, "api", "auth")
 	if u.Webserver.cookies != nil {
-		u.Webserver.router.POST(path.Join(base, "login"), u.loginHandler)
-		u.Webserver.router.POST(path.Join(base, "logout"), u.logoutHandler)
+		u.Webserver.handlePost(path.Join(base, "login"), u.loginHandler)
+		u.Webserver.handlePost(path.Join(base, "logout"), u.logoutHandler)
 	}
 
-	u.Webserver.router.GET(path.Join(base, "me"), u.requireAuth(u.meHandler))
+	u.Webserver.handleGet(path.Join(base, "me"), u.requireAuth(u.meHandler))
 }
 
 // withLoginReadDeadline bounds the unauthenticated login body read. apachelog.Wrap
@@ -96,8 +95,8 @@ func (u *Unpackerr) withLoginReadDeadline(next http.Handler) http.Handler {
 	})
 }
 
-func (u *Unpackerr) requireAuth(next httprouter.Handle) httprouter.Handle {
-	return func(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func (u *Unpackerr) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(response http.ResponseWriter, request *http.Request) {
 		info, ok := u.authenticate(request)
 		if !ok {
 			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -106,7 +105,7 @@ func (u *Unpackerr) requireAuth(next httprouter.Handle) httprouter.Handle {
 		}
 
 		ctx := context.WithValue(request.Context(), authCtxKey, info)
-		next(response, request.WithContext(ctx), params)
+		next(response, request.WithContext(ctx))
 	}
 }
 
@@ -120,8 +119,8 @@ func (info authInfo) allows(perm string) bool {
 	return false
 }
 
-func (u *Unpackerr) requirePerm(perm string, next httprouter.Handle) httprouter.Handle {
-	return u.requireAuth(func(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
+func (u *Unpackerr) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
+	return u.requireAuth(func(response http.ResponseWriter, request *http.Request) {
 		info, _ := request.Context().Value(authCtxKey).(authInfo)
 		if !info.allows(perm) {
 			writeJSON(response, http.StatusForbidden, map[string]string{"error": "forbidden"})
@@ -129,7 +128,7 @@ func (u *Unpackerr) requirePerm(perm string, next httprouter.Handle) httprouter.
 			return
 		}
 
-		next(response, request, params)
+		next(response, request)
 	})
 }
 
@@ -384,7 +383,7 @@ func forwardedProto(request *http.Request) string {
 	return strings.ToLower(strings.TrimSpace(proto))
 }
 
-func (u *Unpackerr) loginHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) loginHandler(response http.ResponseWriter, request *http.Request) {
 	start := time.Now()
 	ok := u.handleLogin(response, request)
 
@@ -450,12 +449,12 @@ func decodeLoginBody(response http.ResponseWriter, request *http.Request) (login
 	}
 }
 
-func (u *Unpackerr) logoutHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) logoutHandler(response http.ResponseWriter, request *http.Request) {
 	http.SetCookie(response, u.sessionCookie(request, "", -1))
 	writeJSON(response, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (u *Unpackerr) meHandler(response http.ResponseWriter, request *http.Request, _ httprouter.Params) {
+func (u *Unpackerr) meHandler(response http.ResponseWriter, request *http.Request) {
 	info, _ := request.Context().Value(authCtxKey).(authInfo)
 	writeJSON(response, http.StatusOK, info)
 }

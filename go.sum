@@ -60,8 +60,6 @@ github.com/icza/mighty v0.0.0-20180919140131-cfd07d671de6 h1:8UsGZ2rr2ksmEru6lTo
 github.com/icza/mighty v0.0.0-20180919140131-cfd07d671de6/go.mod h1:xQig96I1VNBDIWGCdTt54nHt6EeI639SmHycLYL7FkA=
 github.com/josephspurrier/goversioninfo v1.7.0 h1:LQzXOlVm/CtbwJ9/UHl5a2HT0BjcLAwid5gqGd7ZUJ8=
 github.com/josephspurrier/goversioninfo v1.7.0/go.mod h1:z9y0r2G6g5jwSJaFE0cxW9to0aeIibK7UYeLx53aQRU=
-github.com/julienschmidt/httprouter v1.3.0 h1:U0609e9tgbseu3rBINet9P48AI/D3oJs4dN7jwJOQ1U=
-github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/klauspost/compress v1.19.2 h1:hMRETovs/pu/dVWN7zIT1PGG8t509MwT6bO7XSi26R8=
 github.com/klauspost/compress v1.19.2/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
@@ -164,8 +162,6 @@ golang.org/x/text v0.41.0 h1:vz/seA0lnX87Othu2f/0L24RcgrXD9/YFTSuGjj3rH8=
 golang.org/x/text v0.41.0/go.mod h1:jvf1O8ajNzZqhSrQBPbutR/EB83Cc0CFrezNQIwbb5M=
 golang.org/x/tools v0.49.0 h1:3NI7VXzL9+1WZD52Dx2ttoPwD5DWrFGpl9mFZDlmisI=
 golang.org/x/tools v0.49.0/go.mod h1:SJNXV9DBKT0UbdttsQjbfJlAE/q+y36++zo3uL3N0Oo=
-golift.io/cnfg v0.2.5 h1:NwhQ+REL9BSTiHYU4MKMawCEzvtjmhE8RlNiE7XroqE=
-golift.io/cnfg v0.2.5/go.mod h1:iMzXYjvZI7iZphzY75hkFR/VShYeuZznXiQtFsBOSCU=
 golift.io/cnfg v0.3.0 h1:k3c6+Vm6EdKxOlYzJTGOBRVPgLwFchZ7/RsFkL212DE=
 golift.io/cnfg v0.3.0/go.mod h1:+u238cgJJf1shXJmzMV4I7+F3EACg3NfKSe/g9yRKMY=
 golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48 h1:c7cJWRr0cUnFHKtq072esKzhQHKlFA5YRY/hPzQrdko=

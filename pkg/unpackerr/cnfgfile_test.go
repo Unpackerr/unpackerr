@@ -1,14 +1,18 @@
 package unpackerr
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/configdef"
+	"golift.io/cnfg"
 	"golift.io/cnfgfile"
+	"golift.io/starr"
 )
 
 func TestWriteConfigFileRoundTrip(t *testing.T) {
@@ -476,5 +480,119 @@ func collectTOMLTags(typ reflect.Type, known, skip, found map[string]struct{}, s
 		}
 
 		collectTOMLTags(field.Type, known, skip, found, seen)
+	}
+}
+
+// TestWriteConfigFileFullRoundTrip proves a UI save cannot brick a config: every
+// section is populated, rendered to TOML, loaded back through the real loader,
+// and compared field for field. Values equal to a definitions.yml default are
+// written commented-out and re-filled at startup, so every value here is
+// non-default. filepath: values must survive as written.
+func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one field per line is the point.
+	t.Parallel()
+
+	key := strings.Repeat("k", apiKeyMinLen)
+	starrKey := strings.Repeat("s", apiKeyMinLength)
+	unpack := New()
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Config.Debug = true
+	unpack.Quiet = true
+	unpack.Activity = true
+	unpack.Parallel = 3
+	unpack.MaxRetries = 7
+	unpack.RemnantAction = "delete"
+	unpack.LogFile = "/var/log/unpackerr.log"
+	unpack.LogFiles = 4
+	unpack.LogFileMb = 12
+	unpack.FileMode = "0640"
+	unpack.DirMode = "0750"
+	unpack.KeepHistory = 50
+	unpack.Interval = cnfg.Duration{Duration: 3 * time.Minute}
+	unpack.StartDelay = cnfg.Duration{Duration: 2 * time.Minute}
+	unpack.Passwords = StringSlice{"plain-pass", "filepath:/run/secrets/rarpass"}
+	unpack.Webserver.ListenAddr = "127.0.0.1:5656"
+	unpack.Webserver.URLBase = "/unpackerr/"
+	unpack.Webserver.Metrics = true
+	unpack.Webserver.SSLCrtFile = "/etc/ssl/unpackerr.crt"
+	unpack.Webserver.SSLKeyFile = "/etc/ssl/unpackerr.key"
+	unpack.Webserver.Upstreams = StringSlice{"10.0.0.0/8"}
+	unpack.Webserver.UIPassword = "filepath:/run/secrets/ui"
+	unpack.Webserver.APIKeys = []APIKey{
+		{Name: "admin", Key: key, Roles: []string{RoleAdmin}},
+		{Name: "home", Key: strings.Repeat("h", apiKeyMinLen), Roles: []string{"stats"}},
+	}
+	unpack.Webserver.Roles = map[string]Role{"stats": {Permissions: []string{PermReadSystemStats}}}
+
+	starrConf := func(url string) StarrConfig {
+		secret := "filepath:/run/secrets/" + strings.TrimPrefix(url, "http://")
+
+		return StarrConfig{ //nolint:modernize // URL and APIKey are promoted; keeping Config explicit reads better.
+			Config: starr.Config{URL: url, APIKey: secret},
+			Paths:  StringSlice{"/downloads", "/mnt/dl"}, Protocols: "torrent",
+			DeleteOrig: true, Syncthing: true, ValidSSL: true, MaxBytes: "10GB",
+			DeleteDelay: cnfg.Duration{Duration: 7 * time.Minute}, Timeout: cnfg.Duration{Duration: 42 * time.Second},
+		}
+	}
+
+	unpack.Sonarr = []*SonarrConfig{{StarrConfig: starrConf("http://sonarr:8989")}}
+	unpack.Radarr = []*RadarrConfig{{StarrConfig: starrConf("http://radarr:7878")}}
+	unpack.Whisparr = []*RadarrConfig{{StarrConfig: starrConf("http://whisparr:6969")}}
+	unpack.Lidarr = []*LidarrConfig{{StarrConfig: starrConf("http://lidarr:8686"), SplitFlac: true}}
+	unpack.Readarr = []*ReadarrConfig{{StarrConfig: starrConf("http://readarr:8787")}}
+	unpack.Readarr[0].APIKey = starrKey
+	unpack.Folder.Interval = cnfg.Duration{Duration: 4 * time.Second}
+	unpack.Folder.Buffer = 5000
+	unpack.Folders = []*FolderConfig{{
+		Path: "/watch", ExtractPath: "/extracted", DeleteOrig: true, MoveBack: true, ExtractISOs: true,
+		DeleteAfter: &cnfg.Duration{Duration: 11 * time.Minute}, MaxNested: 2, MaxFiles: 99, MaxRatio: 3.5,
+		ExcludePaths: []string{"/watch/skip"},
+	}}
+	unpack.Webhook = []*WebhookConfig{{ //nolint:gosec // filepath: reference, not a credential.
+		Name: "discord", URL: "https://discord.example/hook", CType: "text/plain",
+		Timeout: cnfg.Duration{Duration: 9 * time.Second}, IgnoreSSL: true, Silent: true,
+		Events: ExtractStatuses{EXTRACTED, EXTRACTFAILED}, Exclude: StringSlice{"lidarr"},
+		Nickname: "Bot", Token: "filepath:/run/secrets/hook", Channel: "general",
+	}}
+	unpack.Cmdhook = []*WebhookConfig{{
+		Name: "notify", Command: "/usr/local/bin/notify.sh --flag", Shell: true,
+		Timeout: cnfg.Duration{Duration: 5 * time.Second}, Events: ExtractStatuses{IMPORTED},
+	}}
+	unpack.snapshotFileConfig()
+
+	if err := unpack.writeConfigFile(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded := New()
+	if err := cnfgfile.Unmarshal(loaded.Config, unpack.ConfigFile); err != nil {
+		t.Fatalf("decode: %v\n%s", err, body)
+	}
+
+	want, err := json.MarshalIndent(unpack.fileConfig, "", " ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := json.MarshalIndent(cloneConfig(loaded.Config), "", " ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(want) != string(got) {
+		t.Fatalf("round trip changed the config.\nwant:\n%s\ngot:\n%s\ntoml:\n%s", want, got, body)
+	}
+
+	for _, secret := range []string{
+		"filepath:/run/secrets/rarpass", "filepath:/run/secrets/ui",
+		"filepath:/run/secrets/sonarr:8989", "filepath:/run/secrets/hook",
+	} {
+		if !strings.Contains(string(body), secret) {
+			t.Fatalf("filepath: value %q was not written as-is:\n%s", secret, body)
+		}
 	}
 }

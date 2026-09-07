@@ -11,10 +11,12 @@ FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:cf6fca6641884b8433441b2
 WORKDIR /src
 COPY main.go go.mod go.sum ./
 RUN go mod download
-COPY pkg pkg
+# Generate examples/ from init/config before copying pkg/, so source-only
+# changes do not invalidate the generate layer.
 COPY examples examples
 COPY init/config init/config
-RUN go generate ./...
+RUN go generate ./init/config
+COPY pkg pkg
 
 ARG TARGETOS
 ARG TARGETARCH

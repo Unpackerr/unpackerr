@@ -77,15 +77,16 @@ jobs:
           [ -n "${VERSION}" ] || VERSION=development
           ITERATION="$(git rev-list --count --all || echo 0)"
           COMMIT="$(git rev-parse --short HEAD || echo 0)"
-          # BRANCH ends up inside the Dockerfile's RUN go build -ldflags string,
-          # so keep only characters that are safe in a shell double-quoted string.
-          BRANCH="$(printf '%s' "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}" | tr -cd 'A-Za-z0-9._/-')"
-          LICENSE=MIT
-          DESC="Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
-          VENDOR="Go Lift <code@golift.io>"
-          MAINT="David Newhall II <captain at golift dot io>"
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          # VERSION and BRANCH come from git ref names and end up inside the
+          # -ldflags quoted string of the Dockerfile's RUN go build; a stray
+          # double quote there breaks Go's ldflags field splitting, so keep only
+          # plain ref characters.
+          VERSION="$(printf '%s' "${VERSION}" | tr -cd 'A-Za-z0-9._/-')"
+          BRANCH="$(printf '%s' "${BRANCH}" | tr -cd 'A-Za-z0-9._/-')"
           SOURCE_URL="https://github.com/${GITHUB_REPOSITORY}"
-          for item in DATE COMMIT VERSION ITERATION BRANCH LICENSE DESC VENDOR MAINT SOURCE_URL; do
+          # LICENSE, DESC, VENDOR and AUTHOR use the Dockerfile.ghcr ARG defaults.
+          for item in DATE COMMIT VERSION ITERATION BRANCH SOURCE_URL; do
             echo "build-arg: ${item}=${!item}"
             echo "${item}=${!item}" >> "${GITHUB_ENV}"
           done
@@ -110,8 +111,4 @@ jobs:
             VERSION=${{ env.VERSION }}
             ITERATION=${{ env.ITERATION }}
             BRANCH=${{ env.BRANCH }}
-            LICENSE=${{ env.LICENSE }}
-            DESC=${{ env.DESC }}
-            VENDOR=${{ env.VENDOR }}
-            AUTHOR=${{ env.MAINT }}
             SOURCE_URL=${{ env.SOURCE_URL }}

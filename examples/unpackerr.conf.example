@@ -34,7 +34,7 @@ log_queues = "1m"
 ## Default is no log file; this is unset.
 ## Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
 ## log_files=0 turns off auto-rotation so logrotate can own the file.
-## After logrotate renames the live file, send SIGHUP (systemctl reload unpackerr)
+## After logrotate renames the live file, send SIGHUP (`systemctl reload unpackerr`)
 ## to close and reopen it. Use logrotate `create` plus postrotate HUP, not copytruncate.
 ## Default files is 10 and size(mb) is 10 Megabytes.
 #log_file = '/downloads/unpackerr.log'
@@ -94,9 +94,11 @@ dir_mode = "0755"
 passwords = []
 
 [webserver]
-## The web server currently only supports metrics; set this to true if you wish to use it.
+## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
+## this only controls the /metrics route.
  metrics = false
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
+## Set this to an empty string to disable the HTTP server.
  listen_addr = "0.0.0.0:5656"
 ## Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
  log_file = ''
@@ -396,4 +398,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 AUG 2026 08:13 UTC
+## => Content Auto Generated, 03 SEP 2026 08:08 UTC

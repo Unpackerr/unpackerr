@@ -80,6 +80,7 @@ type Unpackerr struct {
 	httpLog          *rotatorr.Logger
 	menu             map[string]ui.MenuItem
 	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
+	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
 	uiPassMu         sync.RWMutex // guards Webserver.UIPassword
 	uiPasswordNotice string
 	uiPasswordGenErr error

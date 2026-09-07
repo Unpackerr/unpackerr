@@ -2,7 +2,6 @@ package unpackerr
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"golift.io/cnfg"
@@ -64,20 +63,22 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 	})
 }
 
-func (u *Unpackerr) configGetHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
+func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	section := ConfigSection(params.ByName("section"))
 	if section == SectionWebserver {
-		writeJSON(response, http.StatusOK, u.cloneFileWebserver())
+		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, u.cloneFileWebserver()))
 		return
 	}
 
 	writeConfigSection(response, u.fileConfigOrLive(), section)
 }
 
-func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, _ *http.Request, params httprouter.Params) {
+func (u *Unpackerr) configGetLiveHandler(
+	response http.ResponseWriter, request *http.Request, params httprouter.Params,
+) {
 	section := ConfigSection(params.ByName("section"))
 	if section == SectionWebserver {
-		writeJSON(response, http.StatusOK, u.cloneLiveWebserver())
+		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, u.cloneLiveWebserver()))
 		return
 	}
 
@@ -171,23 +172,26 @@ func generalConfigFrom(cfg *Config) generalConfig {
 
 func (u *Unpackerr) liveGeneralConfig() generalConfig {
 	cfg := generalConfigFrom(u.Config)
-	if u.fileConfig != nil {
-		cfg.Passwords = passwordsForLive(u.fileConfig.Passwords, u.Passwords)
+	if u.livePasswords != nil {
+		cfg.Passwords = emptyIfNil(append(StringSlice(nil), u.livePasswords...))
 	}
 
 	return cfg
 }
 
-// passwordsForLive keeps filepath: archive passwords from the file snapshot so
-// /live does not serialize secret-file contents. Inline and env-only values stay live.
-func passwordsForLive(file, live StringSlice) StringSlice {
-	for _, pass := range file {
-		if strings.HasPrefix(pass, filePrefix) {
-			return emptyIfNil(append(StringSlice(nil), file...))
-		}
+// redactAPIKeysUnlessAll blanks webserver API key secrets unless the caller has *.
+// Starr API keys are not webserver.APIKeys and stay visible to read:config:*.
+func redactAPIKeysUnlessAll(request *http.Request, web *WebServer) *WebServer {
+	info, _ := request.Context().Value(authCtxKey).(authInfo)
+	if web == nil || info.allows(PermAll) {
+		return web
 	}
 
-	return emptyIfNil(append(StringSlice(nil), live...))
+	for idx := range web.APIKeys {
+		web.APIKeys[idx].Key = ""
+	}
+
+	return web
 }
 
 func foldersConfigFrom(cfg *Config) foldersConfigAPI {

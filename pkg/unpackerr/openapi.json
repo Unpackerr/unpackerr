@@ -393,7 +393,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",

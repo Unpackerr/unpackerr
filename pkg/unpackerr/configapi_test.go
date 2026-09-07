@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,10 @@ func TestConfigGetSection(t *testing.T) {
 		t.Fatalf("password not stored hash: %s", webRec.Body.String())
 	}
 
+	if !strings.Contains(webRec.Body.String(), unpack.Webserver.adminAPIKey()) {
+		t.Fatalf("admin must see api keys: %s", webRec.Body.String())
+	}
+
 	starrRec := doAuth(t, unpack, http.MethodGet, "/api/config/sonarr", "", withKey)
 	if starrRec.Code != http.StatusOK || !strings.Contains(starrRec.Body.String(), strings.Repeat("k", apiKeyMinLength)) {
 		t.Fatalf("sonarr %d %s", starrRec.Code, starrRec.Body.String())
@@ -97,6 +102,7 @@ func TestConfigGetFileVsLive(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.Passwords = StringSlice{"filepath:/secrets"}
 	unpack.snapshotFileConfig()
+	unpack.snapshotLivePasswords()
 	unpack.Passwords = StringSlice{"expanded-secret"}
 	unpack.fileConfig.Webserver.UIPassword = CryptPass(filePrefix + "/ui.pass")
 
@@ -139,6 +145,7 @@ func TestConfigGetLiveInlinePasswords(t *testing.T) {
 	unpack.Passwords = StringSlice{"inline-secret"}
 	unpack.snapshotFileConfig()
 	unpack.Passwords = StringSlice{"env-overlay-secret"}
+	unpack.snapshotLivePasswords()
 
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
@@ -151,5 +158,149 @@ func TestConfigGetLiveInlinePasswords(t *testing.T) {
 
 	if !strings.Contains(liveGen.Body.String(), "env-overlay-secret") {
 		t.Fatalf("live inline/env passwords %s", liveGen.Body.String())
+	}
+}
+
+func TestConfigGetLiveEnvFilepathPassword(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Passwords = StringSlice{"inline-from-file"}
+	unpack.snapshotFileConfig()
+	unpack.Passwords = StringSlice{"filepath:/run/secrets/pw"}
+	unpack.snapshotLivePasswords()
+	unpack.Passwords = StringSlice{"secretA", "secretB"}
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	fileGen := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	liveGen := doAuth(t, unpack, http.MethodGet, "/api/config/general/live", "", withKey)
+
+	if fileGen.Code != http.StatusOK || liveGen.Code != http.StatusOK {
+		t.Fatalf("file %d live %d", fileGen.Code, liveGen.Code)
+	}
+
+	if !strings.Contains(fileGen.Body.String(), "inline-from-file") {
+		t.Fatalf("file general %s", fileGen.Body.String())
+	}
+
+	if !strings.Contains(liveGen.Body.String(), "filepath:/run/secrets/pw") ||
+		strings.Contains(liveGen.Body.String(), "secretA") ||
+		strings.Contains(liveGen.Body.String(), "secretB") {
+		t.Fatalf("live must keep env filepath: passwords: %s", liveGen.Body.String())
+	}
+}
+
+func TestConfigGetLiveEnvOverridesFilepath(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Passwords = StringSlice{"filepath:/secrets"}
+	unpack.snapshotFileConfig()
+	unpack.Passwords = StringSlice{"env-inline"}
+	unpack.snapshotLivePasswords()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	fileGen := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	liveGen := doAuth(t, unpack, http.MethodGet, "/api/config/general/live", "", withKey)
+
+	if fileGen.Code != http.StatusOK || liveGen.Code != http.StatusOK {
+		t.Fatalf("file %d live %d", fileGen.Code, liveGen.Code)
+	}
+
+	if !strings.Contains(fileGen.Body.String(), "filepath:/secrets") {
+		t.Fatalf("file general %s", fileGen.Body.String())
+	}
+
+	if !strings.Contains(liveGen.Body.String(), "env-inline") ||
+		strings.Contains(liveGen.Body.String(), "filepath:/secrets") {
+		t.Fatalf("live must show env overlay passwords: %s", liveGen.Body.String())
+	}
+}
+
+func TestConfigGetWebserverKeysNeedStar(t *testing.T) {
+	t.Parallel()
+
+	unpack, adminKey, readKey := testWebserverReadUnpackerr(t)
+
+	withRead := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, readKey)
+	}
+
+	for _, path := range []string{"/api/config/webserver", "/api/config/webserver/live"} {
+		assertWebserverKeysRedacted(t, doAuth(t, unpack, http.MethodGet, path, "", withRead), adminKey, readKey)
+	}
+
+	withAdmin := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, adminKey)
+	}
+
+	adminFile := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", withAdmin)
+	adminLive := doAuth(t, unpack, http.MethodGet, "/api/config/webserver/live", "", withAdmin)
+
+	if !strings.Contains(adminFile.Body.String(), adminKey) {
+		t.Fatalf("admin file GET %s", adminFile.Body.String())
+	}
+
+	if !strings.Contains(adminLive.Body.String(), adminKey) {
+		t.Fatalf("admin live GET %s", adminLive.Body.String())
+	}
+}
+
+func testWebserverReadUnpackerr(t *testing.T) (*Unpackerr, string, string) {
+	t.Helper()
+
+	unpack := testAuthUnpackerr(t)
+	adminKey := unpack.Webserver.adminAPIKey()
+	readKey := strings.Repeat("W", apiKeyMinLen)
+	unpack.Webserver.Roles = map[string]Role{
+		"webread": {Permissions: []string{PermReadConfig(SectionWebserver)}},
+	}
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
+		Name:  "webread",
+		Key:   readKey,
+		Roles: []string{"webread"},
+	})
+	unpack.snapshotFileConfig()
+
+	return unpack, adminKey, readKey
+}
+
+func assertWebserverKeysRedacted(t *testing.T, rec *httptest.ResponseRecorder, adminKey, readKey string) {
+	t.Helper()
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("webserver %d %s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, adminKey) || strings.Contains(body, readKey) {
+		t.Fatalf("leaked api key: %s", body)
+	}
+
+	var payload struct {
+		APIKeys []APIKey `json:"apiKeys"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(payload.APIKeys) == 0 {
+		t.Fatalf("missing apiKeys: %s", body)
+	}
+
+	for _, key := range payload.APIKeys {
+		if key.Key != "" {
+			t.Fatalf("key not redacted: %+v", key)
+		}
+
+		if key.Name == "" || len(key.Roles) == 0 {
+			t.Fatalf("expected name and roles: %+v", key)
+		}
 	}
 }

@@ -72,6 +72,8 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
 	}
 
+	u.snapshotLivePasswords()
+
 	if err := u.setPasswords(); err != nil {
 		return 0, 0, msg, err
 	}
@@ -309,9 +311,16 @@ func (u *Unpackerr) appendFileAPIKey(key APIKey) {
 	u.fileConfig.Webserver.APIKeys = append(u.fileConfig.Webserver.APIKeys, cloned...)
 }
 
+func (u *Unpackerr) snapshotLivePasswords() {
+	u.livePasswords = make(StringSlice, len(u.Passwords))
+	copy(u.livePasswords, u.Passwords)
+}
+
 // This function checks if rar passwords need to be read from a file path.
 // Only runs once at startup to load passwords into memory.
 func (u *Unpackerr) setPasswords() error {
+	u.snapshotLivePasswords()
+
 	newPasswords := []string{}
 
 	for _, pass := range u.Passwords {

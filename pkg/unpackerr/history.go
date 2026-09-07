@@ -14,9 +14,9 @@ const (
 )
 
 // History holds the history of extracted items.
-// mu guards Map, Finished, Retries, and per-item Status/Updated so HTTP stats
-// and Prometheus Collect can snapshot without racing the main loop. It is not
-// reentrant; do not lock inside a caller that already holds it.
+// mu guards Map, Finished, Retries, per-item Status/Updated, and XProg progress
+// so HTTP stats, queue snapshots, and Prometheus Collect cannot race the main loop.
+// It is not reentrant; do not lock inside a caller that already holds it.
 type History struct {
 	mu       sync.RWMutex
 	Items    []string

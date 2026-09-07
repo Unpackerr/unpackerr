@@ -1,10 +1,14 @@
+# This fork builds the binary inside the image (multi-stage) because its
+# release workflow is a single GHCR docker job without GoReleaser Pro.
+# Upstream instead copies a prebuilt binary from dist/ via dockers_v2.
 FROM golang:1-alpine AS builder
 
 WORKDIR /src
-COPY main.go settings.sh go.mod go.sum ./
+COPY main.go go.mod go.sum ./
 RUN go mod download
 COPY pkg pkg
 COPY examples examples
+COPY init init
 RUN go generate ./...
 
 ARG TARGETOS
@@ -26,7 +30,10 @@ RUN go build -o /tmp/unpackerr -tags osusergo,netgo \
     -X \"golift.io/version.Revision=${ITERATION}\" \
     -X \"golift.io/version.Version=${VERSION}\""
 
-FROM alpine
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+
+# Make sure we have an ssl cert chain and timezone data (plus curl/jq for scripting).
+RUN apk add --no-cache ca-certificates openssl tzdata curl jq
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -53,10 +60,8 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.licenses="${LICENSE}" \
       org.opencontainers.image.version="${VERSION}-${ITERATION}"
 
-COPY --from=builder /tmp/unpackerr /unpackerr
-# Make sure we have an ssl cert chain and timezone data.
-RUN apk add --no-cache openssl tzdata curl jq
+COPY --from=builder --chmod=755 /tmp/unpackerr /unpackerr
 
 ENV TZ=UTC
 
-ENTRYPOINT [ "/unpackerr" ]
+ENTRYPOINT ["/unpackerr"]

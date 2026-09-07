@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/bytefmt"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
@@ -20,30 +22,40 @@ import (
 )
 
 const (
-	defaultMaxRetries  = 3
-	defaultFileMode    = 0o644
-	defaultLogFileMode = 0o600
-	defaultDirMode     = 0o755
-	defaultTimeout     = 10 * time.Second
-	minimumInterval    = 15 * time.Second
-	defaultInterval    = 2 * time.Minute
-	cleanerInterval    = 5 * time.Second
-	defaultRetryDelay  = 5 * time.Minute
-	defaultStartDelay  = time.Minute
-	minimumDeleteDelay = time.Second
-	defaultDeleteDelay = 5 * time.Minute
-	staleItemTimeout   = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory     = 10             // items kept in history.
-	suffix             = "_unpackerred" // suffix for unpacked folders.
-	updateChanBuf      = 100            // Size of xtractr callback update channels.
-	defaultFolderBuf   = 20000          // Channel queue size for file system events.
-	minimumFolderBuf   = 1000           // Minimum size of the folder event buffer.
-	defaultLogFileMb   = 10
-	defaultLogFiles    = 10
-	helpLink           = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
-	windows            = "windows"
-	bits8              = 8
-	base32             = 32
+	defaultMaxRetries       = 2    // two retries after the first try (3 attempts).
+	defaultMaxFiles         = 1000 // Starr cap. Folders default to 0 (unlimited).
+	defaultMaxRatio         = 5.0  // Starr cap. Folders default to 0 (unlimited).
+	defaultSonarrMaxBytes   = "20GB"
+	defaultRadarrMaxBytes   = "75GB"
+	defaultLidarrMaxBytes   = "4GB"
+	defaultReadarrMaxBytes  = "1GB"
+	defaultWhisparrMaxBytes = "20GB"
+	defaultMaxNested        = 8 // Starr extras cap. Folders default to 0 (unlimited).
+	defaultExtrasMaxDepth   = 3 // Starr extras walk. Folders default to 0 (unlimited).
+	defaultFileMode         = 0o644
+	defaultLogFileMode      = 0o600
+	defaultDirMode          = 0o755
+	defaultTimeout          = 10 * time.Second
+	minimumInterval         = 15 * time.Second
+	defaultInterval         = 2 * time.Minute
+	cleanerInterval         = 5 * time.Second
+	defaultRetryDelay       = 5 * time.Minute
+	defaultStartDelay       = time.Minute
+	minimumDeleteDelay      = time.Second
+	defaultDeleteDelay      = 5 * time.Minute
+	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
+	defaultHistory          = 10             // items kept in history.
+	suffix                  = "_unpackerred" // suffix for unpacked folders.
+	updateChanBuf           = 100            // Size of xtractr callback update channels.
+	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
+	defaultFolderBuf        = 20000          // Channel queue size for file system events.
+	minimumFolderBuf        = 1000           // Minimum size of the folder event buffer.
+	defaultLogFileMb        = 10
+	defaultLogFiles         = 10
+	helpLink                = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
+	windows                 = "windows"
+	bits8                   = 8
+	base32                  = 32
 )
 
 // Unpackerr stores all the running data.
@@ -62,6 +74,7 @@ type Unpackerr struct {
 	workChan chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
+	httpLog  *rotatorr.Logger
 	menu     map[string]ui.MenuItem
 }
 
@@ -96,22 +109,23 @@ func New() *Unpackerr {
 		Flags:    &Flags{EnvPrefix: "UN"},
 		hookChan: make(chan *hookQueueItem, updateChanBuf),
 		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal),
+		sigChan:  make(chan os.Signal, signalBuf),
 		workChan: make(chan []func(), 1),
 		History:  &History{Map: make(map[string]*Extract)},
 		updates:  make(chan *xtractr.Response, updateChanBuf),
 		progChan: make(chan *ExtractProgress),
 		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
-			KeepHistory: defaultHistory,
-			LogQueues:   cnfg.Duration{Duration: time.Minute + time.Second},
-			MaxRetries:  defaultMaxRetries,
-			LogFiles:    defaultLogFiles,
-			Timeout:     cnfg.Duration{Duration: defaultTimeout},
-			Interval:    cnfg.Duration{Duration: defaultInterval},
-			RetryDelay:  cnfg.Duration{Duration: defaultRetryDelay},
-			StartDelay:  cnfg.Duration{Duration: defaultStartDelay},
-			DeleteDelay: cnfg.Duration{Duration: defaultDeleteDelay},
+			KeepHistory:   defaultHistory,
+			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
+			MaxRetries:    defaultMaxRetries,
+			RemnantAction: remnantAction(""),
+			LogFiles:      defaultLogFiles,
+			Timeout:       cnfg.Duration{Duration: defaultTimeout},
+			Interval:      cnfg.Duration{Duration: defaultInterval},
+			RetryDelay:    cnfg.Duration{Duration: defaultRetryDelay},
+			StartDelay:    cnfg.Duration{Duration: defaultStartDelay},
+			DeleteDelay:   cnfg.Duration{Duration: defaultDeleteDelay},
 			Webserver: &WebServer{
 				Metrics:    false,
 				LogFiles:   defaultLogFiles,
@@ -135,7 +149,10 @@ func New() *Unpackerr {
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
-	unpackerr := New().ParseFlags() // Grab CLI args (like config file location).
+	unpackerr := New()
+	notifySignals(unpackerr.sigChan)
+	unpackerr.ParseFlags() // Grab CLI args (like config file location).
+
 	if unpackerr.verReq {
 		fmt.Println(version.Print("unpackerr")) //nolint:forbidigo
 		return nil                              // don't run anything else.
@@ -393,6 +410,47 @@ func (u *Unpackerr) Run() {
 			u.printProgress(now)
 		}
 	}
+}
+
+func (u *Unpackerr) maxRetries() uint {
+	if u.MaxRetries == 0 {
+		return defaultMaxRetries
+	}
+
+	return u.MaxRetries
+}
+
+var errInvalidMaxBytes = errors.New("invalid max_bytes")
+
+func parseOptionalMaxBytes(size string) (uint64, bool, error) {
+	if strings.TrimSpace(size) == "" {
+		return 0, false, nil
+	}
+
+	n, err := parseExtractMaxBytes(size)
+	if err != nil {
+		return 0, false, err
+	}
+
+	return n, true, nil
+}
+
+func parseExtractMaxBytes(size string) (uint64, error) {
+	size = strings.TrimSpace(size)
+	if size == "" {
+		return 0, fmt.Errorf("%w: empty", errInvalidMaxBytes)
+	}
+
+	if size == "0" || strings.EqualFold(size, "0B") {
+		return 0, nil
+	}
+
+	n, err := bytefmt.ToBytes(size)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %q: %w", errInvalidMaxBytes, size, err)
+	}
+
+	return n, nil
 }
 
 // Custom percentage procedure for starr apps.

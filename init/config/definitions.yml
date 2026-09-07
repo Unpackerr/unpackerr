@@ -265,7 +265,9 @@ sections:
           The alternative is to use syslog to log the output of the application to a file.
           Default is no log file; this is unset.
           Except on macOS and Windows, the log file gets set to "~/.unpackerr/unpackerr.log"
-          log_files=0 turns off auto-rotation.
+          log_files=0 turns off auto-rotation so logrotate can own the file.
+          After logrotate renames the live file, send SIGHUP (`systemctl reload unpackerr`)
+          to close and reopen it. Use logrotate `create` plus postrotate HUP, not copytruncate.
           Default files is 10 and size(mb) is 10 Megabytes.
       - name: log_files
         envvar: LOG_FILES
@@ -340,11 +342,37 @@ sections:
           extraction will start again. Uses Go Duration.
       - name: max_retries
         envvar: MAX_RETRIES
-        default: 3
+        default: 2
         recommend: *NUMBERS
-        short: Failed extractions are retried after at least this long.
+        short: How many times to retry a failed extraction. `0` uses this default.
         desc: |
-          How many times to retry a failed extraction. Pauses retry_delay between attempts.
+          How many times to retry a failed extraction after the first try. Default is 2
+          (3 attempts total). `0` uses that default. Pauses retry_delay between attempts.
+      - name: remnant_action
+        envvar: REMNANT_ACTION
+        default: rename
+        recommend:
+          - name: Rename leftover (keep a copy)
+            value: rename
+          - name: Delete leftover
+            value: delete
+          - name: Leave leftover in place
+            value: 'off'
+        short: How to handle files that blocked extraction but were not in the download.
+        desc: |
+          Applies to Starr apps and to watched folders with `move_back` enabled
+          (the default folder config extracts into a sidecar tree and does not
+          classify leftovers there). When an extracted file cannot be moved into
+          place because the destination already exists, Unpackerr checks whether
+          that name was present before extraction. Names that arrived with the
+          download are kept; names that were not (leftovers from an interrupted
+          extraction) are handled by this setting. `rename` (default) moves the
+          leftover to a sibling named with a `.remnant` suffix and retries the
+          extract. `delete` removes it and retries. `off` leaves the leftover
+          in place and fails the extract without retrying. The item stays failed
+          until it leaves the Starr queue (folders are untracked). Bounded by
+          max_retries; if retries are exhausted the leftover fails the extract
+          instead of reporting success.
       - name: parallel
         envvar: PARALLEL
         default: 1
@@ -383,7 +411,7 @@ sections:
   webserver:
     title: Web Server
     docs: |
-      :::note Metrics
+      :::note[Metrics]
       The web server currently only provides prometheus metrics, which you can display in
       [Grafana](https://grafana.com/grafana/dashboards/18817-unpackerr/).
       It provides no UI. This may change in the future. The web server was added in v0.12.0.
@@ -394,7 +422,7 @@ sections:
         envvar: METRICS
         default: false
         recommend: *BOOLEAN
-        short: Extracted folders are written with this mode
+        short: Enable the Prometheus metrics endpoint.
         desc: The web server currently only supports metrics; set this to true if you wish to use it.
       - name: listen_addr
         envvar: LISTEN_ADDR
@@ -410,8 +438,10 @@ sections:
         envvar: LOG_FILES
         default: 10
         recommend: *NUMBERS
-        short: Log files to keep after rotating. `0` to disable.
-        desc: This app automatically rotates logs. Set these to the size and number to keep.
+        short: Log files to keep after rotating. `0` disables rotation
+        desc: |
+          This app automatically rotates logs. Set these to the size and number to keep.
+          log_files=0 disables auto-rotation; SIGHUP reopens the HTTP log too.
       - name: log_file_mb
         envvar: LOG_FILE_MB
         default: 10
@@ -526,6 +556,23 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: App default
+            value: ''
+          - name: Unlimited
+            value: '0'
+          - value: 1GB
+          - value: 4GB
+          - value: 20GB
+          - value: 75GB
+        short: Per-archive byte cap. Empty uses the app default. `0` is unlimited.
+        desc: |
+          Per-archive uncompressed-byte cap. Empty uses the app default:
+          Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+          `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC
         default: false
@@ -576,7 +623,7 @@ sections:
       ##################################################################################
     docs: |
       Folders are a way to watch a folder for things to extract. You can use this to
-      monitor your download client's "move to" path if you're not using it with an Starr app.
+      monitor your download client's "move to" path if you're not using it with a Starr app.
     envvar_prefix: FOLDER_
     kind: list
     params:
@@ -606,13 +653,79 @@ sections:
         short: Delete requested files after this duration; `0` disables.
         desc: |
           Delete extracted or original files this long after extraction.
-          The default is 0. Set to 0 to disable all deletes. Uncomment it to enable deletes. Uses Go Duration.
+          The default is 10m. Set to 0 to disable all deletes. Deletes also
+          require `delete_files` and/or `delete_original`. Uses Go Duration.
       - name: disable_recursion
         envvar: DISABLE_RECURSION
         default: false
         recommend: *BOOLEAN
         short: Setting this to true disables extracting archives inside archives.
         desc: Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+      - name: max_bytes
+        envvar: MAX_BYTES
+        default: ''
+        recommend:
+          - name: Unlimited
+            value: ''
+          - value: 20GB
+          - value: 200GB
+        short: Per-archive byte cap. Empty (the default) is unlimited.
+        desc: |
+          Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
+      - name: max_files
+        envvar: MAX_FILES
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 1000
+          - value: 5000
+          - value: 10000
+        short: Stop after this many files, dirs, and symlinks. `0` is unlimited.
+        desc: Cap on files, directories, and symlinks created during extract. `0` is unlimited.
+      - name: max_ratio
+        envvar: MAX_RATIO
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 5
+          - value: 10
+          - value: 15
+        short: Stop when written bytes exceed this times the archive size. `0` is unlimited.
+        desc: Cap on `bytes written / archive file size`. `0` is unlimited.
+      - name: max_nested
+        envvar: MAX_NESTED
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 8
+          - value: 16
+          - value: 32
+          - value: 50
+        short: Stop after this many nested archives from this folder's extras pass. `0` is unlimited.
+        desc: Cap on archives extracted from this folder's output (one extras pass). `0` is unlimited.
+      - name: extras_max_depth
+        envvar: EXTRAS_MAX_DEPTH
+        default: 0
+        recommend:
+          - name: Unlimited
+            value: 0
+          - value: 2
+          - value: 3
+          - value: 8
+          - value: 16
+        short: How deep extras may walk this folder's extract output. `0` is unlimited.
+        desc: Walk depth for the extras pass. `0` is unlimited.
+      - name: allow_symlinks
+        envvar: ALLOW_SYMLINKS
+        default: false
+        recommend: *BOOLEAN
+        short: Include symlink-named archives in the initial search.
+        desc: |
+          When true, the initial archive search may include symlink-named files.
+          The extras pass never follows archive-member zip links.
       - name: delete_files
         envvar: DELETE_FILES
         default: false
@@ -629,7 +742,7 @@ sections:
         envvar: DISABLE_LOG
         default: false
         recommend: *BOOLEAN
-        short: Turns off creation of extraction logs files for this folder.
+        short: Turns off creation of extraction log files for this folder.
         desc: Disable extraction log (unpackerred.txt) file creation?
       - name: move_back
         envvar: MOVE_BACK
@@ -645,7 +758,7 @@ sections:
         desc: Set this to true if you want this app to extract ISO files with .iso extension.
 
   webhook:
-    title: Web Hooks
+    title: Webhooks
     text: |
       ################
       ### Webhooks ###

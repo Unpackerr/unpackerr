@@ -57,6 +57,10 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 	}
 
 	for _, param := range h.Params {
+		if param == nil {
+			continue
+		}
+
 		// Print an empty newline for each param if the section has no header and the param has a description.
 		if h.NoHeader && param.Desc != "" {
 			buf.WriteString("\n")

@@ -76,6 +76,10 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 	}
 
 	for _, param := range h.Params {
+		if param == nil {
+			continue
+		}
+
 		if h.Kind == list {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {
@@ -110,17 +114,27 @@ func (p *Param) Compose(prefix string) string {
 	default:
 		return fmt.Sprint(prefix, p.EnvVar, "=", val, "\n")
 	case list:
+		items, ok := val.([]any)
+		if !ok {
+			return ""
+		}
+
 		var out strings.Builder
 
-		for idx, sv := range val.([]any) { //nolint:forcetypeassert
+		for idx, sv := range items {
 			fmt.Fprint(&out, prefix, p.EnvVar, idx, "=", sv, "\n")
 		}
 
 		return out.String()
 	case "conlist":
+		items, ok := val.([]any)
+		if !ok {
+			return ""
+		}
+
 		var out strings.Builder
 
-		for _, sv := range val.([]any) { //nolint:forcetypeassert
+		for _, sv := range items {
 			fmt.Fprint(&out, sv)
 		}
 

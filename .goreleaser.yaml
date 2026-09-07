@@ -1,0 +1,451 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+version: 2
+pro: true
+
+project_name: unpackerr
+
+# GoReleaser --nightly is "not a tagged GitHub release". CHANNEL picks the Docker tag:
+#   unstable = push to the unstable branch (manual)
+#   nightly  = daily cron from main
+#   release  = v* tags
+nightly:
+  # This is why REVISION is still computed (once, in the channel job) even
+  # though {{ .Version }} already includes it on --nightly: this template is
+  # what *creates* that version. Tagged builds keep .Version as the semver
+  # tag; ldflags Revision, Darwin CFBundleVersion, and Windows FileVersion
+  # still need the count. CFBundleShortVersionString / FileVersion x.y.z come
+  # from .Version (not .RawVersion: that stays on the last tag during --nightly).
+  version_template: "{{ incpatch .Version }}-{{ .Env.REVISION }}"
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+    - go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "{{.Version}}" --date "{{.Date}}" examples/MANUAL.md
+    - go run github.com/davidnewhall/md2roff@v0.0.1 --manual unpackerr --version "{{.Version}}" --date "{{.Date}}" README.md
+    - gzip -9nf examples/MANUAL
+    - mv -f examples/MANUAL.gz unpackerr.1.gz
+    # rsrc only embeds icon+manifest. goversioninfo does that and VERSIONINFO
+    # (Explorer File version). -64: before-hooks run on darwin/arm64 too;
+    # the Windows build is amd64. Skip JSON: versions come from these flags.
+    # --nightly rewrites .Version (incpatch-REVISION) but .RawVersion / .Major /
+    # .Minor / .Patch stay on the last tag. FileVersion is the x.y.z prefix of
+    # .Version plus REVISION; goversioninfo fills the numeric fields from that
+    # string. ProductVersion string is .Version (nightly includes -REVISION).
+    - >-
+      go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
+      -64 -skip-versioninfo
+      -icon init/windows/application.ico
+      -manifest init/windows/manifest.xml
+      -company "Go Lift"
+      -copyright "© Go Lift (https://golift.io)"
+      -description "Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them."
+      -internal-name unpackerr
+      -original-name unpackerr.exe
+      -product-name Unpackerr
+      -file-version "{{ index (split .Version "-") 0 }}.{{ .Env.REVISION }}"
+      -product-version "{{ .Version }}"
+      -translation 1033
+      -charset 1200
+      -o rsrc_windows_amd64.syso
+
+builds:
+  - id: unpackerr
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - '386'
+    # One linux ARM (v7). nFPM maps GOARM 6 and 7 both to Debian armhf, so
+    # packaging both collides on packagecloud. Docker is linux/arm/v7.
+    goarm:
+      - '7'
+    flags:
+      - -trimpath
+    tags:
+      - osusergo
+      - netgo
+    ldflags:
+      - -s -w
+      - -X "golift.io/version.Version={{.Version}}"
+      - -X "golift.io/version.BuildDate={{.Date}}"
+      - -X "golift.io/version.BuildUser={{.Env.USER}}"
+      - -X "golift.io/version.Revision={{.Env.REVISION}}"
+      - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+  # energye/systray's Darwin backend is Objective-C (Cocoa). CGO_ENABLED=0
+  # drops those symbols (undefined: nativeLoop, setInternalLoop, ...).
+  # CI builds this on macos-latest (host clang). OSX_CROSS is only for a
+  # local Linux snapshot with osxcross (o64-clang / oa64-clang).
+  - id: unpackerr-darwin
+    env:
+      - CGO_ENABLED=1
+      # Go 1.27's darwin objects are macOS 13; a lower min just makes ld warn.
+      - CGO_LDFLAGS=-mmacosx-version-min=13.0
+      - CGO_CFLAGS=-mmacosx-version-min=13.0
+      - MACOSX_DEPLOYMENT_TARGET=13.0
+      - 'CC={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang{{ else }}oa64-clang{{ end }}{{ else }}clang{{ end }}'
+      - 'CXX={{ if isEnvSet "OSX_CROSS" }}{{ if eq .Arch "amd64" }}o64-clang++{{ else }}oa64-clang++{{ end }}{{ else }}clang++{{ end }}'
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    tags:
+      - osusergo
+      - netgo
+    ldflags:
+      - -s -w
+      - -X "golift.io/version.Version={{.Version}}"
+      - -X "golift.io/version.BuildDate={{.Date}}"
+      - -X "golift.io/version.BuildUser={{.Env.USER}}"
+      - -X "golift.io/version.Revision={{.Env.REVISION}}"
+      - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+  - id: unpackerr-freebsd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - '386'
+    # One ARM (v7). Dual GOARM would collide on unpackerr-*.armhf.txz.
+    goarm:
+      - '7'
+    flags:
+      - -trimpath
+    tags:
+      - osusergo
+      - netgo
+    ldflags:
+      - -s -w
+      - -X "golift.io/version.Version={{.Version}}"
+      - -X "golift.io/version.BuildDate={{.Date}}"
+      - -X "golift.io/version.BuildUser={{.Env.USER}}"
+      - -X "golift.io/version.Revision={{.Env.REVISION}}"
+      - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+  - id: unpackerr-windows
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    tags:
+      - osusergo
+      - netgo
+    ldflags:
+      - -s -w
+      - -H=windowsgui
+      - -X "golift.io/version.Version={{.Version}}"
+      - -X "golift.io/version.BuildDate={{.Date}}"
+      - -X "golift.io/version.BuildUser={{.Env.USER}}"
+      - -X "golift.io/version.Revision={{.Env.REVISION}}"
+      - -X "golift.io/version.Branch={{.ShortCommit}} [{{.Branch}}]"
+    hooks:
+      post:
+        - cmd: bash init/windows/signexe.sh "{{ .Path }}"
+
+universal_binaries:
+  - id: unpackerr-darwin
+    ids: [unpackerr-darwin]
+    replace: true
+    name_template: unpackerr
+
+# Quill (Linux) can only sign/notarize the raw binary. A Gatekeeper-valid
+# .app inside a DMG has to be codesign'd + notarytool'd on macOS.
+# Enabled when the Darwin split job imported the P12 into a keychain.
+notarize:
+  macos_native:
+    - enabled: '{{ isEnvSet "KEYCHAIN_PATH" }}'
+      # These pipes match Extra.ID on the .app / .dmg, not the Darwin build id.
+      # unpackerr-darwin made both skip: "no app bundles found" / "no artifacts found".
+      ids:
+        - unpackerr-app
+        - unpackerr-dmg
+      use: dmg
+      sign:
+        keychain: "{{ .Env.KEYCHAIN_PATH }}"
+        identity: "{{ .Env.MACOS_SIGN_IDENTITY }}"
+        options: [runtime]
+        entitlements: init/macos/entitlements.plist
+      notarize:
+        profile_name: "{{ .Env.MACOS_NOTARY_PROFILE_NAME }}"
+        wait: true
+
+app_bundles:
+  - id: unpackerr-app
+    name: Unpackerr
+    ids: [unpackerr-darwin]
+    icon: init/macos/Unpackerr.app/Contents/Resources/Unpackerr.icns
+    bundle: io.golift.unpackerr
+    extra_files:
+      - src: init/macos/Unpackerr.app/Contents/Resources/terminal-notifier.app
+        dst: Contents/Resources/terminal-notifier.app
+      - src: examples/unpackerr.conf.example
+        dst: Contents/Resources/unpackerr.conf.example
+      - src: unpackerr.1.gz
+        dst: Contents/Resources/unpackerr.1.gz
+    templated_extra_files:
+      - src: init/macos/Info.plist.tmpl
+        dst: Contents/Info.plist
+
+dmg:
+  - id: unpackerr-dmg
+    name: Unpackerr
+    ids: [unpackerr-app]
+    use: appbundle
+
+source:
+  enabled: true
+  name_template: '{{ .ProjectName }}-{{ .Version }}'
+  prefix_template: '{{ .ProjectName }}-{{ .Version }}/'
+
+archives:
+  - id: default
+    ids: [unpackerr, unpackerr-darwin]
+    formats: [tar.gz]
+    # Flat tarball for GitHub. macOS installs are the notarized DMG, not this archive.
+    wrap_in_directory: false
+    files:
+      - LICENSE
+      - README.md
+      - README.html
+      - src: examples/unpackerr.conf.example
+        dst: unpackerr.conf.example
+      - src: unpackerr.1.gz
+        dst: unpackerr.1.gz
+      - src: examples/MANUAL.html
+        dst: unpackerr-manual.html
+        info:
+          mode: 0644
+      - src: examples/docker-compose.yml
+        dst: docker-compose.yml
+  # pkg/update/check.go only matches assets ending in .exe.zip.
+  - id: windows
+    ids: [unpackerr-windows]
+    formats: [zip]
+    name_template: '{{ .ProjectName }}.{{ .Arch }}.exe'
+    wrap_in_directory: false
+    files:
+      - LICENSE
+      - src: examples/unpackerr.conf.example
+        dst: unpackerr.conf.example
+      - src: examples/MANUAL.html
+        dst: unpackerr-manual.html
+      - README.html
+  # Real pkgng .txz is built after --split by fpm (-t freebsd), same as the
+  # old Makefile. nFPM has no freebsd target; a tar.xz is not `pkg install`-able.
+
+nfpms:
+  - id: unpackerr-packages
+    ids: [unpackerr]
+    # Default is unpackerr_VERSION_linux_386.deb. Conventional names match
+    # v0.15.2 (unpackerr_0.15.2-960_i386.deb). nFPM uses ~ for semver
+    # prerelease; GitHub replaces tilde with a dot, so swap it for a hyphen.
+    # GoReleaser replace is STRING OLD NEW (not sprig OLD NEW STRING).
+    file_name_template: '{{ replace .ConventionalFileName "~" "-" }}'
+    vendor: Go Lift
+    homepage: https://unpackerr.zip
+    maintainer: David Newhall II <captain at golift dot io>
+    description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
+    license: MIT
+    # GoReleaser does not template nfpms.release. Tagged linux split inserts
+    # `release: REVISION` after this marker. --nightly leaves it unset.
+    # nfpm-release:
+    formats:
+      - deb
+      - rpm
+      - archlinux
+    bindir: /usr/bin
+    section: default
+    priority: extra
+    provides:
+      - unpackerr
+    rpm:
+      signature:
+        key_file: "{{ .Env.GPG_SIGNING_KEY }}"
+    deb:
+      signature:
+        key_file: "{{ .Env.GPG_SIGNING_KEY }}"
+        type: origin
+    # nFPM maps scripts.postinstall to Arch post_install only. Upgrades must
+    # still claim leftover root:root configs (same script is idempotent).
+    archlinux:
+      scripts:
+        postupgrade: init/systemd/after-install.sh
+    scripts:
+      preinstall: init/systemd/before-install.sh
+      postinstall: init/systemd/after-install.sh
+      preremove: init/systemd/before-remove.sh
+    contents:
+      - dst: /etc/unpackerr
+        type: dir
+        file_info:
+          mode: 0755
+      - src: examples/unpackerr.conf.example
+        dst: /etc/unpackerr/unpackerr.conf
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      - src: examples/unpackerr.conf.example
+        dst: /etc/unpackerr/unpackerr.conf.example
+        type: config
+        file_info:
+          mode: 0644
+      - src: unpackerr.1.gz
+        dst: /usr/share/man/man1/unpackerr.1.gz
+        file_info:
+          mode: 0644
+      - src: LICENSE
+        dst: /usr/share/doc/unpackerr/LICENSE
+        file_info:
+          mode: 0644
+      - src: examples/MANUAL.html
+        dst: /usr/share/doc/unpackerr/unpackerr-manual.html
+        file_info:
+          mode: 0644
+      - src: README.html
+        dst: /usr/share/doc/unpackerr/README.html
+        file_info:
+          mode: 0644
+      - src: examples/docker-compose.yml
+        dst: /usr/share/doc/unpackerr/docker-compose.yml
+        file_info:
+          mode: 0644
+      - src: examples/unpackerr.conf.example
+        dst: /usr/share/doc/unpackerr/unpackerr.conf.example
+        file_info:
+          mode: 0644
+      - src: init/systemd/unpackerr.service
+        dst: /usr/lib/systemd/system/unpackerr.service
+        type: config
+        file_info:
+          mode: 0644
+      - src: init/systemd/unpackerr.tmpfiles
+        dst: /usr/lib/tmpfiles.d/unpackerr.conf
+        file_info:
+          mode: 0644
+
+dockers_v2:
+  - id: unpackerr-release
+    disable: '{{ ne .Env.CHANNEL "release" }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - ghcr.io/unpackerr/unpackerr
+    tags:
+      - latest
+      - "{{ .Version }}"
+      - "v{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+    platforms: &docker_platforms
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v7
+    labels: &docker_labels
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.title: Unpackerr
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.documentation: https://unpackerr.zip/docs/install/docker
+      org.opencontainers.image.description: Extracts downloads so Radarr, Sonarr, Lidarr or Readarr may import them.
+      org.opencontainers.image.url: https://unpackerr.zip
+      org.opencontainers.image.source: "{{ .GitURL }}"
+      org.opencontainers.image.vendor: Go Lift
+      org.opencontainers.image.licenses: MIT
+  - id: unpackerr-release-hub
+    disable: '{{ or (ne .Env.CHANNEL "release") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - docker.io/golift/unpackerr
+    tags:
+      - latest
+      - "{{ .Version }}"
+      - "v{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Major }}"
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-unstable
+    disable: '{{ ne .Env.CHANNEL "unstable" }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - ghcr.io/unpackerr/unpackerr
+    tags:
+      - unstable
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-unstable-hub
+    disable: '{{ or (ne .Env.CHANNEL "unstable") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - docker.io/golift/unpackerr
+    tags:
+      - unstable
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-nightly
+    disable: '{{ ne .Env.CHANNEL "nightly" }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - ghcr.io/unpackerr/unpackerr
+    tags:
+      - nightly
+    platforms: *docker_platforms
+    labels: *docker_labels
+  - id: unpackerr-nightly-hub
+    disable: '{{ or (ne .Env.CHANNEL "nightly") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
+    dockerfile: init/docker/Dockerfile
+    ids: [unpackerr]
+    images:
+      - docker.io/golift/unpackerr
+    tags:
+      - nightly
+    platforms: *docker_platforms
+    labels: *docker_labels
+
+# AUR: .github/scripts/aur_publish.sh after continue --merge (CHANNEL=release).
+# GoReleaser aur_sources cannot split/merge — see workflows/README.md.
+
+checksum:
+  name_template: checksums.sha256.txt
+  algorithm: sha256
+
+signs:
+  - artifacts: checksum
+  # Detached .pkg.tar.zst.sig like the old Makefile. Deb/rpm already have
+  # embedded signatures; pacman wants a sidecar.
+  - id: archlinux
+    artifacts: package
+    # Merge artifact filters do not load sprig (hasSuffix is undefined there)
+    # and the artifact map has no Format key (eq .Format fatals "map has no
+    # entry for key" and silently skips every package). Use ArtifactExt:
+    # nFPM stores the conventional extension (.deb / .rpm / .pkg.tar.zst).
+    if: '{{ eq .ArtifactExt ".pkg.tar.zst" }}'
+
+release:
+  disable: "{{ .IsNightly }}"
+  name_template: "v{{ .Version }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"

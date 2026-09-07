@@ -37,7 +37,8 @@ services:
     - UN_PROGRESS=15s
     - UN_START_DELAY=1m
     - UN_RETRY_DELAY=5m
-    - UN_MAX_RETRIES=3
+    - UN_MAX_RETRIES=2
+    - UN_REMNANT_ACTION=rename
     - UN_PARALLEL=1
     - UN_FILE_MODE=0644
     - UN_DIR_MODE=0755
@@ -63,6 +64,7 @@ services:
     - UN_SONARR_0_DELETE_DELAY=5m
     - UN_SONARR_0_DELETE_ORIG=false
     - UN_SONARR_0_SYNCTHING=false
+    - UN_SONARR_0_MAX_BYTES=
     ## Radarr Settings
     - UN_RADARR_0_URL=http://radarr:7878
     - UN_RADARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -72,6 +74,7 @@ services:
     - UN_RADARR_0_DELETE_DELAY=5m
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
+    - UN_RADARR_0_MAX_BYTES=
     ## Lidarr Settings
     - UN_LIDARR_0_URL=http://lidarr:8686
     - UN_LIDARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -81,6 +84,7 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
     ## Readarr Settings
     - UN_READARR_0_URL=http://readarr:8787
@@ -91,6 +95,7 @@ services:
     - UN_READARR_0_DELETE_DELAY=5m
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
+    - UN_READARR_0_MAX_BYTES=
     ## Whisparr Settings
     - UN_WHISPARR_0_URL=http://whisparr:6969
     - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
@@ -100,17 +105,24 @@ services:
     - UN_WHISPARR_0_DELETE_DELAY=5m
     - UN_WHISPARR_0_DELETE_ORIG=false
     - UN_WHISPARR_0_SYNCTHING=false
+    - UN_WHISPARR_0_MAX_BYTES=
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
     - UN_FOLDER_0_EXTRACT_PATH=
     - UN_FOLDER_0_DELETE_AFTER=10m
     - UN_FOLDER_0_DISABLE_RECURSION=false
+    - UN_FOLDER_0_MAX_BYTES=
+    - UN_FOLDER_0_MAX_FILES=0
+    - UN_FOLDER_0_MAX_RATIO=0
+    - UN_FOLDER_0_MAX_NESTED=0
+    - UN_FOLDER_0_EXTRAS_MAX_DEPTH=0
+    - UN_FOLDER_0_ALLOW_SYMLINKS=false
     - UN_FOLDER_0_DELETE_FILES=false
     - UN_FOLDER_0_DELETE_ORIGINAL=false
     - UN_FOLDER_0_DISABLE_LOG=false
     - UN_FOLDER_0_MOVE_BACK=false
     - UN_FOLDER_0_EXTRACT_ISOS=false
-    ## Web Hooks
+    ## Webhooks
     - UN_WEBHOOK_0_URL=https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com
     - UN_WEBHOOK_0_NAME=
     - UN_WEBHOOK_0_SILENT=false
@@ -138,4 +150,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 08 MAR 2026 18:55 UTC
+## => Content Auto Generated, 30 AUG 2026 08:13 UTC

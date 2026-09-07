@@ -125,6 +125,10 @@ func (h *Header) makeDocsTable(prefix string) string {
 	}
 
 	for _, param := range h.Params {
+		if param == nil {
+			continue
+		}
+
 		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
 		if param.Kind == list {
 			envVar += "0"

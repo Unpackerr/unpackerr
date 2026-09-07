@@ -406,3 +406,25 @@ func TestUIPasswordConcurrentReplace(t *testing.T) {
 
 	wait.Wait()
 }
+
+func TestPublicCryptPass(t *testing.T) {
+	t.Parallel()
+
+	hashed := CryptPass(authPassword + "admin:$2a$10$notahash")
+	tests := []struct {
+		in, out CryptPass
+	}{
+		{"fileuser:filepass99", ""},
+		{hashed, hashed},
+		{"webauth:X-Remote-User", "webauth:X-Remote-User"},
+		{authNone, authNone},
+		{filePrefix + "/ui.pass", filePrefix + "/ui.pass"},
+		{"", ""},
+	}
+
+	for _, test := range tests {
+		if got := publicCryptPass(test.in); got != test.out {
+			t.Fatalf("%q -> %q, want %q", test.in, got, test.out)
+		}
+	}
+}

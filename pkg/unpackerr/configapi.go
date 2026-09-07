@@ -66,7 +66,9 @@ func (u *Unpackerr) requireConfigPerm(write bool, next httprouter.Handle) httpro
 func (u *Unpackerr) configGetHandler(response http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	section := ConfigSection(params.ByName("section"))
 	if section == SectionWebserver {
-		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, u.cloneFileWebserver()))
+		web := publicWebserver(u.cloneFileWebserver())
+		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, web))
+
 		return
 	}
 
@@ -78,7 +80,9 @@ func (u *Unpackerr) configGetLiveHandler(
 ) {
 	section := ConfigSection(params.ByName("section"))
 	if section == SectionWebserver {
-		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, u.cloneLiveWebserver()))
+		web := publicWebserver(u.cloneLiveWebserver())
+		writeJSON(response, http.StatusOK, redactAPIKeysUnlessAll(request, web))
+
 		return
 	}
 
@@ -190,6 +194,16 @@ func redactAPIKeysUnlessAll(request *http.Request, web *WebServer) *WebServer {
 	for idx := range web.APIKeys {
 		web.APIKeys[idx].Key = ""
 	}
+
+	return web
+}
+
+func publicWebserver(web *WebServer) *WebServer {
+	if web == nil {
+		return web
+	}
+
+	web.UIPassword = publicCryptPass(web.UIPassword)
 
 	return web
 }

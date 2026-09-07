@@ -106,6 +106,18 @@ func (p CryptPass) Webauth() bool {
 	return p == authHeader || strings.HasPrefix(p.Val(), authHeader+":") || p.Noauth()
 }
 
+// publicCryptPass is the GET form of ui_password: hash, webauth, noauth, and
+// filepath: stay; plaintext user:pass is blanked so env-overlaid file snapshots
+// cannot leak the on-disk secret.
+func publicCryptPass(pass CryptPass) CryptPass {
+	raw := pass.Val()
+	if raw == "" || pass.IsCrypted() || pass.Webauth() || strings.HasPrefix(raw, filePrefix) {
+		return pass
+	}
+
+	return ""
+}
+
 func (p CryptPass) Type() AuthType {
 	switch {
 	case p.Noauth():

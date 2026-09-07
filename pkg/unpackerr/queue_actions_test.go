@@ -150,6 +150,13 @@ func TestQueueIDJSON(t *testing.T) {
 		t.Fatal("extra json should not retry")
 	}
 
+	oversized := `{"id":"` + strings.Repeat("x", maxActionBody) + `"}`
+
+	tooBig := doAuth(t, unpack, http.MethodPost, "/api/queue/retry", oversized, withKey)
+	if tooBig.Code != http.StatusBadRequest {
+		t.Fatalf("oversized json %d %s", tooBig.Code, tooBig.Body.String())
+	}
+
 	unknown := doAuth(t, unpack, http.MethodPost, "/api/queue/retry", `{"id":"/dl/fail","x":1}`, withKey)
 	if unknown.Code != http.StatusBadRequest {
 		t.Fatalf("unknown field %d", unknown.Code)

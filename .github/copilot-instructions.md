@@ -38,6 +38,13 @@ in mind; the items below have been raised and rejected before.
 - `filepath:` values are kept as written in `fileConfig` and expanded on the live
   copy only (`expandFilepaths`). That is intentional for every section.
 
+## Tests
+
+- Do not force a write failure with a read-only directory. The container image
+  runs as root, which ignores the permission bits, and Windows ignores them
+  outright. Use `blockedPath`, which puts the target under a regular file so
+  the write fails with ENOTDIR for every user and platform.
+
 ## Config PUT
 
 - Sections that the loop cannot re-apply in place return `restartRequired: true`

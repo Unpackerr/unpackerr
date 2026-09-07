@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -575,10 +574,6 @@ func TestConfigPutURLBaseRoundTripNeedsNoRestart(t *testing.T) {
 func TestConfigPutWriteFailureLeavesLiveUnchanged(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows || os.Geteuid() == 0 {
-		t.Skip("cannot chmod a directory unwritable")
-	}
-
 	dir := t.TempDir()
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
@@ -595,11 +590,7 @@ func TestConfigPutWriteFailureLeavesLiveUnchanged(t *testing.T) {
 		t.Fatalf("seed put %d %s", rec.Code, rec.Body.String())
 	}
 
-	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore after the read-only test
+	unpack.ConfigFile = blockedPath(t, "unpackerr.conf")
 
 	var general generalConfig
 	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
@@ -1096,29 +1087,27 @@ func TestConfigPutGeneralNoChangeNeedsNoRestart(t *testing.T) {
 	}
 }
 
+// blockedPath returns a path whose parent is a regular file, so creating it
+// fails with ENOTDIR for any user. Read-only directories do not work here:
+// root ignores the permission bits, and Windows ignores them entirely.
+func blockedPath(t *testing.T, name string) string {
+	t.Helper()
+
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	return filepath.Join(blocker, name)
+}
+
 // A PUT that cannot persist must not leave a restart armed.
 func TestConfigPutWriteFailureDoesNotArmRestart(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod read-only dirs do not block writes on windows")
-	}
-
 	unpack := testAuthUnpackerr(t)
-	dir := filepath.Join(t.TempDir(), "ro")
-
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // test fixture
-		t.Fatal(err)
-	}
-
-	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
 	unpack.snapshotFileConfig()
-
-	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore for cleanup
+	unpack.ConfigFile = blockedPath(t, "unpackerr.conf")
 
 	folders, err := json.Marshal(map[string]any{
 		"interval": "1s", "buffer": 1000, "folder": []map[string]string{{"path": t.TempDir()}},
@@ -1131,10 +1120,36 @@ func TestConfigPutWriteFailureDoesNotArmRestart(t *testing.T) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
 	})
 	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("read-only config should 500: %d %s", rec.Code, rec.Body.String())
+		t.Fatalf("unwritable config should 500: %d %s", rec.Code, rec.Body.String())
 	}
 
 	if unpack.pendingRestart {
 		t.Fatal("a failed PUT changed nothing, so it must not schedule a restart")
+	}
+}
+
+// History delete and clear must report a failed rewrite instead of a false 200:
+// the rows come back on the next start.
+func TestHistoryWriteFailureReportsError(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
+	unpack.histPath = blockedPath(t, historyFileName)
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	del := doAuth(t, unpack, http.MethodPost, "/api/history/delete", `{"id":"a"}`, withKey)
+	if del.Code != http.StatusInternalServerError {
+		t.Fatalf("delete with an unwritable history file: %d %s", del.Code, del.Body.String())
+	}
+
+	cleared := doAuth(t, unpack, http.MethodPost, "/api/history/clear", "", withKey)
+	if cleared.Code != http.StatusInternalServerError {
+		t.Fatalf("clear with an unwritable history file: %d %s", cleared.Code, cleared.Body.String())
 	}
 }

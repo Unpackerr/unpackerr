@@ -72,7 +72,11 @@ jobs:
           set -euo pipefail
           git fetch --force --tags
           DATE="$(date -u +%Y-%m-%dT%H:%M:00Z)"
-          VERSION="$(git tag --sort version:refname | tail -n1 | tr -d v)"
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(git tag --sort version:refname | tail -n1 | sed 's/^v//')"
+          fi
           [ -n "${VERSION}" ] || VERSION=development
           ITERATION="$(git rev-list --count --all || echo 0)"
           COMMIT="$(git rev-parse --short HEAD || echo 0)"
@@ -96,7 +100,7 @@ jobs:
           platforms: |-
             linux/arm64
           context: .
-          file: init/docker/Dockerfile
+          file: init/docker/Dockerfile.ghcr
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha

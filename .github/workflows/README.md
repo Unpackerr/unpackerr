@@ -2,7 +2,7 @@
 
 > **Fork note (bateman/unpackerr):** `release.yml` here is reduced to a single
 > `docker-ghcr-build-push` job that builds the `linux/arm64` image from source
-> (`init/docker/Dockerfile` is multi-stage) and pushes it to `ghcr.io/bateman/unpackerr`
+> (`init/docker/Dockerfile.ghcr`, multi-stage; upstream's `init/docker/Dockerfile` is left untouched) and pushes it to `ghcr.io/bateman/unpackerr`
 > on `v*` tags and on the `unstable` branch; on pull requests it only builds. The
 > upstream pipeline described below needs GoReleaser Pro, Apple, Windows Authenticode,
 > Docker Hub, packagecloud, AUR and unstable.golift.io secrets that are not configured

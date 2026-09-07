@@ -376,7 +376,6 @@
           },
           "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "400": {"$ref": "#/components/responses/BadRequest"},
-          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -392,7 +391,6 @@
             "description": "Cleared",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
-          "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -427,7 +425,7 @@
       "put": {
         "tags": ["config"],
         "summary": "Replace one config section and rewrite the TOML file",
-        "description": "Requires write:config:{section}. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. The TOML file is written before live state changes; a persist failure is 500 and leaves runtime unchanged. filepath: ui_password is expanded for the running process and kept as filepath: on disk. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. Webserver listen_addr, urlbase, TLS, metrics, pprof, and HTTP log settings stay on the running server until restart. In-flight extracts are not cancelled. Some changes set restartRequired.",
+        "description": "Requires write:config:{section}. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. filepath: values in any section are expanded for the running process and kept as filepath: on disk. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"description": "Same shape as GET /api/config/{section}"}}}
@@ -439,6 +437,7 @@
           },
           "400": {"$ref": "#/components/responses/BadRequest"},
           "500": {"$ref": "#/components/responses/PersistError"},
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
@@ -467,6 +466,7 @@
             "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
           },
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

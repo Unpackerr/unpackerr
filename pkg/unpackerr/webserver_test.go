@@ -58,6 +58,23 @@ func TestWebServerNormalizeURLBase(t *testing.T) {
 	if server.URLBase != "/custom/" {
 		t.Fatalf("urlbase %q", server.URLBase)
 	}
+
+	if err := server.validateURLBase(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWebServerValidateURLBaseRejectsBraces(t *testing.T) {
+	t.Parallel()
+
+	for _, urlbase := range []string{"{tenant}", "foo{bar}", "foo}", "{"} {
+		server := &WebServer{URLBase: urlbase}
+		server.normalizeURLBase()
+
+		if err := server.validateURLBase(); err == nil {
+			t.Fatalf("%q: expected error", urlbase)
+		}
+	}
 }
 
 func TestWebRoutesIndexHonorsURLBase(t *testing.T) {

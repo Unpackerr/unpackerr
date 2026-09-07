@@ -571,6 +571,41 @@ func TestConfigPutURLBaseRoundTripNeedsNoRestart(t *testing.T) {
 	}
 }
 
+func TestConfigPutURLBaseRejectsBraces(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.URLBase = "/foo/{tenant}/"
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), key)
+	if put.Code != http.StatusBadRequest {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if !strings.Contains(put.Body.String(), "urlbase must not contain") {
+		t.Fatalf("put body %s", put.Body.String())
+	}
+}
+
 func TestConfigPutWriteFailureLeavesLiveUnchanged(t *testing.T) {
 	t.Parallel()
 

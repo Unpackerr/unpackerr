@@ -282,6 +282,10 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 
 	next.normalizeURLBase()
 
+	if err := next.validateURLBase(); err != nil {
+		return false, err
+	}
+
 	submitted := next.UIPassword
 	omitted := submitted.Val() == ""
 	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)

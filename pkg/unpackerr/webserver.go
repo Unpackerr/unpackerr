@@ -15,6 +15,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var errURLBaseBraces = errors.New("urlbase must not contain { or }")
+
 type WebServer struct {
 	Metrics    bool            `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
 	Pprof      bool            `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
@@ -66,6 +68,19 @@ func (w *WebServer) normalizeURLBase() {
 	w.URLBase = strings.TrimSuffix(path.Join("/", w.URLBase), "/") + "/"
 }
 
+// validateURLBase rejects ServeMux wildcards in the configured prefix.
+func (w *WebServer) validateURLBase() error {
+	if w == nil {
+		return nil
+	}
+
+	if strings.ContainsAny(w.URLBase, "{}") {
+		return fmt.Errorf("%w: %q", errURLBaseBraces, w.URLBase)
+	}
+
+	return nil
+}
+
 func (u *Unpackerr) logWebserver() {
 	if !u.Webserver.Enabled() {
 		u.Printf(" => Webserver Disabled")
@@ -96,6 +111,11 @@ func (u *Unpackerr) startWebServer() {
 	u.setupAdminAPIKey()
 	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
+	if err := u.Webserver.validateURLBase(); err != nil {
+		u.Errorf("Web Server Failed: %v", err)
+		return
+	}
+
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = http.NewServeMux()
 

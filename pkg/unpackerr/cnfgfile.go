@@ -87,6 +87,12 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		return 0, 0, msg, err
 	}
 
+	u.Webserver.normalizeURLBase()
+
+	if err := u.Webserver.validateURLBase(); err != nil {
+		return 0, 0, msg, err
+	}
+
 	fileMode, dirMode := u.validateConfig()
 
 	return fileMode, dirMode, msg, nil

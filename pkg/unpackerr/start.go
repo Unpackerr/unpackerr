@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -44,7 +45,8 @@ const (
 	minimumDeleteDelay      = time.Second
 	defaultDeleteDelay      = 5 * time.Minute
 	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory          = 10             // items kept in history.
+	defaultHistory          = 200            // JSONL cap; tray still shows trayHistory names.
+	trayHistory             = 10             // items kept in the GUI history menu.
 	suffix                  = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf           = 100            // Size of xtractr callback update channels.
 	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
@@ -64,18 +66,30 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics  *metrics
-	folders  *Folders
-	sigChan  chan os.Signal
-	updates  chan *xtractr.Response
-	progChan chan *ExtractProgress
-	hookChan chan *hookQueueItem
-	delChan  chan *fileDeleteReq
-	workChan chan []func()
+	metrics      *metrics
+	folders      *Folders
+	sigChan      chan os.Signal
+	updates      chan *xtractr.Response
+	progChan     chan *ExtractProgress
+	hookChan     chan *hookQueueItem
+	delChan      chan *fileDeleteReq
+	queueActChan chan *queueAction
+	workChan     chan []func()
 	*Logger
-	rotatorr *rotatorr.Logger
-	httpLog  *rotatorr.Logger
-	menu     map[string]ui.MenuItem
+	rotatorr         *rotatorr.Logger
+	httpLog          *rotatorr.Logger
+	menu             map[string]ui.MenuItem
+	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
+	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
+	uiPassMu         sync.RWMutex // guards Webserver.UIPassword
+	uiPasswordNotice string
+	uiPasswordGenErr error
+	configWriteErr   error
+	adminKeyNotice   string
+	adminKeyErr      error
+	histPath         string
+	histMu           sync.Mutex
+	records          []HistoryRecord
 }
 
 type fileDeleteReq struct {
@@ -100,21 +114,23 @@ type Flags struct {
 	ConfigFile string
 	EnvPrefix  string
 	webhook    uint
+	reset      bool
 }
 
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:    &Flags{EnvPrefix: "UN"},
-		hookChan: make(chan *hookQueueItem, updateChanBuf),
-		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		sigChan:  make(chan os.Signal, signalBuf),
-		workChan: make(chan []func(), 1),
-		History:  &History{Map: make(map[string]*Extract)},
-		updates:  make(chan *xtractr.Response, updateChanBuf),
-		progChan: make(chan *ExtractProgress),
-		menu:     make(map[string]ui.MenuItem),
+		Flags:        &Flags{EnvPrefix: "UN"},
+		hookChan:     make(chan *hookQueueItem, updateChanBuf),
+		delChan:      make(chan *fileDeleteReq, updateChanBuf),
+		queueActChan: make(chan *queueAction, updateChanBuf),
+		sigChan:      make(chan os.Signal, signalBuf),
+		workChan:     make(chan []func(), 1),
+		History:      &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		updates:      make(chan *xtractr.Response, updateChanBuf),
+		progChan:     make(chan *ExtractProgress),
+		menu:         make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -145,7 +161,7 @@ func New() *Unpackerr {
 
 // Start runs the app.
 //
-//nolint:gosec // not too concerned with possible integer overflows reading user-provided config files.
+//nolint:gosec,funlen // not too concerned with possible integer overflows reading user-provided config files.
 func Start() error {
 	log.SetFlags(log.LstdFlags) // in case we throw an error for main.go before logging is setup.
 
@@ -171,6 +187,16 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+
+	if err := unpackerr.handleStartupPassword(); err != nil {
+		return err
+	}
+
+	if unpackerr.reset {
+		return nil
+	}
+
+	unpackerr.loadHistory()
 	// Parse filepath: strings from the config and read in extra config files.
 	output, err := cnfgfile.Parse(unpackerr.Config, &cnfgfile.Opts{
 		Name:          "Unpackerr",
@@ -341,7 +367,7 @@ func (u *Unpackerr) watchCmdAndWebhooks() {
 // ParseFlags turns CLI args into usable data.
 func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.Usage = func() {
-		fmt.Println("Usage: unpackerr [--config=filepath] [--version]") //nolint:forbidigo
+		fmt.Println("Usage: unpackerr [--config=filepath] [--version] [--reset]") //nolint:forbidigo
 		flag.PrintDefaults()
 	}
 
@@ -349,6 +375,7 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 	flag.StringVarP(&u.EnvPrefix, "prefix", "p", "UN", "Environment Variable Prefix")
 	flag.UintVarP(&u.webhook, "webhook", "w", 0, "Send test webhook. Valid values: 1,2,3,4,5,6,7,8")
 	flag.BoolVarP(&u.verReq, "version", "v", false, "Print the version and exit.")
+	flag.BoolVar(&u.reset, "reset", false, "Reset the web UI password, write it to the config file, and exit")
 	flag.Parse()
 
 	return u // so you can chain into ParseConfig.
@@ -399,6 +426,9 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
+		case action := <-u.queueActChan:
+			// HTTP retry/forget must mutate Map and Folders on this goroutine.
+			action.result <- u.applyQueueAction(action)
 		case now := <-logger:
 			// Log/print current queue counts once in a while.
 			u.logCurrentQueue(now)

@@ -8,6 +8,7 @@ require (
 	github.com/dromara/carbon/v2 v2.6.17
 	github.com/energye/systray v1.0.3
 	github.com/fsnotify/fsnotify v1.10.1
+	github.com/gorilla/securecookie v1.1.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lestrrat-go/apache-logformat/v2 v2.0.6
 	github.com/mitchellh/go-homedir v1.1.0
@@ -15,9 +16,10 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
+	golang.org/x/crypto v0.56.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/sys v0.47.0
-	golift.io/cnfg v0.2.5
+	golift.io/cnfg v0.3.0
 	golift.io/cnfgfile v0.0.0-20240713024420-a5436d84eb48
 	golift.io/rotatorr v0.0.0-20260901062538-fc9f05905af3
 	golift.io/starr v1.3.1
@@ -63,7 +65,6 @@ require (
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.16 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
-	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/text v0.41.0 // indirect

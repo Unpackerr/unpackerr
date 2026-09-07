@@ -86,6 +86,9 @@ func (u *Unpackerr) getLidarrQueue(server *LidarrConfig, start time.Time) {
 
 // checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
 func (u *Unpackerr) checkLidarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Lidarr {
 		if server.Queue == nil {
 			continue
@@ -95,7 +98,7 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 			switch x, ok := u.Map[record.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
 				u.Map[record.Title] = &Extract{
 					App:         starr.Lidarr,
 					URL:         server.URL,

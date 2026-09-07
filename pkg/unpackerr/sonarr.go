@@ -77,6 +77,9 @@ func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 
 // checkSonarrQueue saves completed Sonarr-queued downloads to u.Map.
 func (u *Unpackerr) checkSonarrQueue(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for _, server := range u.Sonarr {
 		if server.Queue == nil {
 			continue
@@ -86,7 +89,7 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 			switch x, ok := u.Map[record.Title]; {
 			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
 				u.Debugf("%s (%s): Item Waiting for Import: %v", starr.Sonarr, server.URL, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols):
+			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
 				u.Map[record.Title] = &Extract{
 					App:         starr.Sonarr,
 					URL:         server.URL,

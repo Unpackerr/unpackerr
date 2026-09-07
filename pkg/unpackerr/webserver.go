@@ -8,26 +8,34 @@ import (
 	"net/http/pprof"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/gorilla/securecookie"
 	"github.com/julienschmidt/httprouter"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type WebServer struct {
-	Metrics    bool        `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
-	Pprof      bool        `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
-	LogFiles   int         `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
-	LogFileMb  int         `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
-	ListenAddr string      `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
-	LogFile    string      `json:"logFile"     toml:"log_file"      xml:"log_file"      yaml:"logFile"`
-	SSLCrtFile string      `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
-	SSLKeyFile string      `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
-	URLBase    string      `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
-	Upstreams  StringSlice `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	Metrics    bool            `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
+	Pprof      bool            `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
+	LogFiles   int             `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
+	LogFileMb  int             `json:"logFileMb"   toml:"log_file_mb"   xml:"log_file_mb"   yaml:"logFileMb"`
+	ListenAddr string          `json:"listenAddr"  toml:"listen_addr"   xml:"listen_addr"   yaml:"listenAddr"`
+	LogFile    string          `json:"logFile"     toml:"log_file"      xml:"log_file"      yaml:"logFile"`
+	SSLCrtFile string          `json:"sslCertFile" toml:"ssl_cert_file" xml:"ssl_cert_file" yaml:"sslCertFile"`
+	SSLKeyFile string          `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
+	URLBase    string          `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
+	Upstreams  StringSlice     `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	UIPassword CryptPass       `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
+	APIKeys    []APIKey        `json:"apiKeys"     toml:"api_keys"      xml:"api_keys"      yaml:"apiKeys"`
+	Roles      map[string]Role `json:"roles"       toml:"roles"         xml:"roles"         yaml:"roles"`
 	allow      AllowedIPs
 	router     *httprouter.Router
 	server     *http.Server
+	keyPerms   map[string][]string
+	cookies    *securecookie.SecureCookie
+	failDelay  time.Duration
 }
 
 func (w *WebServer) listenAddr() string {
@@ -72,11 +80,12 @@ func (u *Unpackerr) logWebserver() {
 		ssl = "s"
 	}
 
-	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams)",
-		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams))
+	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams) auth:%s",
+		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.uiPassword().Type())
 
 	if u.Webserver.Metrics {
-		u.Printf(" => Prometheus metrics enabled at %s", path.Join(u.Webserver.URLBase, "metrics"))
+		u.Printf(" => Prometheus metrics enabled at %s (API key required)",
+			path.Join(u.Webserver.URLBase, "metrics"))
 	}
 }
 
@@ -85,15 +94,24 @@ func (u *Unpackerr) startWebServer() {
 		return
 	}
 
+	u.setupAdminAPIKey()
+	u.logAdminAPIKey()
 	u.Webserver.normalizeURLBase()
 	u.Webserver.allow = MakeIPs(u.Webserver.Upstreams)
 	u.Webserver.router = httprouter.New()
+
+	if err := u.Webserver.initCookies(); err != nil {
+		u.Errorf("Could not initialize session cookies: %v", err)
+	}
+
+	u.Webserver.failDelay = loginFailDelay
 	apache, _ := apachelog.New(`%{X-Forwarded-For}i %l - %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"`)
 
 	// Make a multiplexer because websockets can't use apache log.
+	// Login deadline must wrap apachelog: its ResponseWriter does not Unwrap.
 	smx := http.NewServeMux()
 	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
+	smx.Handle("/", u.fixForwardedFor(u.withLoginReadDeadline(apache.Wrap(u.Webserver.router, u.HTTP.Writer()))))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
@@ -110,7 +128,9 @@ func (u *Unpackerr) startWebServer() {
 }
 
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.router.GET(path.Join(u.Webserver.URLBase, "/"), Index)
+	u.Webserver.router.GET(u.Webserver.URLBase, Index)
+	u.registerAuthRoutes()
+	u.registerAPIRoutes()
 
 	if u.Webserver.Pprof {
 		u.registerPprof()
@@ -122,11 +142,12 @@ func (u *Unpackerr) webRoutes() {
 	}
 
 	u.setupMetrics()
-	u.Webserver.router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
+	metrics := u.requirePermHTTP(PermReadSystemMetrics, promhttp.Handler())
+	u.Webserver.router.Handler(http.MethodGet, "/metrics", metrics)
 
 	if u.Webserver.URLBase != "/" {
 		// Metrics get served from both paths.
-		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), promhttp.Handler())
+		u.Webserver.router.Handler(http.MethodGet, path.Join(u.Webserver.URLBase, "/metrics"), metrics)
 	}
 }
 

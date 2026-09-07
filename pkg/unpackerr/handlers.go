@@ -62,6 +62,9 @@ type StarrConfig struct {
 
 // checkQueueChanges checks each item for state changes from the app queues.
 func (u *Unpackerr) checkQueueChanges(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for name, data := range u.Map {
 		switch {
 		case data.App == FolderString:
@@ -101,10 +104,25 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 // extractCompletedDownloads process each download and checks if it needs to be extracted.
 // This is called from the main go routine in start.go and it only processes starr apps, not folders.
 func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
+	type pending struct {
+		name string
+		item *Extract
+	}
+
+	u.lockHistory()
+
+	jobs := make([]pending, 0)
+
 	for name, item := range u.Map {
 		if item.App != FolderString && item.Status < QUEUED {
-			u.extractCompletedDownload(name, now, item)
+			jobs = append(jobs, pending{name: name, item: item})
 		}
+	}
+
+	u.unlockHistory()
+
+	for _, job := range jobs {
+		u.extractCompletedDownload(job.name, now, job.item)
 	}
 }
 
@@ -136,18 +154,11 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		}
 	}
 
-	// This updates the item in the map.
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
 	snap, err := keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
-	if err != nil {
-		u.Errorf("[%s] Snapshot dests for remnant check: %v", item.App, err)
-	} else {
-		item.PreFiles = snap
-	}
+	u.markItemQueued(item, snap, err, now)
 
-	item.Status = QUEUED
-	item.Updated = now
 	// This queues the extraction. Which may start right away.
 	archiveTypes := []string{".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2"}
 	if item.SplitFlac {
@@ -172,6 +183,20 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	})
 
 	u.logQueuedDownload(queueSize, item, files)
+}
+
+func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, snapErr error, now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	if snapErr != nil {
+		u.Errorf("[%s] Snapshot dests for remnant check: %v", item.App, snapErr)
+	} else {
+		item.PreFiles = snap
+	}
+
+	item.Status = QUEUED
+	item.Updated = now
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
@@ -203,6 +228,9 @@ func (u *Unpackerr) getPasswordFromPath(path string) string {
 //
 //nolint:cyclop,wsl
 func (u *Unpackerr) checkExtractDone(now time.Time) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
 	for name, item := range u.Map {
 		switch elapsed := now.Sub(item.Updated); {
 		case item.Status == DELETED && elapsed >= item.DeleteDelay:
@@ -260,30 +288,57 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 
 // handleXtractrCallback handles callbacks from the xtractr library for starr apps (not folders).
 // This takes the provided info and logs it then sends it the queue update method.
-func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
+func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:funlen
+	now := resp.Started.Add(resp.Elapsed)
+
+	u.lockHistory()
+
 	item := u.Map[resp.X.Name]
-	if resp.Done && item != nil {
-		u.updateMetrics(resp, item.App, item.URL)
-	} else if item != nil {
-		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
+	if item == nil {
+		u.unlockHistory()
+		return
 	}
 
-	var (
-		remnantStatus ExtractStatus
-		remnants      bool
-	)
-	if resp.Done && item != nil {
-		remnantStatus, remnants = u.handleRemnants(resp, item.PreFiles, item.Retries)
-	}
+	if !resp.Done {
+		if item.XProg != nil {
+			item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
+		}
 
-	switch now := resp.Started.Add(resp.Elapsed); {
-	case !resp.Done:
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+		u.unlockHistory()
+
+		return
+	}
+
+	app := item.App
+	url := item.URL
+	preFiles := item.PreFiles
+	retries := item.Retries
+
+	u.unlockHistory()
+	u.updateMetrics(resp, app, url)
+
+	remnantStatus, remnants := u.handleRemnants(resp, preFiles, retries)
+
+	var files []string
+	if !remnants && resp.Error == nil {
+		files = fileList(resp.X.Path)
+	}
+
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	item = u.Map[resp.X.Name]
+	if item == nil {
+		return
+	}
+
+	switch {
 	case remnants && remnantStatus == WAITING:
 		// Every blocker was cleared; re-extract into the empty destination.
 		// This case wins over resp.Error, so log a password/corrupt-archive
-		// error here the way finishFolderExtract does before handleRemnants.
+		// error here the way the folder callback logs before remnant cleanup.
 		if resp.Error != nil {
 			u.Errorf("[%s] Extraction Failed: %s: %v", item.App, resp.X.Name, resp.Error)
 		}
@@ -302,21 +357,20 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) {
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
-		if item != nil && xtractr.IsLimitError(resp.Error) {
+		if xtractr.IsLimitError(resp.Error) {
 			item.NoRetry = true
 		}
 
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	default:
-		files := fileList(resp.X.Path)
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %sB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 
-		if item != nil && item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
+		if item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}

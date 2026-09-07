@@ -17,15 +17,6 @@ const (
 
 // AtomicWrite writes data to path by temp file + rename, keeping path.bak.
 func AtomicWrite(path string, data []byte) error {
-	return atomicWrite(path, data, true)
-}
-
-// AtomicReplace writes data to path by temp file + rename without creating path.bak.
-func AtomicReplace(path string, data []byte) error {
-	return atomicWrite(path, data, false)
-}
-
-func atomicWrite(path string, data []byte, backup bool) error {
 	if path == "" {
 		return errEmptyConfigPath
 	}
@@ -66,84 +57,33 @@ func atomicWrite(path string, data []byte, backup bool) error {
 		return fmt.Errorf("closing temp config: %w", err)
 	}
 
-	if err := replaceFile(path, tmpName, mode, backup); err != nil {
-		return err
-	}
-
-	tmpName = "" // replaced; defer remove is a no-op
-
-	return nil
+	return replaceFile(path, tmpName, mode)
 }
 
-func replaceFile(path, tmpName string, mode os.FileMode, backup bool) error {
+// replaceFile keeps path.bak, then renames. Windows cannot rename over an open
+// or existing file, so it falls back to remove + rename and restores from .bak.
+func replaceFile(path, tmpName string, mode os.FileMode) error {
 	bak := path + backupSuffix
 
-	if backup {
-		if _, err := os.Stat(path); err == nil {
-			if err := copyFile(path, bak, mode); err != nil {
-				return fmt.Errorf("backing up config: %w", err)
-			}
+	if _, err := os.Stat(path); err == nil {
+		if err := copyFile(path, bak, mode); err != nil {
+			return fmt.Errorf("backing up config: %w", err)
 		}
 	}
 
 	if err := os.Rename(tmpName, path); err == nil {
-		if !backup {
-			_ = os.Remove(bak)
-		}
-
 		return nil
-	}
-
-	rollback, err := stashExisting(path, tmpName, mode, backup)
-	if err != nil {
-		return err
 	}
 
 	_ = os.Remove(path)
 
 	if err := os.Rename(tmpName, path); err != nil {
-		if backup {
-			_ = copyFile(bak, path, mode)
-		} else if rollback != "" {
-			_ = copyFile(rollback, path, mode)
-			_ = os.Remove(rollback)
-		}
+		_ = copyFile(bak, path, mode)
 
 		return fmt.Errorf("replacing config: %w", err)
 	}
 
-	if rollback != "" {
-		_ = os.Remove(rollback)
-	}
-
-	if !backup {
-		_ = os.Remove(bak)
-	}
-
 	return nil
-}
-
-// stashExisting copies dest aside before the Windows-style remove+rename fallback
-// so AtomicReplace can restore it if the second rename fails. The copy is not path.bak.
-func stashExisting(path, tmpName string, mode os.FileMode, backup bool) (string, error) {
-	if backup {
-		return "", nil
-	}
-
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
-
-		return "", fmt.Errorf("stat config: %w", err)
-	}
-
-	rollback := tmpName + ".prev"
-	if err := copyFile(path, rollback, mode); err != nil {
-		return "", fmt.Errorf("stashing config: %w", err)
-	}
-
-	return rollback, nil
 }
 
 func copyFile(srcPath, dstPath string, mode os.FileMode) error {

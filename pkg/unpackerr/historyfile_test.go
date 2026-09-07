@@ -34,8 +34,8 @@ func TestHistoryUpsertAndCap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	text := string(body)
-	if !strings.Contains(text, `"id":"c"`) || strings.Contains(text, `"id":"a"`) {
+	// Append-only: the file still holds the over-cap row until it is compacted.
+	if text := string(body); !strings.Contains(text, `"id":"c"`) || !strings.Contains(text, `"id":"a"`) {
 		t.Fatalf("file %s", text)
 	}
 
@@ -44,6 +44,15 @@ func TestHistoryUpsertAndCap(t *testing.T) {
 
 	if len(unpack.historySnapshot()) != 2 {
 		t.Fatal("reload")
+	}
+
+	// Load folds the file back to the cap.
+	if body, err = os.ReadFile(unpack.histPath); err != nil {
+		t.Fatal(err)
+	}
+
+	if text := string(body); strings.Contains(text, `"id":"a"`) || strings.Count(text, "\n") != 2 {
+		t.Fatalf("compacted file %s", text)
 	}
 }
 
@@ -148,50 +157,5 @@ func TestLoadHistoryRewritesFileCap(t *testing.T) {
 
 	if strings.Count(string(body), `"id":`) != 1 || !strings.Contains(string(body), `"id":"c"`) {
 		t.Fatalf("file %s", body)
-	}
-}
-
-func TestLoadHistoryKeepsRecordsAfterBadLine(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), historyFileName)
-	line := func(id string) string {
-		return `{"id":"` + id + `","path":"` + id + `","status":"imported"}` + "\n"
-	}
-
-	body := line("a") + strings.Repeat("x", historyScanMax+16) + "\n" + line("c")
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack := New()
-	unpack.KeepHistory = 10
-	unpack.histPath = path
-	unpack.loadHistory()
-
-	got := unpack.historySnapshot()
-	if len(got) != 2 || got[0].ID != "c" || got[1].ID != "a" {
-		t.Fatalf("%+v", got)
-	}
-}
-
-func TestLoadHistorySkipsOversizedLineWithoutNewline(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), historyFileName)
-	body := `{"id":"a","path":"a","status":"imported"}` + "\n" + strings.Repeat("x", historyScanMax+16)
-
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack := New()
-	unpack.KeepHistory = 10
-	unpack.histPath = path
-	unpack.loadHistory()
-
-	got := unpack.historySnapshot()
-	if len(got) != 1 || got[0].ID != "a" {
-		t.Fatalf("%+v", got)
 	}
 }

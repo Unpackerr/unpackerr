@@ -66,29 +66,37 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics      *metrics
-	folders      *Folders
-	sigChan      chan os.Signal
-	updates      chan *xtractr.Response
-	progChan     chan *ExtractProgress
-	hookChan     chan *hookQueueItem
-	delChan      chan *fileDeleteReq
-	queueActChan chan *queueAction
-	workChan     chan []func()
+	metrics  *metrics
+	folders  *Folders
+	sigChan  chan os.Signal
+	updates  chan *xtractr.Response
+	progChan chan *ExtractProgress
+	hookChan chan *hookQueueItem
+	delChan  chan *fileDeleteReq
+	taskChan chan *mainTask // HTTP hands config applies and queue actions to Run().
+	workChan chan []func()
 	*Logger
-	rotatorr         *rotatorr.Logger
-	httpLog          *rotatorr.Logger
-	menu             map[string]ui.MenuItem
-	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
-	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
-	uiPassMu         sync.RWMutex // guards Webserver.UIPassword
+	rotatorr *rotatorr.Logger
+	httpLog  *rotatorr.Logger
+	menu     map[string]ui.MenuItem
+	// Live Config is owned by the main goroutine in Run(). fileConfig is the
+	// on-disk shape (filepath: values kept) and is also written by the tray,
+	// so it and the hook slices that /api/stats counts sit under configMu.
+	fileConfig       *Config
+	livePasswords    StringSlice // post-env, pre-expansion; GET /live uses this
+	configMu         sync.RWMutex
+	tickers          *loopTickers
+	workThreads      int
+	hookOnce         sync.Once
+	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error
 	adminKeyNotice   string
 	adminKeyErr      error
 	histPath         string
-	histMu           sync.Mutex
+	histMu           sync.Mutex // records and the JSONL file; HTTP reads, main loop appends.
+	histLines        int        // lines in the file since the last compaction.
 	records          []HistoryRecord
 }
 
@@ -121,16 +129,17 @@ type Flags struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:        &Flags{EnvPrefix: "UN"},
-		hookChan:     make(chan *hookQueueItem, updateChanBuf),
-		delChan:      make(chan *fileDeleteReq, updateChanBuf),
-		queueActChan: make(chan *queueAction, updateChanBuf),
-		sigChan:      make(chan os.Signal, signalBuf),
-		workChan:     make(chan []func(), 1),
-		History:      &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
-		updates:      make(chan *xtractr.Response, updateChanBuf),
-		progChan:     make(chan *ExtractProgress),
-		menu:         make(map[string]ui.MenuItem),
+		Flags:    &Flags{EnvPrefix: "UN"},
+		hookChan: make(chan *hookQueueItem, updateChanBuf),
+		delChan:  make(chan *fileDeleteReq, updateChanBuf),
+		taskChan: make(chan *mainTask, updateChanBuf),
+		sigChan:  make(chan os.Signal, signalBuf),
+		workChan: make(chan []func(), 1),
+		History:  &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		folders:  &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
+		updates:  make(chan *xtractr.Response, updateChanBuf),
+		progChan: make(chan *ExtractProgress),
+		menu:     make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -225,9 +234,7 @@ func Start() error {
 		DirMode:  os.FileMode(dirMode),
 	})
 
-	if len(unpackerr.Webhook) > 0 || len(unpackerr.Cmdhook) > 0 {
-		go unpackerr.watchCmdAndWebhooks()
-	}
+	unpackerr.ensureHookWorker()
 
 	go unpackerr.watchDeleteChannel()
 
@@ -352,6 +359,12 @@ func dirIsEmpty(path string) bool {
 	return err == io.EOF //nolint:errorlint // this is still correct.
 }
 
+func (u *Unpackerr) ensureHookWorker() {
+	u.hookOnce.Do(func() {
+		go u.watchCmdAndWebhooks()
+	})
+}
+
 func (u *Unpackerr) watchCmdAndWebhooks() {
 	for hook := range u.hookChan {
 		if hook.URL != "" {
@@ -382,20 +395,37 @@ func (u *Unpackerr) ParseFlags() *Unpackerr {
 }
 
 // Run starts the loop that does the work.
-func (u *Unpackerr) Run() {
-	var (
-		poller   = time.NewTicker(u.Interval.Duration)   // poll apps at configured interval.
-		cleaner  = time.NewTicker(cleanerInterval)       // clean at a fast interval.
-		xtractr  = time.NewTicker(u.StartDelay.Duration) // Check if an extract needs to start.
-		progress = time.NewTicker(u.Progress.Duration)   // Progress update for extractions.
-		now      = version.Started                       // Used for file system event time stamps.
-	)
+// loopTickers are owned by Run(). A general config PUT resets them in place.
+type loopTickers struct {
+	poller   *time.Ticker // poll apps at configured interval.
+	xtractr  *time.Ticker // check if an extract needs to start.
+	progress *time.Ticker // progress update for extractions.
+	logger   *time.Ticker // log/print current queue counts.
+}
 
-	// Only start the queue/totals log timer when at least one app or folder is configured.
-	var logger <-chan time.Time
-	if len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr)+len(u.Folders) > 0 {
-		logger = time.NewTicker(u.Config.LogQueues.Duration).C
-	} else {
+func (u *Unpackerr) resetTickers() {
+	if u.tickers == nil {
+		return // PUT before Run(); tests do this.
+	}
+
+	u.tickers.poller.Reset(u.Interval.Duration)
+	u.tickers.xtractr.Reset(u.StartDelay.Duration)
+	u.tickers.progress.Reset(u.Progress.Duration)
+	u.tickers.logger.Reset(u.LogQueues.Duration)
+}
+
+func (u *Unpackerr) Run() {
+	u.tickers = &loopTickers{
+		poller:   time.NewTicker(u.Interval.Duration),
+		xtractr:  time.NewTicker(u.StartDelay.Duration),
+		progress: time.NewTicker(u.Progress.Duration),
+		logger:   time.NewTicker(u.LogQueues.Duration),
+	}
+
+	cleaner := time.NewTicker(cleanerInterval) // clean at a fast interval.
+	now := version.Started                     // Used for file system event time stamps.
+
+	if u.starrAppCount()+len(u.Folders) == 0 {
 		u.Printf("No Starr apps or folders configured. Shut down and add some apps or folders to your config file.")
 	}
 
@@ -405,12 +435,12 @@ func (u *Unpackerr) Run() {
 	// This is the "main go routine" in start.go.
 	for {
 		select {
-		case now = <-poller.C:
+		case now = <-u.tickers.poller.C:
 			// polling interval. pull queue data from all apps.
 			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges(now)
-		case now = <-xtractr.C:
+		case now = <-u.tickers.xtractr.C:
 			// Check if any completed items have elapsed their start delay.
 			u.extractCompletedDownloads(now)
 		case now = <-cleaner.C:
@@ -426,16 +456,18 @@ func (u *Unpackerr) Run() {
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
-		case action := <-u.queueActChan:
-			// HTTP retry/forget must mutate Map and Folders on this goroutine.
-			action.result <- u.applyQueueAction(action)
-		case now := <-logger:
-			// Log/print current queue counts once in a while.
-			u.logCurrentQueue(now)
+		case task := <-u.taskChan:
+			// HTTP config PUT and queue retry/forget mutate live state on this goroutine.
+			task.result <- task.fn()
+		case now := <-u.tickers.logger.C:
+			// Log/print current queue counts once in a while, when something is configured.
+			if u.starrAppCount()+len(u.Folders) > 0 {
+				u.logCurrentQueue(now)
+			}
 		case prog := <-u.progChan:
 			// Update progress for in-process extractions.
 			u.handleProgress(prog)
-		case now = <-progress.C:
+		case now = <-u.tickers.progress.C:
 			// Print the collected progress info.
 			u.printProgress(now)
 		}

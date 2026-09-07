@@ -194,7 +194,7 @@ func Index(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 // under specific circumstances.
 func (u *Unpackerr) fixForwardedFor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { //nolint:varnamelen
-		if x := r.Header.Get("X-Forwarded-For"); x == "" || !u.Webserver.allow.Contains(r.RemoteAddr) {
+		if x := r.Header.Get("X-Forwarded-For"); x == "" || !u.webAllowContains(r.RemoteAddr) {
 			r.Header.Set("X-Forwarded-For",
 				strings.Trim(r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")], "[]"))
 		} else if l := strings.LastIndexAny(x, ", "); l != -1 {

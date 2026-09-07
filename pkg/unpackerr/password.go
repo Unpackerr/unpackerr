@@ -447,25 +447,17 @@ func (u *Unpackerr) mutateUIPassword(mutate func(*CryptPass) error) error {
 // cloneLiveWebserver copies the running webserver under the password mutex so
 // HTTP GETs cannot race tray updates of UIPassword.
 func (u *Unpackerr) cloneLiveWebserver() *WebServer {
-	if u == nil || u.Webserver == nil {
-		return &WebServer{}
-	}
-
 	u.uiPassMu.RLock()
 	defer u.uiPassMu.RUnlock()
 
 	return cloneWebserver(u.Webserver)
 }
 
-// cloneFileWebserver copies the on-disk webserver snapshot under the same mutex
-// that syncFileUIPassword uses, so GET /api/config/webserver cannot race the tray.
+// cloneFileWebserver copies the on-disk webserver section under configMu so
+// GET /api/config/webserver cannot race a PUT or the tray persist path.
 func (u *Unpackerr) cloneFileWebserver() *WebServer {
-	if u == nil || u.fileConfig == nil || u.fileConfig.Webserver == nil {
-		return u.cloneLiveWebserver()
-	}
-
-	u.uiPassMu.RLock()
-	defer u.uiPassMu.RUnlock()
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
 
 	return cloneWebserver(u.fileConfig.Webserver)
 }

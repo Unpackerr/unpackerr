@@ -439,7 +439,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the expanded running config section",
-        "description": "Requires read:config:{section}. filepath: values are already expanded. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
+        "description": "Requires read:config:{section}. Most filepath: values are expanded. Archive passwords that were filepath: stay as filepath: so secret-file contents are not returned. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
         "responses": {
           "200": {
             "description": "Live section payload",

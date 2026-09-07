@@ -56,6 +56,10 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 		t.Fatalf("applied %+v debug %v", unpack.KeepHistory, unpack.Config.Debug)
 	}
 
+	if len(unpack.Items) != 0 {
+		t.Fatalf("PUT resized history items: %+v", unpack.Items)
+	}
+
 	written, err := os.ReadFile(unpack.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
@@ -201,6 +205,14 @@ func TestConfigPutRejectsUnknownAndEmptyJSON(t *testing.T) {
 
 	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general", `{}`, key); rec.Code != http.StatusBadRequest {
 		t.Fatalf("empty object %d %s", rec.Code, rec.Body.String())
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general", "{ }", key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace empty object %d %s", rec.Code, rec.Body.String())
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general", "{\n}", key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("newline empty object %d %s", rec.Code, rec.Body.String())
 	}
 
 	if unpack.KeepHistory != 200 {
@@ -517,6 +529,205 @@ func TestConfigPutWebserverDoesNotRaceAuth(t *testing.T) {
 
 		for ctx.Err() == nil {
 			hit(http.MethodPut, "/api/config/webserver", body)
+		}
+	}()
+
+	wait.Wait()
+}
+
+func TestConfigPutDebugQuietRequiresRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Config.Debug = false
+	unpack.Quiet = false
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	general.Debug = true
+	general.Quiet = true
+
+	body, err := json.Marshal(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(body), key)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reply.RestartRequired {
+		t.Fatal("debug/quiet must require restart")
+	}
+
+	if !unpack.Config.Debug || !unpack.Quiet {
+		t.Fatal("debug/quiet must still apply live")
+	}
+}
+
+func TestConfigPutWebserverKeepsFileKeysOffLiveOverlay(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	fileKey, liveKey := splitFileAndLiveAdminKeys(t, unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, liveKey)
+	})
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	for idx := range web.APIKeys {
+		web.APIKeys[idx].Key = ""
+	}
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), func(req *http.Request) {
+		req.Header.Set(headerAPIKey, liveKey)
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	assertFileAndLiveAdminKeys(t, unpack, fileKey, liveKey)
+}
+
+func splitFileAndLiveAdminKeys(t *testing.T, unpack *Unpackerr) (string, string) {
+	t.Helper()
+
+	fileKey := strings.Repeat("F", apiKeyMinLen)
+	liveKey := strings.Repeat("L", apiKeyMinLen)
+	unpack.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   liveKey,
+		Roles: []string{RoleAdmin},
+	}}
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.snapshotFileConfig()
+	unpack.fileConfig.Webserver.APIKeys = []APIKey{{
+		Name:  defaultAdminKeyName,
+		Key:   fileKey,
+		Roles: []string{RoleAdmin},
+	}}
+
+	return fileKey, liveKey
+}
+
+func assertFileAndLiveAdminKeys(t *testing.T, unpack *Unpackerr, fileKey, liveKey string) {
+	t.Helper()
+
+	if unpack.Webserver.adminAPIKey() != liveKey {
+		t.Fatal("live overlay key must remain the runtime secret")
+	}
+
+	if unpack.fileConfig.Webserver.APIKeys[0].Key != fileKey {
+		t.Fatalf("file key %q", unpack.fileConfig.Webserver.APIKeys[0].Key)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, liveKey) {
+		t.Fatalf("live overlay leaked into the config file:\n%s", text)
+	}
+
+	if !strings.Contains(text, fileKey) {
+		t.Fatalf("file key missing from config file:\n%s", text)
+	}
+}
+
+func TestEnsureWorkThreadsGrowsWithApps(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.watchWorkThread()
+
+	if unpack.workThreads != 1 {
+		t.Fatalf("floor workers %d", unpack.workThreads)
+	}
+
+	unpack.Sonarr = []*SonarrConfig{{}, {}, {}}
+	unpack.ensureWorkThreads(unpack.starrAppCount())
+
+	if unpack.workThreads != 3 {
+		t.Fatalf("grown workers %d", unpack.workThreads)
+	}
+
+	unpack.ensureWorkThreads(1)
+
+	if unpack.workThreads != 3 {
+		t.Fatalf("pool shrank to %d", unpack.workThreads)
+	}
+}
+
+func TestConfigPutSonarrDoesNotRacePoller(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	unpack.watchWorkThread()
+
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+
+	var wait sync.WaitGroup
+	wait.Add(2)
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			now := time.Now()
+			unpack.retrieveAppQueues(now)
+			unpack.checkQueueChanges(now)
+		}
+	}()
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/api/config/sonarr", strings.NewReader(body))
+			req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+			unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
 		}
 	}()
 

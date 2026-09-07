@@ -140,7 +140,17 @@ func configFileLocactions() (string, []string) {
 }
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
-func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
+func (u *Unpackerr) validateConfig() (uint64, uint64) {
+	fileMode, dirMode := u.clampConfig()
+
+	if u.KeepHistory != 0 {
+		u.Items = make([]string, min(u.KeepHistory, trayHistory))
+	}
+
+	return fileMode, dirMode
+}
+
+func (u *Unpackerr) clampConfig() (uint64, uint64) { //nolint:cyclop
 	if u.DeleteDelay.Duration > 0 && u.DeleteDelay.Duration < minimumDeleteDelay {
 		u.DeleteDelay.Duration = minimumDeleteDelay
 	}
@@ -197,10 +207,6 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) { //nolint:cyclop
 		u.LogFile = filepath.Join("~", ".unpackerr", "unpackerr.log")
 	}
 
-	if u.KeepHistory != 0 {
-		u.Items = make([]string, min(u.KeepHistory, trayHistory))
-	}
-
 	return fileMode, dirMode
 }
 
@@ -245,11 +251,10 @@ func (u *Unpackerr) createConfigFile(file string) (string, error) {
 
 // writeConfigFile atomically rewrites the active config file from the on-disk snapshot.
 func (u *Unpackerr) writeConfigFile() error {
-	u.configMu.RLock()
-	cfg := u.fileConfig
-	u.configMu.RUnlock()
+	u.configMu.Lock()
+	defer u.configMu.Unlock()
 
-	return u.writeConfigFrom(cfg)
+	return u.writeConfigFrom(u.fileConfig)
 }
 
 func (u *Unpackerr) writeConfigFrom(cfg *Config) error {

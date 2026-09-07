@@ -67,8 +67,10 @@ func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 	}
 
 	// Only update if there was not an error fetching.
+	u.configMu.Lock()
 	server.Queue = queue
-	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
+	u.configMu.Unlock()
+	u.saveQueueMetrics(queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
 
 	if !u.Activity || queue.TotalRecords > 0 {
 		u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))

@@ -75,8 +75,10 @@ func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
 	}
 
 	// Only update if there was not an error fetching.
+	u.configMu.Lock()
 	server.Queue = queue
-	u.saveQueueMetrics(server.Queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
+	u.configMu.Unlock()
+	u.saveQueueMetrics(queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
 
 	if !u.Activity || queue.TotalRecords > 0 {
 		u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",

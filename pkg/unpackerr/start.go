@@ -81,7 +81,9 @@ type Unpackerr struct {
 	menu             map[string]ui.MenuItem
 	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
 	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
-	configMu         sync.RWMutex // fileConfig and live Starr/folder/hook slices (PUT vs poller)
+	configMu         sync.RWMutex // fileConfig, live Starr/folder/hook slices, and Starr Queue pointers
+	workThreadMu     sync.Mutex
+	workThreads      int
 	hookOnce         sync.Once
 	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
 	uiPasswordNotice string

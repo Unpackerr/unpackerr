@@ -86,12 +86,24 @@ type FoldersConfig struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
-	// At least one worker so a later config PUT that adds the first Starr app
-	// cannot stall retrieveAppQueues on wait.Wait(). Extra workers per app
-	// keep polling concurrent when several apps are already configured.
-	count := max(1, len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr))
+	u.ensureWorkThreads(u.starrAppCount())
+}
 
-	for range count {
+func (u *Unpackerr) starrAppCount() int {
+	return len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr)
+}
+
+func (u *Unpackerr) ensureWorkThreads(count int) {
+	if count < 1 {
+		count = 1
+	}
+
+	u.workThreadMu.Lock()
+	defer u.workThreadMu.Unlock()
+
+	for u.workThreads < count {
+		u.workThreads++
+
 		go func() {
 			for funcs := range u.workChan {
 				for _, fn := range funcs {
@@ -184,6 +196,9 @@ func (u *Unpackerr) validateApps() error {
 }
 
 func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
 	switch app {
 	case starr.Lidarr:
 		return u.haveLidarrQitem(name)

@@ -135,11 +135,25 @@ func readJSONObject(response http.ResponseWriter, request *http.Request, dest an
 		return err
 	}
 
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("{}")) {
+	if isEmptyJSONObject(raw) {
 		return errEmptyConfigSection
 	}
 
 	return unmarshalConfigJSON(raw, dest)
+}
+
+func isEmptyJSONObject(raw json.RawMessage) bool {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || trimmed[0] != '{' {
+		return false
+	}
+
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return false
+	}
+
+	return len(obj) == 0
 }
 
 func rejectNilPointers[T any](list []*T) error {
@@ -200,7 +214,7 @@ func (u *Unpackerr) putGeneral(response http.ResponseWriter, request *http.Reque
 		u.livePasswords = submittedPasswords
 		u.Passwords = expanded
 		u.RemnantAction = remnantAction(next.RemnantAction)
-		u.validateConfig()
+		u.clampConfig()
 	})
 }
 
@@ -209,7 +223,9 @@ func generalRestartRequired(cur *Config, next generalConfig) bool {
 		return true
 	}
 
-	return next.Interval != cur.Interval ||
+	return next.Debug != cur.Debug ||
+		next.Quiet != cur.Quiet ||
+		next.Interval != cur.Interval ||
 		next.StartDelay != cur.StartDelay ||
 		next.Progress != cur.Progress ||
 		next.LogQueues != cur.LogQueues ||
@@ -231,8 +247,13 @@ func (u *Unpackerr) putWebserver(response http.ResponseWriter, request *http.Req
 
 	next.normalizeURLBase()
 
-	prevFile := u.cloneStoredFileWebserver()
-	keepNamedAPIKeys(&next, u.Webserver, prevFile)
+	liveSnap := u.cloneLiveWebserver()
+	fileSnap := u.cloneStoredFileWebserver()
+
+	fileOnly := &WebServer{APIKeys: cloneAPIKeys(next.APIKeys)}
+	keepNamedAPIKeys(fileOnly, fileSnap)
+	dropEmptyAPIKeys(fileOnly)
+	keepNamedAPIKeys(&next, liveSnap, fileSnap)
 
 	omitted := next.UIPassword.Val() == ""
 
@@ -246,18 +267,15 @@ func (u *Unpackerr) putWebserver(response http.ResponseWriter, request *http.Req
 	}
 
 	next.allow = MakeIPs(next.Upstreams)
-	restart := webserverRestartRequired(u.Webserver, &next)
-	fileWeb := fileWebserverFromPut(&next, submitted, fromFile, omitted, prevFile)
+	restart := webserverRestartRequired(liveSnap, &next)
+	fileWeb := fileWebserverFromPut(&next, submitted, fromFile, omitted, fileSnap)
+	fileWeb.APIKeys = cloneAPIKeys(fileOnly.APIKeys)
 
-	if err := u.commitConfig(func(cfg *Config) {
+	return restart, u.commitConfig(func(cfg *Config) {
 		cfg.Webserver = fileWeb
-	}, func() {}); err != nil {
-		return false, err
-	}
-
-	u.applyLiveWebserverAuth(&next)
-
-	return restart, nil
+	}, func() {
+		u.applyLiveWebserverAuth(&next)
+	})
 }
 
 func webserverRestartRequired(cur, next *WebServer) bool {
@@ -294,8 +312,25 @@ func fileWebserverFromPut(
 	return cloned
 }
 
+func dropEmptyAPIKeys(web *WebServer) {
+	if web == nil {
+		return
+	}
+
+	out := make([]APIKey, 0, len(web.APIKeys))
+	for _, key := range web.APIKeys {
+		if strings.TrimSpace(key.Key) != "" {
+			out = append(out, key)
+		}
+	}
+
+	web.APIKeys = out
+}
+
 // keepNamedAPIKeys fills a blank apiKeys[].key from an existing key of the same
 // name so a redacted GET can round-trip without requiring PermAll.
+// Callers pass file snapshots first when persisting, and live then file when
+// applying runtime auth, so environment overlays never become the file value.
 func keepNamedAPIKeys(next *WebServer, sources ...*WebServer) {
 	if next == nil {
 		return
@@ -433,12 +468,12 @@ func (u *Unpackerr) putSonarr(response http.ResponseWriter, request *http.Reques
 		list[idx].Sonarr = sonarr.New(&list[idx].Config)
 	}
 
-	carrySonarrQueues(u.Sonarr, list)
-
 	return u.commitConfig(func(cfg *Config) {
 		cfg.Sonarr = fileList
 	}, func() {
+		carrySonarrQueues(u.Sonarr, list)
 		u.Sonarr = list
+		u.ensureWorkThreads(u.starrAppCount())
 	})
 }
 
@@ -462,12 +497,12 @@ func (u *Unpackerr) putRadarr(response http.ResponseWriter, request *http.Reques
 		list[idx].Radarr = radarr.New(&list[idx].Config)
 	}
 
-	carryRadarrQueues(u.Radarr, list)
-
 	return u.commitConfig(func(cfg *Config) {
 		cfg.Radarr = fileList
 	}, func() {
+		carryRadarrQueues(u.Radarr, list)
 		u.Radarr = list
+		u.ensureWorkThreads(u.starrAppCount())
 	})
 }
 
@@ -491,12 +526,12 @@ func (u *Unpackerr) putLidarr(response http.ResponseWriter, request *http.Reques
 		list[idx].Lidarr = lidarr.New(&list[idx].Config)
 	}
 
-	carryLidarrQueues(u.Lidarr, list)
-
 	return u.commitConfig(func(cfg *Config) {
 		cfg.Lidarr = fileList
 	}, func() {
+		carryLidarrQueues(u.Lidarr, list)
 		u.Lidarr = list
+		u.ensureWorkThreads(u.starrAppCount())
 	})
 }
 
@@ -520,12 +555,12 @@ func (u *Unpackerr) putReadarr(response http.ResponseWriter, request *http.Reque
 		list[idx].Readarr = readarr.New(&list[idx].Config)
 	}
 
-	carryReadarrQueues(u.Readarr, list)
-
 	return u.commitConfig(func(cfg *Config) {
 		cfg.Readarr = fileList
 	}, func() {
+		carryReadarrQueues(u.Readarr, list)
 		u.Readarr = list
+		u.ensureWorkThreads(u.starrAppCount())
 	})
 }
 
@@ -549,12 +584,12 @@ func (u *Unpackerr) putWhisparr(response http.ResponseWriter, request *http.Requ
 		list[idx].Radarr = radarr.New(&list[idx].Config)
 	}
 
-	carryRadarrQueues(u.Whisparr, list)
-
 	return u.commitConfig(func(cfg *Config) {
 		cfg.Whisparr = fileList
 	}, func() {
+		carryRadarrQueues(u.Whisparr, list)
 		u.Whisparr = list
+		u.ensureWorkThreads(u.starrAppCount())
 	})
 }
 
@@ -681,17 +716,12 @@ func (u *Unpackerr) putWebhooks(response http.ResponseWriter, request *http.Requ
 
 	fileList := cloneHookList(list)
 
-	if err := u.commitConfig(func(cfg *Config) {
+	return u.commitConfig(func(cfg *Config) {
 		cfg.Webhook = fileList
 	}, func() {
 		u.Webhook = list
-	}); err != nil {
-		return err
-	}
-
-	u.ensureHookWorker()
-
-	return nil
+		u.ensureHookWorker()
+	})
 }
 
 func (u *Unpackerr) putCmdhooks(response http.ResponseWriter, request *http.Request) error {
@@ -706,15 +736,10 @@ func (u *Unpackerr) putCmdhooks(response http.ResponseWriter, request *http.Requ
 
 	fileList := cloneHookList(list)
 
-	if err := u.commitConfig(func(cfg *Config) {
+	return u.commitConfig(func(cfg *Config) {
 		cfg.Cmdhook = fileList
 	}, func() {
 		u.Cmdhook = list
-	}); err != nil {
-		return err
-	}
-
-	u.ensureHookWorker()
-
-	return nil
+		u.ensureHookWorker()
+	})
 }

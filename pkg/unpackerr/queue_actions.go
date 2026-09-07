@@ -25,6 +25,7 @@ const (
 type queueAction struct {
 	kind   queueActionKind
 	id     string
+	errFn  func() error
 	result chan error
 }
 
@@ -141,7 +142,7 @@ func writeQueueActionError(response http.ResponseWriter, err error) {
 }
 
 func (u *Unpackerr) dispatchQueueAction(ctx context.Context, kind queueActionKind, id string) error {
-	action := &queueAction{kind: kind, id: id, result: make(chan error, 1)}
+	action := &queueAction{kind: kind, id: id, errFn: ctx.Err, result: make(chan error, 1)}
 
 	select {
 	case u.queueActChan <- action:
@@ -169,6 +170,12 @@ func (u *Unpackerr) runQueueActions(ctx context.Context) {
 }
 
 func (u *Unpackerr) applyQueueAction(action *queueAction) error {
+	if action.errFn != nil {
+		if err := action.errFn(); err != nil {
+			return fmt.Errorf("queue action: %w", err)
+		}
+	}
+
 	switch action.kind {
 	case queueRetry:
 		return u.retryQueueID(action.id)

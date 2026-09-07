@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
@@ -13,6 +14,36 @@ import (
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
+
+func TestQueueActionSkipsCanceled(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.queueActChan = make(chan *queueAction)
+	unpack.Map["/dl/fail"] = &Extract{Path: "/dl/fail", Status: EXTRACTFAILED, NoRetry: true}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	errc := make(chan error, 1)
+
+	go func() {
+		errc <- unpack.dispatchQueueAction(ctx, queueRetry, "/dl/fail")
+	}()
+
+	action := <-unpack.queueActChan
+
+	cancel()
+
+	action.result <- unpack.applyQueueAction(action)
+
+	if err := <-errc; !errors.Is(err, context.Canceled) {
+		t.Fatalf("dispatch %v", err)
+	}
+
+	item := unpack.Map["/dl/fail"]
+	if item.Status != EXTRACTFAILED || item.Retries != 0 {
+		t.Fatalf("canceled retry applied %+v", item)
+	}
+}
 
 func TestQueueRetryAndForget(t *testing.T) {
 	t.Parallel()

@@ -93,18 +93,26 @@ type eventData struct {
 }
 
 func (u *Unpackerr) validateFolders() error {
-	for idx := range u.Folders {
-		if u.Folders[idx].DeleteAfter == nil {
+	return validateFolderList(u.Folders)
+}
+
+func validateFolderList(folders []*FolderConfig) error {
+	for idx := range folders {
+		if folders[idx] == nil {
+			return errNilConfigEntry
+		}
+
+		if folders[idx].DeleteAfter == nil {
 			// If delete after wasn't set, then set it to 10 minutes.
-			u.Folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
+			folders[idx].DeleteAfter = &cnfg.Duration{Duration: defaultFolderDelete}
 		}
 
-		n, _, err := parseOptionalMaxBytes(u.Folders[idx].MaxBytes)
+		n, _, err := parseOptionalMaxBytes(folders[idx].MaxBytes)
 		if err != nil {
-			return fmt.Errorf("folder %s: %w", u.Folders[idx].Path, err)
+			return fmt.Errorf("folder %s: %w", folders[idx].Path, err)
 		}
 
-		u.Folders[idx].maxBytes = n
+		folders[idx].maxBytes = n
 	}
 
 	return nil

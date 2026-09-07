@@ -81,7 +81,9 @@ type Unpackerr struct {
 	menu             map[string]ui.MenuItem
 	fileConfig       *Config      // on-disk shape (filepath: values). Config is the live expanded copy.
 	livePasswords    StringSlice  // post-env, pre-expansion; GET /live uses this
-	uiPassMu         sync.RWMutex // guards Webserver.UIPassword
+	configMu         sync.RWMutex // fileConfig and live Starr/folder/hook slices (PUT vs poller)
+	hookOnce         sync.Once
+	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error
@@ -225,9 +227,7 @@ func Start() error {
 		DirMode:  os.FileMode(dirMode),
 	})
 
-	if len(unpackerr.Webhook) > 0 || len(unpackerr.Cmdhook) > 0 {
-		go unpackerr.watchCmdAndWebhooks()
-	}
+	unpackerr.ensureHookWorker()
 
 	go unpackerr.watchDeleteChannel()
 
@@ -350,6 +350,12 @@ func dirIsEmpty(path string) bool {
 	_, err = dir.Readdirnames(1)
 
 	return err == io.EOF //nolint:errorlint // this is still correct.
+}
+
+func (u *Unpackerr) ensureHookWorker() {
+	u.hookOnce.Do(func() {
+		go u.watchCmdAndWebhooks()
+	})
 }
 
 func (u *Unpackerr) watchCmdAndWebhooks() {

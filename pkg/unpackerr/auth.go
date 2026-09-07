@@ -145,7 +145,7 @@ func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler
 			return
 		}
 
-		perms := u.Webserver.PermissionsForKey(key)
+		perms := u.webPermissionsForKey(key)
 		if perms == nil {
 			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 
@@ -164,22 +164,59 @@ func (u *Unpackerr) requirePermHTTP(perm string, next http.Handler) http.Handler
 }
 
 func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
-	if key == "" {
+	if key == "" || u == nil || u.Webserver == nil {
 		return authInfo{}, false
 	}
 
+	u.uiPassMu.RLock()
 	perms := u.Webserver.PermissionsForKey(key)
+	name := u.Webserver.keyName(key)
+	u.uiPassMu.RUnlock()
+
 	if perms == nil {
 		return authInfo{}, false
 	}
 
 	return authInfo{
-		Username:    u.Webserver.keyName(key),
+		Username:    name,
 		APIKey:      key,
 		Auth:        u.uiPassword().Type().String(),
 		Via:         "key",
 		Permissions: perms,
 	}, true
+}
+
+func (u *Unpackerr) webPermissionsForKey(key string) []string {
+	if u == nil || u.Webserver == nil {
+		return nil
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.PermissionsForKey(key)
+}
+
+func (u *Unpackerr) webAllowContains(addr string) bool {
+	if u == nil || u.Webserver == nil {
+		return false
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.allow.Contains(addr)
+}
+
+func (u *Unpackerr) webAdminAPIKey() string {
+	if u == nil || u.Webserver == nil {
+		return ""
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	return u.Webserver.adminAPIKey()
 }
 
 func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
@@ -223,7 +260,7 @@ func requestBearer(request *http.Request) string {
 
 func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
 	pass := u.uiPassword()
-	if !pass.Webauth() || !u.Webserver.allow.Contains(request.RemoteAddr) {
+	if !pass.Webauth() || !u.webAllowContains(request.RemoteAddr) {
 		return authInfo{}, false
 	}
 
@@ -245,7 +282,7 @@ func (u *Unpackerr) sessionAuth(user string) authInfo {
 
 	info := authInfo{
 		Username:    user,
-		APIKey:      u.Webserver.adminAPIKey(),
+		APIKey:      u.webAdminAPIKey(),
 		Auth:        pass.Type().String(),
 		Via:         "session",
 		Permissions: AllPermissions(),
@@ -338,7 +375,7 @@ func (u *Unpackerr) trustedForwardedHTTPS(request *http.Request) bool {
 		return false
 	}
 
-	if !u.Webserver.allow.Contains(request.RemoteAddr) {
+	if !u.webAllowContains(request.RemoteAddr) {
 		return false
 	}
 

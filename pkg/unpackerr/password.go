@@ -457,15 +457,27 @@ func (u *Unpackerr) cloneLiveWebserver() *WebServer {
 	return cloneWebserver(u.Webserver)
 }
 
-// cloneFileWebserver copies the on-disk webserver snapshot under the same mutex
-// that syncFileUIPassword uses, so GET /api/config/webserver cannot race the tray.
+// cloneFileWebserver copies the on-disk webserver snapshot under configMu so
+// GET /api/config/webserver cannot race a PUT or the tray persist path.
 func (u *Unpackerr) cloneFileWebserver() *WebServer {
-	if u == nil || u.fileConfig == nil || u.fileConfig.Webserver == nil {
-		return u.cloneLiveWebserver()
+	if cloned := u.cloneStoredFileWebserver(); cloned != nil {
+		return cloned
 	}
 
-	u.uiPassMu.RLock()
-	defer u.uiPassMu.RUnlock()
+	return u.cloneLiveWebserver()
+}
+
+func (u *Unpackerr) cloneStoredFileWebserver() *WebServer {
+	if u == nil {
+		return nil
+	}
+
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	if u.fileConfig == nil || u.fileConfig.Webserver == nil {
+		return nil
+	}
 
 	return cloneWebserver(u.fileConfig.Webserver)
 }

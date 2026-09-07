@@ -86,8 +86,12 @@ type FoldersConfig struct {
 }
 
 func (u *Unpackerr) watchWorkThread() {
-	// 1 worker for each app, so they poll quickly.
-	for range len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr) {
+	// At least one worker so a later config PUT that adds the first Starr app
+	// cannot stall retrieveAppQueues on wait.Wait(). Extra workers per app
+	// keep polling concurrent when several apps are already configured.
+	count := max(1, len(u.Lidarr)+len(u.Radarr)+len(u.Readarr)+len(u.Sonarr)+len(u.Whisparr))
+
+	for range count {
 		go func() {
 			for funcs := range u.workChan {
 				for _, fn := range funcs {
@@ -101,36 +105,53 @@ func (u *Unpackerr) watchWorkThread() {
 // retrieveAppQueues polls all the starr app queues. At the same time.
 // Then calls the check methods to scan their queue contents for changes.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
+	u.configMu.RLock()
+	lidarrApps := u.Lidarr
+	radarrApps := u.Radarr
+	readarrApps := u.Readarr
+	sonarrApps := u.Sonarr
+	whisparrApps := u.Whisparr
+	u.configMu.RUnlock()
+
 	wait := sync.WaitGroup{}
-	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
+	wait.Add(len(lidarrApps) + len(radarrApps) + len(readarrApps) + len(sonarrApps) + len(whisparrApps))
 	// Run each app's getQueue method in a go routine as a waitgroup.
-	for _, server := range u.Lidarr {
+	for _, server := range lidarrApps {
 		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wait.Done}
 	}
 
-	for _, server := range u.Radarr {
+	for _, server := range radarrApps {
 		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wait.Done}
 	}
 
-	for _, server := range u.Readarr {
+	for _, server := range readarrApps {
 		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wait.Done}
 	}
 
-	for _, server := range u.Sonarr {
+	for _, server := range sonarrApps {
 		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wait.Done}
 	}
 
-	for _, server := range u.Whisparr {
+	for _, server := range whisparrApps {
 		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wait.Done}
 	}
 
 	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
+	// Check the snapshot that was polled, not a list a PUT may have swapped in.
+	u.configMu.Lock()
+	liveLidarr, liveRadarr, liveReadarr, liveSonarr, liveWhisparr :=
+		u.Lidarr, u.Radarr, u.Readarr, u.Sonarr, u.Whisparr
+	u.Lidarr, u.Radarr, u.Readarr, u.Sonarr, u.Whisparr =
+		lidarrApps, radarrApps, readarrApps, sonarrApps, whisparrApps
 	u.checkLidarrQueue(now)
 	u.checkRadarrQueue(now)
 	u.checkReadarrQueue(now)
 	u.checkSonarrQueue(now)
 	u.checkWhisparrQueue(now)
+	u.Lidarr, u.Radarr, u.Readarr, u.Sonarr, u.Whisparr =
+		liveLidarr, liveRadarr, liveReadarr, liveSonarr, liveWhisparr
+	u.configMu.Unlock()
 	u.sweepForgotten()
 }
 

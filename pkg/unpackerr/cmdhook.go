@@ -20,24 +20,32 @@ var (
 )
 
 func (u *Unpackerr) validateCmdhook() error {
-	for idx := range u.Cmdhook {
-		u.Cmdhook[idx].URL = ""
+	return u.validateCmdhookList(u.Cmdhook)
+}
 
-		u.Cmdhook[idx].Command = expandHomedir(u.Cmdhook[idx].Command)
-		if u.Cmdhook[idx].Command == "" {
+func (u *Unpackerr) validateCmdhookList(list []*WebhookConfig) error {
+	for idx := range list {
+		if list[idx] == nil {
+			return errNilConfigEntry
+		}
+
+		list[idx].URL = ""
+
+		list[idx].Command = expandHomedir(list[idx].Command)
+		if list[idx].Command == "" {
 			return ErrCmdhookNoCmd
 		}
 
-		if u.Cmdhook[idx].Name == "" {
-			u.Cmdhook[idx].Name = strings.Fields(u.Cmdhook[idx].Command)[0]
+		if list[idx].Name == "" {
+			list[idx].Name = strings.Fields(list[idx].Command)[0]
 		}
 
-		if u.Cmdhook[idx].Timeout.Duration == 0 {
-			u.Cmdhook[idx].Timeout.Duration = u.Timeout.Duration
+		if list[idx].Timeout.Duration == 0 {
+			list[idx].Timeout.Duration = u.Timeout.Duration
 		}
 
-		if len(u.Cmdhook[idx].Events) == 0 {
-			u.Cmdhook[idx].Events = []ExtractStatus{WAITING}
+		if len(list[idx].Events) == 0 {
+			list[idx].Events = []ExtractStatus{WAITING}
 		}
 	}
 
@@ -140,7 +148,11 @@ func (u *Unpackerr) logCmdhook() {
 func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	var total, fails uint
 
-	for _, hook := range u.Cmdhook {
+	for _, hook := range u.cmdhookList() {
+		if hook == nil {
+			continue
+		}
+
 		posts, failures := hook.Counts()
 		total += posts
 		fails += failures

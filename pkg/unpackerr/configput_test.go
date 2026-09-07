@@ -1,12 +1,20 @@
 package unpackerr
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"golift.io/starr/sonarr"
 )
 
 func TestConfigPutGeneralRoundTrip(t *testing.T) {
@@ -174,4 +182,343 @@ func TestConfigPutWebserverFilepathPassword(t *testing.T) {
 	if !strings.Contains(string(written), `filepath:`) {
 		t.Fatalf("config write dropped filepath:\n%s", written)
 	}
+}
+
+func putKey(unpack *Unpackerr) func(*http.Request) {
+	return func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+}
+
+func TestConfigPutRejectsUnknownAndEmptyJSON(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.KeepHistory = 200
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general", `{}`, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty object %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.KeepHistory != 200 {
+		t.Fatalf("empty put applied keep_history %d", unpack.KeepHistory)
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general",
+		`{"debug":true,"notAField":1}`, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("unknown field %d %s", rec.Code, rec.Body.String())
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general",
+		`{"debug":true}{"debug":false}`, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("extra json %d %s", rec.Code, rec.Body.String())
+	}
+
+	admin := unpack.Webserver.adminAPIKey()
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/webserver",
+		`{"error":"forbidden"}`, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("error object %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Webserver.adminAPIKey() != admin {
+		t.Fatal("forbidden payload wiped live admin key")
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", `[null]`, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("nil sonarr %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestConfigPutFoldersValidationDoesNotApply(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	body := `{"interval":"1s","buffer":1000,"folder":[{"path":"/rejected/path","maxBytes":"bogus"}]}`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/folders", body, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("bogus folder %d %s", rec.Code, rec.Body.String())
+	}
+
+	if len(unpack.Folders) != 0 {
+		t.Fatalf("rejected folder went live: %+v", unpack.Folders)
+	}
+
+	if len(unpack.fileConfig.Folders) != 0 {
+		t.Fatalf("rejected folder staged: %+v", unpack.fileConfig.Folders)
+	}
+}
+
+func TestConfigPutWebhooksValidationDoesNotApply(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	body := `[{"name":"broken"},{"name":"ok","url":"http://127.0.0.1:1/hook"}]`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks", body, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("broken webhook %d %s", rec.Code, rec.Body.String())
+	}
+
+	if len(unpack.Webhook) != 0 {
+		t.Fatalf("rejected webhooks went live: %+v", unpack.Webhook)
+	}
+}
+
+func TestConfigPutSonarrPreservesQueueAndPath(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	queued := &sonarr.Queue{}
+	app := &SonarrConfig{Queue: queued}
+	app.URL = "http://127.0.0.1:8989"
+	app.APIKey = strings.Repeat("k", apiKeyMinLength)
+	unpack.Sonarr = []*SonarrConfig{app}
+
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `","path":"/dl"}]`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, key); rec.Code != http.StatusOK {
+		t.Fatalf("first put %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Sonarr[0].Queue != queued {
+		t.Fatal("PUT dropped last-known Starr queue")
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, key); rec.Code != http.StatusOK {
+		t.Fatalf("second put %d %s", rec.Code, rec.Body.String())
+	}
+
+	var hits int
+
+	for _, path := range unpack.Sonarr[0].Paths {
+		if path == "/dl" {
+			hits++
+		}
+	}
+
+	if hits != 1 {
+		t.Fatalf("path merged %d times: %+v", hits, unpack.Sonarr[0].Paths)
+	}
+}
+
+func TestConfigPutWebserverKeepsListenAndEmptyKeys(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+	admin := unpack.Webserver.adminAPIKey()
+	listen := unpack.Webserver.ListenAddr
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.ListenAddr = "127.0.0.1:9999"
+	if len(web.APIKeys) == 0 {
+		t.Fatal("expected admin key on GET")
+	}
+
+	web.APIKeys[0].Key = ""
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), key)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Webserver.ListenAddr != listen {
+		t.Fatalf("live listen changed to %s", unpack.Webserver.ListenAddr)
+	}
+
+	if unpack.fileConfig.Webserver.ListenAddr != "127.0.0.1:9999" {
+		t.Fatalf("file listen %s", unpack.fileConfig.Webserver.ListenAddr)
+	}
+
+	if !reply.RestartRequired {
+		t.Fatal("listen change must require restart")
+	}
+
+	if unpack.Webserver.adminAPIKey() != admin {
+		t.Fatal("empty api key did not keep existing key by name")
+	}
+}
+
+func TestConfigPutURLBaseRoundTripNeedsNoRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Webserver.URLBase = "/unpackerr/"
+	unpack.snapshotFileConfig()
+	unpack.fileConfig.Webserver.URLBase = "unpackerr"
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", got.Body.String(), key)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if reply.RestartRequired {
+		t.Fatal("normalized urlbase round trip must not require restart")
+	}
+}
+
+func TestConfigPutWriteFailureLeavesLiveUnchanged(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows || os.Geteuid() == 0 {
+		t.Skip("cannot chmod a directory unwritable")
+	}
+
+	dir := t.TempDir()
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
+	unpack.KeepHistory = 200
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/general", got.Body.String(), key); rec.Code != http.StatusOK {
+		t.Fatalf("seed put %d %s", rec.Code, rec.Body.String())
+	}
+
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // need a read-only dir
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore after the read-only test
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	general.KeepHistory = 12
+
+	body, err := json.Marshal(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fail := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(body), key)
+	if fail.Code != http.StatusInternalServerError {
+		t.Fatalf("write fail %d %s", fail.Code, fail.Body.String())
+	}
+
+	if unpack.KeepHistory != 200 {
+		t.Fatalf("live keep_history after write fail: %d", unpack.KeepHistory)
+	}
+}
+
+func TestWatchWorkThreadStartsWithoutApps(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.watchWorkThread()
+
+	done := make(chan struct{})
+
+	go func() {
+		unpack.workChan <- []func(){func() { close(done) }}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("retrieveAppQueues would hang: no workChan consumer")
+	}
+}
+
+func TestConfigPutWebserverDoesNotRaceAuth(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	body := got.Body.String()
+	admin := unpack.Webserver.adminAPIKey()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+
+	var wait sync.WaitGroup
+	wait.Add(2)
+
+	hit := func(method, target, payload string) {
+		var reader io.Reader
+		if payload != "" {
+			reader = strings.NewReader(payload)
+		}
+
+		req := httptest.NewRequestWithContext(ctx, method, target, reader)
+		req.Header.Set(headerAPIKey, admin)
+		unpack.Webserver.router.ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			hit(http.MethodGet, "/api/auth/me", "")
+		}
+	}()
+
+	go func() {
+		defer wait.Done()
+
+		for ctx.Err() == nil {
+			hit(http.MethodPut, "/api/config/webserver", body)
+		}
+	}()
+
+	wait.Wait()
 }

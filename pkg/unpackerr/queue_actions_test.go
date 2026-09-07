@@ -232,6 +232,10 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
 	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: DELETED, Updated: time.Now()})
 
+	if err := os.WriteFile(unpack.histPath+".bak", []byte(`{"id":"stale"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
 	}
@@ -265,6 +269,10 @@ func TestHistoryWriteFailureRestores(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		t.Skip("unix directory permissions")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
 	}
 
 	unpack := testAuthUnpackerr(t)

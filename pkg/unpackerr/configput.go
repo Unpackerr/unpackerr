@@ -45,6 +45,9 @@ func (u *Unpackerr) configPutHandler(response http.ResponseWriter, request *http
 		var err error
 
 		restart, err = u.replaceConfigSection(section, raw)
+		if restart {
+			u.pendingRestart = true
+		}
 
 		return err
 	})

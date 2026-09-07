@@ -1,0 +1,26 @@
+package unpackerr
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+)
+
+// restartProcess starts a fresh copy and exits. Windows has no exec(2).
+func restartProcess() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding executable: %w", err)
+	}
+
+	cmd := exec.Command(exe, os.Args[1:]...) //nolint:gosec,noctx // relaunching ourselves.
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting %s: %w", exe, err)
+	}
+
+	os.Exit(0)
+
+	return nil
+}

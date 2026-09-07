@@ -946,3 +946,34 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 		t.Fatalf("config on disk must keep filepath: and never the secret:\n%s", written)
 	}
 }
+
+// Restart-required sections flag the loop; live-only sections do not.
+func TestConfigPutSetsPendingRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	sonarr := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `"}]`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", sonarr, withKey); rec.Code != http.StatusOK {
+		t.Fatalf("sonarr %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.pendingRestart {
+		t.Fatal("a Starr list applies live and must not request a restart")
+	}
+
+	folders := `{"interval":"1s","buffer":1000,"folder":[{"path":"` + t.TempDir() + `"}]}`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/folders", folders, withKey); rec.Code != http.StatusOK {
+		t.Fatalf("folders %d %s", rec.Code, rec.Body.String())
+	}
+
+	if !unpack.pendingRestart {
+		t.Fatal("a folder list change needs the watcher rebuilt, so it must request a restart")
+	}
+}

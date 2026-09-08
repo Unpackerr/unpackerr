@@ -40,7 +40,9 @@ in mind; the items below have been raised and rejected before.
 - `filepath:` values are kept as written in `fileConfig` and expanded on the live
   copy only (`expandFilepaths`). PUT may keep an existing `filepath:` string in the
   same section. A new or changed `filepath:` is 400; the API must not read a file
-  the operator did not already put in that section of the config.
+  the operator did not already put in that section of the config. Webserver PUT
+  expands `filepath:` only on `ui_password`. Do not add `expandFilepaths` across
+  API keys or TLS paths as a drive-by.
 
 ## Tests
 

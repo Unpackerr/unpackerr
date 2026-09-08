@@ -202,6 +202,9 @@ func expandFilepaths(ptr any) error {
 // appears in the same file-config section. PUT must not read a file the
 // operator did not already put in the TOML (or a previous allowed PUT).
 func (u *Unpackerr) rejectNewFilepaths(section ConfigSection, next any) error {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
 	var prev any
 	if u.fileConfig != nil {
 		prev = configSectionFrom(u.fileConfig, section)
@@ -213,13 +216,14 @@ func (u *Unpackerr) rejectNewFilepaths(section ConfigSection, next any) error {
 func rejectAddedFilepaths(prev, next any) error {
 	allowed := make(map[string]struct{})
 
-	if err := walkJSONStrings(reflect.ValueOf(prev), func(s string) error {
+	err := walkJSONStrings(reflect.ValueOf(prev), func(s string) error {
 		if strings.HasPrefix(s, filePrefix) {
 			allowed[s] = struct{}{}
 		}
 
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 

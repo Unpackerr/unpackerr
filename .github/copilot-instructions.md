@@ -1,5 +1,7 @@
 # Review guidance for Unpackerr
 
+Longer runtime/API context: [`INTERNALS.md`](../INTERNALS.md).
+
 Unpackerr is a single-process daemon. One goroutine in `Run()` (`pkg/unpackerr/start.go`)
 owns the live `Config`, the queue map, and the folder tracker. HTTP handlers validate
 input and hand mutations to that goroutine through `onMainLoop`. Review with that model
@@ -36,7 +38,9 @@ in mind; the items below have been raised and rejected before.
   lock. When the web UI replaces the tray history menu it reads `/api/history`,
   which is already guarded by `histMu`.
 - `filepath:` values are kept as written in `fileConfig` and expanded on the live
-  copy only (`expandFilepaths`). That is intentional for every section.
+  copy only (`expandFilepaths`). PUT may keep an existing `filepath:` string in the
+  same section. A new or changed `filepath:` is 400; the API must not read a file
+  the operator did not already put in that section of the config.
 
 ## Tests
 

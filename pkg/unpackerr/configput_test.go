@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -316,6 +317,8 @@ func TestConfigPutWebserverFilepathPassword(t *testing.T) {
 	}
 
 	web.UIPassword = CryptPass(filePrefix + passFile)
+
+	unpack.fileConfig.Webserver.UIPassword = web.UIPassword
 
 	body, err := json.Marshal(web)
 	if err != nil {
@@ -986,7 +989,12 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body, err := json.Marshal([]map[string]string{{"url": "http://127.0.0.1:8989", "apiKey": "filepath:" + keyFile}})
+	app := &SonarrConfig{}
+	app.URL = "http://127.0.0.1:8989"
+	app.APIKey = filePrefix + keyFile
+	unpack.fileConfig.Sonarr = []*SonarrConfig{app}
+
+	body, err := json.Marshal([]map[string]string{{"url": "http://127.0.0.1:8989", "apiKey": filePrefix + keyFile}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1015,6 +1023,166 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 	// The TOML writer escapes path separators, so match the prefix, not the full path.
 	if !strings.Contains(string(written), `api_key = "filepath:`) || strings.Contains(string(written), secret) {
 		t.Fatalf("config on disk must keep filepath: and never the secret:\n%s", written)
+	}
+}
+
+func TestRejectAddedFilepaths(t *testing.T) {
+	t.Parallel()
+
+	existing := generalConfig{Passwords: StringSlice{filePrefix + "/secrets"}}
+
+	if err := rejectAddedFilepaths(existing, generalConfig{
+		Passwords: StringSlice{filePrefix + "/secrets", "inline"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := rejectAddedFilepaths(existing, generalConfig{Passwords: StringSlice{"literal"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := rejectAddedFilepaths(nil, generalConfig{Passwords: StringSlice{filePrefix + "/etc/passwd"}}); err == nil ||
+		!errors.Is(err, errNewFilepath) {
+		t.Fatalf("new filepath: %v", err)
+	}
+
+	changed := generalConfig{Passwords: StringSlice{filePrefix + "/other"}}
+	if err := rejectAddedFilepaths(existing, changed); err == nil || !errors.Is(err, errNewFilepath) {
+		t.Fatalf("changed filepath: %v", err)
+	}
+}
+
+func TestConfigPutRejectsNewStarrFilepath(t *testing.T) {
+	t.Parallel()
+
+	secret := strings.Repeat("s", apiKeyMinLength)
+	keyFile := filepath.Join(t.TempDir(), "sonarr.key")
+
+	if err := os.WriteFile(keyFile, []byte(secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + filePrefix + keyFile + `"}]`
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("new filepath: put %d %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), errNewFilepath.Error()) {
+		t.Fatalf("want %q, got %s", errNewFilepath, rec.Body.String())
+	}
+
+	if len(unpack.Sonarr) != 0 {
+		t.Fatalf("rejected put went live: %+v", unpack.Sonarr)
+	}
+
+	if len(unpack.fileConfig.Sonarr) != 0 {
+		t.Fatalf("rejected put staged file: %+v", unpack.fileConfig.Sonarr)
+	}
+}
+
+func TestConfigPutRejectsNewPasswordFilepath(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get general %d %s", got.Code, got.Body.String())
+	}
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	general.Passwords = StringSlice{filePrefix + "/run/secrets/rar"}
+
+	gbody, err := json.Marshal(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grec := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(gbody), key)
+	if grec.Code != http.StatusBadRequest || !strings.Contains(grec.Body.String(), errNewFilepath.Error()) {
+		t.Fatalf("new password filepath: put %d %s", grec.Code, grec.Body.String())
+	}
+}
+
+func TestConfigPutRejectsNewUIPasswordFilepath(t *testing.T) {
+	t.Parallel()
+
+	secretFile := filepath.Join(t.TempDir(), "ui.pass")
+	if err := os.WriteFile(secretFile, []byte("correct-horse\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get webserver %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.UIPassword = CryptPass(filePrefix + secretFile)
+
+	wbody, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wrec := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(wbody), key)
+	if wrec.Code != http.StatusBadRequest || !strings.Contains(wrec.Body.String(), errNewFilepath.Error()) {
+		t.Fatalf("new ui_password filepath: put %d %s", wrec.Code, wrec.Body.String())
+	}
+
+	if unpack.fileConfig.Webserver.UIPassword.Val() == filePrefix+secretFile {
+		t.Fatal("rejected ui_password filepath: must not land on the file snapshot")
+	}
+}
+
+func TestConfigPutReplacesFilepathWithLiteral(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	app := &SonarrConfig{}
+	app.URL = "http://127.0.0.1:8989"
+	app.APIKey = filePrefix + "/run/secrets/sonarr"
+	unpack.fileConfig.Sonarr = []*SonarrConfig{app}
+
+	literal := strings.Repeat("k", apiKeyMinLength)
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + literal + `"}]`
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("replace filepath: put %d %s", rec.Code, rec.Body.String())
+	}
+
+	if got := unpack.Sonarr[0].APIKey; got != literal {
+		t.Fatalf("live api key %q", got)
+	}
+
+	if got := unpack.fileConfig.Sonarr[0].APIKey; got != literal {
+		t.Fatalf("file api key %q", got)
 	}
 }
 

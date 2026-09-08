@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"golift.io/cnfgfile"
@@ -21,6 +22,7 @@ var (
 	errEmptyConfigSection = errors.New("empty config section")
 	errNilConfigEntry     = errors.New("nil config entry")
 	errPersistConfig      = errors.New("persisting config file")
+	errNewFilepath        = errors.New("cannot add or change a filepath: value via the API")
 )
 
 type configWriteReply struct {
@@ -81,21 +83,28 @@ func (u *Unpackerr) replaceConfigSection(section ConfigSection, raw json.RawMess
 	case SectionWebserver:
 		return u.putWebserver(raw)
 	case SectionSonarr:
-		return false, putStarrList(u, raw, starr.Sonarr, func(c *Config) *[]*SonarrConfig { return &c.Sonarr })
+		return false, putStarrList(u, raw, starr.Sonarr, SectionSonarr,
+			func(c *Config) *[]*SonarrConfig { return &c.Sonarr })
 	case SectionRadarr:
-		return false, putStarrList(u, raw, starr.Radarr, func(c *Config) *[]*RadarrConfig { return &c.Radarr })
+		return false, putStarrList(u, raw, starr.Radarr, SectionRadarr,
+			func(c *Config) *[]*RadarrConfig { return &c.Radarr })
 	case SectionLidarr:
-		return false, putStarrList(u, raw, starr.Lidarr, func(c *Config) *[]*LidarrConfig { return &c.Lidarr })
+		return false, putStarrList(u, raw, starr.Lidarr, SectionLidarr,
+			func(c *Config) *[]*LidarrConfig { return &c.Lidarr })
 	case SectionReadarr:
-		return false, putStarrList(u, raw, starr.Readarr, func(c *Config) *[]*ReadarrConfig { return &c.Readarr })
+		return false, putStarrList(u, raw, starr.Readarr, SectionReadarr,
+			func(c *Config) *[]*ReadarrConfig { return &c.Readarr })
 	case SectionWhisparr:
-		return false, putStarrList(u, raw, starr.Whisparr, func(c *Config) *[]*RadarrConfig { return &c.Whisparr })
+		return false, putStarrList(u, raw, starr.Whisparr, SectionWhisparr,
+			func(c *Config) *[]*RadarrConfig { return &c.Whisparr })
 	case SectionFolders:
 		return u.putFolders(raw)
 	case SectionWebhooks:
-		return false, u.putHooks(raw, u.validateWebhookList, func(c *Config) *[]*WebhookConfig { return &c.Webhook })
+		return false, u.putHooks(raw, u.validateWebhookList, SectionWebhooks,
+			func(c *Config) *[]*WebhookConfig { return &c.Webhook })
 	case SectionCmdhooks:
-		return false, u.putHooks(raw, u.validateCmdhookList, func(c *Config) *[]*WebhookConfig { return &c.Cmdhook })
+		return false, u.putHooks(raw, u.validateCmdhookList, SectionCmdhooks,
+			func(c *Config) *[]*WebhookConfig { return &c.Cmdhook })
 	default:
 		return false, fmt.Errorf("%w: %s", errUnknownSection, section)
 	}
@@ -189,6 +198,116 @@ func expandFilepaths(ptr any) error {
 	return nil
 }
 
+// rejectNewFilepaths is 400 unless every filepath: string in next already
+// appears in the same file-config section. PUT must not read a file the
+// operator did not already put in the TOML (or a previous allowed PUT).
+func (u *Unpackerr) rejectNewFilepaths(section ConfigSection, next any) error {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	var prev any
+	if u.fileConfig != nil {
+		prev = configSectionFrom(u.fileConfig, section)
+	}
+
+	return rejectAddedFilepaths(prev, next)
+}
+
+func rejectAddedFilepaths(prev, next any) error {
+	allowed := make(map[string]struct{})
+
+	err := walkJSONStrings(reflect.ValueOf(prev), func(s string) error {
+		if strings.HasPrefix(s, filePrefix) {
+			allowed[s] = struct{}{}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return walkJSONStrings(reflect.ValueOf(next), func(s string) error {
+		if strings.HasPrefix(s, filePrefix) {
+			if _, ok := allowed[s]; !ok {
+				return errNewFilepath
+			}
+		}
+
+		return nil
+	})
+}
+
+func derefValue(val reflect.Value) reflect.Value {
+	for val.IsValid() && (val.Kind() == reflect.Pointer || val.Kind() == reflect.Interface) {
+		if val.IsNil() {
+			return reflect.Value{}
+		}
+
+		val = val.Elem()
+	}
+
+	return val
+}
+
+func walkJSONStrings(val reflect.Value, visit func(string) error) error {
+	val = derefValue(val)
+	if !val.IsValid() {
+		return nil
+	}
+
+	switch val.Kind() {
+	case reflect.String:
+		return visit(val.String())
+	case reflect.Struct:
+		return walkStructStrings(val, visit)
+	case reflect.Slice, reflect.Array:
+		return walkIndexStrings(val, visit)
+	case reflect.Map:
+		return walkMapStrings(val, visit)
+	default:
+		return nil
+	}
+}
+
+func walkStructStrings(val reflect.Value, visit func(string) error) error {
+	typ := val.Type()
+
+	for idx := range typ.NumField() {
+		field := typ.Field(idx)
+		if !field.IsExported() || field.Tag.Get("json") == "-" {
+			continue
+		}
+
+		if err := walkJSONStrings(val.Field(idx), visit); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func walkIndexStrings(val reflect.Value, visit func(string) error) error {
+	for idx := range val.Len() {
+		if err := walkJSONStrings(val.Index(idx), visit); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func walkMapStrings(val reflect.Value, visit func(string) error) error {
+	iter := val.MapRange()
+	for iter.Next() {
+		if err := walkJSONStrings(iter.Value(), visit); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // commitConfig stages the change onto a clone of fileConfig, writes the TOML,
 // then publishes live. A failed write changes nothing. Runs on the main loop;
 // configMu covers fileConfig and the hook slices that /api/stats reads.
@@ -219,6 +338,10 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 	}
 
 	if err := remnantActionError(next.RemnantAction); err != nil {
+		return false, err
+	}
+
+	if err := u.rejectNewFilepaths(SectionGeneral, next); err != nil {
 		return false, err
 	}
 
@@ -290,6 +413,10 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 	submitted := next.UIPassword
 	omitted := submitted.Val() == ""
 	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)
+
+	if err := u.rejectNewFilepaths(SectionWebserver, &next); err != nil {
+		return false, err
+	}
 
 	if !omitted {
 		if err := expandCryptPassFile(&next.UIPassword); err != nil {
@@ -458,10 +585,14 @@ func normalizeStoredPassword(pass *CryptPass, fallback string) error {
 // values; the live copy is expanded, validated, and given clients. Queues
 // carry over by url+apikey so an unchanged app keeps polling state.
 func putStarrList[T any, P starrApp[T]](
-	unpackerr *Unpackerr, raw json.RawMessage, app starr.App, field func(*Config) *[]P,
+	unpackerr *Unpackerr, raw json.RawMessage, app starr.App, section ConfigSection, field func(*Config) *[]P,
 ) error {
 	var list []P
 	if err := unmarshalList(raw, &list); err != nil {
+		return err
+	}
+
+	if err := unpackerr.rejectNewFilepaths(section, list); err != nil {
 		return err
 	}
 
@@ -517,6 +648,10 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 		}
 	}
 
+	if err := u.rejectNewFilepaths(SectionFolders, next); err != nil {
+		return false, err
+	}
+
 	fileList := cloneFolderList(next.Folder)
 
 	if err := expandFilepaths(&next.Folder); err != nil {
@@ -540,10 +675,17 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 }
 
 func (u *Unpackerr) putHooks(
-	raw json.RawMessage, validate func([]*WebhookConfig) error, field func(*Config) *[]*WebhookConfig,
+	raw json.RawMessage,
+	validate func([]*WebhookConfig) error,
+	section ConfigSection,
+	field func(*Config) *[]*WebhookConfig,
 ) error {
 	var list []*WebhookConfig
 	if err := unmarshalList(raw, &list); err != nil {
+		return err
+	}
+
+	if err := u.rejectNewFilepaths(section, list); err != nil {
 		return err
 	}
 

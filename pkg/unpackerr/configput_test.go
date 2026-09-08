@@ -1066,8 +1066,14 @@ func TestConfigPutRejectsNewStarrFilepath(t *testing.T) {
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
 	unpack.snapshotFileConfig()
 
-	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + filePrefix + keyFile + `"}]`
-	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+	raw, err := json.Marshal([]map[string]string{
+		{"url": "http://127.0.0.1:8989", "apiKey": filePrefix + keyFile},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", string(raw), putKey(unpack))
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("new filepath: put %d %s", rec.Code, rec.Body.String())

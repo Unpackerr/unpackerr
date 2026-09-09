@@ -8,7 +8,7 @@
 > Docker Hub, packagecloud, AUR and unstable.golift.io secrets that are not configured
 > on this fork, and `require_secrets.sh` fails closed without them.
 
-Two workflows. `test-and-lint` (`codetests.yml`) runs tests and golangci-lint on push and `pull_request_target`. `build-and-release` (`release.yml`) is the only publisher.
+Two workflows. `test-and-lint` (`codetests.yml`) runs tests and golangci-lint on push and `pull_request` (fork PRs included; upstream uses `pull_request_target`). `build-and-release` (`release.yml`) is the only publisher.
 
 ## Channels
 

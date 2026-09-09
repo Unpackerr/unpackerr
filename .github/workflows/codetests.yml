@@ -1,7 +1,10 @@
 name: test-and-lint
 on:
   push:
-  pull_request_target:
+  # pull_request (not pull_request_target): the head is checked out with a
+  # read-only token, so PRs from other forks (upstream syncs) run without
+  # actions/checkout refusing the fork ref and without exposing secrets.
+  pull_request:
 permissions:
   contents: read
 jobs:
@@ -12,15 +15,7 @@ jobs:
         os: [ubuntu, macos, windows]
     runs-on: ${{ matrix.os }}-latest
     steps:
-      - name: checkout PR head (pull_request_target)
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: checkout branch (push)
-        if: github.event_name == 'push'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 'stable'
@@ -40,15 +35,7 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - name: checkout PR head (pull_request_target)
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: checkout branch (push)
-        if: github.event_name == 'push'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
@@ -69,15 +56,7 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
     steps:
-      - name: checkout PR head (pull_request_target)
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: checkout branch (push)
-        if: github.event_name == 'push'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'

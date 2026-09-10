@@ -141,6 +141,7 @@ passwords = []
 ## Nested [webserver.roles.<name>] tables. Names are letters, digits, _ or -.
 ## Built-in admin cannot be redefined. `*` is reserved for that built-in role.
 ## Each custom role needs at least one known permission.
+## File browser is read:system:browse (list) and write:system:browse (create folder).
 ## Env works but is picky: do not set UN_WEBSERVER_ROLES itself. Role names are
 ## case-sensitive and may contain underscores. Index permissions from 0:
 ## UN_WEBSERVER_ROLES_stats_PERMISSIONS_0=read:system:stats
@@ -486,4 +487,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 10 SEP 2026 04:48 UTC
+## => Content Auto Generated, 10 SEP 2026 04:51 UTC

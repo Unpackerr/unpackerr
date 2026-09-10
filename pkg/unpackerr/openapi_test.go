@@ -27,16 +27,12 @@ func TestOpenAPIUnauthenticated(t *testing.T) {
 	}
 
 	paths, _ := doc["paths"].(map[string]any)
-	if _, ok := paths["/api/stats"]; !ok {
-		t.Fatal("missing /api/stats")
-	}
-
-	if _, ok := paths["/api/config/{section}/live"]; !ok {
-		t.Fatal("missing live config GET")
-	}
-
-	if _, ok := paths["/api/config/env"]; !ok {
-		t.Fatal("missing /api/config/env")
+	for _, route := range []string{
+		"/api/stats", "/api/config/{section}/live", "/api/config/env", "/api/browse",
+	} {
+		if _, ok := paths[route]; !ok {
+			t.Fatalf("missing %s", route)
+		}
 	}
 
 	login := openAPIPath(t, paths, "/api/auth/login")

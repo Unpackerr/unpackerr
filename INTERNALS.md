@@ -271,6 +271,8 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/history` | yes | `read:system:history` | Durable JSONL-backed rows |
 | POST | `{urlbase}api/history/clear` | yes | `write:system:history` | |
 | POST | `{urlbase}api/history/delete` | yes | `write:system:history` | `{id}` |
+| GET | `{urlbase}api/browse` | yes | `read:system:browse` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
+| POST | `{urlbase}api/browse` | yes | `write:system:browse` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
 | GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*` |
 | GET | `{urlbase}api/config/{section}` | yes | `read:config:{section}` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `read:config:{section}` | Running copy |
@@ -307,7 +309,7 @@ First start with listen enabled and no password: generate one, print once, hash,
 
 `verb:area:resource`. Built-in role `admin` is reserved and means `*`.
 
-System: `read:system:stats|info|queue|history|metrics|headers`, `write:system:queue|history`.
+System: `read:system:stats|info|queue|history|metrics|headers|browse`, `write:system:queue|history|browse`.
 
 Config: `read:config:{section}`, `write:config:{section}` for each section above.
 

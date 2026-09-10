@@ -16,6 +16,10 @@ func TestAllPermissionsIncludeConfigSections(t *testing.T) {
 		t.Fatal("system permissions must be known")
 	}
 
+	if !KnownPermission(PermReadSystemBrowse) || !KnownPermission(PermWriteSystemBrowse) {
+		t.Fatal("browse permissions must be known")
+	}
+
 	if !KnownPermission(PermReadConfig(SectionSonarr)) || !KnownPermission(PermWriteConfig(SectionWebserver)) {
 		t.Fatal("config section permissions must be known")
 	}

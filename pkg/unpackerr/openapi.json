@@ -16,6 +16,7 @@
     {"name": "system"},
     {"name": "queue"},
     {"name": "history"},
+    {"name": "files"},
     {"name": "config"}
   ],
   "security": [
@@ -162,6 +163,24 @@
           "status": {"type": "string"},
           "restartRequired": {"type": "boolean"}
         }
+      },
+      "BrowseDir": {
+        "type": "object",
+        "properties": {
+          "sep": {"type": "string", "description": "filepath.Separator on this host"},
+          "path": {"type": "string", "description": "Directory being listed; empty on Windows volume-root listing"},
+          "mom": {"type": "string", "description": "Parent directory; empty at a volume root"},
+          "dirs": {"type": "array", "items": {"type": "string"}},
+          "files": {"type": "array", "items": {"type": "string"}},
+          "error": {"type": "string", "description": "Set when the requested path was unreadable but the parent listed successfully"}
+        }
+      },
+      "BrowseCreate": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": {"type": "string", "description": "Folder to create (MkdirAll 0755); existing folders succeed"}
+        }
       }
     },
     "responses": {
@@ -274,6 +293,50 @@
             "description": "System info",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SystemInfo"}}}
           },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/browse": {
+      "get": {
+        "tags": ["files"],
+        "summary": "List files and folders",
+        "description": "Requires read:system:browse. Empty dir expands to the process home directory; on Windows empty, / or \\ lists mounted C:–Z: drives that exist. A file path lists its parent. An unreadable path that has a readable parent returns 200 with error set. Both unreadable is 406. mom is empty at a volume root.",
+        "parameters": [
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string"},
+            "description": "Directory or file path; ~ is expanded"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Directory contents",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseDir"}}}
+          },
+          "406": {"description": "Path and parent are unreadable", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      },
+      "post": {
+        "tags": ["files"],
+        "summary": "Create a folder",
+        "description": "Requires write:system:browse. Uses MkdirAll 0755. Existing folders succeed. Returns the listing of the new (or existing) folder.",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseCreate"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Directory contents after create",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseDir"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"description": "Create failed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

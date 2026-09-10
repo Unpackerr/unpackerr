@@ -765,3 +765,39 @@ func TestComposeOmitsUIPassword(t *testing.T) {
 		t.Fatal("empty UI password env must not appear in the compose example")
 	}
 }
+
+func TestUIHelpKeys(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	help := config.UIHelp()
+
+	for _, key := range []string{
+		"config.general.debug",
+		"config.general.errorStderr",
+		"config.webserver.listenAddr",
+		"config.starr.url",
+		"config.starr.apiKey",
+		"config.starr.path",
+		"config.folders.buffer",
+		"config.folders.delete_after",
+		"config.hooks.url",
+	} {
+		if help[key].Short == "" {
+			t.Errorf("missing help for %s", key)
+		}
+	}
+
+	if !strings.HasPrefix(help["config.general.debug"].Env, "UN_") {
+		t.Fatalf("debug env %q", help["config.general.debug"].Env)
+	}
+
+	desc := help["config.general.remnant_action"].Desc
+	if desc == "" {
+		desc = help["config.general.remnantAction"].Desc
+	}
+
+	if strings.Contains(desc, "does not\n") || !strings.Contains(desc, "does not classify") {
+		t.Fatalf("help desc should fold YAML wraps, got %q", desc)
+	}
+}

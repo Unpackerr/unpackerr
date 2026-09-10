@@ -52,7 +52,7 @@ keep_history = 200
 interval = "2m"
 
 ## How often status is logged for in-progress extractions.
-## Recommend 2-60s. Uses Go Duration.
+## `0` uses the default `15s`. Uses Go Duration.
 progress = "15s"
 
 ## How long an item must be queued (download complete) before extraction will start.
@@ -399,10 +399,10 @@ passwords = []
 ## The default is 10m. Set to 0 to disable all deletes. Deletes also
 ## require `delete_files` and/or `delete_original`. Uses Go Duration.
 # delete_after = "10m"
-## Unpackerr extracts archives inside archives. Set this to true to disable recursive extractions.
+## Nested archives are extracted by default. Disable recursion to extract only the outer archive.
 # disable_recursion = false
-## Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
-# max_bytes = ""
+## Per-archive uncompressed-byte cap. `0` is unlimited.
+# max_bytes = 0
 ## Cap on files, directories, and symlinks created during extract. `0` is unlimited.
 # max_files = 0
 ## Cap on `bytes written / archive file size`. `0` is unlimited.
@@ -487,4 +487,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 10 SEP 2026 04:51 UTC
+## => Content Auto Generated, 10 SEP 2026 04:55 UTC

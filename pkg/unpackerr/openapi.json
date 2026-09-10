@@ -103,7 +103,23 @@
           "listenAddr": {"type": "string"},
           "urlbase": {"type": "string"},
           "auth": {"type": "string"},
-          "metrics": {"type": "boolean"}
+          "metrics": {"type": "boolean"},
+          "configFile": {"type": "string"},
+          "goos": {"type": "string"}
+        }
+      },
+      "FieldHelp": {
+        "type": "object",
+        "properties": {
+          "short": {"type": "string"},
+          "desc": {"type": "string"},
+          "env": {"type": "string"}
+        }
+      },
+      "LiveExport": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string"}
         }
       },
       "QueueItem": {
@@ -285,13 +301,29 @@
     "/api/system": {
       "get": {
         "tags": ["system"],
-        "summary": "Version, uptime, listen address, auth mode",
+        "summary": "Version, uptime, listen address, auth mode, config file path",
         "description": "Requires read:system:info",
         "responses": {
           "200": {
             "description": "System info",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SystemInfo"}}}
           },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/system/export": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Live config rundown (startup-log style, secrets omitted)",
+        "description": "Requires read:system:info. Same shape of information as the startup log: apps, folders, intervals, webserver. API keys are present/absent booleans, UI password is the auth type only.",
+        "responses": {
+          "200": {
+            "description": "Plain-text rundown in JSON",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LiveExport"}}}
+          },
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
@@ -482,6 +514,23 @@
             "content": {"application/json": {"schema": {
               "type": "object",
               "additionalProperties": {"type": "string"}
+            }}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/config/help": {
+      "get": {
+        "tags": ["config"],
+        "summary": "Field help from definitions.yml",
+        "description": "Requires authentication. English short/desc/env for each config field, keyed as config.<section>.<name>. The SPA uses this for ? tooltips; locale files may override.",
+        "responses": {
+          "200": {
+            "description": "Map of field id to help",
+            "content": {"application/json": {"schema": {
+              "type": "object",
+              "additionalProperties": {"$ref": "#/components/schemas/FieldHelp"}
             }}}
           },
           "401": {"$ref": "#/components/responses/Unauthorized"}

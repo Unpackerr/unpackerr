@@ -3,8 +3,11 @@ package unpackerr
 import (
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Unpackerr/unpackerr/pkg/configdef"
 )
 
 func TestStatsAndSystemRequireAuth(t *testing.T) {
@@ -185,6 +188,68 @@ func TestMetricsRejectsSessionAndProxyAuth(t *testing.T) {
 		req.RemoteAddr = "192.0.2.1:9999"
 	}); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("proxy metrics %d", rec.Code)
+	}
+}
+
+func TestConfigHelp(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+
+	if rec := doAuth(t, unpack, http.MethodGet, "/api/config/help", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("help unauth %d", rec.Code)
+	}
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	helpRec := doAuth(t, unpack, http.MethodGet, "/api/config/help", "", withKey)
+	if helpRec.Code != http.StatusOK {
+		t.Fatalf("help %d %s", helpRec.Code, helpRec.Body.String())
+	}
+
+	var help map[string]configdef.FieldHelp
+	if err := json.Unmarshal(helpRec.Body.Bytes(), &help); err != nil {
+		t.Fatal(err)
+	}
+
+	if help["config.general.debug"].Short == "" {
+		t.Fatalf("missing general.debug help: %+v", help["config.general.debug"])
+	}
+
+	if help["config.starr.url"].Short == "" {
+		t.Fatal("missing starr.url help")
+	}
+}
+
+func TestLiveExport(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = "/tmp/unpackerr.conf"
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	exportRec := doAuth(t, unpack, http.MethodGet, "/api/system/export", "", withKey)
+	if exportRec.Code != http.StatusOK {
+		t.Fatalf("export %d %s", exportRec.Code, exportRec.Body.String())
+	}
+
+	var out map[string]string
+	if err := json.Unmarshal(exportRec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out["text"], "Live Settings") || !strings.Contains(out["text"], unpack.ConfigFile) {
+		t.Fatalf("export text %q", out["text"])
+	}
+
+	if !strings.Contains(out["text"], "Version:") ||
+		!strings.Contains(out["text"], runtime.GOOS+"/"+runtime.GOARCH) {
+		t.Fatalf("export missing version/os %q", out["text"])
 	}
 }
 

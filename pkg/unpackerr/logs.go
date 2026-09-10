@@ -7,12 +7,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"github.com/dromara/carbon/v2"
 	homedir "github.com/mitchellh/go-homedir"
 	"golift.io/rotatorr"
@@ -330,42 +328,11 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 		u.Printf(" => Extra Config File: %s => %s", file, path)
 	}
 
-	u.logSonarr()
-	u.logRadarr()
-	u.logLidarr()
-	u.logReadarr()
-	u.logWhisparr()
-	u.logFolders()
-	u.Printf(" => Parallel: %d", u.Parallel)
-
-	u.Printf(" => Default Extract Limits: Sonarr/Whisparr %s, Radarr %s, Lidarr %s, Readarr %s; "+
-		"%d files, %g:1, %d nested, extras depth %d; folders uncapped",
-		defaultSonarrMaxBytes, defaultRadarrMaxBytes, defaultLidarrMaxBytes, defaultReadarrMaxBytes,
-		defaultMaxFiles, defaultMaxRatio, defaultMaxNested, defaultExtrasMaxDepth)
-
-	u.Printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
-	u.Printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())
-	u.Printf(" => Start/Delete Delay: %s/%s", u.StartDelay.String(), u.DeleteDelay.String())
-	u.Printf(" => Retry Delay: %v, max: %d", u.RetryDelay, u.maxRetries())
-	u.Printf(" => Remnant Action: %s", u.RemnantAction)
-	u.Printf(" => GUI / StdErr: %v / %v", ui.HasGUI(), u.ErrorStdErr)
-	u.Printf(" => Debug / Quiet: %v / %v", u.Config.Debug, u.Quiet)
-	u.Printf(" => Activity / Queues: %v / %s", u.Activity, u.LogQueues.String())
-
-	if runtime.GOOS != windows {
-		u.Printf(" => Directory & File Modes: %s & %s", u.DirMode, u.FileMode)
+	// Normalize before the dump so the logged URL base matches what startWebServer uses.
+	// The dump itself must not mutate config (live GET reuses the same printer).
+	if u.Webserver != nil && u.Webserver.Enabled() {
+		u.Webserver.normalizeURLBase()
 	}
 
-	if u.LogFile != "" {
-		msg := "no rotation"
-		if u.LogFiles > 0 {
-			msg = fmt.Sprintf("%d @ %dMb", u.LogFiles, u.LogFileMb)
-		}
-
-		u.Printf(" => Log File: %s (%s, mode: %s)", u.LogFile, msg, u.LogFileMode)
-	}
-
-	u.logWebhook()
-	u.logCmdhook()
-	u.logWebserver()
+	u.writeRunningConfig(u.Printf)
 }

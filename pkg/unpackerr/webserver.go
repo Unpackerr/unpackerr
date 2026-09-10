@@ -81,28 +81,6 @@ func (w *WebServer) validateURLBase() error {
 	return nil
 }
 
-func (u *Unpackerr) logWebserver() {
-	if !u.Webserver.Enabled() {
-		u.Printf(" => Webserver Disabled")
-		return
-	}
-
-	u.Webserver.normalizeURLBase()
-
-	ssl := ""
-	if u.Webserver.SSLCrtFile != "" && u.Webserver.SSLKeyFile != "" {
-		ssl = "s"
-	}
-
-	u.Printf(" => Starting webserver. Listen address: http%s://%v%s (%d upstreams) auth:%s",
-		ssl, u.Webserver.bindAddr(), u.Webserver.URLBase, len(u.Webserver.Upstreams), u.uiPassword().Type())
-
-	if u.Webserver.Metrics {
-		u.Printf(" => Prometheus metrics enabled at %s (API key required)",
-			path.Join(u.Webserver.URLBase, "metrics"))
-	}
-}
-
 func (u *Unpackerr) startWebServer() {
 	if !u.Webserver.Enabled() {
 		return

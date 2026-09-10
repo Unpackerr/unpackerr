@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -102,6 +103,80 @@ func TestBrowseDirFileUsesParent(t *testing.T) {
 
 	if !slices.Contains(got.Files, "log.txt") {
 		t.Fatalf("files %v", got.Files)
+	}
+}
+
+func TestBrowseDirUnixRootHasEmptyMom(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows {
+		t.Skip("unix volume root")
+	}
+
+	got, err := browseDir("/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Path != "/" {
+		t.Fatalf("path %q", got.Path)
+	}
+
+	if got.Mom != "" {
+		t.Fatalf("mom %q", got.Mom)
+	}
+}
+
+func TestBrowseDirUnlistableFallsBackToParent(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows {
+		t.Skip("directory list bits are not POSIX")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root can list mode 0 directories")
+	}
+
+	dir := t.TempDir()
+	blocked := filepath.Join(dir, "secret")
+
+	if err := os.Mkdir(blocked, defaultDirMode); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chmod(blocked, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.Chmod(blocked, defaultDirMode)
+	})
+
+	got, err := browseDir(blocked)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Path != dir {
+		t.Fatalf("path %q", got.Path)
+	}
+
+	if got.Error == "" {
+		t.Fatal("expected error for unlistable path")
+	}
+}
+
+func TestExpandBrowsePathEmptyIsHome(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == windows {
+		t.Skip("empty is the volume-root list on windows")
+	}
+
+	got := expandBrowsePath("")
+	if got == "" || got == "~" {
+		t.Fatalf("empty should expand to home, got %q", got)
 	}
 }
 

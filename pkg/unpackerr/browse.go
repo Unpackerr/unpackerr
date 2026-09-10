@@ -125,14 +125,17 @@ func browseDir(dir string) (*BrowseDir, error) {
 		return output, nil
 	}
 
-	if output.Path == "" || output.Path == windowsPathSep {
-		output.Path = "/"
-		output.Mom = ""
+	if err := fillBrowseEntries(output); err != nil {
+		return browseParentFallback(output, err)
 	}
 
+	return output, nil
+}
+
+func fillBrowseEntries(output *BrowseDir) error {
 	entries, err := os.ReadDir(output.Path)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errBrowseContent, err)
+		return fmt.Errorf("%w: %w", errBrowseContent, err)
 	}
 
 	for _, entry := range entries {
@@ -147,7 +150,30 @@ func browseDir(dir string) (*BrowseDir, error) {
 	slices.Sort(output.Dirs)
 	slices.Sort(output.Files)
 
-	return output, nil
+	return nil
+}
+
+// browseParentFallback lists one parent when the path exists but cannot be
+// read (chmod bits, etc.). A Stat fallback already moved Path up; if that
+// parent is also unlistable, both failed → 406.
+func browseParentFallback(output *BrowseDir, listErr error) (*BrowseDir, error) {
+	parent := filepath.Dir(output.Path)
+	if parent == output.Path || output.Error != "" {
+		return nil, listErr
+	}
+
+	listed, err := browsedDirMeta(parent)
+	if err != nil {
+		return nil, listErr
+	}
+
+	if err := fillBrowseEntries(listed); err != nil {
+		return nil, listErr
+	}
+
+	listed.Error = listErr.Error()
+
+	return listed, nil
 }
 
 func browsedDirMeta(dir string) (*BrowseDir, error) {
@@ -170,7 +196,6 @@ func browsedDirMeta(dir string) (*BrowseDir, error) {
 	if err != nil {
 		output.Error = errBrowsePathMsg + ": " + err.Error()
 		output.Path = filepath.Dir(dir)
-		output.Mom = filepath.Dir(output.Path)
 
 		if info, err = os.Stat(output.Path); err != nil { //nolint:gosec // G703: file browser list
 			return nil, fmt.Errorf("%w: %w", errBrowsePath, err)
@@ -182,7 +207,7 @@ func browsedDirMeta(dir string) (*BrowseDir, error) {
 	}
 
 	output.Mom = filepath.Dir(output.Path)
-	if (output.Mom == output.Path+"." || output.Mom == output.Path) && output.Path != "/" {
+	if output.Mom == output.Path {
 		output.Mom = ""
 	}
 
@@ -192,6 +217,10 @@ func browsedDirMeta(dir string) (*BrowseDir, error) {
 func expandBrowsePath(dir string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
+		if isWindowsVolumeRoot("") {
+			return ""
+		}
+
 		dir = "~"
 	}
 

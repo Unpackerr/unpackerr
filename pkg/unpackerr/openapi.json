@@ -334,7 +334,7 @@
       "get": {
         "tags": ["files"],
         "summary": "List files and folders",
-        "description": "Requires read:system:browse. Empty dir expands to the process home directory. A file path lists its parent. An unreadable path that has a readable parent returns 200 with error set. Both unreadable is 406. On Windows, listing empty, / or \\ returns mounted drive letters C: through Z: that exist.",
+        "description": "Requires read:system:browse. Empty dir expands to the process home directory; on Windows empty, / or \\ lists mounted C:–Z: drives that exist. A file path lists its parent. An unreadable path that has a readable parent returns 200 with error set. Both unreadable is 406. mom is empty at a volume root.",
         "parameters": [
           {
             "name": "dir",

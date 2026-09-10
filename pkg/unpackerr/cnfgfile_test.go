@@ -657,3 +657,21 @@ func TestEnvSuffixesAndSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{
+		URL:    "http://127.0.0.1:8989",
+		APIKey: "short",
+	}}
+
+	if err := unpack.validateSonarr(); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(unpack.Sonarr) != 0 {
+		t.Fatalf("short key must skip, got %d", len(unpack.Sonarr))
+	}
+}

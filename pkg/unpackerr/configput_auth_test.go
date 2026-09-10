@@ -67,6 +67,56 @@ func TestConfigPutWebserverAcceptsKDFPassword(t *testing.T) {
 	}
 }
 
+func TestConfigPutWebserverAcceptsUppercaseKDFPassword(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	web := getWebserverPUT(t, unpack)
+	web.UIPassword = CryptPass("admin:" + strings.ToUpper(DeriveKDF("admin", "new-secret-99")))
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver",
+		mustWebPUT(t, web, DeriveKDF(defaultUIUser, "correct-horse")), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("uppercase kdf put %d %s", put.Code, put.Body.String())
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain("admin", "new-secret-99") {
+		t.Fatal("live password must accept the new secret after uppercase hex PUT")
+	}
+
+	if !unpack.Webserver.UIPassword.Valid("admin", strings.ToUpper(DeriveKDF("admin", "new-secret-99"))) {
+		t.Fatal("login must accept mixed-case kdf hex")
+	}
+}
+
+func TestConfigPutWebserverRejectsKDFOnlyBody(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	admin := unpack.Webserver.adminAPIKey()
+	listen := unpack.Webserver.ListenAddr
+	body := `{"uiCurrentKdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", body, putKey(unpack))
+	if put.Code != http.StatusBadRequest || !strings.Contains(put.Body.String(), "empty config section") {
+		t.Fatalf("kdf-only put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.Webserver.adminAPIKey() != admin {
+		t.Fatal("kdf-only PUT wiped live admin key")
+	}
+
+	if unpack.Webserver.ListenAddr != listen {
+		t.Fatalf("kdf-only PUT wiped listen_addr %q", unpack.Webserver.ListenAddr)
+	}
+}
+
 func TestConfigPutWebserverKDFNeedsCurrentPassword(t *testing.T) {
 	t.Parallel()
 

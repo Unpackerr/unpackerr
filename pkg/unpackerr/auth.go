@@ -44,7 +44,7 @@ type authInfo struct {
 	Via             string      `json:"via"`
 	GOOS            string      `json:"goos"`
 	Header          string      `json:"header,omitempty"`
-	Headers         http.Header `json:"headers"`
+	Headers         http.Header `json:"headers,omitempty"`
 	ClientIP        string      `json:"clientIP,omitempty"`
 	Permissions     []string    `json:"permissions"`
 	UpstreamAllowed bool        `json:"upstreamAllowed"`
@@ -470,7 +470,10 @@ func (u *Unpackerr) meHandler(response http.ResponseWriter, request *http.Reques
 func (u *Unpackerr) withRequestAuth(info authInfo, request *http.Request) authInfo {
 	info.ClientIP = hostFromRemoteAddr(request.RemoteAddr)
 	info.Header = u.uiPassword().Header()
-	info.Headers = profileHeaders(request)
+
+	if info.allows(PermReadSystemHeaders) {
+		info.Headers = profileHeaders(request)
+	}
 
 	if request.RemoteAddr != "" && strings.LastIndex(request.RemoteAddr, ":") >= 0 {
 		info.UpstreamAllowed = u.webAllowContains(request.RemoteAddr)

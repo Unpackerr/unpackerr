@@ -192,6 +192,8 @@ func (p *CryptPass) Set(username, secret string) error {
 		username = defaultUIUser
 	}
 
+	secret = strings.ToLower(secret)
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("encrypting password: %w", err)
@@ -235,7 +237,7 @@ func (p CryptPass) Valid(username, kdfHex string) bool {
 		return false
 	}
 
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(kdfHex)) == nil
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(strings.ToLower(kdfHex))) == nil
 }
 
 func (p CryptPass) ValidPlain(username, password string) bool {

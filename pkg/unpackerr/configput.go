@@ -154,11 +154,16 @@ func unmarshalStrict(raw json.RawMessage, dest any) error {
 }
 
 // unmarshalObject is unmarshalStrict plus a guard against a bare {}, which
-// would otherwise zero every field in an object section.
-func unmarshalObject(raw json.RawMessage, dest any) error {
+// would otherwise zero every field in an object section. ignore keys (PUT-only
+// sidecars such as uiCurrentKdf) do not count as section content.
+func unmarshalObject(raw json.RawMessage, dest any, ignore ...string) error {
 	var probe map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &probe); err != nil {
 		return wrapJSONErr(err)
+	}
+
+	for _, key := range ignore {
+		delete(probe, key)
 	}
 
 	if len(probe) == 0 {
@@ -405,7 +410,7 @@ type webserverPut struct {
 //nolint:funlen // break it up more one day.
 func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 	var next webserverPut
-	if err := unmarshalObject(raw, &next); err != nil {
+	if err := unmarshalObject(raw, &next, "uiCurrentKdf"); err != nil {
 		return false, err
 	}
 

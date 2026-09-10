@@ -79,6 +79,40 @@ func TestDefinitionsFile(t *testing.T) {
 	}
 }
 
+func TestExampleFolderMaxBytesIsString(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	example := config.ExampleTOML()
+
+	if strings.Contains(example, "max_bytes = 0") {
+		t.Fatal("max_bytes is a string size; an unquoted integer would break existing configs")
+	}
+
+	if !strings.Contains(example, `max_bytes = ""`) {
+		t.Fatal(`example max_bytes must stay a quoted string`)
+	}
+
+	header := config.Sections["folder"]
+	if header == nil {
+		t.Fatal("missing folder section")
+	}
+
+	for _, param := range header.Params {
+		if param == nil || param.Name != "max_bytes" {
+			continue
+		}
+
+		if _, ok := param.Default.(string); !ok {
+			t.Fatalf("folder max_bytes default must be a string, got %T (%v)", param.Default, param.Default)
+		}
+
+		return
+	}
+
+	t.Fatal("missing folder max_bytes param")
+}
+
 func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 	t.Parallel()
 
@@ -763,5 +797,72 @@ func TestComposeOmitsUIPassword(t *testing.T) {
 
 	if strings.Contains(string(body), "UN_WEBSERVER_UI_PASSWORD") {
 		t.Fatal("empty UI password env must not appear in the compose example")
+	}
+}
+
+func TestUIHelpKeys(t *testing.T) {
+	t.Parallel()
+
+	help := loadTestConfig(t).UIHelp()
+
+	for _, key := range []string{
+		"config.general.debug",
+		"config.general.errorStderr",
+		"config.webserver.listenAddr",
+		"config.starr.url",
+		"config.starr.apiKey",
+		"config.starr.path",
+		"config.folders.buffer",
+		"config.folders.delete_after",
+		"config.hooks.url",
+		"config.webhook.url",
+		"config.cmdhook.command",
+	} {
+		if help[key].Short == "" {
+			t.Errorf("missing help for %s", key)
+		}
+	}
+
+	desc := help["config.general.remnant_action"].Desc
+	if desc == "" {
+		desc = help["config.general.remnantAction"].Desc
+	}
+
+	if strings.Contains(desc, "does not\n") || !strings.Contains(desc, "does not classify") {
+		t.Fatalf("help desc should fold YAML wraps, got %q", desc)
+	}
+}
+
+func TestUIHelpEnvAndShort(t *testing.T) {
+	t.Parallel()
+
+	help := loadTestConfig(t).UIHelp()
+
+	for key, want := range map[string]string{
+		"config.general.debug":   "UN_DEBUG",
+		"config.folders.path":    "UN_FOLDER_0_PATH",
+		"config.starr.url":       "UN_SONARR_0_URL",
+		"config.hooks.url":       "UN_WEBHOOK_0_URL",
+		"config.webhook.url":     "UN_WEBHOOK_0_URL",
+		"config.cmdhook.command": "UN_CMDHOOK_0_COMMAND",
+		"config.hooks.command":   "UN_CMDHOOK_0_COMMAND",
+		"config.hooks.name":      "UN_WEBHOOK_0_NAME",
+	} {
+		if help[key].Env != want {
+			t.Errorf("%s env %q, want %s", key, help[key].Env, want)
+		}
+	}
+
+	disable := help["config.folders.disable_recursion"]
+	if disable.Short == "" {
+		disable = help["config.folders.disableRecursion"]
+	}
+
+	if !strings.Contains(disable.Short, "When true, do not extract") {
+		t.Fatalf("disable_recursion UI short should be inverted, got %q", disable.Short)
+	}
+
+	if disable.UIShort == "" {
+		t.Fatal("disable_recursion missing uishort")
 	}
 }

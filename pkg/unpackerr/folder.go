@@ -118,35 +118,6 @@ func validateFolderList(folders []*FolderConfig) error {
 	return nil
 }
 
-func (u *Unpackerr) logFolders() {
-	if epath, count := "", len(u.Folders); count == 1 {
-		folder := u.Folders[0]
-		if folder.ExtractPath != "" {
-			epath = ", extract to: " + folder.ExtractPath
-		}
-
-		u.Printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
-			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
-			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, u.Folder.Buffer)
-	} else {
-		u.Printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
-
-		for _, folder := range u.Folders {
-			if epath = ""; folder.ExtractPath != "" {
-				epath = " extract to: " + folder.ExtractPath
-			}
-
-			u.Printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
-				"move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v",
-				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
-				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks)
-		}
-	}
-}
-
 // PollFolders begins the routines to watch folders for changes.
 // if those changes include the addition of compressed files, they
 // are processed for exctraction.

@@ -287,38 +287,6 @@ func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error { //nolint:
 	return nil
 }
 
-func (u *Unpackerr) logWebhook() {
-	var vars, prefix string
-
-	if len(u.Webhook) == 1 {
-		prefix = " => Webhook Config: 1 URL"
-	} else {
-		u.Printf(" => Webhook Configs: %d URLs", len(u.Webhook))
-		prefix = " =>    URL" //nolint:wsl_v5
-	}
-
-	for _, hook := range u.Webhook {
-		if vars = ""; hook.TmplPath != "" {
-			vars = ", template: " + hook.TmplPath + ", content_type: " + hook.CType
-		}
-
-		if hook.Channel != "" {
-			vars += ", channel: " + hook.Channel
-		}
-
-		if hook.Nickname != "" {
-			vars += ", nickname: " + hook.Nickname
-		}
-
-		if len(hook.Exclude) > 0 {
-			vars += ", exclude: \"" + strings.Join(hook.Exclude, "; ") + `"`
-		}
-
-		u.Printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",
-			prefix, hook.Name, hook.Timeout, hook.IgnoreSSL, hook.Silent, vars, logEvents(hook.Events))
-	}
-}
-
 // logEvents is only used in logWebhook to format events for printing.
 func logEvents(events []ExtractStatus) string {
 	if len(events) == 1 && events[0] == WAITING {

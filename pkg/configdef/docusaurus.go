@@ -140,22 +140,9 @@ func (h *Header) makeDocsTable(prefix string) string {
 	buf := bytes.Buffer{}
 	buf.WriteString(tableHeader)
 
-	hSuffix := ""
-	if h.Kind == list {
-		hSuffix = "0_"
-	}
-
 	for _, param := range h.Params {
 		if param == nil {
 			continue
-		}
-
-		envVar := prefix + h.Prefix + hSuffix + param.EnvVar
-		switch param.Kind {
-		case list:
-			envVar += "0"
-		case tables:
-			envVar += "0_*"
 		}
 
 		def := "No Default"
@@ -166,7 +153,8 @@ func (h *Header) makeDocsTable(prefix string) string {
 			}
 		}
 
-		if param.EnvVar == "" {
+		envVar := h.exampleEnv(prefix, param)
+		if envVar == "" {
 			fmt.Fprintf(&buf, "|%s|file only|%v / %s|\n", param.Name, def, param.Short)
 			continue
 		}

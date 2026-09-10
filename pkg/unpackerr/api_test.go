@@ -192,9 +192,10 @@ func TestConfigEnv(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.envUsed = map[string]string{
-		"DEBUG":            "true",
-		"SONARR_0_API_KEY": "secret-from-env",
+	unpack.envUsed = map[string]string{ //nolint:gosec // test fixtures, not live secrets
+		"DEBUG":              "true",
+		"SONARR_0_API_KEY":   "secret-from-env",
+		"SONARR_0_HTTP_PASS": "basic-auth-pass",
 	}
 
 	if rec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", nil); rec.Code != http.StatusUnauthorized {
@@ -215,7 +216,8 @@ func TestConfigEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if admin["DEBUG"] != "true" || admin["SONARR_0_API_KEY"] != "secret-from-env" {
+	if admin["DEBUG"] != "true" || admin["SONARR_0_API_KEY"] != "secret-from-env" ||
+		admin["SONARR_0_HTTP_PASS"] != "basic-auth-pass" {
 		t.Fatalf("admin env %v", admin)
 	}
 
@@ -241,7 +243,8 @@ func TestConfigEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if limited["DEBUG"] != "true" || limited["SONARR_0_API_KEY"] != "" {
+	if limited["DEBUG"] != "true" || limited["SONARR_0_API_KEY"] != "" ||
+		limited["SONARR_0_HTTP_PASS"] != "" {
 		t.Fatalf("limited env %v", limited)
 	}
 }

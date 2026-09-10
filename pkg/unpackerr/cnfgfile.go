@@ -315,17 +315,22 @@ func (u *Unpackerr) snapshotFileConfig() {
 }
 
 // envSuffixes strips the parser prefix so the UI matches envVar="DEBUG" against UN_DEBUG.
+// cnfg joins prefix + "_" + tag, so a prefix that already ends in "_" (APP_)
+// produces APP__DEBUG; we strip that exact prefix and keep the rest as stored
+// (map keys like WEBSERVER_ROLES_stats_PERMISSIONS_0 stay mixed-case).
 func envSuffixes(used cnfg.Pairs, prefix string) map[string]string {
 	out := make(map[string]string, len(used))
-	pfx := strings.ToUpper(strings.Trim(prefix, "_")) + cnfg.LevelSeparator
+	pfx := prefix + cnfg.LevelSeparator
 
 	for key, val := range used {
 		name := key
-		if strings.HasPrefix(strings.ToUpper(key), pfx) {
-			name = key[len(pfx):]
+		if prefix != "" {
+			if cut, ok := strings.CutPrefix(key, pfx); ok {
+				name = cut
+			}
 		}
 
-		out[strings.ToUpper(name)] = val
+		out[name] = val
 	}
 
 	return out
@@ -333,7 +338,7 @@ func envSuffixes(used cnfg.Pairs, prefix string) map[string]string {
 
 func envValueSecret(suffix string) bool {
 	name := strings.ToUpper(suffix)
-	if strings.Contains(name, "PASSWORD") ||
+	if strings.Contains(name, "PASSWORD") || strings.Contains(name, "_PASS") ||
 		name == "API_KEY" || strings.HasSuffix(name, "_API_KEY") ||
 		strings.HasSuffix(name, "_TOKEN") {
 		return true

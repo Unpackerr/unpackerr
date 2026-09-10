@@ -321,6 +321,10 @@ func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if unpack.envUsed["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != PermReadSystemStats {
+		t.Fatalf("env used mixed-case role key: %+v", unpack.envUsed)
+	}
+
 	if unpack.Webserver.Roles["stats"].Permissions[0] != PermReadSystemStats {
 		t.Fatalf("stats role %+v", unpack.Webserver.Roles)
 	}
@@ -612,12 +616,36 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 func TestEnvSuffixesAndSecrets(t *testing.T) {
 	t.Parallel()
 
-	got := envSuffixes(cnfg.Pairs{"UN_DEBUG": "true", "UN_SONARR_0_API_KEY": "k"}, "UN")
+	got := envSuffixes(cnfg.Pairs{
+		"UN_DEBUG":                               "true",
+		"UN_SONARR_0_API_KEY":                    "k",
+		"UN_WEBSERVER_ROLES_stats_PERMISSIONS_0": "read:system:stats",
+	}, "UN")
 	if got["DEBUG"] != "true" || got["SONARR_0_API_KEY"] != "k" {
 		t.Fatalf("%v", got)
 	}
 
-	for _, name := range []string{"SONARR_0_API_KEY", "PASSWORD", "WEBSERVER_API_KEYS_0_KEY", "WEBHOOK_0_TOKEN"} {
+	if got["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != "read:system:stats" {
+		t.Fatalf("mixed-case suffix lost: %v", got)
+	}
+
+	if _, ok := got["WEBSERVER_ROLES_STATS_PERMISSIONS_0"]; ok {
+		t.Fatalf("uppercasing collapsed the role key: %v", got)
+	}
+
+	app := envSuffixes(cnfg.Pairs{"APP__DEBUG": "true"}, "APP_")
+	if app["DEBUG"] != "true" {
+		t.Fatalf("prefix APP_ should strip APP__: %v", app)
+	}
+
+	if _, ok := app["_DEBUG"]; ok {
+		t.Fatalf("trimmed prefix left a leading underscore: %v", app)
+	}
+
+	for _, name := range []string{
+		"SONARR_0_API_KEY", "PASSWORD", "WEBSERVER_UI_PASSWORD", "PASSWORDS_0",
+		"SONARR_0_HTTP_PASS", "WEBSERVER_API_KEYS_0_KEY", "WEBHOOK_0_TOKEN",
+	} {
 		if !envValueSecret(name) {
 			t.Fatalf("expected secret %s", name)
 		}

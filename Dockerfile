@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # Source-build image for local `make docker` and forks.
 # Official Unpackerr/unpackerr releases copy a prebuilt binary via
 # init/docker/Dockerfile.goreleaser.

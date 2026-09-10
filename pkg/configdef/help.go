@@ -4,9 +4,10 @@ import "strings"
 
 // FieldHelp is the English short/desc text from definitions.yml, keyed for the UI.
 type FieldHelp struct {
-	Short string `json:"short,omitempty"`
-	Desc  string `json:"desc,omitempty"`
-	Env   string `json:"env,omitempty"`
+	Short   string `json:"short,omitempty"`
+	UIShort string `json:"uishort,omitempty"`
+	Desc    string `json:"desc,omitempty"`
+	Env     string `json:"env,omitempty"`
 }
 
 func uiSectionName(name section) string {
@@ -19,6 +20,17 @@ func uiSectionName(name section) string {
 		return "starr"
 	case "folders", "folder":
 		return "folders"
+	case "webhook":
+		return "webhook"
+	case "cmdhook":
+		return "cmdhook"
+	default:
+		return ""
+	}
+}
+
+func uiSectionAlias(name section) string {
+	switch name {
 	case "webhook", "cmdhook":
 		return "hooks"
 	default:
@@ -31,30 +43,39 @@ func uiSectionName(name section) string {
 func (c *Config) UIHelp() map[string]FieldHelp {
 	out := make(map[string]FieldHelp)
 
-	for name, header := range c.Sections {
+	for _, name := range c.Order {
+		header := c.Sections[name]
 		section := uiSectionName(name)
+
 		if header == nil || section == "" {
 			continue
 		}
+
+		envHeader := c.helpHeader(name, header)
+		alias := uiSectionAlias(name)
 
 		for _, param := range header.Params {
 			if param == nil || param.Name == "" {
 				continue
 			}
 
-			help := FieldHelp{
-				Short: foldHelp(param.Short),
-				Desc:  foldHelp(param.Desc),
-				Env:   c.Prefix + header.Prefix + param.EnvVar,
-			}
+			help := paramHelp(c.Prefix, envHeader, param)
 			if help.Short == "" && help.Desc == "" {
 				continue
 			}
 
-			addHelp(out, section, param.Name, help)
+			addHelp(out, section, param.Name, help, false)
+
+			if alias != "" {
+				addHelp(out, alias, param.Name, help, true)
+			}
 
 			if param.Name == "paths" {
-				addHelp(out, section, "path", help)
+				addHelp(out, section, "path", help, false)
+
+				if alias != "" {
+					addHelp(out, alias, "path", help, true)
+				}
 			}
 		}
 	}
@@ -62,10 +83,78 @@ func (c *Config) UIHelp() map[string]FieldHelp {
 	return out
 }
 
-func addHelp(out map[string]FieldHelp, section, name string, help FieldHelp) {
-	out["config."+section+"."+name] = help
+func paramHelp(prefix string, header *Header, param *Param) FieldHelp {
+	short := foldHelp(param.Short)
+	uishort := foldHelp(param.UIShort)
+
+	if uishort != "" {
+		short = uishort
+	}
+
+	return FieldHelp{
+		Short:   short,
+		UIShort: uishort,
+		Desc:    foldHelp(param.Desc),
+		Env:     header.exampleEnv(prefix, param),
+	}
+}
+
+func (c *Config) helpHeader(name section, header *Header) *Header {
+	order := c.DefOrder[name]
+	if len(order) == 0 || c.Defs[name] == nil {
+		return header
+	}
+
+	def := c.Defs[name][order[0]]
+	if def == nil {
+		return header
+	}
+
+	clone := *header
+	clone.Prefix = def.Prefix
+
+	return &clone
+}
+
+// exampleEnv is the docs/UI example variable: list sections insert 0_, list
+// params append 0, tables append 0_*.
+func (h *Header) exampleEnv(prefix string, param *Param) string {
+	if h == nil || param == nil || param.EnvVar == "" {
+		return ""
+	}
+
+	hSuffix := ""
+	if h.Kind == list {
+		hSuffix = "0_"
+	}
+
+	envVar := prefix + h.Prefix + hSuffix + param.EnvVar
+
+	switch param.Kind {
+	case list:
+		envVar += "0"
+	case tables:
+		envVar += "0_*"
+	}
+
+	return envVar
+}
+
+func addHelp(out map[string]FieldHelp, section, name string, help FieldHelp, keepFirst bool) {
+	put := func(key string) {
+		if keepFirst {
+			if _, exists := out[key]; exists {
+				return
+			}
+		}
+
+		out[key] = help
+	}
+
+	put("config." + section + "." + name)
+
 	if camel := snakeToCamel(name); camel != name {
-		out["config."+section+"."+camel] = help
+		put("config." + section + "." + camel)
 	}
 }
 

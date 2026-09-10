@@ -789,6 +789,7 @@ sections:
         default: false
         recommend: *BOOLEAN
         short: Extract archives found inside other archives. Default is enabled.
+        uishort: When true, do not extract archives found inside other archives.
         desc: Nested archives are extracted by default. Disable recursion to extract only the outer archive.
       - name: max_bytes
         envvar: MAX_BYTES

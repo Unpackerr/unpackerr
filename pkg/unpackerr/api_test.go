@@ -221,6 +221,14 @@ func TestConfigHelp(t *testing.T) {
 	if help["config.starr.url"].Short == "" {
 		t.Fatal("missing starr.url help")
 	}
+
+	if help["config.webhook.url"].Env != "UN_WEBHOOK_0_URL" {
+		t.Fatalf("webhook env %q", help["config.webhook.url"].Env)
+	}
+
+	if help["config.cmdhook.command"].Env != "UN_CMDHOOK_0_COMMAND" {
+		t.Fatalf("cmdhook env %q", help["config.cmdhook.command"].Env)
+	}
 }
 
 func TestLiveExport(t *testing.T) {
@@ -250,6 +258,53 @@ func TestLiveExport(t *testing.T) {
 	if !strings.Contains(out["text"], "Version:") ||
 		!strings.Contains(out["text"], runtime.GOOS+"/"+runtime.GOARCH) {
 		t.Fatalf("export missing version/os %q", out["text"])
+	}
+}
+
+func TestLiveExportOmitsWithoutConfigRead(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webhook = []*WebhookConfig{{
+		Name: "https://example.com/hook?token=hook-secret",
+	}}
+	unpack.Cmdhook = []*WebhookConfig{{
+		Name:    "cmd",
+		Command: "/usr/bin/env token=cmd-secret",
+	}}
+
+	infoKey := strings.Repeat("I", apiKeyMinLen)
+	unpack.Webserver.Roles = map[string]Role{
+		"info": {Permissions: []string{PermReadSystemInfo}},
+	}
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
+		Name:  "info",
+		Key:   infoKey,
+		Roles: []string{"info"},
+	})
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, infoKey)
+	}
+
+	exportRec := doAuth(t, unpack, http.MethodGet, "/api/system/export", "", withKey)
+	if exportRec.Code != http.StatusOK {
+		t.Fatalf("export %d %s", exportRec.Code, exportRec.Body.String())
+	}
+
+	var out map[string]string
+	if err := json.Unmarshal(exportRec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+
+	text := out["text"]
+	if !strings.Contains(text, "omitted (need read:config:webhooks)") ||
+		!strings.Contains(text, "omitted (need read:config:cmdhooks)") {
+		t.Fatalf("export missing omit lines %q", text)
+	}
+
+	if strings.Contains(text, "hook-secret") || strings.Contains(text, "cmd-secret") {
+		t.Fatalf("secret leaked in export %q", text)
 	}
 }
 

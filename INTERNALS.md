@@ -265,7 +265,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `read:system:headers` |
 | GET | `{urlbase}api/stats` | yes | `read:system:stats` | Queue counts + hook counters |
 | GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
-| GET | `{urlbase}api/system/export` | yes | `read:system:info` | Startup-log style live rundown; secrets omitted |
+| GET | `{urlbase}api/system/export` | yes | `read:system:info` | Startup-log style live rundown; each section also needs `read:config:{section}` (or `*`); omitted sections say so. Secrets omitted. |
 | GET | `{urlbase}api/queue` | yes | `read:system:queue` | In-flight items |
 | POST | `{urlbase}api/queue/retry` | yes | `write:system:queue` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |
 | POST | `{urlbase}api/queue/forget` | yes | `write:system:queue` | Terminal statuses only; in-progress **409**; Starr titles get a tombstone until they leave the upstream queue |

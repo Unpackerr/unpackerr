@@ -112,6 +112,7 @@
         "type": "object",
         "properties": {
           "short": {"type": "string"},
+          "uishort": {"type": "string"},
           "desc": {"type": "string"},
           "env": {"type": "string"}
         }
@@ -318,7 +319,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Live config rundown (startup-log style, secrets omitted)",
-        "description": "Requires read:system:info. Same shape of information as the startup log: apps, folders, intervals, webserver. API keys are present/absent booleans, UI password is the auth type only.",
+        "description": "Requires read:system:info. Same shape of information as the startup log: apps, folders, intervals, webserver. Each section also needs read:config:{section} (or *); otherwise the dump prints an omit line naming the missing permission. API keys are present/absent booleans, UI password is the auth type only.",
         "responses": {
           "200": {
             "description": "Plain-text rundown in JSON",

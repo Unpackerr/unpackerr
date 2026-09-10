@@ -83,10 +83,12 @@ func (u *Unpackerr) configHelpHandler(response http.ResponseWriter, _ *http.Requ
 }
 
 func (u *Unpackerr) systemExportHandler(response http.ResponseWriter, request *http.Request) {
+	info, _ := request.Context().Value(authCtxKey).(authInfo)
+
 	var text string
 
 	err := u.onMainLoop(request.Context(), func() error {
-		text = u.liveConfigText()
+		text = u.liveConfigText(info)
 		return nil
 	})
 	if err != nil {

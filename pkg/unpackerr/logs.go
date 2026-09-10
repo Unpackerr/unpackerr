@@ -334,5 +334,5 @@ func (u *Unpackerr) logStartupInfo(msg string, externalFiles map[string]string) 
 		u.Webserver.normalizeURLBase()
 	}
 
-	u.writeRunningConfig(u.Printf)
+	u.writeRunningConfig(u.Printf, dumpAuth{})
 }

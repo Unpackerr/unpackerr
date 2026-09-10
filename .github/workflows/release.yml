@@ -18,6 +18,7 @@ permissions:
 # See README.md in this folder.
 jobs:
   channel:
+    if: github.repository == 'Unpackerr/unpackerr'
     runs-on: ubuntu-latest
     outputs:
       channel: ${{ steps.channel.outputs.channel }}

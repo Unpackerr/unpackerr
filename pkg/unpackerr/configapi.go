@@ -177,7 +177,7 @@ func (u *Unpackerr) liveGeneralConfig() generalConfig {
 }
 
 // redactAPIKeysUnlessAll blanks webserver API key secrets unless the caller has *.
-// Starr API keys are not webserver.APIKeys and stay visible to read:config:*.
+// Starr API keys are not webserver.APIKeys and stay visible to config:*:read.
 func redactAPIKeysUnlessAll(request *http.Request, web *WebServer) *WebServer {
 	info, _ := request.Context().Value(authCtxKey).(authInfo)
 	if web == nil || info.allows(PermAll) {

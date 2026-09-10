@@ -185,7 +185,7 @@ func TestRenderLiveAPIKeysAndRoles(t *testing.T) {
 				Roles: []string{"stats"},
 			}},
 			Roles: map[string]liveRole{
-				"stats": {Permissions: []string{"read:system:stats"}},
+				"stats": {Permissions: []string{"system:stats:read"}},
 			},
 		},
 	}
@@ -219,7 +219,7 @@ func TestRenderLiveAPIKeysAndRoles(t *testing.T) {
 		t.Fatalf("decoded keys %+v", decoded.Webserver.APIKeys)
 	}
 
-	if decoded.Webserver.Roles["stats"].Permissions[0] != "read:system:stats" {
+	if decoded.Webserver.Roles["stats"].Permissions[0] != "system:stats:read" {
 		t.Fatalf("decoded roles %+v", decoded.Webserver.Roles)
 	}
 }
@@ -335,7 +335,7 @@ func TestRenderLiveNestedAPIKeysAndRoles(t *testing.T) {
 				Roles: []string{"admin"},
 			}},
 			Roles: map[string]liveRole{
-				"stats": {Permissions: []string{"read:system:stats"}},
+				"stats": {Permissions: []string{"system:stats:read"}},
 			},
 		},
 	}
@@ -362,7 +362,7 @@ func TestRenderLiveNestedAPIKeysAndRoles(t *testing.T) {
 		t.Fatalf("missing [webserver.roles.stats]:\n%s", snippet(body, "roles"))
 	}
 
-	if !strings.Contains(body, `permissions = ["read:system:stats"]`) {
+	if !strings.Contains(body, `permissions = ["system:stats:read"]`) {
 		t.Fatalf("missing role permissions:\n%s", snippet(body, "permissions"))
 	}
 }

@@ -68,7 +68,7 @@
           "headers": {
             "type": "object",
             "additionalProperties": {"type": "array", "items": {"type": "string"}},
-            "description": "Incoming request headers for the proxy-auth picker, minus the Trust exclusion list (and X-Api-Key / Authorization). Omitted unless the caller has read:system:headers"
+            "description": "Incoming request headers for the proxy-auth picker, minus the Trust exclusion list (and X-Api-Key / Authorization). Omitted unless the caller has system:headers:read"
           },
           "clientIP": {"type": "string", "description": "RemoteAddr host of this request"},
           "upstreamAllowed": {"type": "boolean", "description": "True when RemoteAddr is in webserver upstreams"},
@@ -275,7 +275,7 @@
       "get": {
         "tags": ["auth"],
         "summary": "Current session or API key identity",
-        "description": "headers is included only when the caller has read:system:headers (admin / * included)",
+        "description": "headers is included only when the caller has system:headers:read (admin / * included)",
         "responses": {
           "200": {
             "description": "Auth info including apiKey when using a session",
@@ -289,7 +289,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Queue counts for Homepage and the dashboard",
-        "description": "Requires read:system:stats",
+        "description": "Requires system:stats:read",
         "responses": {
           "200": {
             "description": "Counts",
@@ -304,7 +304,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Version, uptime, listen address, auth mode, config file path",
-        "description": "Requires read:system:info",
+        "description": "Requires system:info:read",
         "responses": {
           "200": {
             "description": "System info",
@@ -319,7 +319,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Live config rundown (startup-log style, secrets omitted)",
-        "description": "Requires read:system:info. Same shape of information as the startup log: apps, folders, intervals, webserver. Each section also needs read:config:{section} (or *); otherwise the dump prints an omit line naming the missing permission. API keys are present/absent booleans, UI password is the auth type only.",
+        "description": "Requires system:info:read. Same shape of information as the startup log: apps, folders, intervals, webserver. Each section also needs config:{section}:read (or *); otherwise the dump prints an omit line naming the missing permission. API keys are present/absent booleans, UI password is the auth type only.",
         "responses": {
           "200": {
             "description": "Plain-text rundown in JSON",
@@ -335,7 +335,7 @@
       "get": {
         "tags": ["files"],
         "summary": "List files and folders",
-        "description": "Requires read:system:browse. Empty dir expands to the process home directory; on Windows empty, / or \\ lists mounted C:–Z: drives that exist. A file path lists its parent. An unreadable path that has a readable parent returns 200 with error set. Both unreadable is 406. mom is empty at a volume root.",
+        "description": "Requires system:browse:read. Empty dir expands to the process home directory; on Windows empty, / or \\ lists mounted C:–Z: drives that exist. A file path lists its parent. An unreadable path that has a readable parent returns 200 with error set. Both unreadable is 406. mom is empty at a volume root.",
         "parameters": [
           {
             "name": "dir",
@@ -358,7 +358,7 @@
       "post": {
         "tags": ["files"],
         "summary": "Create a folder",
-        "description": "Requires write:system:browse. Uses MkdirAll 0755. Existing folders succeed. Returns the listing of the new (or existing) folder.",
+        "description": "Requires system:browse:write. Uses MkdirAll 0755. Existing folders succeed. Returns the listing of the new (or existing) folder.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseCreate"}}}
@@ -379,7 +379,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Prometheus metrics (only registered when metrics = true)",
-        "description": "Requires read:system:metrics. API key only: X-Api-Key or Authorization: Bearer. Session cookies and proxy/webauth are rejected.",
+        "description": "Requires system:metrics:read. API key only: X-Api-Key or Authorization: Bearer. Session cookies and proxy/webauth are rejected.",
         "security": [{"apiKey": []}, {"bearer": []}],
         "responses": {
           "200": {
@@ -395,7 +395,7 @@
       "get": {
         "tags": ["queue"],
         "summary": "In-flight extracts",
-        "description": "Requires read:system:queue",
+        "description": "Requires system:queue:read",
         "responses": {
           "200": {
             "description": "Live queue",
@@ -410,7 +410,7 @@
       "post": {
         "tags": ["queue"],
         "summary": "Retry an extractfailed item",
-        "description": "Requires write:system:queue. Id is a path in the JSON body.",
+        "description": "Requires system:queue:write. Id is a path in the JSON body.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
@@ -433,7 +433,7 @@
       "post": {
         "tags": ["queue"],
         "summary": "Drop a terminal queue item from tracking",
-        "description": "Requires write:system:queue. Only extractfailed, extractednothing, imported, deleted, and deletefailed items can be forgotten.",
+        "description": "Requires system:queue:write. Only extractfailed, extractednothing, imported, deleted, and deletefailed items can be forgotten.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
@@ -456,7 +456,7 @@
       "get": {
         "tags": ["history"],
         "summary": "Completed and failed items (newest first)",
-        "description": "Requires read:system:history. Capped by keep_history.",
+        "description": "Requires system:history:read. Capped by keep_history.",
         "responses": {
           "200": {
             "description": "History",
@@ -471,7 +471,7 @@
       "post": {
         "tags": ["history"],
         "summary": "Delete one history row",
-        "description": "Requires write:system:history",
+        "description": "Requires system:history:write",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
@@ -493,7 +493,7 @@
       "post": {
         "tags": ["history"],
         "summary": "Clear all history rows",
-        "description": "Requires write:system:history",
+        "description": "Requires system:history:write",
         "responses": {
           "200": {
             "description": "Cleared",
@@ -554,7 +554,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. PUT a new password as user:<kdf-hex> (same digest as login), not plaintext. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires config:{section}:read. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. PUT a new password as user:<kdf-hex> (same digest as login), not plaintext. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",
@@ -568,7 +568,7 @@
       "put": {
         "tags": ["config"],
         "summary": "Replace one config section and rewrite the TOML file",
-        "description": "Requires write:config:{section}. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. webserver uiPassword on PUT is !!cryptd!!, webauth, noauth, an existing filepath:, or user:<64-char PBKDF2 hex> (the same kdf as login); plaintext user:pass is 400. Changing the live password hash or auth type while local password auth is on requires uiCurrentKdf (KDF of the current username+password). General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
+        "description": "Requires config:{section}:write. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. webserver uiPassword on PUT is !!cryptd!!, webauth, noauth, an existing filepath:, or user:<64-char PBKDF2 hex> (the same kdf as login); plaintext user:pass is 400. Changing the live password hash or auth type while local password auth is on requires uiCurrentKdf (KDF of the current username+password). General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"description": "Same shape as GET /api/config/{section}"}}}
@@ -602,7 +602,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the expanded running config section",
-        "description": "Requires read:config:{section}. Most filepath: values are expanded. Archive passwords are the post-env, pre-expansion slice, so filepath: from the file or UN_PASSWORDS is not replaced with secret-file contents. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
+        "description": "Requires config:{section}:read. Most filepath: values are expanded. Archive passwords are the post-env, pre-expansion slice, so filepath: from the file or UN_PASSWORDS is not replaced with secret-file contents. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
         "responses": {
           "200": {
             "description": "Live section payload",

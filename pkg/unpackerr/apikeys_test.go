@@ -24,7 +24,7 @@ func TestAllPermissionsIncludeConfigSections(t *testing.T) {
 		t.Fatal("config section permissions must be known")
 	}
 
-	if KnownPermission("read:system:nope") {
+	if KnownPermission("system:nope:read") {
 		t.Fatal("unknown permission")
 	}
 

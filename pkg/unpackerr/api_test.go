@@ -298,8 +298,8 @@ func TestLiveExportOmitsWithoutConfigRead(t *testing.T) {
 	}
 
 	text := out["text"]
-	if !strings.Contains(text, "omitted (need read:config:webhooks)") ||
-		!strings.Contains(text, "omitted (need read:config:cmdhooks)") {
+	if !strings.Contains(text, "omitted (need "+PermReadConfig(SectionWebhooks)+")") ||
+		!strings.Contains(text, "omitted (need "+PermReadConfig(SectionCmdhooks)+")") {
 		t.Fatalf("export missing omit lines %q", text)
 	}
 

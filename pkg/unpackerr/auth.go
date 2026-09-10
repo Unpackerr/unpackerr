@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
@@ -37,11 +38,16 @@ type ctxKey int
 const authCtxKey ctxKey = 1
 
 type authInfo struct {
-	Username    string   `json:"username"`
-	APIKey      string   `json:"apiKey"`
-	Auth        string   `json:"auth"`
-	Via         string   `json:"via"`
-	Permissions []string `json:"permissions"`
+	Username        string      `json:"username"`
+	APIKey          string      `json:"apiKey"`
+	Auth            string      `json:"auth"`
+	Via             string      `json:"via"`
+	GOOS            string      `json:"goos"`
+	Header          string      `json:"header,omitempty"`
+	Headers         http.Header `json:"headers"`
+	ClientIP        string      `json:"clientIP,omitempty"`
+	Permissions     []string    `json:"permissions"`
+	UpstreamAllowed bool        `json:"upstreamAllowed"`
 }
 
 type loginRequest struct {
@@ -182,6 +188,7 @@ func (u *Unpackerr) authAPIKey(key string) (authInfo, bool) {
 		APIKey:      key,
 		Auth:        pass.Type().String(),
 		Via:         "key",
+		GOOS:        runtime.GOOS,
 		Permissions: perms,
 	}, true
 }
@@ -273,6 +280,7 @@ func (u *Unpackerr) sessionAuth(user string) authInfo {
 		APIKey:      admin,
 		Auth:        pass.Type().String(),
 		Via:         "session",
+		GOOS:        runtime.GOOS,
 		Permissions: AllPermissions(),
 	}
 	if pass.Webauth() {
@@ -424,7 +432,7 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
-	writeJSON(response, http.StatusOK, u.sessionAuth(name))
+	writeJSON(response, http.StatusOK, u.withRequestAuth(u.sessionAuth(name), request))
 
 	return true
 }
@@ -456,14 +464,113 @@ func (u *Unpackerr) logoutHandler(response http.ResponseWriter, request *http.Re
 
 func (u *Unpackerr) meHandler(response http.ResponseWriter, request *http.Request) {
 	info, _ := request.Context().Value(authCtxKey).(authInfo)
-	writeJSON(response, http.StatusOK, info)
+	writeJSON(response, http.StatusOK, u.withRequestAuth(info, request))
+}
+
+func (u *Unpackerr) withRequestAuth(info authInfo, request *http.Request) authInfo {
+	info.ClientIP = hostFromRemoteAddr(request.RemoteAddr)
+	info.Header = u.uiPassword().Header()
+	info.Headers = profileHeaders(request)
+
+	if request.RemoteAddr != "" && strings.LastIndex(request.RemoteAddr, ":") >= 0 {
+		info.UpstreamAllowed = u.webAllowContains(request.RemoteAddr)
+	}
+
+	return info
+}
+
+// profileIgnoredHeaders filters headers shown in the proxy-auth picker on GET /api/auth/me.
+// The list matches Notifiarr's Trust Profile picker, plus Unpackerr credential headers.
+var profileIgnoredHeaders = map[string]struct{}{ //nolint:gochecknoglobals
+	"accept":                    {},
+	"accept-encoding":           {},
+	"accept-language":           {},
+	"authorization":             {},
+	"cache-control":             {},
+	"content-length":            {},
+	"content-type":              {},
+	"cdn-loop":                  {},
+	"cf-connecting-ip":          {},
+	"cf-ipcity":                 {},
+	"cf-ipcontinent":            {},
+	"cf-ipcountry":              {},
+	"cf-iplatitude":             {},
+	"cf-iplongitude":            {},
+	"cf-metro-code":             {},
+	"cf-postal-code":            {},
+	"cf-ray":                    {},
+	"cf-region":                 {},
+	"cf-region-code":            {},
+	"cf-timezone":               {},
+	"cf-visitor":                {},
+	"connection":                {},
+	"cookie":                    {},
+	"dnt":                       {},
+	"expect":                    {},
+	"pragma":                    {},
+	"priority":                  {},
+	"referer":                   {},
+	"sec-ch-ua":                 {},
+	"sec-ch-ua-mobile":          {},
+	"sec-ch-ua-platform":        {},
+	"sec-fetch-dest":            {},
+	"sec-fetch-mode":            {},
+	"sec-fetch-site":            {},
+	"strict-transport-security": {},
+	"te":                        {},
+	"upgrade-insecure-requests": {},
+	"user-agent":                {},
+	"x-api-key":                 {},
+	"x-content-type-options":    {},
+	"x-forwarded-for":           {},
+	"x-forwarded-host":          {},
+	"x-forwarded-method":        {},
+	"x-forwarded-port":          {},
+	"x-forwarded-proto":         {},
+	"x-forwarded-server":        {},
+	"x-forwarded-ssl":           {},
+	"x-forwarded-uri":           {},
+	"x-noticlient-username":     {},
+	"x-original-method":         {},
+	"x-original-uri":            {},
+	"x-original-url":            {},
+	"x-real-ip":                 {},
+	"x-redacted-uri":            {},
+	"x-request-id":              {},
+}
+
+func profileHeaders(req *http.Request) http.Header {
+	headers := make(http.Header)
+	if req == nil {
+		return headers
+	}
+
+	for name, values := range req.Header {
+		if _, skip := profileIgnoredHeaders[strings.ToLower(name)]; skip {
+			continue
+		}
+
+		for _, value := range values {
+			headers.Add(name, value)
+		}
+	}
+
+	return headers
+}
+
+func hostFromRemoteAddr(addr string) string {
+	idx := strings.LastIndex(addr, ":")
+	if idx < 0 {
+		return addr
+	}
+
+	return strings.Trim(addr[:idx], "[]")
 }
 
 func writeJSON(response http.ResponseWriter, code int, msg any) {
 	body, err := json.Marshal(msg)
 	if err != nil {
 		http.Error(response, `{"error":"encode"}`, http.StatusInternalServerError)
-
 		return
 	}
 

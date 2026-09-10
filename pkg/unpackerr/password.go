@@ -29,21 +29,25 @@ const (
 )
 
 const (
-	authPassword  = "!!cryptd!!"
-	authHeader    = "webauth"
-	authNone      = "noauth"
-	defaultUIUser = "admin"
-	kdfIters      = 210000
-	kdfKeyLen     = 32
-	kdfSaltPrefix = "unpackerr:"
-	minUIPassword = 8
-	genPasswordN  = 12
+	authPassword      = "!!cryptd!!"
+	authHeader        = "webauth"
+	authNone          = "noauth"
+	defaultUIUser     = "admin"
+	defaultAuthHeader = "X-Webauth-User"
+	kdfIters          = 210000
+	kdfKeyLen         = 32
+	kdfSaltPrefix     = "unpackerr:"
+	minUIPassword     = 8
+	genPasswordN      = 12
 )
 
 var (
 	errShortUIPassword     = errors.New("ui password must be at least 8 characters")
 	errEmptyAuthHeader     = errors.New("auth header may not be empty")
 	errMalformedUIPassword = errors.New("ui_password stored hash is invalid")
+	errPlaintextUIPassword = errors.New("ui_password must be !!cryptd!!, webauth, noauth, filepath:, or user:<kdf-hex>")
+	errCurrentUIPassword   = errors.New("current ui password is invalid")
+	errReservedUIUser      = errors.New("username webauth, noauth, and filepath are reserved")
 )
 
 func (t AuthType) String() string {
@@ -130,11 +134,16 @@ func (p CryptPass) Type() AuthType {
 }
 
 func (p CryptPass) Header() string {
-	if user, rest, found := strings.Cut(p.Val(), ":"); found && user == authHeader {
+	kind, rest, found := strings.Cut(p.Val(), ":")
+	if found && kind == authHeader {
 		return rest
 	}
 
-	return "X-Webauth-User"
+	if found && kind == authNone && rest != "" {
+		return rest
+	}
+
+	return defaultAuthHeader
 }
 
 func (p CryptPass) Username() string {
@@ -231,6 +240,25 @@ func (p CryptPass) Valid(username, kdfHex string) bool {
 
 func (p CryptPass) ValidPlain(username, password string) bool {
 	return p.Valid(username, DeriveKDF(username, password))
+}
+
+func isKDFHex(secret string) bool {
+	if len(secret) != hex.EncodedLen(kdfKeyLen) {
+		return false
+	}
+
+	_, err := hex.DecodeString(secret)
+
+	return err == nil
+}
+
+func reservedUIUser(user string) bool {
+	switch strings.ToLower(strings.TrimSpace(user)) {
+	case authHeader, authNone, "filepath":
+		return true
+	default:
+		return strings.Contains(user, ":")
+	}
 }
 
 func isBcryptHash(value string) bool {

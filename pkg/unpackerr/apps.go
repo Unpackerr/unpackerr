@@ -42,6 +42,12 @@ var (
 	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
 )
 
+// skipInvalidApp reports whether a Starr instance should be dropped at
+// startup (missing/short URL or API key) rather than aborting the process.
+func skipInvalidApp(err error) bool {
+	return errors.Is(err, ErrInvalidURL) || errors.Is(err, ErrInvalidKey)
+}
+
 // Config defines the configuration data used to start the application.
 //
 //nolint:lll

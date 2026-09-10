@@ -397,9 +397,14 @@ func generalRestartRequired(cur, next *Config) bool {
 		next.DeleteDelay != cur.DeleteDelay
 }
 
+type webserverPut struct {
+	WebServer
+	UICurrentKDF string `json:"uiCurrentKdf"`
+}
+
 //nolint:funlen // break it up more one day.
 func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
-	var next WebServer
+	var next webserverPut
 	if err := unmarshalObject(raw, &next); err != nil {
 		return false, err
 	}
@@ -410,33 +415,38 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
+	currentKDF := strings.TrimSpace(next.UICurrentKDF)
 	submitted := next.UIPassword
 	omitted := submitted.Val() == ""
 	fromFile := strings.HasPrefix(submitted.Val(), filePrefix)
 
-	if err := u.rejectNewFilepaths(SectionWebserver, &next); err != nil {
+	if err := u.rejectNewFilepaths(SectionWebserver, &next.WebServer); err != nil {
 		return false, err
 	}
+
+	liveSnap := u.cloneLiveWebserver()
+	fileSnap := u.cloneFileWebserver()
 
 	if !omitted {
 		if err := expandCryptPassFile(&next.UIPassword); err != nil {
 			return false, err
 		}
 
-		if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser()); err != nil {
+		if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser(), fromFile); err != nil {
+			return false, err
+		}
+
+		if err := u.confirmUIPasswordChange(submitted, fileSnap.UIPassword, currentKDF, fromFile); err != nil {
 			return false, err
 		}
 	}
-
-	liveSnap := u.cloneLiveWebserver()
-	fileSnap := u.cloneFileWebserver()
 
 	// Blank keys round-trip from a redacted GET. File keys fill from the file
 	// only so an env-overlay key never lands on disk; live fills from live then file.
 	fileOnly := &WebServer{APIKeys: cloneAPIKeys(next.APIKeys)}
 	keepNamedAPIKeys(fileOnly, fileSnap)
 	dropEmptyAPIKeys(fileOnly)
-	keepNamedAPIKeys(&next, liveSnap, fileSnap)
+	keepNamedAPIKeys(&next.WebServer, liveSnap, fileSnap)
 
 	if omitted {
 		next.UIPassword = liveSnap.UIPassword
@@ -448,7 +458,7 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 
 	next.allow = MakeIPs(next.Upstreams)
 
-	fileWeb := cloneWebserver(&next)
+	fileWeb := cloneWebserver(&next.WebServer)
 	fileWeb.APIKeys = fileOnly.APIKeys
 
 	switch {
@@ -462,25 +472,38 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	restart := webserverRestartRequired(liveSnap, &next)
+	// Round-tripping the file hash must not replace a live overlay (env password).
+	if keepLiveUIPassword(omitted, fromFile, submitted, fileSnap.UIPassword) {
+		next.UIPassword = liveSnap.UIPassword
+	}
+
+	// GET/PUT are file-shaped. Env can overlay live listen/metrics, so compare
+	// the file snapshot to what we are about to write, not live vs the PUT body.
+	restart := webserverRestartRequired(fileSnap, fileWeb)
 
 	return restart, u.commitConfig(func(cfg *Config) {
 		cfg.Webserver = fileWeb
 	}, func() {
-		u.applyLiveWebserverAuth(&next)
+		u.applyLiveWebserverAuth(&next.WebServer)
 	})
 }
 
 func webserverRestartRequired(cur, next *WebServer) bool {
-	return cur.ListenAddr != next.ListenAddr ||
-		cur.URLBase != next.URLBase ||
-		cur.SSLCrtFile != next.SSLCrtFile ||
-		cur.SSLKeyFile != next.SSLKeyFile ||
-		cur.Metrics != next.Metrics ||
-		cur.Pprof != next.Pprof ||
-		cur.LogFile != next.LogFile ||
-		cur.LogFiles != next.LogFiles ||
-		cur.LogFileMb != next.LogFileMb
+	curCopy := cloneWebserver(cur)
+	nextCopy := cloneWebserver(next)
+
+	curCopy.normalizeURLBase()
+	nextCopy.normalizeURLBase()
+
+	return curCopy.ListenAddr != nextCopy.ListenAddr ||
+		curCopy.URLBase != nextCopy.URLBase ||
+		curCopy.SSLCrtFile != nextCopy.SSLCrtFile ||
+		curCopy.SSLKeyFile != nextCopy.SSLKeyFile ||
+		curCopy.Metrics != nextCopy.Metrics ||
+		curCopy.Pprof != nextCopy.Pprof ||
+		curCopy.LogFile != nextCopy.LogFile ||
+		curCopy.LogFiles != nextCopy.LogFiles ||
+		curCopy.LogFileMb != nextCopy.LogFileMb
 }
 
 func dropEmptyAPIKeys(web *WebServer) {
@@ -571,14 +594,47 @@ func (u *Unpackerr) uiPasswordUser() string {
 	return defaultUIUser
 }
 
-func normalizeStoredPassword(pass *CryptPass, fallback string) error {
+func keepLiveUIPassword(omitted, fromFile bool, submitted, file CryptPass) bool {
+	return omitted || (!fromFile && submitted.Val() == file.Val())
+}
+
+func (u *Unpackerr) confirmUIPasswordChange(submitted, file CryptPass, currentKDF string, fromFile bool) error {
+	live := u.uiPassword()
+	if live.Type() != AuthPassword {
+		return nil
+	}
+
+	raw := submitted.Val()
+	if raw == "" || raw == live.Val() || raw == file.Val() || fromFile {
+		return nil
+	}
+
+	if !live.Valid(live.Username(), currentKDF) {
+		return errCurrentUIPassword
+	}
+
+	return nil
+}
+
+func normalizeStoredPassword(pass *CryptPass, fallback string, allowPlain bool) error {
 	if pass.Val() == "" || pass.IsCrypted() || pass.Webauth() {
 		return nil
 	}
 
-	user, plain := splitUserPass(pass.Val(), fallback)
+	user, secret := splitUserPass(pass.Val(), fallback)
+	if allowPlain {
+		return pass.SetPlain(user, secret)
+	}
 
-	return pass.SetPlain(user, plain)
+	if !isKDFHex(secret) {
+		return errPlaintextUIPassword
+	}
+
+	if reservedUIUser(user) {
+		return errReservedUIUser
+	}
+
+	return pass.Set(user, secret)
 }
 
 // putStarrList replaces one Starr app list. The file copy keeps filepath:

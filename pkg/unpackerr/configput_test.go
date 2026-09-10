@@ -267,6 +267,57 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 	}
 }
 
+func TestConfigPutLidarrURLNeedsAPIKey(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	emptyKey := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://sdfsdf.sdsd.com/lidarr","apiKey":""}]`, withKey)
+	if emptyKey.Code != http.StatusBadRequest {
+		t.Fatalf("empty key %d %s", emptyKey.Code, emptyKey.Body.String())
+	}
+
+	if !strings.Contains(emptyKey.Body.String(), "API Key") {
+		t.Fatalf("want API key error, got %s", emptyKey.Body.String())
+	}
+
+	good := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://sdfsdf.sdsd.com/lidarr","apiKey":"`+
+			strings.Repeat("k", apiKeyMinLength)+`","split_flac":true}]`, withKey)
+	if good.Code != http.StatusOK {
+		t.Fatalf("lidarr %d %s", good.Code, good.Body.String())
+	}
+}
+
+func TestConfigPutSonarrRejectsSplitFlac(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr",
+		`[{"url":"http://127.0.0.1:8989","apiKey":"`+strings.Repeat("k", apiKeyMinLength)+`","split_flac":false}]`, withKey)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("split_flac %d %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "split_flac") {
+		t.Fatalf("want unknown field, got %s", rec.Body.String())
+	}
+}
+
 func TestConfigPutNeedsWritePerm(t *testing.T) {
 	t.Parallel()
 
@@ -571,6 +622,76 @@ func TestConfigPutURLBaseRoundTripNeedsNoRestart(t *testing.T) {
 
 	if reply.RestartRequired {
 		t.Fatal("normalized urlbase round trip must not require restart")
+	}
+}
+
+// Saving a role (or any auth-only field) must not re-exec when live listen
+// differs from the file because of UN_WEBSERVER_LISTEN_ADDR.
+func TestConfigPutWebserverRoleWithEnvListenNeedsNoRestart(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	unpack.Webserver.ListenAddr = "127.0.0.1:5656"
+	unpack.fileConfig.Webserver.ListenAddr = "0.0.0.0:5656"
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	if web.ListenAddr != "0.0.0.0:5656" {
+		t.Fatalf("GET must return file listen, got %s", web.ListenAddr)
+	}
+
+	if web.Roles == nil {
+		web.Roles = map[string]Role{}
+	}
+
+	web.Roles["stats"] = Role{Permissions: []string{PermReadSystemStats}}
+
+	if len(web.APIKeys) == 0 {
+		t.Fatal("expected admin key on GET")
+	}
+
+	web.APIKeys[0].Key = ""
+
+	body, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(body), key)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if reply.RestartRequired || unpack.pendingRestart {
+		t.Fatal("adding a role must not restart when only env listen differs from the file")
+	}
+
+	if unpack.Webserver.ListenAddr != "127.0.0.1:5656" {
+		t.Fatalf("live listen changed to %s", unpack.Webserver.ListenAddr)
+	}
+
+	if _, ok := unpack.fileConfig.Webserver.Roles["stats"]; !ok {
+		t.Fatalf("role missing from file: %+v", unpack.fileConfig.Webserver.Roles)
+	}
+
+	if _, ok := unpack.Webserver.Roles["stats"]; !ok {
+		t.Fatalf("role missing from live: %+v", unpack.Webserver.Roles)
 	}
 }
 

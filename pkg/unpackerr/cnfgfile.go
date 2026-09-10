@@ -453,7 +453,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 
 	if conf.APIKey == "" {
 		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", app)
-		return ErrInvalidURL // this error is not printed.
+		return ErrInvalidKey // this error is not printed at startup; PUT returns it.
 	}
 
 	if !strings.HasPrefix(conf.URL, "http://") && !strings.HasPrefix(conf.URL, "https://") {

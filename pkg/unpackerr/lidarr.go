@@ -1,7 +1,6 @@
 package unpackerr
 
 import (
-	"errors"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,7 +26,7 @@ func (u *Unpackerr) validateLidarr() error {
 
 	for idx := range u.Lidarr {
 		if err := u.validateApp(&u.Lidarr[idx].StarrConfig, starr.Lidarr); err != nil {
-			if errors.Is(err, ErrInvalidURL) {
+			if skipInvalidApp(err) {
 				continue // We ignore these errors, just remove the instance from the list.
 			}
 

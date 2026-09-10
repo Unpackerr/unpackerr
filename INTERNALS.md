@@ -215,6 +215,8 @@ Env-only (no config path): skip write, still apply live.
 
 **Omitted / blank `ui_password` on PUT:** keep live password. An already-stored `filepath:` on PUT: expand for live, store the `filepath:` string on disk. A new `filepath:` is 400.
 
+**New `ui_password` on PUT:** `!!cryptd!!…`, `webauth`, `noauth`, or `user:<64-char hex>` where the hex is the same PBKDF2 digest as login (`CryptPass.Set`, then bcrypt). Plaintext `user:pass` is **400**. While live auth is local password, changing the hash or switching to header/noauth requires `uiCurrentKdf` (login `Valid()` on the current username). Header/noauth live mode does not. `uiCurrentKdf` is a PUT-only JSON field and is never written to TOML. Omitting `uiPassword` or sending the on-disk value unchanged keeps the live overlay, so `UN_WEBSERVER_UI_PASSWORD` is not replaced by the file hash.
+
 **Starr PUT:** invalid URL/key is **400** (startup *skips* bad apps; PUT does not). `path` merges into `paths` without dupes. Last poll `Queue` carries over when `url` + expanded `apiKey` match. Work thread pool **grows** to `starrAppCount`.
 
 **Folders PUT:** always `restartRequired: true`. Watcher is built once; rebuilding in-process was rejected (leak / dual poller).
@@ -260,7 +262,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/openapi.json` | none | — | Spec; `servers[0].url` rewritten to urlbase |
 | POST | `{urlbase}api/auth/login` | none | — | JSON `{name?, kdf}`. 3s fail delay. 5s read deadline **outside** apache log wrapper. Missing if cookies failed to init. |
 | POST | `{urlbase}api/auth/logout` | none | — | Clears session cookie |
-| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions |
+| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `headers` (this request minus the Trust exclusion list), `clientIP`, `upstreamAllowed` |
 | GET | `{urlbase}api/stats` | yes | `read:system:stats` | Queue counts + hook counters |
 | GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag |
 | GET | `{urlbase}api/queue` | yes | `read:system:queue` | In-flight items |

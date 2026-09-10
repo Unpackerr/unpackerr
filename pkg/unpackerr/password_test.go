@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"os"
 	"runtime"
 	"strings"
@@ -68,12 +69,20 @@ func TestCryptPassHeaderAndNone(t *testing.T) {
 		t.Fatalf("header %s %s", pass.Type(), pass.Header())
 	}
 
+	if err := pass.Set("noauth", "X-User"); err != nil {
+		t.Fatal(err)
+	}
+
+	if pass.Type() != AuthNone || !pass.Noauth() || pass.Header() != "X-User" {
+		t.Fatalf("noauth %s header %s", pass.Type(), pass.Header())
+	}
+
 	if err := pass.Set("noauth", ""); err != nil {
 		t.Fatal(err)
 	}
 
-	if pass.Type() != AuthNone || !pass.Noauth() {
-		t.Fatalf("noauth %s", pass.Type())
+	if pass.Type() != AuthNone || !pass.Noauth() || pass.Header() != defaultAuthHeader {
+		t.Fatalf("noauth default header %s %s", pass.Type(), pass.Header())
 	}
 }
 
@@ -426,5 +435,66 @@ func TestPublicCryptPass(t *testing.T) {
 		if got := publicCryptPass(test.in); got != test.out {
 			t.Fatalf("%q -> %q, want %q", test.in, got, test.out)
 		}
+	}
+}
+
+func TestNormalizeStoredPasswordKDF(t *testing.T) {
+	t.Parallel()
+
+	plain := CryptPass("admin:correct-horse")
+	if err := normalizeStoredPassword(&plain, defaultUIUser, false); !errors.Is(err, errPlaintextUIPassword) {
+		t.Fatalf("plaintext: %v", err)
+	}
+
+	kdf := DeriveKDF("admin", "correct-horse")
+
+	hashed := CryptPass("admin:" + kdf)
+	if err := normalizeStoredPassword(&hashed, defaultUIUser, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if !hashed.IsCrypted() || !hashed.ValidPlain("admin", "correct-horse") {
+		t.Fatal("kdf must bcrypt via Set")
+	}
+
+	header := CryptPass("webauth:X-Webauth-User")
+	if err := normalizeStoredPassword(&header, defaultUIUser, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if header.Val() != "webauth:X-Webauth-User" {
+		t.Fatalf("webauth round-trip %q", header)
+	}
+
+	reserved := CryptPass("webauth:" + kdf)
+	if err := normalizeStoredPassword(&reserved, defaultUIUser, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if reserved.Type() != AuthHeader {
+		t.Fatalf("webauth:kdf is header mode, got %s", reserved.Type())
+	}
+
+	plainOK := CryptPass("admin:correct-horse")
+	if err := normalizeStoredPassword(&plainOK, defaultUIUser, true); err != nil {
+		t.Fatal(err)
+	}
+
+	if !plainOK.ValidPlain("admin", "correct-horse") {
+		t.Fatal("allowPlain should SetPlain")
+	}
+}
+
+func TestReservedUIUser(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"webauth", "noauth", "filepath", "WebAuth", "a:b"} {
+		if !reservedUIUser(name) {
+			t.Fatalf("%q should be reserved", name)
+		}
+	}
+
+	if reservedUIUser("admin") {
+		t.Fatal("admin is not reserved")
 	}
 }

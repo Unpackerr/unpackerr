@@ -106,6 +106,10 @@ func (w *WebServer) validateAuth() error {
 		return nil
 	}
 
+	if w.UIPassword.Type() == AuthHeader && strings.TrimSpace(w.UIPassword.Header()) == "" {
+		return errEmptyAuthHeader
+	}
+
 	for name, role := range w.Roles {
 		if err := role.validate(name); err != nil {
 			return err

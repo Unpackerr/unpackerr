@@ -200,7 +200,7 @@ Permission: `write:config:{section}`.
 
 Body **replaces** the section (not patch). Workflow the UI is built for: GET file → edit → PUT.
 
-Handler on HTTP goroutine: read ≤1 MiB, reject trailing JSON, reject `null` / empty object `{}` for object sections, reject `[null]` in lists. `DisallowUnknownFields`.
+Handler on HTTP goroutine: read ≤1 MiB, reject trailing JSON, reject `null` / empty object `{}` for object sections, reject `[null]` in lists. `DisallowUnknownFields`. Webserver PUT that is only `uiCurrentKdf` is the same empty-section 400 (`uiCurrentKdf` is a sidecar, not a config field).
 
 Then `onMainLoop` → `replaceConfigSection` → `commitConfig`:
 
@@ -215,7 +215,7 @@ Env-only (no config path): skip write, still apply live.
 
 **Omitted / blank `ui_password` on PUT:** keep live password. An already-stored `filepath:` on PUT: expand for live, store the `filepath:` string on disk. A new `filepath:` is 400.
 
-**New `ui_password` on PUT:** `!!cryptd!!…`, `webauth`, `noauth`, or `user:<64-char hex>` where the hex is the same PBKDF2 digest as login (`CryptPass.Set`, then bcrypt). Plaintext `user:pass` is **400**. While live auth is local password, changing the hash or switching to header/noauth requires `uiCurrentKdf` (login `Valid()` on the current username). Header/noauth live mode does not. `uiCurrentKdf` is a PUT-only JSON field and is never written to TOML. Omitting `uiPassword` or sending the on-disk value unchanged keeps the live overlay, so `UN_WEBSERVER_UI_PASSWORD` is not replaced by the file hash.
+**New `ui_password` on PUT:** `!!cryptd!!…`, `webauth`, `noauth`, or `user:<64-char hex>` where the hex is the same PBKDF2 digest as login (`CryptPass.Set`, then bcrypt; mixed-case hex is stored lowercase). Plaintext `user:pass` is **400**. While live auth is local password, changing the hash or switching to header/noauth requires `uiCurrentKdf` (login `Valid()` on the current username). Header/noauth live mode does not. `uiCurrentKdf` is a PUT-only JSON field and is never written to TOML. A body that contains only `uiCurrentKdf` is **400** (empty section), so it cannot wipe `listen_addr` / keys / roles. Omitting `uiPassword` or sending the on-disk value unchanged keeps the live overlay, so `UN_WEBSERVER_UI_PASSWORD` is not replaced by the file hash.
 
 **Starr PUT:** invalid URL/key is **400** (startup *skips* bad apps; PUT does not). `path` merges into `paths` without dupes. Last poll `Queue` carries over when `url` + expanded `apiKey` match. Work thread pool **grows** to `starrAppCount`.
 
@@ -262,7 +262,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/openapi.json` | none | — | Spec; `servers[0].url` rewritten to urlbase |
 | POST | `{urlbase}api/auth/login` | none | — | JSON `{name?, kdf}`. 3s fail delay. 5s read deadline **outside** apache log wrapper. Missing if cookies failed to init. |
 | POST | `{urlbase}api/auth/logout` | none | — | Clears session cookie |
-| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `headers` (this request minus the Trust exclusion list), `clientIP`, `upstreamAllowed` |
+| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `read:system:headers` |
 | GET | `{urlbase}api/stats` | yes | `read:system:stats` | Queue counts + hook counters |
 | GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
 | GET | `{urlbase}api/system/export` | yes | `read:system:info` | Startup-log style live rundown; secrets omitted |
@@ -311,7 +311,7 @@ First start with listen enabled and no password: generate one, print once, hash,
 
 `verb:area:resource`. Built-in role `admin` is reserved and means `*`.
 
-System: `read:system:stats|info|queue|history|metrics`, `write:system:queue|history`.
+System: `read:system:stats|info|queue|history|metrics|headers|browse`, `write:system:queue|history|browse`.
 
 Config: `read:config:{section}`, `write:config:{section}` for each section above.
 

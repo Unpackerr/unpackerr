@@ -11,7 +11,8 @@ func TestAllPermissionsIncludeConfigSections(t *testing.T) {
 
 	perms := AllPermissions()
 
-	if !KnownPermission(PermReadSystemStats) || !KnownPermission(PermAll) {
+	if !KnownPermission(PermReadSystemStats) || !KnownPermission(PermReadSystemHeaders) ||
+		!KnownPermission(PermAll) {
 		t.Fatal("system permissions must be known")
 	}
 

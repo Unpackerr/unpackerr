@@ -3,8 +3,10 @@ package unpackerr
 import (
 	"net/http"
 	"path"
+	"runtime"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/configdef"
 	"golift.io/version"
 )
 
@@ -17,6 +19,8 @@ type systemInfo struct {
 	URLBase    string    `json:"urlbase"`
 	Auth       string    `json:"auth"`
 	Metrics    bool      `json:"metrics"`
+	ConfigFile string    `json:"configFile"`
+	GOOS       string    `json:"goos"`
 }
 
 func (u *Unpackerr) registerAPIRoutes() {
@@ -25,6 +29,7 @@ func (u *Unpackerr) registerAPIRoutes() {
 
 	u.Webserver.handleGet(basePath("stats"), u.requirePerm(PermReadSystemStats, u.statsHandler))
 	u.Webserver.handleGet(basePath("system"), u.requirePerm(PermReadSystemInfo, u.systemHandler))
+	u.Webserver.handleGet(basePath("system/export"), u.requirePerm(PermReadSystemInfo, u.systemExportHandler))
 	u.Webserver.handleGet(basePath("queue"), u.requirePerm(PermReadSystemQueue, u.queueHandler))
 	u.Webserver.handlePost(basePath("queue/retry"), u.requirePerm(PermWriteSystemQueue, u.queueRetryHandler))
 	u.Webserver.handlePost(basePath("queue/forget"), u.requirePerm(PermWriteSystemQueue, u.queueForgetHandler))
@@ -33,6 +38,7 @@ func (u *Unpackerr) registerAPIRoutes() {
 	u.Webserver.handlePost(basePath("history/delete"), u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler))
 	u.Webserver.handleGet(basePath("browse"), u.requirePerm(PermReadSystemBrowse, u.browseHandler))
 	u.Webserver.handlePost(basePath("browse"), u.requirePerm(PermWriteSystemBrowse, u.browseCreateHandler))
+	u.Webserver.handleGet(basePath("config/help"), u.requireAuth(u.configHelpHandler))
 	u.Webserver.handleGet(basePath("config/env"), u.requireAuth(u.configEnvHandler))
 	u.Webserver.handleGet(basePath("config/{section}/live"), u.requireConfigPerm(false, u.configGetLiveHandler))
 	u.Webserver.handleGet(basePath("config/{section}"), u.requireConfigPerm(false, u.configGetHandler))
@@ -61,7 +67,36 @@ func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request)
 		URLBase:    u.Webserver.URLBase,
 		Auth:       u.uiPassword().Type().String(),
 		Metrics:    u.Webserver.Metrics,
+		ConfigFile: u.ConfigFile,
+		GOOS:       runtime.GOOS,
 	})
+}
+
+func (u *Unpackerr) configHelpHandler(response http.ResponseWriter, _ *http.Request) {
+	schema, err := configdef.Load()
+	if err != nil {
+		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(response, http.StatusOK, schema.UIHelp())
+}
+
+func (u *Unpackerr) systemExportHandler(response http.ResponseWriter, request *http.Request) {
+	info, _ := request.Context().Value(authCtxKey).(authInfo)
+
+	var text string
+
+	err := u.onMainLoop(request.Context(), func() error {
+		text = u.liveConfigText(info)
+		return nil
+	})
+	if err != nil {
+		writeJSON(response, http.StatusGatewayTimeout, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(response, http.StatusOK, map[string]string{"text": text})
 }
 
 func (u *Unpackerr) configEnvHandler(response http.ResponseWriter, request *http.Request) {

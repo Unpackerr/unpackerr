@@ -65,6 +65,7 @@ type Param struct {
 	Docker      any      `yaml:"docker"`
 	Example     any      `yaml:"example"`
 	Short       string   `yaml:"short"`
+	UIShort     string   `yaml:"uishort"`
 	Desc        string   `yaml:"desc"`
 	Kind        string   `yaml:"kind"` // "", list, conlist, map, tables
 	Recommend   []Option `yaml:"recommend"`

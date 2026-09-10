@@ -43,23 +43,6 @@ func (u *Unpackerr) validateWhisparr() error {
 	return nil
 }
 
-func (u *Unpackerr) logWhisparr() {
-	if count := len(u.Whisparr); count == 1 {
-		u.Printf(" => Whisparr Config: 1 server: "+starrLogLine,
-			u.Whisparr[0].URL, u.Whisparr[0].APIKey != "", u.Whisparr[0].Timeout,
-			u.Whisparr[0].ValidSSL, u.Whisparr[0].Protocols, u.Whisparr[0].Syncthing,
-			u.Whisparr[0].DeleteOrig, u.Whisparr[0].DeleteDelay.Duration, u.Whisparr[0].Paths)
-	} else if count != 0 {
-		u.Printf(" => Whisparr Config: %d servers", count)
-
-		for _, f := range u.Whisparr {
-			u.Printf(starrLogPfx+starrLogLine,
-				f.URL, f.APIKey != "", f.Timeout, f.ValidSSL, f.Protocols,
-				f.Syncthing, f.DeleteOrig, f.DeleteDelay.Duration, f.Paths)
-		}
-	}
-}
-
 // getWhisparrQueue saves the Whisparr Queue(s).
 func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
 	if server.APIKey == "" {

@@ -35,23 +35,6 @@ func (u *Unpackerr) validateSonarr() error {
 	return nil
 }
 
-func (u *Unpackerr) logSonarr() {
-	if count := len(u.Sonarr); count == 1 {
-		u.Printf(" => Sonarr Config: 1 server: "+starrLogLine,
-			u.Sonarr[0].URL, u.Sonarr[0].APIKey != "", u.Sonarr[0].Timeout.String(),
-			u.Sonarr[0].ValidSSL, u.Sonarr[0].Protocols, u.Sonarr[0].Syncthing,
-			u.Sonarr[0].DeleteOrig, u.Sonarr[0].DeleteDelay.String(), u.Sonarr[0].Paths)
-	} else {
-		u.Printf(" => Sonarr Config: %d servers", count)
-
-		for _, f := range u.Sonarr {
-			u.Printf(starrLogPfx+starrLogLine,
-				f.URL, f.APIKey != "", f.Timeout.String(), f.ValidSSL, f.Protocols,
-				f.Syncthing, f.DeleteOrig, f.DeleteDelay.String(), f.Paths)
-		}
-	}
-}
-
 // getSonarrQueue saves the Sonarr Queue(s).
 func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
 	if server.APIKey == "" {

@@ -128,22 +128,6 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 	return &out, nil
 }
 
-func (u *Unpackerr) logCmdhook() {
-	var prefix string
-
-	if len(u.Cmdhook) == 1 {
-		prefix = " => Command Hook Config: 1 cmd"
-	} else {
-		u.Printf(" => Command Hook Configs: %d commands", len(u.Cmdhook))
-		prefix = " =>    Command" //nolint:wsl_v5
-	}
-
-	for _, f := range u.Cmdhook {
-		u.Printf("%s: %s, timeout: %v, silent: %v, events: %v, shell: %v, cmd: %s",
-			prefix, f.Name, f.Timeout, f.Silent, logEvents(f.Events), f.Shell, f.Command)
-	}
-}
-
 // CmdhookCounts returns the total count of requests and errors for all webhooks.
 func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	var total, fails uint

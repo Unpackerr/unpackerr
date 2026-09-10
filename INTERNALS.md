@@ -264,7 +264,8 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | POST | `{urlbase}api/auth/logout` | none | — | Clears session cookie |
 | GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `read:system:headers` |
 | GET | `{urlbase}api/stats` | yes | `read:system:stats` | Queue counts + hook counters |
-| GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag |
+| GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
+| GET | `{urlbase}api/system/export` | yes | `read:system:info` | Startup-log style live rundown; each section also needs `read:config:{section}` (or `*`); omitted sections say so. Secrets omitted. |
 | GET | `{urlbase}api/queue` | yes | `read:system:queue` | In-flight items |
 | POST | `{urlbase}api/queue/retry` | yes | `write:system:queue` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |
 | POST | `{urlbase}api/queue/forget` | yes | `write:system:queue` | Terminal statuses only; in-progress **409**; Starr titles get a tombstone until they leave the upstream queue |
@@ -273,6 +274,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | POST | `{urlbase}api/history/delete` | yes | `write:system:history` | `{id}` |
 | GET | `{urlbase}api/browse` | yes | `read:system:browse` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
 | POST | `{urlbase}api/browse` | yes | `write:system:browse` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
+| GET | `{urlbase}api/config/help` | yes | any auth | English field help from definitions.yml |
 | GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*` |
 | GET | `{urlbase}api/config/{section}` | yes | `read:config:{section}` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `read:config:{section}` | Running copy |

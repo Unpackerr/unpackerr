@@ -31,6 +31,7 @@ func (u *Unpackerr) registerAPIRoutes() {
 	u.Webserver.handleGet(basePath("history"), u.requirePerm(PermReadSystemHistory, u.historyHandler))
 	u.Webserver.handlePost(basePath("history/clear"), u.requirePerm(PermWriteSystemHistory, u.historyClearHandler))
 	u.Webserver.handlePost(basePath("history/delete"), u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler))
+	u.Webserver.handleGet(basePath("config/env"), u.requireAuth(u.configEnvHandler))
 	u.Webserver.handleGet(basePath("config/{section}/live"), u.requireConfigPerm(false, u.configGetLiveHandler))
 	u.Webserver.handleGet(basePath("config/{section}"), u.requireConfigPerm(false, u.configGetHandler))
 	u.Webserver.handlePut(basePath("config/{section}"), u.requireConfigPerm(true, u.configPutHandler))
@@ -59,4 +60,30 @@ func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request)
 		Auth:       u.uiPassword().Type().String(),
 		Metrics:    u.Webserver.Metrics,
 	})
+}
+
+func (u *Unpackerr) configEnvHandler(response http.ResponseWriter, request *http.Request) {
+	info, _ := request.Context().Value(authCtxKey).(authInfo)
+	writeJSON(response, http.StatusOK, u.envPairsPublic(info))
+}
+
+func (u *Unpackerr) envPairsPublic(info authInfo) map[string]string {
+	used := u.envUsed
+	if used == nil {
+		return map[string]string{}
+	}
+
+	out := make(map[string]string, len(used))
+	star := info.allows(PermAll)
+
+	for key, val := range used {
+		if !star && envValueSecret(key) {
+			out[key] = ""
+			continue
+		}
+
+		out[key] = val
+	}
+
+	return out
 }

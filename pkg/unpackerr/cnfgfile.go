@@ -69,9 +69,12 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	// File snapshot first so UN_* overlays stay on the live Config and never get written back.
 	u.snapshotFileConfig()
 
-	if _, err := cnfg.UnmarshalENV(u.Config, u.EnvPrefix); err != nil {
+	res, err := cnfg.ParseENV(u.Config, u.EnvPrefix)
+	if err != nil {
 		return 0, 0, msg, fmt.Errorf("environment variables: %w", err)
 	}
+
+	u.envUsed = envSuffixes(res.Used, u.EnvPrefix)
 
 	u.snapshotLivePasswords()
 
@@ -309,6 +312,46 @@ func (u *Unpackerr) persistConfigFile() {
 
 func (u *Unpackerr) snapshotFileConfig() {
 	u.fileConfig = cloneConfig(u.Config)
+}
+
+// envSuffixes strips the parser prefix so the UI matches envVar="DEBUG" against UN_DEBUG.
+// cnfg joins prefix + "_" + tag, so a prefix that already ends in "_" (APP_)
+// produces APP__DEBUG; we strip that exact prefix and keep the rest as stored
+// (map keys like WEBSERVER_ROLES_stats_PERMISSIONS_0 stay mixed-case).
+func envSuffixes(used cnfg.Pairs, prefix string) map[string]string {
+	out := make(map[string]string, len(used))
+	pfx := prefix + cnfg.LevelSeparator
+
+	for key, val := range used {
+		name := key
+		if prefix != "" {
+			if cut, ok := strings.CutPrefix(key, pfx); ok {
+				name = cut
+			}
+		}
+
+		out[name] = val
+	}
+
+	return out
+}
+
+func envValueSecret(suffix string) bool {
+	name := strings.ToUpper(suffix)
+	if strings.Contains(name, "PASSWORD") || strings.Contains(name, "_PASS") ||
+		name == "API_KEY" || strings.HasSuffix(name, "_API_KEY") ||
+		strings.HasSuffix(name, "_TOKEN") {
+		return true
+	}
+
+	_, afterKeys, found := strings.Cut(name, "API_KEYS_")
+	if !found {
+		return false
+	}
+
+	_, after, ok := strings.Cut(afterKeys, "_")
+
+	return ok && after == "KEY"
 }
 
 func (u *Unpackerr) syncFileUIPassword() {

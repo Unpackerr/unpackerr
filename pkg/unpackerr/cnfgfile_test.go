@@ -232,6 +232,18 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 		t.Fatalf("file snapshot took env values: %+v", unpack.fileConfig)
 	}
 
+	if unpack.envUsed["DEBUG"] != "true" {
+		t.Fatalf("env used DEBUG: %+v", unpack.envUsed)
+	}
+
+	if unpack.envUsed["SONARR_0_URL"] != "http://127.0.0.1:8989" {
+		t.Fatalf("env used URL: %+v", unpack.envUsed)
+	}
+
+	if unpack.envUsed["SONARR_0_API_KEY"] != secret {
+		t.Fatalf("env used API key: %+v", unpack.envUsed)
+	}
+
 	written, err := os.ReadFile(conf)
 	if err != nil {
 		t.Fatal(err)
@@ -307,6 +319,10 @@ func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
 
 	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
 		t.Fatal(err)
+	}
+
+	if unpack.envUsed["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != PermReadSystemStats {
+		t.Fatalf("env used mixed-case role key: %+v", unpack.envUsed)
 	}
 
 	if unpack.Webserver.Roles["stats"].Permissions[0] != PermReadSystemStats {
@@ -593,6 +609,51 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	} {
 		if !strings.Contains(string(body), secret) {
 			t.Fatalf("filepath: value %q was not written as-is:\n%s", secret, body)
+		}
+	}
+}
+
+func TestEnvSuffixesAndSecrets(t *testing.T) {
+	t.Parallel()
+
+	got := envSuffixes(cnfg.Pairs{
+		"UN_DEBUG":                               "true",
+		"UN_SONARR_0_API_KEY":                    "k",
+		"UN_WEBSERVER_ROLES_stats_PERMISSIONS_0": "read:system:stats",
+	}, "UN")
+	if got["DEBUG"] != "true" || got["SONARR_0_API_KEY"] != "k" {
+		t.Fatalf("%v", got)
+	}
+
+	if got["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != "read:system:stats" {
+		t.Fatalf("mixed-case suffix lost: %v", got)
+	}
+
+	if _, ok := got["WEBSERVER_ROLES_STATS_PERMISSIONS_0"]; ok {
+		t.Fatalf("uppercasing collapsed the role key: %v", got)
+	}
+
+	app := envSuffixes(cnfg.Pairs{"APP__DEBUG": "true"}, "APP_")
+	if app["DEBUG"] != "true" {
+		t.Fatalf("prefix APP_ should strip APP__: %v", app)
+	}
+
+	if _, ok := app["_DEBUG"]; ok {
+		t.Fatalf("trimmed prefix left a leading underscore: %v", app)
+	}
+
+	for _, name := range []string{
+		"SONARR_0_API_KEY", "PASSWORD", "WEBSERVER_UI_PASSWORD", "PASSWORDS_0",
+		"SONARR_0_HTTP_PASS", "WEBSERVER_API_KEYS_0_KEY", "WEBHOOK_0_TOKEN",
+	} {
+		if !envValueSecret(name) {
+			t.Fatalf("expected secret %s", name)
+		}
+	}
+
+	for _, name := range []string{"DEBUG", "WEBSERVER_SSL_KEY_FILE", "WEBSERVER_API_KEYS_0_NAME"} {
+		if envValueSecret(name) {
+			t.Fatalf("unexpected secret %s", name)
 		}
 	}
 }

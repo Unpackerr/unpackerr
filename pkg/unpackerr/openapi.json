@@ -399,6 +399,23 @@
         }
       }
     },
+    "/api/config/env": {
+      "get": {
+        "tags": ["config"],
+        "summary": "Environment variables that overlaid config at startup",
+        "description": "Requires authentication. Keys are UN_* suffixes (DEBUG, SONARR_0_URL). Values are the env strings cnfg wrote into fields. Password, API key, webhook token, and webserver api key values are blank unless the caller has *.",
+        "responses": {
+          "200": {
+            "description": "Map of env suffix to value",
+            "content": {"application/json": {"schema": {
+              "type": "object",
+              "additionalProperties": {"type": "string"}
+            }}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
     "/api/config/{section}": {
       "parameters": [
         {

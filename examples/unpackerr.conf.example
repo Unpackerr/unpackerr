@@ -401,8 +401,8 @@ passwords = []
 # delete_after = "10m"
 ## Nested archives are extracted by default. Disable recursion to extract only the outer archive.
 # disable_recursion = false
-## Per-archive uncompressed-byte cap. `0` is unlimited.
-# max_bytes = 0
+## Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
+# max_bytes = ""
 ## Cap on files, directories, and symlinks created during extract. `0` is unlimited.
 # max_files = 0
 ## Cap on `bytes written / archive file size`. `0` is unlimited.

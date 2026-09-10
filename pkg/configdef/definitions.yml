@@ -792,10 +792,10 @@ sections:
         desc: Nested archives are extracted by default. Disable recursion to extract only the outer archive.
       - name: max_bytes
         envvar: MAX_BYTES
-        default: 0
+        default: ''
         recommend:
           - name: Unlimited
-            value: 0
+            value: ''
           - value: 5GB
           - value: 8GB
           - value: 10GB
@@ -816,8 +816,9 @@ sections:
           - value: 2TB
           - value: 5TB
           - value: 10TB
-        short: Per-archive byte cap. `0` (the default) is unlimited.
-        desc: Per-archive uncompressed-byte cap. `0` is unlimited.
+        short: Per-archive byte cap. Empty (the default) is unlimited.
+        desc: |
+          Per-archive uncompressed-byte cap. Empty is unlimited. `0` or `0B` is also unlimited.
       - name: max_files
         envvar: MAX_FILES
         default: 0

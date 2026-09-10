@@ -79,6 +79,40 @@ func TestDefinitionsFile(t *testing.T) {
 	}
 }
 
+func TestExampleFolderMaxBytesIsString(t *testing.T) {
+	t.Parallel()
+
+	config := loadTestConfig(t)
+	example := config.ExampleTOML()
+
+	if strings.Contains(example, "max_bytes = 0") {
+		t.Fatal("max_bytes is a string size; an unquoted integer would break existing configs")
+	}
+
+	if !strings.Contains(example, `max_bytes = ""`) {
+		t.Fatal(`example max_bytes must stay a quoted string`)
+	}
+
+	header := config.Sections["folder"]
+	if header == nil {
+		t.Fatal("missing folder section")
+	}
+
+	for _, param := range header.Params {
+		if param == nil || param.Name != "max_bytes" {
+			continue
+		}
+
+		if _, ok := param.Default.(string); !ok {
+			t.Fatalf("folder max_bytes default must be a string, got %T (%v)", param.Default, param.Default)
+		}
+
+		return
+	}
+
+	t.Fatal("missing folder max_bytes param")
+}
+
 func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 	t.Parallel()
 

@@ -619,13 +619,13 @@ func TestEnvSuffixesAndSecrets(t *testing.T) {
 	got := envSuffixes(cnfg.Pairs{
 		"UN_DEBUG":                               "true",
 		"UN_SONARR_0_API_KEY":                    "k",
-		"UN_WEBSERVER_ROLES_stats_PERMISSIONS_0": "read:system:stats",
+		"UN_WEBSERVER_ROLES_stats_PERMISSIONS_0": "system:stats:read",
 	}, "UN")
 	if got["DEBUG"] != "true" || got["SONARR_0_API_KEY"] != "k" {
 		t.Fatalf("%v", got)
 	}
 
-	if got["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != "read:system:stats" {
+	if got["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != "system:stats:read" {
 		t.Fatalf("mixed-case suffix lost: %v", got)
 	}
 

@@ -174,7 +174,7 @@ Env overlays **live only**. They are not merged into `fileConfig`. A later PUT t
 
 ### GET `/api/config/{section}` (file)
 
-Permission: `read:config:{section}`.
+Permission: `config:{section}:read`.
 
 Returns `fileConfig` (cloned). Webserver GET:
 
@@ -196,7 +196,7 @@ Live GET of general/starr/folders/hooks runs `onMainLoop` so it does not race `R
 
 ### PUT `/api/config/{section}`
 
-Permission: `write:config:{section}`.
+Permission: `config:{section}:write`.
 
 Body **replaces** the section (not patch). Workflow the UI is built for: GET file → edit → PUT.
 
@@ -262,24 +262,24 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/openapi.json` | none | — | Spec; `servers[0].url` rewritten to urlbase |
 | POST | `{urlbase}api/auth/login` | none | — | JSON `{name?, kdf}`. 3s fail delay. 5s read deadline **outside** apache log wrapper. Missing if cookies failed to init. |
 | POST | `{urlbase}api/auth/logout` | none | — | Clears session cookie |
-| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `read:system:headers` |
-| GET | `{urlbase}api/stats` | yes | `read:system:stats` | Queue counts + hook counters |
-| GET | `{urlbase}api/system` | yes | `read:system:info` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
-| GET | `{urlbase}api/system/export` | yes | `read:system:info` | Startup-log style live rundown; each section also needs `read:config:{section}` (or `*`); omitted sections say so. Secrets omitted. |
-| GET | `{urlbase}api/queue` | yes | `read:system:queue` | In-flight items |
-| POST | `{urlbase}api/queue/retry` | yes | `write:system:queue` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |
-| POST | `{urlbase}api/queue/forget` | yes | `write:system:queue` | Terminal statuses only; in-progress **409**; Starr titles get a tombstone until they leave the upstream queue |
-| GET | `{urlbase}api/history` | yes | `read:system:history` | Durable JSONL-backed rows |
-| POST | `{urlbase}api/history/clear` | yes | `write:system:history` | |
-| POST | `{urlbase}api/history/delete` | yes | `write:system:history` | `{id}` |
-| GET | `{urlbase}api/browse` | yes | `read:system:browse` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
-| POST | `{urlbase}api/browse` | yes | `write:system:browse` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
+| GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `system:headers:read` |
+| GET | `{urlbase}api/stats` | yes | `system:stats:read` | Queue counts + hook counters |
+| GET | `{urlbase}api/system` | yes | `system:info:read` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
+| GET | `{urlbase}api/system/export` | yes | `system:info:read` | Startup-log style live rundown; each section also needs `config:{section}:read` (or `*`); omitted sections say so. Secrets omitted. |
+| GET | `{urlbase}api/queue` | yes | `system:queue:read` | In-flight items |
+| POST | `{urlbase}api/queue/retry` | yes | `system:queue:write` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |
+| POST | `{urlbase}api/queue/forget` | yes | `system:queue:write` | Terminal statuses only; in-progress **409**; Starr titles get a tombstone until they leave the upstream queue |
+| GET | `{urlbase}api/history` | yes | `system:history:read` | Durable JSONL-backed rows |
+| POST | `{urlbase}api/history/clear` | yes | `system:history:write` | |
+| POST | `{urlbase}api/history/delete` | yes | `system:history:write` | `{id}` |
+| GET | `{urlbase}api/browse` | yes | `system:browse:read` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
+| POST | `{urlbase}api/browse` | yes | `system:browse:write` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
 | GET | `{urlbase}api/config/help` | yes | any auth | English field help from definitions.yml |
 | GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*` |
-| GET | `{urlbase}api/config/{section}` | yes | `read:config:{section}` | File snapshot |
-| GET | `{urlbase}api/config/{section}/live` | yes | `read:config:{section}` | Running copy |
-| PUT | `{urlbase}api/config/{section}` | yes | `write:config:{section}` | Replace section |
-| GET | `/metrics` (+ urlbase) | **API key / Bearer only** | `read:system:metrics` | No session cookie, no webauth/noauth |
+| GET | `{urlbase}api/config/{section}` | yes | `config:{section}:read` | File snapshot |
+| GET | `{urlbase}api/config/{section}/live` | yes | `config:{section}:read` | Running copy |
+| PUT | `{urlbase}api/config/{section}` | yes | `config:{section}:write` | Replace section |
+| GET | `/metrics` (+ urlbase) | **API key / Bearer only** | `system:metrics:read` | No session cookie, no webauth/noauth |
 | GET | `/debug/pprof/…` | none extra | — | Only if `pprof = true`. Treat as a loaded gun. |
 
 `{section}` is one of: `general`, `webserver`, `sonarr`, `radarr`, `lidarr`, `readarr`, `whisparr`, `folders`, `webhooks`, `cmdhooks`. Unknown → 404 from `requireConfigPerm`.
@@ -309,11 +309,11 @@ First start with listen enabled and no password: generate one, print once, hash,
 
 ## Permissions
 
-`verb:area:resource`. Built-in role `admin` is reserved and means `*`.
+`area:resource:verb`. Built-in role `admin` is reserved and means `*`.
 
-System: `read:system:stats|info|queue|history|metrics|headers|browse`, `write:system:queue|history|browse`.
+System: `system:{stats,info,queue,history,metrics,headers,browse}:read`, `system:{queue,history,browse}:write`.
 
-Config: `read:config:{section}`, `write:config:{section}` for each section above.
+Config: `config:{section}:read`, `config:{section}:write` for each section above.
 
 Custom roles are a map of name → permission list. Env for roles is picky: do **not** set `UN_WEBSERVER_ROLES` itself. Use `UN_WEBSERVER_ROLES_<name>_PERMISSIONS_0=…`.
 

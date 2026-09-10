@@ -63,18 +63,11 @@ func TestLiveConfigOmitsWithoutSectionRead(t *testing.T) {
 		info:  authInfo{Permissions: []string{PermReadSystemInfo}},
 	})
 
-	for _, need := range []string{
-		"omitted (need read:config:sonarr)",
-		"omitted (need read:config:radarr)",
-		"omitted (need read:config:lidarr)",
-		"omitted (need read:config:readarr)",
-		"omitted (need read:config:whisparr)",
-		"omitted (need read:config:folders)",
-		"omitted (need read:config:general)",
-		"omitted (need read:config:webhooks)",
-		"omitted (need read:config:cmdhooks)",
-		"omitted (need read:config:webserver)",
+	for _, section := range []ConfigSection{
+		SectionSonarr, SectionRadarr, SectionLidarr, SectionReadarr, SectionWhisparr,
+		SectionFolders, SectionGeneral, SectionWebhooks, SectionCmdhooks, SectionWebserver,
 	} {
+		need := "omitted (need " + PermReadConfig(section) + ")"
 		if !strings.Contains(got, need) {
 			t.Errorf("missing %q in:\n%s", need, got)
 		}

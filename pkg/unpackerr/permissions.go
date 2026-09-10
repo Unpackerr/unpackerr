@@ -2,18 +2,19 @@ package unpackerr
 
 import "slices"
 
-// Permission names are verb:area:resource. Built-in role admin grants all of them.
+// Permission names are area:resource:verb so later verbs (execute, …) stay
+// on the same resource. Built-in role admin grants all of them.
 const (
-	PermReadSystemStats    = "read:system:stats"
-	PermReadSystemInfo     = "read:system:info"
-	PermReadSystemQueue    = "read:system:queue"
-	PermWriteSystemQueue   = "write:system:queue"
-	PermReadSystemHistory  = "read:system:history"
-	PermWriteSystemHistory = "write:system:history"
-	PermReadSystemMetrics  = "read:system:metrics"
-	PermReadSystemHeaders  = "read:system:headers"
-	PermReadSystemBrowse   = "read:system:browse"
-	PermWriteSystemBrowse  = "write:system:browse"
+	PermReadSystemStats    = "system:stats:read"
+	PermReadSystemInfo     = "system:info:read"
+	PermReadSystemQueue    = "system:queue:read"
+	PermWriteSystemQueue   = "system:queue:write"
+	PermReadSystemHistory  = "system:history:read"
+	PermWriteSystemHistory = "system:history:write"
+	PermReadSystemMetrics  = "system:metrics:read"
+	PermReadSystemHeaders  = "system:headers:read"
+	PermReadSystemBrowse   = "system:browse:read"
+	PermWriteSystemBrowse  = "system:browse:write"
 	PermAll                = "*"
 	RoleAdmin              = "admin"
 	systemPermCount        = 11
@@ -45,11 +46,11 @@ func ConfigSections() []ConfigSection {
 }
 
 func PermReadConfig(section ConfigSection) string {
-	return "read:config:" + string(section)
+	return "config:" + string(section) + ":read"
 }
 
 func PermWriteConfig(section ConfigSection) string {
-	return "write:config:" + string(section)
+	return "config:" + string(section) + ":write"
 }
 
 func KnownSection(name ConfigSection) bool {

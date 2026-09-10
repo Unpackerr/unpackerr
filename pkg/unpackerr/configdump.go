@@ -32,7 +32,7 @@ func (d dumpAuth) omit(printf configLine, section ConfigSection, label string) b
 
 // liveConfigText is the same rundown as the startup log: what's actually running,
 // with secrets omitted (API keys as present/absent, UI password as auth type).
-// Per-section details require read:config:{section} (or *); missing sections say so.
+// Per-section details require config:{section}:read (or *); missing sections say so.
 func (u *Unpackerr) liveConfigText(info authInfo) string {
 	var buf strings.Builder
 

@@ -84,7 +84,8 @@ type Unpackerr struct {
 	// on-disk shape (filepath: values kept) and is also written by the tray,
 	// so it and the hook slices that /api/stats counts sit under configMu.
 	fileConfig       *Config
-	livePasswords    StringSlice // post-env, pre-expansion; GET /live uses this
+	envUsed          map[string]string // UN_* suffixes that ParseENV wrote; immutable after startup
+	livePasswords    StringSlice       // post-env, pre-expansion; GET /live uses this
 	configMu         sync.RWMutex
 	tickers          *loopTickers
 	pendingRestart   bool

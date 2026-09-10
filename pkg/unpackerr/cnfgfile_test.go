@@ -232,6 +232,18 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 		t.Fatalf("file snapshot took env values: %+v", unpack.fileConfig)
 	}
 
+	if unpack.envUsed["DEBUG"] != "true" {
+		t.Fatalf("env used DEBUG: %+v", unpack.envUsed)
+	}
+
+	if unpack.envUsed["SONARR_0_URL"] != "http://127.0.0.1:8989" {
+		t.Fatalf("env used URL: %+v", unpack.envUsed)
+	}
+
+	if unpack.envUsed["SONARR_0_API_KEY"] != secret {
+		t.Fatalf("env used API key: %+v", unpack.envUsed)
+	}
+
 	written, err := os.ReadFile(conf)
 	if err != nil {
 		t.Fatal(err)
@@ -593,6 +605,27 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	} {
 		if !strings.Contains(string(body), secret) {
 			t.Fatalf("filepath: value %q was not written as-is:\n%s", secret, body)
+		}
+	}
+}
+
+func TestEnvSuffixesAndSecrets(t *testing.T) {
+	t.Parallel()
+
+	got := envSuffixes(cnfg.Pairs{"UN_DEBUG": "true", "UN_SONARR_0_API_KEY": "k"}, "UN")
+	if got["DEBUG"] != "true" || got["SONARR_0_API_KEY"] != "k" {
+		t.Fatalf("%v", got)
+	}
+
+	for _, name := range []string{"SONARR_0_API_KEY", "PASSWORD", "WEBSERVER_API_KEYS_0_KEY", "WEBHOOK_0_TOKEN"} {
+		if !envValueSecret(name) {
+			t.Fatalf("expected secret %s", name)
+		}
+	}
+
+	for _, name := range []string{"DEBUG", "WEBSERVER_SSL_KEY_FILE", "WEBSERVER_API_KEYS_0_NAME"} {
+		if envValueSecret(name) {
+			t.Fatalf("unexpected secret %s", name)
 		}
 	}
 }

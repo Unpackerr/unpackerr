@@ -35,6 +35,10 @@ func TestOpenAPIUnauthenticated(t *testing.T) {
 		t.Fatal("missing live config GET")
 	}
 
+	if _, ok := paths["/api/config/env"]; !ok {
+		t.Fatal("missing /api/config/env")
+	}
+
 	login := openAPIPath(t, paths, "/api/auth/login")
 	post, _ := login["post"].(map[string]any)
 	resps, _ := post["responses"].(map[string]any)

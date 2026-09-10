@@ -187,3 +187,61 @@ func TestMetricsRejectsSessionAndProxyAuth(t *testing.T) {
 		t.Fatalf("proxy metrics %d", rec.Code)
 	}
 }
+
+func TestConfigEnv(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.envUsed = map[string]string{
+		"DEBUG":            "true",
+		"SONARR_0_API_KEY": "secret-from-env",
+	}
+
+	if rec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("env unauth %d", rec.Code)
+	}
+
+	withAdmin := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	adminRec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", withAdmin)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("env %d %s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var admin map[string]string
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &admin); err != nil {
+		t.Fatal(err)
+	}
+
+	if admin["DEBUG"] != "true" || admin["SONARR_0_API_KEY"] != "secret-from-env" {
+		t.Fatalf("admin env %v", admin)
+	}
+
+	readKey := strings.Repeat("E", apiKeyMinLen)
+	unpack.Webserver.Roles = map[string]Role{
+		"envread": {Permissions: []string{PermReadConfig(SectionGeneral)}},
+	}
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
+		Name:  "envread",
+		Key:   readKey,
+		Roles: []string{"envread"},
+	})
+
+	readRec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, readKey)
+	})
+	if readRec.Code != http.StatusOK {
+		t.Fatalf("env read %d %s", readRec.Code, readRec.Body.String())
+	}
+
+	var limited map[string]string
+	if err := json.Unmarshal(readRec.Body.Bytes(), &limited); err != nil {
+		t.Fatal(err)
+	}
+
+	if limited["DEBUG"] != "true" || limited["SONARR_0_API_KEY"] != "" {
+		t.Fatalf("limited env %v", limited)
+	}
+}

@@ -269,6 +269,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/history` | yes | `read:system:history` | Durable JSONL-backed rows |
 | POST | `{urlbase}api/history/clear` | yes | `write:system:history` | |
 | POST | `{urlbase}api/history/delete` | yes | `write:system:history` | `{id}` |
+| GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*` |
 | GET | `{urlbase}api/config/{section}` | yes | `read:config:{section}` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `read:config:{section}` | Running copy |
 | PUT | `{urlbase}api/config/{section}` | yes | `write:config:{section}` | Replace section |

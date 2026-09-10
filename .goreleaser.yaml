@@ -339,7 +339,7 @@ nfpms:
 dockers_v2:
   - id: unpackerr-release
     disable: '{{ ne .Env.CHANNEL "release" }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - ghcr.io/unpackerr/unpackerr
@@ -366,7 +366,7 @@ dockers_v2:
       org.opencontainers.image.licenses: MIT
   - id: unpackerr-release-hub
     disable: '{{ or (ne .Env.CHANNEL "release") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - docker.io/golift/unpackerr
@@ -380,7 +380,7 @@ dockers_v2:
     labels: *docker_labels
   - id: unpackerr-unstable
     disable: '{{ ne .Env.CHANNEL "unstable" }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - ghcr.io/unpackerr/unpackerr
@@ -390,7 +390,7 @@ dockers_v2:
     labels: *docker_labels
   - id: unpackerr-unstable-hub
     disable: '{{ or (ne .Env.CHANNEL "unstable") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - docker.io/golift/unpackerr
@@ -400,7 +400,7 @@ dockers_v2:
     labels: *docker_labels
   - id: unpackerr-nightly
     disable: '{{ ne .Env.CHANNEL "nightly" }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - ghcr.io/unpackerr/unpackerr
@@ -410,7 +410,7 @@ dockers_v2:
     labels: *docker_labels
   - id: unpackerr-nightly-hub
     disable: '{{ or (ne .Env.CHANNEL "nightly") (not (isEnvSet "DOCKERHUB_PUBLISH")) }}'
-    dockerfile: init/docker/Dockerfile
+    dockerfile: init/docker/Dockerfile.goreleaser
     ids: [unpackerr]
     images:
       - docker.io/golift/unpackerr

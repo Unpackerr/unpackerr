@@ -1,10 +1,20 @@
 # GitHub Actions
 
-Two workflows. `test-and-lint` (`codetests.yml`) runs tests and golangci-lint on push and `pull_request_target`. `build-and-release` (`release.yml`) is the only publisher.
+Three workflows:
+
+| Workflow | File | Who runs it |
+|---|---|---|
+| `test-and-lint` | `codetests.yml` | Every clone. `push` and `pull_request`. |
+| `build-and-release` | `release.yml` | **`Unpackerr/unpackerr` only** (GoReleaser Pro). |
+| `fork-docker` | `fork.yml` | Forks only (`github.repository != 'Unpackerr/unpackerr'`). |
+
+Local builds: `make` / `make build`, `make generate`, `make docker`, `make dev`. See the root `Makefile`. Official images copy a prebuilt binary with `init/docker/Dockerfile.goreleaser`; `Dockerfile` at the repo root compiles from source.
+
+`fork.yml` is `workflow_dispatch` plus `v*` tags. It builds `Dockerfile` and pushes `ghcr.io/<owner>/<repo>` (`linux/amd64`, `linux/arm64`). Dispatch can skip the push. Tagged builds also get `latest` plus semver tags. No Apple/Windows signing, packagecloud, or AUR.
 
 ## Channels
 
-`release.yml` maps the GitHub event to a `CHANNEL` env that `.goreleaser.yaml` reads (`dockers_v2.disable`, packagecloud repo, unstable upload). `--nightly` is a GoReleaser flag: it bumps the version and turns off GitHub Releases / AUR.
+`release.yml` runs only when `github.repository == 'Unpackerr/unpackerr'`. It maps the GitHub event to a `CHANNEL` env that `.goreleaser.yaml` reads (`dockers_v2.disable`, packagecloud repo, unstable upload). `--nightly` is a GoReleaser flag: it bumps the version and turns off GitHub Releases / AUR.
 
 | Trigger | CHANNEL | GoReleaser extra | What it publishes |
 |---|---|---|---|
@@ -52,7 +62,7 @@ nFPM `release` is not templated (GoReleaser copies it verbatim). `${PKG_RELEASE}
 
 ## Merge destinations
 
-- **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`. `upload-artifact` zip stores files as `0644`; the merge job `chmod 0755`s `dist/linux/**/unpackerr` and the Dockerfile `COPY --chmod=755` so the image entrypoint is executable.
+- **Docker** — always `ghcr.io/unpackerr/unpackerr` and Hub `docker.io/golift/unpackerr` (`DOCKERHUB_PUBLISH=1`). Empty `DOCKERHUB_PASSWORD` fails the merge job. Platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`. `upload-artifact` zip stores files as `0644`; the merge job `chmod 0755`s `dist/linux/**/unpackerr` and `init/docker/Dockerfile.goreleaser` `COPY --chmod=755` so the image entrypoint is executable. Runtime images install `curl` and `jq` alongside `ca-certificates`, `openssl`, and `tzdata`.
 - **GitHub Release** — tagged `v*` only (`release.disable: "{{ .IsNightly }}"`). macOS is the notarized `Unpackerr.dmg`. Windows assets are `unpackerr.amd64.exe.zip`. FreeBSD assets are pkgng `unpackerr-<version>.{amd64,i386,armhf,arm64}.txz`. Homebrew is unsupported.
 - **AUR** — tagged `CHANNEL=release` only, after packagecloud. `.github/scripts/aur_publish.sh` uses `dist/unpackerr-VERSION.tar.gz` from `continue --merge` (CI fails if that file is missing). GoReleaser `aur_sources` cannot split/merge: `--split` fatals `no linux archives found` (source tarball is merge-only), and merge Publish finds no PKGBUILD artifacts. Skip nightly/unstable. nFPM `.pkg.tar.zst` on the GitHub Release is a separate binary package.
 - **packagecloud** — `golift/pkgs` vs `golift/unstable`. Skip when `CHANNEL=nightly`.
@@ -87,8 +97,8 @@ Set on the `Unpackerr/unpackerr` repo (or org, granted to this public repo). `.g
 
 ## Action pins
 
-`release.yml` and `codetests.yml` pin `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used.
+`release.yml`, `fork.yml`, and `codetests.yml` pin `owner/repo@<commit-sha> # vX.Y.Z`. Floating major tags (`@v4`) are not used.
 
-The Docker base image in `init/docker/Dockerfile` is pinned as `alpine:<tag>@sha256:<digest>`. Renovate keeps Action and Dockerfile digest pins current (`helpers:pinGitHubActionDigestsToSemver`; Dockerfile `pinDigests`). Compose examples stay unpinned.
+The Alpine runtime in `Dockerfile` and `init/docker/Dockerfile.goreleaser` is pinned as `alpine:<tag>@sha256:<digest>` (the source-build builder is `golang:1.27-alpine@sha256:<digest>`). Renovate keeps Action and Dockerfile digest pins current (`helpers:pinGitHubActionDigestsToSemver`; Dockerfile `pinDigests`). Compose examples stay unpinned.
 
 Renovate automerges Go and Docker non-major updates, and GitHub Actions updates including majors, after a 7-day release age when checks pass.

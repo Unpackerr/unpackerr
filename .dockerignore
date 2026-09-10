@@ -1,0 +1,8 @@
+.git
+.github
+.idea
+/dist
+/unpackerr
+**/.DS_Store
+/README.md
+/INTERNALS.md

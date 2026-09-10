@@ -1,6 +1,6 @@
 # Local development. Official releases are GoReleaser Pro — see .github/workflows/README.md.
 
-VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+VERSION  ?= $(or $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//'),development)
 REVISION ?= $(shell git rev-list --count --all 2>/dev/null || echo 0)
 COMMIT   ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BRANCH   ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
@@ -47,4 +47,4 @@ docker:
 		-t "$(IMAGE)" .
 
 clean:
-	rm -f unpackerr unpackerr.*.{macos,freebsd,linux,exe}
+	rm -f unpackerr unpackerr.*.macos unpackerr.*.freebsd unpackerr.*.linux unpackerr.*.exe

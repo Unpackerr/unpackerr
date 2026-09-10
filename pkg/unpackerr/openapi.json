@@ -67,7 +67,7 @@
           "headers": {
             "type": "object",
             "additionalProperties": {"type": "array", "items": {"type": "string"}},
-            "description": "Incoming request headers for the proxy-auth picker, minus the Trust exclusion list (and X-Api-Key / Authorization)"
+            "description": "Incoming request headers for the proxy-auth picker, minus the Trust exclusion list (and X-Api-Key / Authorization). Omitted unless the caller has read:system:headers"
           },
           "clientIP": {"type": "string", "description": "RemoteAddr host of this request"},
           "upstreamAllowed": {"type": "boolean", "description": "True when RemoteAddr is in webserver upstreams"},
@@ -239,6 +239,7 @@
       "get": {
         "tags": ["auth"],
         "summary": "Current session or API key identity",
+        "description": "headers is included only when the caller has read:system:headers (admin / * included)",
         "responses": {
           "200": {
             "description": "Auth info including apiKey when using a session",

@@ -288,6 +288,16 @@ func TestConfigPutLidarrURLNeedsAPIKey(t *testing.T) {
 		t.Fatalf("want API key error, got %s", emptyKey.Body.String())
 	}
 
+	shortKey := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://sdfsdf.sdsd.com/lidarr","apiKey":"tooshort"}]`, withKey)
+	if shortKey.Code != http.StatusBadRequest {
+		t.Fatalf("short key %d %s", shortKey.Code, shortKey.Body.String())
+	}
+
+	if !strings.Contains(shortKey.Body.String(), "key length") {
+		t.Fatalf("want short-key error, got %s", shortKey.Body.String())
+	}
+
 	good := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
 		`[{"url":"http://sdfsdf.sdsd.com/lidarr","apiKey":"`+
 			strings.Repeat("k", apiKeyMinLength)+`","split_flac":true}]`, withKey)

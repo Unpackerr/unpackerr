@@ -819,3 +819,128 @@ func TestLoginRejectsTrailingJSON(t *testing.T) {
 		t.Fatalf("trailing json %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestProfileHeaders(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/me", nil)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Cookie", "session=secret")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set(headerAPIKey, "super-secret-key")
+	req.Header.Set("Authorization", "Bearer super-secret-key")
+	req.Header.Set("Remote-User", "alice")
+	req.Header.Set("X-Webauth-User", "bob")
+	req.Header.Set("X-Remote-User", "carol")
+
+	got := profileHeaders(req)
+
+	if got.Get("Remote-User") != "alice" || got.Get("X-Webauth-User") != "bob" || got.Get("X-Remote-User") != "carol" {
+		t.Fatalf("auth headers: %+v", got)
+	}
+
+	for _, name := range []string{
+		"User-Agent", "Cookie", "Accept", "X-Forwarded-For", "X-Forwarded-Proto",
+		headerAPIKey, "Authorization",
+	} {
+		if vals := got.Values(name); len(vals) > 0 {
+			t.Errorf("ignored header %s leaked: %v", name, vals)
+		}
+	}
+}
+
+func TestAuthMeProfileHeaders(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	key := unpack.Webserver.adminAPIKey()
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, key)
+		req.Header.Set("Remote-User", "alice")
+		req.Header.Set("Cookie", "session=secret")
+		req.Header.Set("User-Agent", "test-agent")
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("me %d %s", rec.Code, rec.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Headers.Get("Remote-User") != "alice" {
+		t.Fatalf("headers %+v", info.Headers)
+	}
+
+	if vals := info.Headers.Values(headerAPIKey); len(vals) > 0 {
+		t.Errorf("api key leaked: %v", vals)
+	}
+
+	if vals := info.Headers.Values("Cookie"); len(vals) > 0 {
+		t.Errorf("cookie leaked: %v", vals)
+	}
+}
+
+func TestAuthMeHeadersRequirePermission(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	statsKey := strings.Repeat("H", apiKeyMinLen)
+	headerKey := strings.Repeat("h", apiKeyMinLen)
+	unpack.Webserver.Roles = map[string]Role{
+		"stats":   {Permissions: []string{PermReadSystemStats}},
+		"headers": {Permissions: []string{PermReadSystemHeaders}},
+	}
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys,
+		APIKey{Name: "stats", Key: statsKey, Roles: []string{"stats"}},
+		APIKey{Name: "headers", Key: headerKey, Roles: []string{"headers"}},
+	)
+
+	authMe := func(key string) *httptest.ResponseRecorder {
+		t.Helper()
+
+		rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+			req.Header.Set(headerAPIKey, key)
+			req.Header.Set("Remote-User", "alice")
+			req.Header.Set("Proxy-Authorization", "Basic leaked")
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("me %d %s", rec.Code, rec.Body.String())
+		}
+
+		return rec
+	}
+
+	limited := authMe(statsKey)
+	if strings.Contains(limited.Body.String(), "Basic leaked") {
+		t.Fatalf("proxy auth leaked: %s", limited.Body.String())
+	}
+
+	var limitedInfo authInfo
+	if err := json.Unmarshal(limited.Body.Bytes(), &limitedInfo); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(limitedInfo.Headers) != 0 {
+		t.Fatalf("limited headers %+v", limitedInfo.Headers)
+	}
+
+	granted := authMe(headerKey)
+
+	var info authInfo
+	if err := json.Unmarshal(granted.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Headers.Get("Remote-User") != "alice" {
+		t.Fatalf("headers %+v", info.Headers)
+	}
+
+	if info.Headers.Get("Proxy-Authorization") != "Basic leaked" {
+		t.Fatalf("proxy auth %+v", info.Headers)
+	}
+}

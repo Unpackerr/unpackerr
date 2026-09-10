@@ -1,7 +1,6 @@
 package unpackerr
 
 import (
-	"errors"
 	"time"
 
 	"golift.io/starr"
@@ -27,7 +26,7 @@ func (u *Unpackerr) validateWhisparr() error {
 
 	for idx := range u.Whisparr {
 		if err := u.validateApp(&u.Whisparr[idx].StarrConfig, starr.Whisparr); err != nil {
-			if errors.Is(err, ErrInvalidURL) {
+			if skipInvalidApp(err) {
 				continue // We ignore these errors, just remove the instance from the list.
 			}
 

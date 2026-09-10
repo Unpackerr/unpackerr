@@ -160,9 +160,11 @@ func (u *Unpackerr) PollFolders() {
 		u.Folder.Interval.Duration = defaultPollInterval
 	}
 
-	u.Folders, flist = checkFolders(u.Folders, u.Logger)
+	// Abs-expand a clone so GET /api/config/folders/live keeps the configured
+	// path (file vs env), not the runtime filepath.Abs rewrite.
+	watched, flist := checkFolders(cloneFolderList(u.Folders), u.Logger)
 
-	folders, err := u.Folder.newWatcher(u.Folders, u.Logger)
+	folders, err := u.Folder.newWatcher(watched, u.Logger)
 	if err != nil {
 		u.Errorf("Watching Folders: %s", err)
 		return
@@ -171,7 +173,7 @@ func (u *Unpackerr) PollFolders() {
 	u.folders = folders
 	// do not close either watcher.
 
-	if len(u.Folders) == 0 {
+	if len(watched) == 0 {
 		return
 	}
 

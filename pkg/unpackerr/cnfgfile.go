@@ -458,7 +458,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 
 	if conf.APIKey == "" {
 		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", app)
-		return ErrInvalidURL // this error is not printed.
+		return ErrInvalidKey // this error is not printed at startup; PUT returns it.
 	}
 
 	if !strings.HasPrefix(conf.URL, "http://") && !strings.HasPrefix(conf.URL, "https://") {
@@ -466,6 +466,9 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 	}
 
 	if len(conf.APIKey) < apiKeyMinLength {
+		u.Errorf("%s (%s) API Key is too short (%d < %d), skipped and ignored.",
+			app, conf.URL, len(conf.APIKey), apiKeyMinLength)
+
 		return fmt.Errorf("%s (%s) %w, your key length: %d",
 			app, conf.URL, ErrInvalidKey, len(conf.APIKey))
 	}

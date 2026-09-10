@@ -109,9 +109,10 @@ passwords = []
 ## This may be set to a port or an ip:port to bind a specific IP. 0.0.0.0 binds ALL IPs.
 ## Set this to an empty string to disable the HTTP server.
  listen_addr = "0.0.0.0:5656"
-## Local UI login (HTTP auth is the next PR; this stores the credential). Use user:pass
-## (hashed on startup), !!cryptd!!user:$2a$... for a stored hash, webauth:X-Webauth-User
-## for a reverse-proxy header, or noauth.
+## Local UI login. Use user:pass (hashed on startup), !!cryptd!!user:$2a$...
+## for a stored hash, webauth:X-Webauth-User for a reverse-proxy header, or
+## noauth. The HTTP API does not accept plaintext; send user:<PBKDF2 hex>
+## (same digest as login) and uiCurrentKdf when changing a live password.
 ## filepath:/path reads that file for the live password and keeps filepath: in the
 ## config. Empty generates a temporary password when the HTTP server is enabled.
 ## Reset with --reset. Do not set an empty
@@ -485,4 +486,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 SEP 2026 07:36 UTC
+## => Content Auto Generated, 10 SEP 2026 04:48 UTC

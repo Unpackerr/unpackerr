@@ -62,6 +62,15 @@
           "apiKey": {"type": "string"},
           "auth": {"type": "string"},
           "via": {"type": "string"},
+          "goos": {"type": "string"},
+          "header": {"type": "string", "description": "Configured proxy auth header name (default X-Webauth-User)"},
+          "headers": {
+            "type": "object",
+            "additionalProperties": {"type": "array", "items": {"type": "string"}},
+            "description": "Incoming request headers for the proxy-auth picker, minus the Trust exclusion list (and X-Api-Key / Authorization). Omitted unless the caller has read:system:headers"
+          },
+          "clientIP": {"type": "string", "description": "RemoteAddr host of this request"},
+          "upstreamAllowed": {"type": "boolean", "description": "True when RemoteAddr is in webserver upstreams"},
           "permissions": {"type": "array", "items": {"type": "string"}}
         }
       },
@@ -230,6 +239,7 @@
       "get": {
         "tags": ["auth"],
         "summary": "Current session or API key identity",
+        "description": "headers is included only when the caller has read:system:headers (admin / * included)",
         "responses": {
           "200": {
             "description": "Auth info including apiKey when using a session",
@@ -431,7 +441,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires read:config:{section}. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. PUT a new password as user:<kdf-hex> (same digest as login), not plaintext. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",
@@ -445,7 +455,7 @@
       "put": {
         "tags": ["config"],
         "summary": "Replace one config section and rewrite the TOML file",
-        "description": "Requires write:config:{section}. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
+        "description": "Requires write:config:{section}. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. webserver uiPassword on PUT is !!cryptd!!, webauth, noauth, an existing filepath:, or user:<64-char PBKDF2 hex> (the same kdf as login); plaintext user:pass is 400. Changing the live password hash or auth type while local password auth is on requires uiCurrentKdf (KDF of the current username+password). General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"description": "Same shape as GET /api/config/{section}"}}}

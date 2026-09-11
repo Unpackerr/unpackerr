@@ -1,8 +1,12 @@
 package unpackerr
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"golift.io/starr"
 	"golift.io/starr/lidarr"
 	"golift.io/starr/radarr"
 	"golift.io/starr/readarr"
@@ -47,5 +51,57 @@ func TestQueueViewsIDs(t *testing.T) {
 
 	if haveStarrQitem([]*SonarrConfig{son}, "Nope") {
 		t.Fatal("expected haveStarrQitem false for Nope")
+	}
+}
+
+func TestCheckStarrQueueLidarrTweak(t *testing.T) {
+	t.Parallel()
+
+	const (
+		title      = "Album"
+		outputPath = `/lidarr/host/Album`
+	)
+
+	mappedRoot := t.TempDir()
+	mappedPath := filepath.Join(mappedRoot, title)
+
+	if err := os.Mkdir(mappedPath, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.Lidarr = []*LidarrConfig{{
+		Protocols: defaultProtocol,
+		Paths:     StringSlice{mappedRoot},
+		SplitFlac: true,
+		Queue: &lidarr.Queue{Records: []*lidarr.QueueRecord{{
+			Title:      title,
+			Status:     "completed",
+			Protocol:   starr.Protocol("torrent"),
+			OutputPath: outputPath,
+		}}},
+	}}
+
+	checkStarrQueue(unpack, unpack.Lidarr, starr.Lidarr, time.Now())
+
+	item, ok := unpack.Map[title]
+	if !ok {
+		t.Fatal("expected Lidarr queue item in extract map")
+	}
+
+	if !item.SplitFlac {
+		t.Fatal("expected SplitFlac from Lidarr tweakExtract")
+	}
+
+	if item.OutputPath != outputPath {
+		t.Fatalf("OutputPath: got %q want original Starr path %q", item.OutputPath, outputPath)
+	}
+
+	if item.Path == outputPath {
+		t.Fatal("Path should be the host-mapped download dir, not the Starr OutputPath")
+	}
+
+	if item.Path != mappedPath {
+		t.Fatalf("Path: got %q want mapped %q", item.Path, mappedPath)
 	}
 }

@@ -180,7 +180,7 @@ passwords = []
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Hook exclude matches this name or the app dialect.
-# name = "Sportarr"
+# name = ""
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -225,7 +225,7 @@ passwords = []
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Hook exclude matches this name or the app dialect.
-# name = "Sportarr"
+# name = ""
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -268,7 +268,7 @@ passwords = []
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Hook exclude matches this name or the app dialect.
-# name = "Sportarr"
+# name = ""
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -314,7 +314,7 @@ passwords = []
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Hook exclude matches this name or the app dialect.
-# name = "Sportarr"
+# name = ""
 # url = "http://127.0.0.1:8787"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -357,7 +357,7 @@ passwords = []
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Hook exclude matches this name or the app dialect.
-# name = "Sportarr"
+# name = ""
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -507,4 +507,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 11 SEP 2026 03:06 UTC
+## => Content Auto Generated, 11 SEP 2026 03:33 UTC

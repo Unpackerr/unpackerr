@@ -58,7 +58,7 @@ services:
     - UN_FOLDERS_INTERVAL=1s
     - UN_FOLDERS_BUFFER=20000
     ## Sonarr Settings
-    - UN_SONARR_0_NAME=Sportarr
+    - UN_SONARR_0_NAME=
     - UN_SONARR_0_URL=http://sonarr:8989
     - UN_SONARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_SONARR_0_HTTP_USER=
@@ -74,7 +74,7 @@ services:
     - UN_SONARR_0_VALID_SSL=false
     - UN_SONARR_0_MAX_BYTES=
     ## Radarr Settings
-    - UN_RADARR_0_NAME=Sportarr
+    - UN_RADARR_0_NAME=
     - UN_RADARR_0_URL=http://radarr:7878
     - UN_RADARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_RADARR_0_HTTP_USER=
@@ -90,7 +90,7 @@ services:
     - UN_RADARR_0_VALID_SSL=false
     - UN_RADARR_0_MAX_BYTES=
     ## Lidarr Settings
-    - UN_LIDARR_0_NAME=Sportarr
+    - UN_LIDARR_0_NAME=
     - UN_LIDARR_0_URL=http://lidarr:8686
     - UN_LIDARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_LIDARR_0_HTTP_USER=
@@ -107,7 +107,7 @@ services:
     - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
     ## Readarr Settings
-    - UN_READARR_0_NAME=Sportarr
+    - UN_READARR_0_NAME=
     - UN_READARR_0_URL=http://readarr:8787
     - UN_READARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_READARR_0_HTTP_USER=
@@ -123,7 +123,7 @@ services:
     - UN_READARR_0_VALID_SSL=false
     - UN_READARR_0_MAX_BYTES=
     ## Whisparr Settings
-    - UN_WHISPARR_0_NAME=Sportarr
+    - UN_WHISPARR_0_NAME=
     - UN_WHISPARR_0_URL=http://whisparr:6969
     - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
     - UN_WHISPARR_0_HTTP_USER=
@@ -183,4 +183,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 11 SEP 2026 03:06 UTC
+## => Content Auto Generated, 11 SEP 2026 03:33 UTC

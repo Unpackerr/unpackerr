@@ -583,7 +583,6 @@ sections:
       - name: name
         envvar: NAME
         default: ''
-        example: Sportarr
         short: Optional label for logs, webhooks, and the dashboard.
         desc: |
           Empty uses the app name (Sonarr, Radarr, and so on). Set this for a

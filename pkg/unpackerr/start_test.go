@@ -187,7 +187,6 @@ func TestApplyMaxBytes(t *testing.T) {
 		{starr.Radarr, defaultRadarrMaxBytes},
 		{starr.Lidarr, defaultLidarrMaxBytes},
 		{starr.Readarr, defaultReadarrMaxBytes},
-		{starr.Whisparr, defaultWhisparrMaxBytes},
 	}
 
 	for _, testCase := range cases {

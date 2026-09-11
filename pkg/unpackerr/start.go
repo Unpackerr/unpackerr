@@ -25,41 +25,40 @@ import (
 )
 
 const (
-	defaultMaxRetries       = 2    // two retries after the first try (3 attempts).
-	defaultMaxFiles         = 1000 // Starr cap. Folders default to 0 (unlimited).
-	defaultMaxRatio         = 5.0  // Starr cap. Folders default to 0 (unlimited).
-	defaultSonarrMaxBytes   = "20GB"
-	defaultRadarrMaxBytes   = "75GB"
-	defaultLidarrMaxBytes   = "4GB"
-	defaultReadarrMaxBytes  = "1GB"
-	defaultWhisparrMaxBytes = "20GB"
-	defaultMaxNested        = 8 // Starr extras cap. Folders default to 0 (unlimited).
-	defaultExtrasMaxDepth   = 3 // Starr extras walk. Folders default to 0 (unlimited).
-	defaultFileMode         = 0o644
-	defaultLogFileMode      = 0o600
-	defaultDirMode          = 0o755
-	defaultTimeout          = 10 * time.Second
-	minimumInterval         = 15 * time.Second
-	defaultInterval         = 2 * time.Minute
-	cleanerInterval         = 5 * time.Second
-	defaultRetryDelay       = 5 * time.Minute
-	defaultStartDelay       = time.Minute
-	minimumDeleteDelay      = time.Second
-	defaultDeleteDelay      = 5 * time.Minute
-	staleItemTimeout        = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory          = 200            // JSONL cap; tray still shows trayHistory names.
-	trayHistory             = 10             // items kept in the GUI history menu.
-	suffix                  = "_unpackerred" // suffix for unpacked folders.
-	updateChanBuf           = 100            // Size of xtractr callback update channels.
-	signalBuf               = 4              // Hold HUP/TERM until waitForExit starts.
-	defaultFolderBuf        = 20000          // Channel queue size for file system events.
-	minimumFolderBuf        = 1000           // Minimum size of the folder event buffer.
-	defaultLogFileMb        = 10
-	defaultLogFiles         = 10
-	helpLink                = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
-	windows                 = "windows"
-	bits8                   = 8
-	base32                  = 32
+	defaultMaxRetries      = 2    // two retries after the first try (3 attempts).
+	defaultMaxFiles        = 1000 // Starr cap. Folders default to 0 (unlimited).
+	defaultMaxRatio        = 5.0  // Starr cap. Folders default to 0 (unlimited).
+	defaultSonarrMaxBytes  = "20GB"
+	defaultRadarrMaxBytes  = "75GB"
+	defaultLidarrMaxBytes  = "4GB"
+	defaultReadarrMaxBytes = "1GB"
+	defaultMaxNested       = 8 // Starr extras cap. Folders default to 0 (unlimited).
+	defaultExtrasMaxDepth  = 3 // Starr extras walk. Folders default to 0 (unlimited).
+	defaultFileMode        = 0o644
+	defaultLogFileMode     = 0o600
+	defaultDirMode         = 0o755
+	defaultTimeout         = 10 * time.Second
+	minimumInterval        = 15 * time.Second
+	defaultInterval        = 2 * time.Minute
+	cleanerInterval        = 5 * time.Second
+	defaultRetryDelay      = 5 * time.Minute
+	defaultStartDelay      = time.Minute
+	minimumDeleteDelay     = time.Second
+	defaultDeleteDelay     = 5 * time.Minute
+	staleItemTimeout       = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
+	defaultHistory         = 200            // JSONL cap; tray still shows trayHistory names.
+	trayHistory            = 10             // items kept in the GUI history menu.
+	suffix                 = "_unpackerred" // suffix for unpacked folders.
+	updateChanBuf          = 100            // Size of xtractr callback update channels.
+	signalBuf              = 4              // Hold HUP/TERM until waitForExit starts.
+	defaultFolderBuf       = 20000          // Channel queue size for file system events.
+	minimumFolderBuf       = 1000           // Minimum size of the folder event buffer.
+	defaultLogFileMb       = 10
+	defaultLogFiles        = 10
+	helpLink               = "GoLift Discord: https://golift.io/discord" // prints on start and on exit.
+	windows                = "windows"
+	bits8                  = 8
+	base32                 = 32
 )
 
 // Unpackerr stores all the running data.
@@ -97,6 +96,7 @@ type Unpackerr struct {
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error
+	whisparrAdopted  bool // folded [[whisparr]] before logging; warn after setupLogging
 	adminKeyNotice   string
 	adminKeyErr      error
 	histPath         string
@@ -201,6 +201,7 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+	unpackerr.warnAdoptedWhisparr()
 
 	if err := unpackerr.handleStartupPassword(); err != nil {
 		return err

@@ -41,8 +41,8 @@ func TestLiveConfigTextSharesRunningDump(t *testing.T) {
 		t.Fatalf("live dump missing header/config file: %q", live)
 	}
 
-	if !strings.Contains(got, "Whisparr Config: 0 servers") {
-		t.Fatalf("empty whisparr should print 0 servers: %q", got)
+	if !strings.Contains(got, "Radarr Config: 0 servers") {
+		t.Fatalf("empty radarr should print 0 servers: %q", got)
 	}
 
 	if strings.Contains(got, "Default Extract Limits") {
@@ -69,9 +69,6 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 		URL:      "http://readarr.test",
 		MaxBytes: "0",
 	}}
-	unpack.Whisparr = []*RadarrConfig{{
-		URL: "http://whisparr.test",
-	}}
 	unpack.Folders = []*FolderConfig{
 		{Path: "/watch"},
 		{Path: "/capped", MaxBytes: "2GB"},
@@ -83,13 +80,12 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"http://sonarr.test":   "max_bytes:" + defaultSonarrMaxBytes,
-		"http://radarr.test":   "max_bytes:10GB",
-		"http://lidarr.test":   "max_bytes:" + defaultLidarrMaxBytes,
-		"http://readarr.test":  "max_bytes:0",
-		"http://whisparr.test": "max_bytes:" + defaultWhisparrMaxBytes,
-		"Path: /watch":         "max_bytes:uncapped",
-		"Path: /capped":        "max_bytes:2GB",
+		"http://sonarr.test":  "max_bytes:" + defaultSonarrMaxBytes,
+		"http://radarr.test":  "max_bytes:10GB",
+		"http://lidarr.test":  "max_bytes:" + defaultLidarrMaxBytes,
+		"http://readarr.test": "max_bytes:0",
+		"Path: /watch":        "max_bytes:uncapped",
+		"Path: /capped":       "max_bytes:2GB",
 	}
 
 	for needle, maxBytes := range want {
@@ -163,7 +159,7 @@ func TestLiveConfigOmitsWithoutSectionRead(t *testing.T) {
 	})
 
 	for _, section := range []ConfigSection{
-		SectionSonarr, SectionRadarr, SectionLidarr, SectionReadarr, SectionWhisparr,
+		SectionSonarr, SectionRadarr, SectionLidarr, SectionReadarr,
 		SectionFolders, SectionGeneral, SectionWebhooks, SectionCmdhooks, SectionWebserver,
 	} {
 		need := "omitted (need " + PermReadConfig(section) + ")"

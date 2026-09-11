@@ -94,9 +94,6 @@ func (u *Unpackerr) replaceConfigSection(section ConfigSection, raw json.RawMess
 	case SectionReadarr:
 		return false, putStarrList(u, raw, starr.Readarr, SectionReadarr,
 			func(c *Config) *[]*ReadarrConfig { return &c.Readarr })
-	case SectionWhisparr:
-		return false, putStarrList(u, raw, starr.Whisparr, SectionWhisparr,
-			func(c *Config) *[]*RadarrConfig { return &c.Whisparr })
 	case SectionFolders:
 		return u.putFolders(raw)
 	case SectionWebhooks:

@@ -16,7 +16,6 @@ def_order:
     - radarr
     - lidarr
     - readarr
-    - whisparr
 recommendations:
   apps: &APPS
     - name: Sonarr
@@ -27,8 +26,6 @@ recommendations:
       value: lidarr
     - name: Readarr
       value: readarr
-    - name: Whisparr
-      value: whisparr
     - name: Folder
       value: folder
   on_off: &BOOLEAN
@@ -184,14 +181,6 @@ defs:
         url: http://readarr:8787
       examples:
         url: http://127.0.0.1:8787
-    whisparr:
-      title: Whisparr Settings
-      prefix: WHISPARR_
-      comment: true
-      docker_example:
-        url: http://whisparr:6969
-      examples:
-        url: http://127.0.0.1:6969
 
 sections:
   global:
@@ -565,7 +554,7 @@ sections:
       ##-IMPORTANT-#######-READ THIS!!!-################ Seriously, read this. ######
       ###############################################################################
       ## The following sections can be repeated if you have more than one Sonarr,  ##
-      ## Radarr, Lidarr, Readarr, Whisparr, Folder, Webhook, and/or Command Hook.  ##
+      ## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
       ## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
       ## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
       ## and api_key if they are in use. Comment them with a hash if they are not. ##
@@ -587,7 +576,8 @@ sections:
         desc: |
           Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
           Sonarr-compatible app such as Sportarr so logs and Discord are not
-          tagged Sonarr. Hook exclude matches this name or the app dialect.
+          tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
+          Hook exclude matches this name or the app dialect.
           Names must be printable and cannot contain quotes, braces, or angle brackets.
       - name: url
         envvar: URL
@@ -709,7 +699,7 @@ sections:
         short: Per-archive byte cap. Empty uses the app default. `0` is unlimited.
         desc: |
           Per-archive uncompressed-byte cap. Empty uses the app default:
-          Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+          Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
           `0` or `0B` disables the cap for this instance.
       - name: split_flac
         envvar: SPLIT_FLAC

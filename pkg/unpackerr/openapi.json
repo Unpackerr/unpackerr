@@ -547,7 +547,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "whisparr", "folders", "webhooks", "cmdhooks"]
+            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "folders", "webhooks", "cmdhooks"]
           }
         }
       ],
@@ -595,7 +595,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "whisparr", "folders", "webhooks", "cmdhooks"]
+            "enum": ["general", "webserver", "sonarr", "radarr", "lidarr", "readarr", "folders", "webhooks", "cmdhooks"]
           }
         }
       ],

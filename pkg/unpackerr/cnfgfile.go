@@ -76,6 +76,9 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 
 	u.envUsed = envSuffixes(res.Used, u.EnvPrefix)
 
+	// Fold before setupUIPassword / --reset can persist fileConfig without whisparr in DefOrder.
+	u.adoptWhisparr()
+
 	u.snapshotLivePasswords()
 
 	if err := u.setPasswords(); err != nil {
@@ -537,8 +540,6 @@ func defaultAppMaxBytes(app starr.App) string {
 		return defaultLidarrMaxBytes
 	case starr.Readarr:
 		return defaultReadarrMaxBytes
-	case starr.Whisparr:
-		return defaultWhisparrMaxBytes
 	default:
 		return defaultSonarrMaxBytes
 	}

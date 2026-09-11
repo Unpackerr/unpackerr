@@ -453,26 +453,14 @@ func expandHomedir(filePath string) string {
 func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 	conf.Name = strings.TrimSpace(conf.Name)
 
-	if conf.URL == "" {
-		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", app)
-		return ErrInvalidURL // this error is not printed.
+	if err := checkStarrName(conf.Name); err != nil {
+		return fmt.Errorf("%s name %q: %w", app, conf.Name, err)
 	}
 
-	if conf.APIKey == "" {
-		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", app)
-		return ErrInvalidKey // this error is not printed at startup; PUT returns it.
-	}
+	label := conf.Label(app)
 
-	if !strings.HasPrefix(conf.URL, "http://") && !strings.HasPrefix(conf.URL, "https://") {
-		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, app, conf.URL)
-	}
-
-	if len(conf.APIKey) < apiKeyMinLength {
-		u.Errorf("%s (%s) API Key is too short (%d < %d), skipped and ignored.",
-			app, conf.URL, len(conf.APIKey), apiKeyMinLength)
-
-		return fmt.Errorf("%s (%s) %w, your key length: %d",
-			app, conf.URL, ErrInvalidKey, len(conf.APIKey))
+	if err := u.requireStarrAccess(conf, label); err != nil {
+		return err
 	}
 
 	if conf.Timeout.Duration == 0 {
@@ -500,7 +488,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 	}
 
 	if err := conf.applyMaxBytes(app); err != nil {
-		return fmt.Errorf("%s (%s) %w", app, conf.URL, err)
+		return fmt.Errorf("%s (%s) %w", label, conf.URL, err)
 	}
 
 	conf.Client = &http.Client{
@@ -508,6 +496,32 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: !conf.ValidSSL}, //nolint:gosec
 		},
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) requireStarrAccess(conf *StarrConfig, label string) error {
+	if conf.URL == "" {
+		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", label)
+		return ErrInvalidURL // this error is not printed.
+	}
+
+	if conf.APIKey == "" {
+		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", label)
+		return ErrInvalidKey // this error is not printed at startup; PUT returns it.
+	}
+
+	if !strings.HasPrefix(conf.URL, "http://") && !strings.HasPrefix(conf.URL, "https://") {
+		return fmt.Errorf("%w: (%s) %s", ErrInvalidURL, label, conf.URL)
+	}
+
+	if len(conf.APIKey) < apiKeyMinLength {
+		u.Errorf("%s (%s) API Key is too short (%d < %d), skipped and ignored.",
+			label, conf.URL, len(conf.APIKey), apiKeyMinLength)
+
+		return fmt.Errorf("%s (%s) %w, your key length: %d",
+			label, conf.URL, ErrInvalidKey, len(conf.APIKey))
 	}
 
 	return nil

@@ -72,21 +72,23 @@ func enqueueStarrPoll[T any, P starrApp[T]](
 
 func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App, start time.Time) {
 	cfg := server.conf()
+	label := cfg.Label(app)
+
 	if cfg.APIKey == "" {
-		u.Debugf("%s (%s): skipped, no API key", app, cfg.URL)
+		u.Debugf("%s (%s): skipped, no API key", label, cfg.URL)
 		return
 	}
 
 	total, retrieved, err := server.pollQueue()
 	if err != nil {
-		u.saveQueueMetrics(0, start, app, cfg.URL, err)
+		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)
 		return
 	}
 
-	u.saveQueueMetrics(total, start, app, cfg.URL, nil)
+	u.saveQueueMetrics(total, start, app, cfg.URL, label, nil)
 
 	if !u.Activity || total > 0 {
-		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", cfg.Label(app), cfg.URL, total, retrieved)
+		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", label, cfg.URL, total, retrieved)
 	}
 }
 
@@ -99,7 +101,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 
 		for _, rec := range server.queueViews() {
 			item, found := unpack.Map[rec.Title]
-			if found {
+			if found && item.App == app && item.URL == cfg.URL {
 				item.Name = cfg.Name
 			}
 
@@ -117,7 +119,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 					DeleteDelay: cfg.DeleteDelay.Duration,
 					Syncthing:   cfg.Syncthing,
 					MaxBytes:    cfg.maxBytes,
-					Path:        unpack.getDownloadPath(rec.OutputPath, app, rec.Title, cfg.Paths),
+					Path:        unpack.getDownloadPath(rec.OutputPath, cfg.Label(app), rec.Title, cfg.Paths),
 					IDs:         rec.IDs,
 				}
 				waiting.XProg = &ExtractProgress{Extract: waiting}

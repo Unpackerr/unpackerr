@@ -588,6 +588,7 @@ sections:
           Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
           Sonarr-compatible app such as Sportarr so logs and Discord are not
           tagged Sonarr. Hook exclude matches this name or the app dialect.
+          Names must be printable and cannot contain quotes, braces, or angle brackets.
       - name: url
         envvar: URL
         short: URL where this starr app can be accessed.

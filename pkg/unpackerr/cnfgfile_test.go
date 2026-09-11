@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -674,5 +675,83 @@ func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
 
 	if len(unpack.Sonarr) != 0 {
 		t.Fatalf("short key must skip, got %d", len(unpack.Sonarr))
+	}
+}
+
+func TestCheckStarrName(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"", "Sportarr", "Sonarr 4K", "Fightarr-2"} {
+		if err := checkStarrName(name); err != nil {
+			t.Fatalf("%q: %v", name, err)
+		}
+	}
+
+	for _, name := range []string{
+		`Sport"arr`,
+		"Sport'arr",
+		"Sport`arr",
+		`Sport\arr`,
+		"Sport{arr}",
+		"Sport<arr>",
+		"Sport\narr",
+	} {
+		if err := checkStarrName(name); !errors.Is(err, ErrInvalidName) {
+			t.Fatalf("%q: got %v want ErrInvalidName", name, err)
+		}
+	}
+}
+
+func TestValidateAppUsesInstanceLabel(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	key := strings.Repeat("a", apiKeyMinLength)
+
+	conf := &StarrConfig{Name: "Sportarr"}
+	conf.URL = "ftp://127.0.0.1:8989"
+	conf.APIKey = key
+
+	err := unpack.validateApp(conf, starr.Sonarr)
+	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
+		t.Fatalf("invalid URL: %v", err)
+	}
+
+	conf = &StarrConfig{Name: "Sportarr"}
+	conf.URL = "http://127.0.0.1:8989"
+	conf.APIKey = "short"
+
+	err = unpack.validateApp(conf, starr.Sonarr)
+	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
+		t.Fatalf("short key: %v", err)
+	}
+
+	conf = &StarrConfig{Name: "Sportarr", MaxBytes: "nope"}
+	conf.URL = "http://127.0.0.1:8989"
+	conf.APIKey = key
+
+	err = unpack.validateApp(conf, starr.Sonarr)
+	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
+		t.Fatalf("max bytes: %v", err)
+	}
+}
+
+func TestValidateStarrListRejectsBadName(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{
+		Name:   `Sport"arr`,
+		URL:    "http://127.0.0.1:8989",
+		APIKey: strings.Repeat("a", apiKeyMinLength),
+	}}
+
+	err := validateStarrList(unpack, &unpack.Sonarr, starr.Sonarr)
+	if !errors.Is(err, ErrInvalidName) {
+		t.Fatalf("got %v want ErrInvalidName", err)
+	}
+
+	if len(unpack.Sonarr) != 1 {
+		t.Fatalf("bad name must not skip the instance, got %d", len(unpack.Sonarr))
 	}
 }

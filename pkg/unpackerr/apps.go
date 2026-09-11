@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"golift.io/cnfg"
 	"golift.io/starr"
@@ -27,6 +28,8 @@ const (
 	// always processed regardless of which Starr app version is in use.
 	defaultProtocol = "torrent,TorrentDownloadProtocol"
 	apiKeyMinLength = 32
+	// Quotes, braces, and similar break unescaped {{.App}} in webhook JSON templates.
+	starrNameMeta = "\"'`\\{}<>"
 )
 
 // These are the names used to identify each app.
@@ -36,9 +39,20 @@ const (
 
 // Application validation errors.
 var (
-	ErrInvalidURL = errors.New("provided application URL is invalid")
-	ErrInvalidKey = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
+	ErrInvalidURL  = errors.New("provided application URL is invalid")
+	ErrInvalidKey  = fmt.Errorf("provided application API Key is invalid, must be at least %d characters", apiKeyMinLength)
+	ErrInvalidName = errors.New("instance name must be printable and cannot contain quotes, braces, or angle brackets")
 )
+
+func checkStarrName(name string) error {
+	for _, r := range name {
+		if !unicode.IsPrint(r) || strings.ContainsRune(starrNameMeta, r) {
+			return ErrInvalidName
+		}
+	}
+
+	return nil
+}
 
 // skipInvalidApp reports whether a Starr instance should be dropped at
 // startup (missing/short URL or API key) rather than aborting the process.

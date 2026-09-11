@@ -360,7 +360,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []string) string {
 	var errs []error
 
 	// Try all the user provided paths.
@@ -376,7 +376,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	}
 
 	// Print the errors for each user-provided path.
-	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
+	u.Debugf("%s: Errors encountered looking for %s path: %q", label, title, errs)
 
 	// The title often differs from the actual folder name (e.g. torrent names include genre tags).
 	// Try the folder name from outputPath against configured paths — the folder name is the real
@@ -389,18 +389,18 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 				candidate := filepath.Join(path, outputFolder)
 
 				if _, err := os.Stat(candidate); err == nil {
-					u.Debugf("%s: Resolved via outputPath folder name: %s -> %s", app, outputPath, candidate)
+					u.Debugf("%s: Resolved via outputPath folder name: %s -> %s", label, outputPath, candidate)
 					return candidate
 				}
 			}
 		}
 
-		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", app, outputPath)
+		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", label, outputPath)
 
 		return outputPath
 	}
 
-	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", app, title)
+	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", label, title)
 
 	return filepath.Join(paths[0], title) // useless, but return something. :(
 }

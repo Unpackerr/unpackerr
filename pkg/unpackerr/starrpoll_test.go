@@ -157,6 +157,35 @@ func TestCheckStarrQueueSetsName(t *testing.T) {
 	}
 }
 
+func TestCheckStarrQueueKeepsForeignName(t *testing.T) {
+	t.Parallel()
+
+	const title = "Show"
+
+	unpack := New()
+	unpack.Map[title] = &Extract{
+		App:  starr.Radarr,
+		Name: "Movies",
+		URL:  "http://radarr:7878",
+	}
+	unpack.Sonarr = []*SonarrConfig{{
+		Name:      "Sportarr",
+		URL:       "http://sonarr:8989",
+		Protocols: defaultProtocol,
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{
+			Title:    title,
+			Status:   "downloading",
+			Protocol: starr.Protocol("torrent"),
+		}}},
+	}}
+
+	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, time.Now())
+
+	if unpack.Map[title].Name != "Movies" {
+		t.Fatalf("Name: got %q want Movies", unpack.Map[title].Name)
+	}
+}
+
 func TestStarrConfigLabel(t *testing.T) {
 	t.Parallel()
 

@@ -78,9 +78,14 @@ func (u *Unpackerr) updateMetrics(resp *xtractr.Response, app starr.App, url str
 }
 
 // saveQueueMetrics observes metrics for each starr app queue request.
-func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, url string, err error) {
+// app is the dialect for Prometheus labels; label is the human instance name for logs.
+func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, url, label string, err error) {
 	if err != nil {
-		u.Errorf("%s (%s): %v", app, url, err)
+		if label == "" {
+			label = string(app)
+		}
+
+		u.Errorf("%s (%s): %v", label, url, err)
 	}
 
 	if u.metrics == nil {

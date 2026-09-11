@@ -580,6 +580,15 @@ sections:
   starr:
     kind: list
     params:
+      - name: name
+        envvar: NAME
+        default: ''
+        short: Optional label for logs, webhooks, and the dashboard.
+        desc: |
+          Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+          Sonarr-compatible app such as Sportarr so logs and Discord are not
+          tagged Sonarr. Hook exclude matches this name or the app dialect.
+          Names must be printable and cannot contain quotes, braces, or angle brackets.
       - name: url
         envvar: URL
         short: URL where this starr app can be accessed.
@@ -985,8 +994,8 @@ sections:
         example: ['readarr', 'lidarr']
         recommend: *APPS
         kind: list
-        short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
-        desc: 'List of apps to exclude. None by default. This is an example:'
+        short: 'Apps or instance names to skip: sonarr, Sportarr, folder, etc.'
+        desc: 'Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:'
       - name: template_path
         envvar: TEMPLATE_PATH
         default: ''
@@ -1128,10 +1137,10 @@ sections:
         example: ['readarr', 'lidarr']
         recommend: *APPS
         kind: list
-        short: 'List of apps to exclude: radarr, sonarr, folders, etc.'
+        short: 'Apps or instance names to skip: sonarr, Sportarr, folder, etc.'
         desc: |
           ===> Optional Command Hook Configuration <===
-          List of apps to exclude. None by default. This is an example:
+          Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:
       - name: timeout
         envvar: TIMEOUT
         default: 10s

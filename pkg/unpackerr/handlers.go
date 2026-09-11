@@ -16,6 +16,7 @@ import (
 // StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
 	starr.Config
+	Name        string        `json:"name"         toml:"name"         xml:"name"         yaml:"name"`
 	Path        string        `json:"path"         toml:"path"         xml:"path"         yaml:"path"`
 	Paths       StringSlice   `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
 	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
@@ -28,6 +29,17 @@ type StarrConfig struct {
 	// Empty uses that default. `0` or `0B` is unlimited.
 	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
 	maxBytes uint64
+}
+
+// Label is the human-facing instance name, or app when Name is empty.
+func (c *StarrConfig) Label(app starr.App) string {
+	if c != nil {
+		if name := strings.TrimSpace(c.Name); name != "" {
+			return name
+		}
+	}
+
+	return string(app)
 }
 
 // checkQueueChanges checks each item for state changes from the app queues.
@@ -45,28 +57,28 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			case data.Status == WAITING:
 				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
 				delete(u.Map, name)
-				u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.App, name)
+				u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.Label(), name)
 			case data.Status > IMPORTED:
 				u.Debugf("Already imported? %s", name)
 			case data.Status == IMPORTED:
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
-					data.App, data.DeleteDelay-elapsed.Round(time.Second), name)
+					data.Label(), data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
 				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
-				u.Printf("[%v] Imported: %v (delete in %v)", data.App, name, data.DeleteDelay)
+				u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
 			}
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
-			u.Printf("%s: Extraction Not Imported: %s - De-queued and returned.", data.App, name)
+			u.Printf("%s: Extraction Not Imported: %s - De-queued and returned.", data.Label(), name)
 			data.Status = EXTRACTED
 		case data.Status > IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
-			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.App, name)
+			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.Label(), name)
 			data.Status = WAITING
 			data.Updated = now
 		}
 
-		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
+		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.Label(), name, data.Status.Desc(),
 			now.Sub(data.Updated).Round(time.Second), data.XProg)
 	}
 }
@@ -100,7 +112,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
 	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
-		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.App, name, d.Round(time.Second))
+		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.Label(), name, d.Round(time.Second))
 		return
 	}
 
@@ -108,10 +120,10 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	if len(files) == 0 {
 		if _, err := os.Stat(item.Path); err != nil {
 			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
-				item.App, name, item.Path, err)
+				item.Label(), name, item.Path, err)
 		} else {
 			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (%s Activity Queue status: %v)",
-				item.App, name, item.Path, item.App, item.IDs["reason"])
+				item.Label(), name, item.Path, item.Label(), item.IDs["reason"])
 		}
 
 		return
@@ -119,7 +131,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 
 	if item.Syncthing {
 		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
-			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.App, name, tmpFile)
+			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, tmpFile)
 			return
 		}
 	}
@@ -160,7 +172,7 @@ func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, s
 	defer u.unlockHistory()
 
 	if snapErr != nil {
-		u.Errorf("[%s] Snapshot dests for remnant check: %v", item.App, snapErr)
+		u.Errorf("[%s] Snapshot dests for remnant check: %v", item.Label(), snapErr)
 	} else {
 		item.PreFiles = snap
 	}
@@ -176,8 +188,8 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 	}
 
 	u.Printf("[%s] Extraction Queued: %s, retries: %d, %s, delete orig: %v, queue size: %d",
-		item.App, item.Path, item.Retries, count, item.DeleteOrig, queueSize)
-	u.updateHistory(string(item.App) + ": " + item.Path)
+		item.Label(), item.Path, item.Retries, count, item.DeleteOrig, queueSize)
+	u.updateHistory(item.Label() + ": " + item.Path)
 }
 
 func (u *Unpackerr) getPasswordFromPath(path string) string {
@@ -207,7 +219,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
 			delete(u.Map, name)
-			u.Printf("[%s] Finished, Removed History: %v", item.App, name)
+			u.Printf("[%s] Finished, Removed History: %v", item.Label(), name)
 		case item.App == FolderString:
 			continue // folders are handled in folder.go.
 		case item.Status == EXTRACTFAILED && item.NoRetry:
@@ -220,21 +232,21 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			item.Status = WAITING
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
-				item.App, elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
+				item.Label(), elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
 		case item.Status == EXTRACTFAILED && item.Retries >= u.maxRetries():
 			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
 			// would bounce a still-completed Starr item back to WAITING.
 			item.NoRetry = true
 			u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTFAILED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
-				item.App, item.Retries, u.maxRetries(), name)
+				item.Label(), item.Retries, u.maxRetries(), name)
 		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
 			elapsed >= staleItemTimeout:
 			// Safety net: items stuck at intermediate states for too long are cleaned up
 			// to prevent unbounded map growth (e.g. Starr app never imports the item).
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Stale item removed after %v at status %s: %v",
-				item.App, elapsed.Round(time.Second), item.Status.Desc(), name)
+				item.Label(), elapsed.Round(time.Second), item.Status.Desc(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 
@@ -310,7 +322,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		// This case wins over resp.Error, so log a password/corrupt-archive
 		// error here the way the folder callback logs before remnant cleanup.
 		if resp.Error != nil {
-			u.Errorf("[%s] Extraction Failed: %s: %v", item.App, resp.X.Name, resp.Error)
+			u.Errorf("[%s] Extraction Failed: %s: %v", item.Label(), resp.X.Name, resp.Error)
 		}
 
 		u.Retries++
@@ -318,13 +330,13 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		item.Status = WAITING
 		item.Updated = now
 		item.Resp = resp
-		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.App, resp.X.Name)
+		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.Label(), resp.X.Name)
 	case remnants:
 		if remnantAction(u.RemnantAction) == "off" {
 			item.NoRetry = true
 		}
 
-		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.App, resp.X.Name)
+		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.Label(), resp.X.Name)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
 	case resp.Error != nil:
 		if xtractr.IsLimitError(resp.Error) {
@@ -348,7 +360,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 
 // Looking for a message that looks like:
 // "No files found are eligible for import in /downloads/Downloading/Space.Warriors.S99E88.GrOuP.1080p.WEB.x264".
-func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title string, paths []string) string {
+func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []string) string {
 	var errs []error
 
 	// Try all the user provided paths.
@@ -364,7 +376,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	}
 
 	// Print the errors for each user-provided path.
-	u.Debugf("%s: Errors encountered looking for %s path: %q", app, title, errs)
+	u.Debugf("%s: Errors encountered looking for %s path: %q", label, title, errs)
 
 	// The title often differs from the actual folder name (e.g. torrent names include genre tags).
 	// Try the folder name from outputPath against configured paths — the folder name is the real
@@ -377,18 +389,18 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 				candidate := filepath.Join(path, outputFolder)
 
 				if _, err := os.Stat(candidate); err == nil {
-					u.Debugf("%s: Resolved via outputPath folder name: %s -> %s", app, outputPath, candidate)
+					u.Debugf("%s: Resolved via outputPath folder name: %s -> %s", label, outputPath, candidate)
 					return candidate
 				}
 			}
 		}
 
-		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", app, outputPath)
+		u.Debugf("%s: Configured paths do not exist; trying 'outputPath': %s", label, outputPath)
 
 		return outputPath
 	}
 
-	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", app, title)
+	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", label, title)
 
 	return filepath.Join(paths[0], title) // useless, but return something. :(
 }

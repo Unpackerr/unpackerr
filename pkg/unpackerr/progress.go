@@ -45,7 +45,7 @@ func (u *Unpackerr) printProgress(now time.Time) {
 		}
 
 		if prog := data.XProg.String(); prog != "no progress yet" {
-			u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.App, name, data.Status.Desc(),
+			u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.Label(), name, data.Status.Desc(),
 				now.Sub(data.Updated).Round(time.Second), prog)
 		}
 	}

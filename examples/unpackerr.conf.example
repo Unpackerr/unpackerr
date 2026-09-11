@@ -177,6 +177,11 @@ passwords = []
 ## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
 [[sonarr]]
+## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+## Sonarr-compatible app such as Sportarr so logs and Discord are not
+## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## Names must be printable and cannot contain quotes, braces, or angle brackets.
+# name = ""
 # url = "http://127.0.0.1:8989"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -218,6 +223,11 @@ passwords = []
 ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
 [[radarr]]
+## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+## Sonarr-compatible app such as Sportarr so logs and Discord are not
+## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## Names must be printable and cannot contain quotes, braces, or angle brackets.
+# name = ""
 # url = "http://127.0.0.1:7878"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -257,6 +267,11 @@ passwords = []
 # max_bytes = ""
 
 #[[lidarr]]
+## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+## Sonarr-compatible app such as Sportarr so logs and Discord are not
+## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## Names must be printable and cannot contain quotes, braces, or angle brackets.
+# name = ""
 # url = "http://127.0.0.1:8686"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -299,6 +314,11 @@ passwords = []
 # split_flac = false
 
 #[[readarr]]
+## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+## Sonarr-compatible app such as Sportarr so logs and Discord are not
+## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## Names must be printable and cannot contain quotes, braces, or angle brackets.
+# name = ""
 # url = "http://127.0.0.1:8787"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -338,6 +358,11 @@ passwords = []
 # max_bytes = ""
 
 #[[whisparr]]
+## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
+## Sonarr-compatible app such as Sportarr so logs and Discord are not
+## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## Names must be printable and cannot contain quotes, braces, or angle brackets.
+# name = ""
 # url = "http://127.0.0.1:6969"
 # api_key = "0123456789abcdef0123456789abcdef"
 ## Username for HTTP basic authentication on the Starr app, if enabled.
@@ -450,7 +475,7 @@ passwords = []
 # channel = ""
 ## Passed into webhook templates. Used by Discord, Telegram, and Slack.
 # token = ""
-## List of apps to exclude. None by default. This is an example:
+## Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
 ## Override internal webhook template for discord.com or other hooks.
 # template_path = ''
@@ -482,9 +507,9 @@ passwords = []
 ## The default is [0] and this is an example:
 # events = [1, 4, 7]
 ## ===> Optional Command Hook Configuration <===
-## List of apps to exclude. None by default. This is an example:
+## Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 10 SEP 2026 07:22 UTC
+## => Content Auto Generated, 11 SEP 2026 03:53 UTC

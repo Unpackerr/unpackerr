@@ -1,6 +1,8 @@
 package unpackerr
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +39,29 @@ func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list *[]P, app s
 	return nil
 }
 
+func warnDuplicateStarrNames[T any, P starrApp[T]](unpack *Unpackerr, seen map[string]string, app starr.App, list []P) {
+	for _, item := range list {
+		cfg := item.conf()
+		name := strings.TrimSpace(cfg.Name)
+
+		if name == "" {
+			continue
+		}
+
+		key := strings.ToLower(name)
+		loc := fmt.Sprintf("%s (%s)", app, cfg.URL)
+
+		if prev, ok := seen[key]; ok {
+			unpack.Errorf("Config Warning: duplicate Starr instance name %q on %s and %s; hook exclude cannot tell them apart",
+				name, prev, loc)
+
+			continue
+		}
+
+		seen[key] = loc
+	}
+}
+
 func enqueueStarrPoll[T any, P starrApp[T]](
 	unpack *Unpackerr, list []P, app starr.App, start time.Time, wait *sync.WaitGroup,
 ) {
@@ -47,21 +72,23 @@ func enqueueStarrPoll[T any, P starrApp[T]](
 
 func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App, start time.Time) {
 	cfg := server.conf()
+	label := cfg.Label(app)
+
 	if cfg.APIKey == "" {
-		u.Debugf("%s (%s): skipped, no API key", app, cfg.URL)
+		u.Debugf("%s (%s): skipped, no API key", label, cfg.URL)
 		return
 	}
 
 	total, retrieved, err := server.pollQueue()
 	if err != nil {
-		u.saveQueueMetrics(0, start, app, cfg.URL, err)
+		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)
 		return
 	}
 
-	u.saveQueueMetrics(total, start, app, cfg.URL, nil)
+	u.saveQueueMetrics(total, start, app, cfg.URL, label, nil)
 
 	if !u.Activity || total > 0 {
-		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", app, cfg.URL, total, retrieved)
+		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", label, cfg.URL, total, retrieved)
 	}
 }
 
@@ -73,12 +100,18 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 		cfg := server.conf()
 
 		for _, rec := range server.queueViews() {
-			switch item, ok := unpack.Map[rec.Title]; {
-			case ok && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
-				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", app, cfg.URL, rec.Protocol, rec.Title)
-			case !ok && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
+			item, found := unpack.Map[rec.Title]
+			if found && item.App == app && item.URL == cfg.URL {
+				item.Name = cfg.Name
+			}
+
+			switch {
+			case found && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
+				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", cfg.Label(app), cfg.URL, rec.Protocol, rec.Title)
+			case !found && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
 				waiting := &Extract{
 					App:         app,
+					Name:        cfg.Name,
 					URL:         cfg.URL,
 					Updated:     now,
 					Status:      WAITING,
@@ -86,7 +119,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 					DeleteDelay: cfg.DeleteDelay.Duration,
 					Syncthing:   cfg.Syncthing,
 					MaxBytes:    cfg.maxBytes,
-					Path:        unpack.getDownloadPath(rec.OutputPath, app, rec.Title, cfg.Paths),
+					Path:        unpack.getDownloadPath(rec.OutputPath, cfg.Label(app), rec.Title, cfg.Paths),
 					IDs:         rec.IDs,
 				}
 				waiting.XProg = &ExtractProgress{Extract: waiting}
@@ -96,7 +129,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 				fallthrough
 			default:
 				unpack.Debugf("%s (%s): %s (%s:%d%%): %v%s",
-					app, cfg.URL, rec.Status, rec.Protocol,
+					cfg.Label(app), cfg.URL, rec.Status, rec.Protocol,
 					percent(rec.Sizeleft, rec.Size), rec.Title, rec.DebugExtra)
 			}
 		}

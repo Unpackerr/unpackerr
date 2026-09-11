@@ -3,6 +3,7 @@ package hooks
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/url"
 	"os"
 	"strings"
@@ -51,7 +52,7 @@ type XtractPayload struct {
 // when not using discord.com (below), or a custom template file.
 const WebhookTemplateNotifiarr = `{
   "path": {{encode .Path}},
-  "app": "{{.App}}",
+  "app": {{encode .App}},
   "ids": {
     {{$s := separator ",\n"}}{{range $key, $value := .IDs}}{{call $s}}"{{$key}}": {{encode $value}}{{end}}
   },
@@ -82,7 +83,7 @@ const WebhookTemplateTelegram = `{
   "disable_web_page_preview": true,
   "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.Event.Desc -}}
     \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
-    \n<b>App</b>: {{.App -}}
+    \n<b>App</b>: {{htmlencode .App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
   {{- if .Data }}\n
     {{- if .Data.Elapsed.Duration}}\n <b>Elapsed</b>: {{.Data.Elapsed}}{{end -}}
@@ -99,7 +100,8 @@ const WebhookTemplateTelegram = `{
 
 const WebhookTemplateGotify = `{
   "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.Event.Desc}}",
-  "message": "**App**: {{.App}}  \n**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
+  "message": "**App**: {{rawencode .App}}  \n` +
+	`**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
     {{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
     {{ if .Data.Archives }}  \n**RARs**: {{len .Data.Archives}}{{end -}}
     {{ if .Data.Files }}  \n**Files**: {{len .Data.Files}}{{end -}}
@@ -140,7 +142,7 @@ const WebhookTemplateDiscord = `{
             {{- else}}16711695{{end}},
     "fields": [
      {"name": "Path", "value": {{encode .Path}}, "inline": false},
-     {"name": "App", "value": "{{.App}}", "inline": true}{{ if .Data }}
+     {"name": "App", "value": {{encode .App}}, "inline": true}{{ if .Data }}
      {{ if .Data.Archives}},{"name": "Archives", "value": "{{len .Data.Archives}}", "inline": true}
      {{end -}}
      {{ if .Data.Elapsed.Duration}},{"name": "Elapsed", "value": "{{.Data.Elapsed}}", "inline": true}
@@ -163,7 +165,7 @@ const WebhookTemplateDiscord = `{
 `
 
 const WebhookTemplatePushover = `token={{token}}&user={{channel}}&html=1&title={{formencode .Event.Desc}}&` +
-	`{{if nickname}}device={{nickname}}&{{end}}message=<pre><b>App</b>: {{.App}}
+	`{{if nickname}}device={{nickname}}&{{end}}message=<pre><b>App</b>: {{formencode (htmlencode .App)}}
 <b>Name</b>: {{formencode (index .IDs "title")}}
 <b>Path</b>: {{formencode .Path}}
 {{ if .Data -}}
@@ -217,7 +219,7 @@ const WebhookTemplateSlack = `
         },
         {
           "type": "mrkdwn",
-          "text": "*App*\n{{.App}}"
+          "text": {{encode (print "*App*\n" .App)}}
         }{{ if .Data }}
         {{ if .Data.Bytes }},{
           "type": "mrkdwn",
@@ -258,7 +260,8 @@ func (w *Config) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
 		"encode":     func(v any) string { b, _ := json.Marshal(v); return string(b) },
 		"rawencode":  func(v any) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck
-		"formencode": url.QueryEscape,
+		"formencode": func(v any) string { return url.QueryEscape(fmt.Sprint(v)) },
+		"htmlencode": func(v any) string { return html.EscapeString(fmt.Sprint(v)) },
 		"separator":  separator,
 		"humanbytes": humanbytes,
 		"nickname":   func() string { return w.Nickname },

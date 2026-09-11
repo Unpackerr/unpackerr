@@ -67,7 +67,7 @@ func (u *Unpackerr) writeRunningConfig(printf configLine, auth dumpAuth) {
 	}
 
 	if !auth.omit(printf, SectionLidarr, "Lidarr Config") {
-		u.logLidarr(printf)
+		logStarr(printf, starr.Lidarr, u.Lidarr)
 	}
 
 	if !auth.omit(printf, SectionReadarr, "Readarr Config") {
@@ -128,17 +128,15 @@ func (u *Unpackerr) logGeneral(printf configLine) {
 	}
 }
 
-func logStarr[T any, P interface {
-	*T
-	conf() *StarrConfig
-}](printf configLine, app starr.App, list []P) {
+func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list []P) {
 	count := len(list)
 	if count == 1 {
-		c := list[0].conf()
-		printf(" => %s Config: 1 server: "+starrLogLine,
+		item := list[0]
+		c := item.conf()
+		printf(" => %s Config: 1 server: "+starrLogLine+"%s",
 			app, c.URL, c.APIKey != "", c.Timeout.String(),
 			c.ValidSSL, c.Protocols, c.Syncthing,
-			c.DeleteOrig, c.DeleteDelay.String(), c.Paths)
+			c.DeleteOrig, c.DeleteDelay.String(), c.Paths, item.logExtra())
 
 		return
 	}
@@ -147,30 +145,9 @@ func logStarr[T any, P interface {
 
 	for _, item := range list {
 		c := item.conf()
-		printf(starrLogPfx+starrLogLine,
+		printf(starrLogPfx+starrLogLine+"%s",
 			c.URL, c.APIKey != "", c.Timeout.String(), c.ValidSSL, c.Protocols,
-			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(), c.Paths)
-	}
-}
-
-func (u *Unpackerr) logLidarr(printf configLine) {
-	count := len(u.Lidarr)
-	if count == 1 {
-		c := u.Lidarr[0]
-		printf(" => Lidarr Config: 1 server: "+starrLogLine+", split_flac:%v",
-			c.URL, c.APIKey != "", c.Timeout.String(),
-			c.ValidSSL, c.Protocols, c.Syncthing,
-			c.DeleteOrig, c.DeleteDelay.String(), c.Paths, c.SplitFlac)
-
-		return
-	}
-
-	printf(" => Lidarr Config: %d servers", count)
-
-	for _, c := range u.Lidarr {
-		printf(starrLogPfx+starrLogLine+", split_flac:%v",
-			c.URL, c.APIKey != "", c.Timeout.String(), c.ValidSSL, c.Protocols,
-			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(), c.Paths, c.SplitFlac)
+			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(), c.Paths, item.logExtra())
 	}
 }
 

@@ -18,6 +18,7 @@ type starrApp[T any] interface {
 	pollQueue() (total, retrieved int, err error)
 	queueViews() []queueView
 	tweakExtract(item *Extract, rec queueView)
+	logExtra() string
 }
 
 func (s *SonarrConfig) conf() *StarrConfig { return &s.StarrConfig }

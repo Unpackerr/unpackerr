@@ -331,9 +331,13 @@ func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
 
 // WebhookCounts returns the total count of requests and errors for all webhooks.
 func (u *Unpackerr) WebhookCounts() (uint, uint) {
+	return hookCounts(u.hookList())
+}
+
+func hookCounts(hooks []*WebhookConfig) (uint, uint) {
 	var total, fails uint
 
-	for _, hook := range u.hookList() {
+	for _, hook := range hooks {
 		if hook == nil {
 			continue
 		}

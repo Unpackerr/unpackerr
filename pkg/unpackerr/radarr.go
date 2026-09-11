@@ -52,3 +52,5 @@ func (r *RadarrConfig) queueViews() []queueView {
 }
 
 func (*RadarrConfig) tweakExtract(_ *Extract, _ queueView) {}
+
+func (*RadarrConfig) logExtra() string { return "" }

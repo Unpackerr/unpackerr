@@ -128,19 +128,7 @@ func (u *Unpackerr) runCmdhook(hook *WebhookConfig, payload *WebhookPayload) (*b
 	return &out, nil
 }
 
-// CmdhookCounts returns the total count of requests and errors for all webhooks.
+// CmdhookCounts returns the total count of requests and errors for all command hooks.
 func (u *Unpackerr) CmdhookCounts() (uint, uint) {
-	var total, fails uint
-
-	for _, hook := range u.cmdhookList() {
-		if hook == nil {
-			continue
-		}
-
-		posts, failures := hook.Counts()
-		total += posts
-		fails += failures
-	}
-
-	return total, fails
+	return hookCounts(u.cmdhookList())
 }

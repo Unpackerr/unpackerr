@@ -401,7 +401,7 @@ func (u *Unpackerr) getDownloadPath(outputPath string, app starr.App, title stri
 	// directory on disk. This also handles cross-platform setups where outputPath is a UNC/Windows
 	// path but the configured paths are local Linux mounts of the same share.
 	if outputPath != "" {
-		outputFolder := filepath.Base(filepath.FromSlash(strings.ReplaceAll(outputPath, `\`, `/`)))
+		outputFolder := crossPlatformBase(outputPath)
 		if outputFolder != "" && outputFolder != "." && outputFolder != title {
 			for _, path := range paths {
 				candidate := filepath.Join(path, outputFolder)

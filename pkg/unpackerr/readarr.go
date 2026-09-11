@@ -53,3 +53,5 @@ func (r *ReadarrConfig) queueViews() []queueView {
 }
 
 func (*ReadarrConfig) tweakExtract(_ *Extract, _ queueView) {}
+
+func (*ReadarrConfig) logExtra() string { return "" }

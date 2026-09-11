@@ -54,3 +54,5 @@ func (s *SonarrConfig) queueViews() []queueView {
 }
 
 func (*SonarrConfig) tweakExtract(_ *Extract, _ queueView) {}
+
+func (*SonarrConfig) logExtra() string { return "" }

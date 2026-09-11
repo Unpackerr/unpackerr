@@ -64,6 +64,10 @@ func (l *LidarrConfig) tweakExtract(item *Extract, rec queueView) {
 	item.OutputPath = rec.OutputPath
 }
 
+func (l *LidarrConfig) logExtra() string {
+	return fmt.Sprintf(", split_flac:%v", l.SplitFlac)
+}
+
 // lidarrServerByURL returns the Lidarr server config that matches the given URL, or nil.
 func (u *Unpackerr) lidarrServerByURL(url string) *LidarrConfig {
 	for _, server := range u.Lidarr {

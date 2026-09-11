@@ -73,7 +73,7 @@ func TestQueueRetryFolder(t *testing.T) {
 		Retries: 3,
 	}
 	unpack.folders = &Folders{Folders: map[string]*Folder{
-		"/watch/fail": {status: EXTRACTFAILED, noRetry: true, retries: 99, updated: time.Now()},
+		"/watch/fail": {Status: EXTRACTFAILED, NoRetry: true, Retries: 99, Updated: time.Now()},
 	}}
 
 	withKey := func(req *http.Request) {
@@ -91,7 +91,7 @@ func TestQueueRetryFolder(t *testing.T) {
 	}
 
 	folder := unpack.folders.Folders["/watch/fail"]
-	if folder == nil || folder.status != WAITING || folder.noRetry || folder.retries != 0 {
+	if folder == nil || folder.Status != WAITING || folder.NoRetry || folder.Retries != 0 {
 		t.Fatalf("folder retry %+v", folder)
 	}
 }
@@ -102,7 +102,7 @@ func TestQueueForgetFolder(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.Map["/watch/gone"] = &Extract{App: FolderString, Path: "/watch/gone", Status: EXTRACTFAILED}
 	unpack.folders = &Folders{Folders: map[string]*Folder{
-		"/watch/gone": {status: EXTRACTFAILED},
+		"/watch/gone": {Status: EXTRACTFAILED},
 	}}
 
 	withKey := func(req *http.Request) {

@@ -2,11 +2,12 @@ package unpackerr
 
 import (
 	"github.com/Unpackerr/unpackerr/pkg/extract"
+	"github.com/Unpackerr/unpackerr/pkg/folders"
 	"github.com/Unpackerr/unpackerr/pkg/hooks"
 )
 
 // Type aliases keep the daemon and tests on the historical names while the
-// types themselves live in pkg/extract and pkg/hooks.
+// types themselves live in pkg/extract, pkg/hooks, and pkg/folders.
 type (
 	ExtractStatus   = extract.Status
 	Extract         = extract.Extract
@@ -15,6 +16,11 @@ type (
 	WebhookPayload  = hooks.Payload
 	ExtractStatuses = hooks.Statuses
 	XtractPayload   = hooks.XtractPayload
+	FolderConfig    = folders.FolderConfig
+	FoldersConfig   = folders.WatchConfig
+	Folders         = folders.Folders
+	Folder          = folders.Folder
+	eventData       = folders.Event
 )
 
 // Extract Statuses.

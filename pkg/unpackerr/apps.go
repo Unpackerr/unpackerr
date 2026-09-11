@@ -84,11 +84,6 @@ type Config struct {
 	Folder        FoldersConfig    `json:"folders"            toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
 }
 
-type FoldersConfig struct {
-	Buffer   uint          `json:"buffer"   toml:"buffer"   xml:"buffer"   yaml:"buffer"`   // undocumented.
-	Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"` // undocumented.
-}
-
 func (u *Unpackerr) watchWorkThread() {
 	u.ensureWorkThreads(u.starrAppCount())
 }

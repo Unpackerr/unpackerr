@@ -152,10 +152,10 @@ func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Tim
 		return errQueueNotFound
 	}
 
-	folder.status = WAITING
-	folder.noRetry = false
-	folder.retries = 0
-	folder.updated = now
+	folder.Status = WAITING
+	folder.NoRetry = false
+	folder.Retries = 0
+	folder.Updated = now
 	item.NoRetry = false
 	item.Status = WAITING
 	item.Updated = now

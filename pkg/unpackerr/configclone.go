@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"github.com/Unpackerr/unpackerr/pkg/folders"
 	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/starr/lidarr"
 	"golift.io/starr/radarr"
@@ -135,23 +136,7 @@ func cloneStarrList[T any, P starrApp[T]](src []P) []P {
 }
 
 func cloneFolderList(src []*FolderConfig) []*FolderConfig {
-	if src == nil {
-		return nil
-	}
-
-	out := make([]*FolderConfig, len(src))
-	for idx, folder := range src {
-		cloned := *folder
-		if folder.DeleteAfter != nil {
-			dur := *folder.DeleteAfter
-			cloned.DeleteAfter = &dur
-		}
-
-		cloned.ExcludePaths = append([]string(nil), folder.ExcludePaths...)
-		out[idx] = &cloned
-	}
-
-	return out
+	return folders.CloneList(src)
 }
 
 // cloneHookList copies hooks without the mutex, counters, client, or template.

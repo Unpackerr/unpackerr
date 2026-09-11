@@ -248,7 +248,7 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 		unpack.Folders[0].ExtrasMaxDepth != 0 ||
 		unpack.Folders[0].MaxFiles != 0 ||
 		unpack.Folders[0].MaxRatio != 0 ||
-		unpack.Folders[0].maxBytes != 0 {
+		unpack.Folders[0].ResolvedMaxBytes != 0 {
 		t.Fatalf("unset must stay unlimited: %+v", unpack.Folders[0])
 	}
 

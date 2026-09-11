@@ -1,4 +1,4 @@
-package unpackerr
+package folders
 
 import (
 	"os"
@@ -13,14 +13,14 @@ func (noopLogger) Printf(string, ...any) {}
 func (noopLogger) Errorf(string, ...any) {}
 func (noopLogger) Debugf(string, ...any) {}
 
-func TestNormalizeFolderExcludePaths(t *testing.T) {
+func TestNormalizeExcludePaths(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
 	relative := "permanent"
 	absolute := filepath.Join(base, "keep")
 
-	paths := normalizeFolderExcludePaths(base, []string{"", "  ", relative, absolute})
+	paths := NormalizeExcludePaths(base, []string{"", "  ", relative, absolute})
 	if len(paths) != 2 {
 		t.Fatalf("expected 2 normalized paths, got %d: %v", len(paths), paths)
 	}
@@ -41,15 +41,15 @@ func TestFolderConfigIsExcludedPath(t *testing.T) {
 	excluded := filepath.Join(base, "permanent")
 	cfg := &FolderConfig{ExcludePaths: []string{excluded}}
 
-	if !cfg.isExcludedPath(excluded) {
+	if !cfg.IsExcludedPath(excluded) {
 		t.Fatal("expected exact excluded path to match")
 	}
 
-	if !cfg.isExcludedPath(filepath.Join(excluded, "sub", "file.rar")) {
+	if !cfg.IsExcludedPath(filepath.Join(excluded, "sub", "file.rar")) {
 		t.Fatal("expected child path of excluded folder to match")
 	}
 
-	if cfg.isExcludedPath(excluded + "_other") {
+	if cfg.IsExcludedPath(excluded + "_other") {
 		t.Fatal("did not expect prefix-only sibling path to match")
 	}
 }
@@ -59,21 +59,21 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 
 	watchPath := t.TempDir()
 	cfg := &FolderConfig{Path: watchPath}
-	folders := newTestFolders(t, cfg)
+	tracker := newTestFolders(t, cfg)
 
 	archive := filepath.Join(watchPath, "movie.rar")
 	if err := os.WriteFile(archive, []byte("x"), 0o600); err != nil {
 		t.Fatalf("creating archive test file: %v", err)
 	}
 
-	folders.processEvent(&eventData{
-		cnfg: cfg,
-		name: filepath.Base(archive),
-		file: archive,
-		op:   "test",
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   filepath.Base(archive),
+		File:   archive,
+		Op:     "test",
 	}, time.Now())
 
-	if _, ok := folders.Folders[archive]; !ok {
+	if _, ok := tracker.Folders[archive]; !ok {
 		t.Fatalf("expected archive path to be tracked: %s", archive)
 	}
 
@@ -82,14 +82,14 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 		t.Fatalf("creating non-archive test file: %v", err)
 	}
 
-	folders.processEvent(&eventData{
-		cnfg: cfg,
-		name: filepath.Base(plain),
-		file: plain,
-		op:   "test",
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   filepath.Base(plain),
+		File:   plain,
+		Op:     "test",
 	}, time.Now())
 
-	if _, ok := folders.Folders[plain]; ok {
+	if _, ok := tracker.Folders[plain]; ok {
 		t.Fatalf("did not expect non-archive file to be tracked: %s", plain)
 	}
 
@@ -98,14 +98,14 @@ func TestFoldersProcessEventCurrentBehavior(t *testing.T) {
 		t.Fatalf("creating folder test dir: %v", err)
 	}
 
-	folders.processEvent(&eventData{
-		cnfg: cfg,
-		name: filepath.Base(dir),
-		file: dir,
-		op:   "test",
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   filepath.Base(dir),
+		File:   dir,
+		Op:     "test",
 	}, time.Now())
 
-	if _, ok := folders.Folders[dir]; !ok {
+	if _, ok := tracker.Folders[dir]; !ok {
 		t.Fatalf("expected folder path to be tracked: %s", dir)
 	}
 }
@@ -129,30 +129,30 @@ func TestFoldersProcessEventExcludedPath(t *testing.T) {
 		Path:         watchPath,
 		ExcludePaths: []string{excluded},
 	}
-	folders := newTestFolders(t, cfg)
+	tracker := newTestFolders(t, cfg)
 
 	// Direct excluded folder.
-	folders.processEvent(&eventData{
-		cnfg: cfg,
-		name: "permanent",
-		file: excluded,
-		op:   "test",
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   "permanent",
+		File:   excluded,
+		Op:     "test",
 	}, time.Now())
 
-	if len(folders.Folders) != 0 {
-		t.Fatalf("expected no tracked folders for excluded path, got: %v", folders.Folders)
+	if len(tracker.Folders) != 0 {
+		t.Fatalf("expected no tracked folders for excluded path, got: %v", tracker.Folders)
 	}
 
 	// Nested event from an excluded folder should also be ignored.
-	folders.processEvent(&eventData{
-		cnfg: cfg,
-		name: "sub",
-		file: nested,
-		op:   "test",
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   "sub",
+		File:   nested,
+		Op:     "test",
 	}, time.Now())
 
-	if len(folders.Folders) != 0 {
-		t.Fatalf("expected no tracked folders for nested excluded event, got: %v", folders.Folders)
+	if len(tracker.Folders) != 0 {
+		t.Fatalf("expected no tracked folders for nested excluded event, got: %v", tracker.Folders)
 	}
 }
 
@@ -162,19 +162,19 @@ func TestFoldersHandleFileEventExcludedPath(t *testing.T) {
 	watchPath := t.TempDir()
 	excluded := filepath.Join(watchPath, "permanent")
 
-	folders := &Folders{
+	tracker := &Folders{
 		Config: []*FolderConfig{{
 			Path:         watchPath,
 			ExcludePaths: []string{excluded},
 		}},
-		Events: make(chan *eventData, 1),
+		Events: make(chan *Event, 1),
 		Logs:   noopLogger{},
 	}
 
-	folders.handleFileEvent(filepath.Join(excluded, "file.rar"), "test")
+	tracker.handleFileEvent(filepath.Join(excluded, "file.rar"), "test")
 
 	select {
-	case event := <-folders.Events:
+	case event := <-tracker.Events:
 		t.Fatalf("did not expect event for excluded path: %+v", event)
 	default:
 	}
@@ -183,20 +183,20 @@ func TestFoldersHandleFileEventExcludedPath(t *testing.T) {
 func newTestFolders(t *testing.T, cfg *FolderConfig) *Folders {
 	t.Helper()
 
-	folders, err := (FoldersConfig{Buffer: 32}).newWatcher([]*FolderConfig{cfg}, noopLogger{})
+	tracker, err := (WatchConfig{Buffer: 32}).NewWatcher([]*FolderConfig{cfg}, noopLogger{}, 1, "")
 	if err != nil {
 		t.Fatalf("creating watcher: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if folders.Watcher != nil {
-			folders.Watcher.Close()
+		if tracker.Watcher != nil {
+			tracker.Watcher.Close()
 		}
 
-		if folders.FSNotify != nil {
-			_ = folders.FSNotify.Close()
+		if tracker.FSNotify != nil {
+			_ = tracker.FSNotify.Close()
 		}
 	})
 
-	return folders
+	return tracker
 }

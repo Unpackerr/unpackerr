@@ -122,22 +122,6 @@ services:
     - UN_READARR_0_SYNCTHING=false
     - UN_READARR_0_VALID_SSL=false
     - UN_READARR_0_MAX_BYTES=
-    ## Whisparr Settings
-    - UN_WHISPARR_0_NAME=
-    - UN_WHISPARR_0_URL=http://whisparr:6969
-    - UN_WHISPARR_0_API_KEY=0123456789abcdef0123456789abcdef
-    - UN_WHISPARR_0_HTTP_USER=
-    - UN_WHISPARR_0_HTTP_PASS=
-    - UN_WHISPARR_0_USERNAME=
-    - UN_WHISPARR_0_PASSWORD=
-    - UN_WHISPARR_0_PATHS_0=/downloads
-    - UN_WHISPARR_0_PROTOCOLS=torrent,TorrentDownloadProtocol
-    - UN_WHISPARR_0_TIMEOUT=10s
-    - UN_WHISPARR_0_DELETE_DELAY=5m
-    - UN_WHISPARR_0_DELETE_ORIG=false
-    - UN_WHISPARR_0_SYNCTHING=false
-    - UN_WHISPARR_0_VALID_SSL=false
-    - UN_WHISPARR_0_MAX_BYTES=
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
     - UN_FOLDER_0_EXTRACT_PATH=
@@ -183,4 +167,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 11 SEP 2026 03:53 UTC
+## => Content Auto Generated, 11 SEP 2026 06:50 UTC

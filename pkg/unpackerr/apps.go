@@ -89,7 +89,7 @@ type Config struct {
 	Webserver     *WebServer       `json:"webserver"          toml:"webserver"      xml:"webserver"      yaml:"webserver"`
 	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
 	Radarr        []*RadarrConfig  `json:"radarr,omitempty"   toml:"radarr"         xml:"radarr"         yaml:"radarr,omitempty"`
-	Whisparr      []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"       xml:"whisparr"       yaml:"whisparr,omitempty"`
+	Whisparr      []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"       xml:"whisparr"       yaml:"whisparr,omitempty"` // load only; folded into Radarr
 	Readarr       []*ReadarrConfig `json:"readarr,omitempty"  toml:"readarr"        xml:"readarr"        yaml:"readarr,omitempty"`
 	Sonarr        []*SonarrConfig  `json:"sonarr,omitempty"   toml:"sonarr"         xml:"sonarr"         yaml:"sonarr,omitempty"`
 	Folders       []*FolderConfig  `json:"folder,omitempty"   toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
@@ -103,7 +103,7 @@ func (u *Unpackerr) watchWorkThread() {
 }
 
 func (u *Unpackerr) starrAppCount() int {
-	return len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr)
+	return len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr)
 }
 
 // ensureWorkThreads grows the poll worker pool to one per Starr app so a PUT
@@ -137,7 +137,6 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	enqueueStarrPoll(u, u.Radarr, starr.Radarr, now, &wait)
 	enqueueStarrPoll(u, u.Readarr, starr.Readarr, now, &wait)
 	enqueueStarrPoll(u, u.Sonarr, starr.Sonarr, now, &wait)
-	enqueueStarrPoll(u, u.Whisparr, starr.Whisparr, now, &wait)
 
 	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
@@ -145,19 +144,57 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	checkStarrQueue(u, u.Radarr, starr.Radarr, now)
 	checkStarrQueue(u, u.Readarr, starr.Readarr, now)
 	checkStarrQueue(u, u.Sonarr, starr.Sonarr, now)
-	checkStarrQueue(u, u.Whisparr, starr.Whisparr, now)
 	u.sweepForgotten()
+}
+
+const whisparrConfigDocs = "https://unpackerr.zip/docs/install/configuration"
+
+// adoptWhisparrList moves deprecated [[whisparr]] instances onto a Radarr list.
+func adoptWhisparrList(dst *[]*RadarrConfig, src []*RadarrConfig) {
+	for _, conf := range src {
+		if conf == nil {
+			continue
+		}
+
+		if strings.TrimSpace(conf.Name) == "" {
+			conf.Name = string(starr.Whisparr)
+		}
+
+		*dst = append(*dst, conf)
+	}
+}
+
+// adoptWhisparr folds deprecated [[whisparr]] / UN_WHISPARR_* into Radarr so
+// existing configs keep working. The on-disk snapshot is adopted too so the
+// next config write emits [[radarr]] instead of dropping those instances.
+func (u *Unpackerr) adoptWhisparr() {
+	if len(u.Whisparr) == 0 && (u.fileConfig == nil || len(u.fileConfig.Whisparr) == 0) {
+		return
+	}
+
+	if len(u.Whisparr) > 0 {
+		u.Errorf("Config Warning: [[whisparr]] is now [[radarr]]. Rename UN_WHISPARR_* to UN_RADARR_* and see %s",
+			whisparrConfigDocs)
+		adoptWhisparrList(&u.Radarr, u.Whisparr)
+		u.Whisparr = nil
+	}
+
+	if u.fileConfig != nil && len(u.fileConfig.Whisparr) > 0 {
+		adoptWhisparrList(&u.fileConfig.Radarr, u.fileConfig.Whisparr)
+		u.fileConfig.Whisparr = nil
+	}
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
+	u.adoptWhisparr()
+
 	for _, validate := range []func() error{
 		u.validateRemnantAction,
 		func() error { return validateStarrList(u, &u.Lidarr, starr.Lidarr) },
 		func() error { return validateStarrList(u, &u.Radarr, starr.Radarr) },
 		func() error { return validateStarrList(u, &u.Readarr, starr.Readarr) },
 		func() error { return validateStarrList(u, &u.Sonarr, starr.Sonarr) },
-		func() error { return validateStarrList(u, &u.Whisparr, starr.Whisparr) },
 		u.validateFolders,
 	} {
 		if err := validate(); err != nil {
@@ -170,7 +207,6 @@ func (u *Unpackerr) validateApps() error {
 	warnDuplicateStarrNames(u, seen, starr.Radarr, u.Radarr)
 	warnDuplicateStarrNames(u, seen, starr.Readarr, u.Readarr)
 	warnDuplicateStarrNames(u, seen, starr.Sonarr, u.Sonarr)
-	warnDuplicateStarrNames(u, seen, starr.Whisparr, u.Whisparr)
 
 	for _, validate := range []func() error{
 		u.validateCmdhook,
@@ -195,7 +231,7 @@ func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	case starr.Sonarr:
 		return haveStarrQitem(u.Sonarr, name)
 	case starr.Whisparr:
-		return haveStarrQitem(u.Whisparr, name)
+		return haveStarrQitem(u.Radarr, name)
 	default:
 		return false
 	}

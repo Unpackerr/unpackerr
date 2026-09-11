@@ -204,8 +204,7 @@ func (u *Unpackerr) sweepForgotten() {
 
 	for itemID := range u.forgotten {
 		if haveStarrQitem(u.Lidarr, itemID) || haveStarrQitem(u.Radarr, itemID) ||
-			haveStarrQitem(u.Readarr, itemID) || haveStarrQitem(u.Sonarr, itemID) ||
-			haveStarrQitem(u.Whisparr, itemID) {
+			haveStarrQitem(u.Readarr, itemID) || haveStarrQitem(u.Sonarr, itemID) {
 			continue
 		}
 

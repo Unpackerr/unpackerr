@@ -75,10 +75,6 @@ func (u *Unpackerr) writeRunningConfig(printf configLine, auth dumpAuth) {
 		logStarr(printf, starr.Readarr, u.Readarr)
 	}
 
-	if !auth.omit(printf, SectionWhisparr, "Whisparr Config") {
-		logStarr(printf, starr.Whisparr, u.Whisparr)
-	}
-
 	if !auth.omit(printf, SectionFolders, "Folder Config") {
 		u.logFolders(printf)
 	}

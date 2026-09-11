@@ -361,8 +361,9 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	}
 
 	skip := map[string]struct{}{
-		"path": {}, // legacy StarrConfig alias for paths
-		"key":  {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
+		"path":     {}, // legacy StarrConfig alias for paths
+		"key":      {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
+		"whisparr": {}, // accepted on load, folded into [[radarr]]
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)
@@ -553,8 +554,10 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	}
 
 	unpack.Sonarr = []*SonarrConfig{{StarrConfig: starrConf("http://sonarr:8989")}}
-	unpack.Radarr = []*RadarrConfig{{StarrConfig: starrConf("http://radarr:7878")}}
-	unpack.Whisparr = []*RadarrConfig{{StarrConfig: starrConf("http://whisparr:6969")}}
+	unpack.Radarr = []*RadarrConfig{
+		{StarrConfig: starrConf("http://radarr:7878")},
+		{StarrConfig: starrConf("http://whisparr:6969")},
+	}
 	unpack.Lidarr = []*LidarrConfig{{StarrConfig: starrConf("http://lidarr:8686"), SplitFlac: true}}
 	unpack.Readarr = []*ReadarrConfig{{StarrConfig: starrConf("http://readarr:8787")}}
 	unpack.Readarr[0].APIKey = starrKey

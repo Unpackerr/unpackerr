@@ -127,8 +127,6 @@ func configSectionFrom(cfg *Config, section ConfigSection) any {
 		return emptyIfNil(cfg.Lidarr)
 	case SectionReadarr:
 		return emptyIfNil(cfg.Readarr)
-	case SectionWhisparr:
-		return emptyIfNil(cfg.Whisparr)
 	case SectionFolders:
 		return foldersConfigFrom(cfg)
 	case SectionWebhooks:

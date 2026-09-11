@@ -162,7 +162,7 @@ passwords = []
 ##-IMPORTANT-#######-READ THIS!!!-################ Seriously, read this. ######
 ###############################################################################
 ## The following sections can be repeated if you have more than one Sonarr,  ##
-## Radarr, Lidarr, Readarr, Whisparr, Folder, Webhook, and/or Command Hook.  ##
+## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
 ## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
 ## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
 ## and api_key if they are in use. Comment them with a hash if they are not. ##
@@ -179,7 +179,8 @@ passwords = []
 [[sonarr]]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
-## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
+## Hook exclude matches this name or the app dialect.
 ## Names must be printable and cannot contain quotes, braces, or angle brackets.
 # name = ""
 # url = "http://127.0.0.1:8989"
@@ -216,7 +217,7 @@ passwords = []
 ## The default is false for backward compatibility.
 # valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
-## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+## Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -225,7 +226,8 @@ passwords = []
 [[radarr]]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
-## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
+## Hook exclude matches this name or the app dialect.
 ## Names must be printable and cannot contain quotes, braces, or angle brackets.
 # name = ""
 # url = "http://127.0.0.1:7878"
@@ -262,14 +264,15 @@ passwords = []
 ## The default is false for backward compatibility.
 # valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
-## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+## Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
 #[[lidarr]]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
-## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
+## Hook exclude matches this name or the app dialect.
 ## Names must be printable and cannot contain quotes, braces, or angle brackets.
 # name = ""
 # url = "http://127.0.0.1:8686"
@@ -306,7 +309,7 @@ passwords = []
 ## The default is false for backward compatibility.
 # valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
-## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+## Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 ## When enabled, FLAC files with embedded CUE sheets are split into
@@ -316,7 +319,8 @@ passwords = []
 #[[readarr]]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
-## tagged Sonarr. Hook exclude matches this name or the app dialect.
+## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
+## Hook exclude matches this name or the app dialect.
 ## Names must be printable and cannot contain quotes, braces, or angle brackets.
 # name = ""
 # url = "http://127.0.0.1:8787"
@@ -353,51 +357,7 @@ passwords = []
 ## The default is false for backward compatibility.
 # valid_ssl = false
 ## Per-archive uncompressed-byte cap. Empty uses the app default:
-## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
-## `0` or `0B` disables the cap for this instance.
-# max_bytes = ""
-
-#[[whisparr]]
-## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
-## Sonarr-compatible app such as Sportarr so logs and Discord are not
-## tagged Sonarr. Hook exclude matches this name or the app dialect.
-## Names must be printable and cannot contain quotes, braces, or angle brackets.
-# name = ""
-# url = "http://127.0.0.1:6969"
-# api_key = "0123456789abcdef0123456789abcdef"
-## Username for HTTP basic authentication on the Starr app, if enabled.
-# http_user = ""
-## Password for HTTP basic authentication on the Starr app, if enabled.
-# http_pass = ""
-## Username for Starr native (forms) authentication, if enabled.
-# username = ""
-## Password for Starr native (forms) authentication, if enabled.
-# password = ""
-## List of paths where content is downloaded for this app.
-## Used as fallback if the path the Starr app reports does not exist or is not accessible.
-# paths = ['/downloads']
-## Protocols to process from the download queue. Starr apps historically
-## used "torrent" and "usenet" as the protocol strings, but newer versions
-## emit the full class names "TorrentDownloadProtocol" and
-## "UsenetDownloadProtocol" instead. List every string your app may return,
-## separated by commas. The default covers both the legacy and new torrent
-## strings. Add "usenet,UsenetDownloadProtocol" if you use a Usenet client.
-# protocols = "torrent,TorrentDownloadProtocol"
-## How long to wait for a reply from the backend.
-# timeout = "10s"
-## How long to wait after import before deleting the extracted items.
-# delete_delay = "5m"
-## If you use this app with NZB you may wish to delete archives after extraction.
-## General recommendation is: do not enable this for torrent use.
-## Setting this to true deletes the entire original download folder after import.
-# delete_orig = false
-## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
-# syncthing = false
-## When true, Unpackerr verifies the Starr app HTTPS certificate.
-## The default is false for backward compatibility.
-# valid_ssl = false
-## Per-archive uncompressed-byte cap. Empty uses the app default:
-## Sonarr/Whisparr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
+## Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
@@ -512,4 +472,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 11 SEP 2026 03:53 UTC
+## => Content Auto Generated, 11 SEP 2026 06:50 UTC

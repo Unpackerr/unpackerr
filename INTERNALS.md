@@ -282,7 +282,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `/metrics` (+ urlbase) | **API key / Bearer only** | `system:metrics:read` | No session cookie, no webauth/noauth |
 | GET | `/debug/pprof/…` | none extra | — | Only if `pprof = true`. Treat as a loaded gun. |
 
-`{section}` is one of: `general`, `webserver`, `sonarr`, `radarr`, `lidarr`, `readarr`, `whisparr`, `folders`, `webhooks`, `cmdhooks`. Unknown → 404 from `requireConfigPerm`.
+`{section}` is one of: `general`, `webserver`, `sonarr`, `radarr`, `lidarr`, `readarr`, `folders`, `webhooks`, `cmdhooks`. Unknown → 404 from `requireConfigPerm`.
 
 Stdlib mux does **not** redirect trailing slashes the way httprouter did. `/api/stats/` is 404. Documented as acceptable for this API (no external consumers). Do not add a compatibility wrapper unless product asks.
 
@@ -373,7 +373,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 | --- | --- | --- |
 | general | Yes; `resetTickers`; expand passwords | Logger / parallel / file+dir mode / timeout / delete_delay |
 | webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, HTTP log |
-| sonarr…whisparr | Rebuild clients, carry queues, grow workers | No |
+| sonarr…readarr | Rebuild clients, carry queues, grow workers | No |
 | folders | Live slices updated | **Always** (watcher) |
 | webhooks / cmdhooks | Replace lists, ensure worker | No |
 

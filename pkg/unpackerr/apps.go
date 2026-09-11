@@ -167,14 +167,15 @@ func adoptWhisparrList(dst *[]*RadarrConfig, src []*RadarrConfig) {
 // adoptWhisparr folds deprecated [[whisparr]] / UN_WHISPARR_* into Radarr so
 // existing configs keep working. The on-disk snapshot is adopted too so the
 // next config write emits [[radarr]] instead of dropping those instances.
+// Idempotent. Does not log: unmarshalConfig runs this before setupLogging.
 func (u *Unpackerr) adoptWhisparr() {
 	if len(u.Whisparr) == 0 && (u.fileConfig == nil || len(u.fileConfig.Whisparr) == 0) {
 		return
 	}
 
+	u.whisparrAdopted = true
+
 	if len(u.Whisparr) > 0 {
-		u.Errorf("Config Warning: [[whisparr]] is now [[radarr]]. Rename UN_WHISPARR_* to UN_RADARR_* and see %s",
-			whisparrConfigDocs)
 		adoptWhisparrList(&u.Radarr, u.Whisparr)
 		u.Whisparr = nil
 	}
@@ -183,6 +184,15 @@ func (u *Unpackerr) adoptWhisparr() {
 		adoptWhisparrList(&u.fileConfig.Radarr, u.fileConfig.Whisparr)
 		u.fileConfig.Whisparr = nil
 	}
+}
+
+func (u *Unpackerr) warnAdoptedWhisparr() {
+	if !u.whisparrAdopted {
+		return
+	}
+
+	u.Errorf("Config Warning: [[whisparr]] is now [[radarr]]. Rename UN_WHISPARR_* to UN_RADARR_* and see %s",
+		whisparrConfigDocs)
 }
 
 // validateApps is broken-out into this file to make adding new apps easier.

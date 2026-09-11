@@ -96,6 +96,7 @@ type Unpackerr struct {
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error
+	whisparrAdopted  bool // folded [[whisparr]] before logging; warn after setupLogging
 	adminKeyNotice   string
 	adminKeyErr      error
 	histPath         string
@@ -200,6 +201,7 @@ func Start() error {
 		version.Version, version.Revision, os.Getpid(),
 		os.Getuid(), os.Getgid(), getUmask(), version.Started.Round(time.Second))
 	unpackerr.Debugf("%s", strings.Join(strings.Fields(strings.ReplaceAll(version.Print("unpackerr"), "\n", ", ")), " "))
+	unpackerr.warnAdoptedWhisparr()
 
 	if err := unpackerr.handleStartupPassword(); err != nil {
 		return err

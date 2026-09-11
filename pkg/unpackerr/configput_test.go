@@ -1516,4 +1516,8 @@ func TestConfigPutCanceledRequestIsGatewayTimeout(t *testing.T) {
 	if rec.Code != http.StatusGatewayTimeout {
 		t.Fatalf("canceled PUT should be 504: %d %s", rec.Code, rec.Body.String())
 	}
+
+	if _, err := os.Stat(unpack.ConfigFile); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("canceled PUT must not write %s: %v", unpack.ConfigFile, err)
+	}
 }

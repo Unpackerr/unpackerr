@@ -15,6 +15,10 @@ type mainTask struct {
 
 // onMainLoop runs fn on the main goroutine and waits for it.
 func (u *Unpackerr) onMainLoop(ctx context.Context, fn func() error) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("main loop: %w", err)
+	}
+
 	task := &mainTask{fn: fn, result: make(chan error, 1)}
 
 	select {

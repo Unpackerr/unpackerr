@@ -2,9 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
-	"time"
 
-	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
 
@@ -53,46 +51,4 @@ func (r *RadarrConfig) queueViews() []queueView {
 	return out
 }
 
-// checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
-func (u *Unpackerr) checkRadarrQueue(now time.Time) {
-	u.lockHistory()
-	defer u.unlockHistory()
-
-	for _, server := range u.Radarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			switch x, ok := u.Map[record.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Radarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
-				u.Map[record.Title] = &Extract{ // Save the download to our map.
-					App:         starr.Radarr,
-					URL:         server.URL,
-					Updated:     now,
-					Status:      WAITING,
-					DeleteOrig:  server.DeleteOrig,
-					DeleteDelay: server.DeleteDelay.Duration,
-					Syncthing:   server.Syncthing,
-					MaxBytes:    server.maxBytes,
-					Path:        u.getDownloadPath(record.OutputPath, starr.Radarr, record.Title, server.Paths),
-					IDs: map[string]any{
-						"downloadId": record.DownloadID,
-						"title":      record.Title,
-						"movieId":    record.MovieID,
-						"reason":     buildStatusReason(record.Status, record.StatusMessages),
-					},
-				}
-				u.Map[record.Title].XProg = &ExtractProgress{Extract: u.Map[record.Title]}
-
-				fallthrough
-			default:
-				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Radarr, server.URL, record.Status, record.Protocol,
-					percent(record.Sizeleft, record.Size), record.Title)
-			}
-		}
-	}
-}
+func (*RadarrConfig) tweakExtract(_ *Extract, _ queueView) {}

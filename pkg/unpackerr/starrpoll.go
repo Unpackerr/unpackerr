@@ -65,6 +65,44 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 	}
 }
 
+func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app starr.App, now time.Time) {
+	unpack.lockHistory()
+	defer unpack.unlockHistory()
+
+	for _, server := range list {
+		cfg := server.conf()
+
+		for _, rec := range server.queueViews() {
+			switch item, ok := unpack.Map[rec.Title]; {
+			case ok && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
+				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", app, cfg.URL, rec.Protocol, rec.Title)
+			case !ok && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
+				waiting := &Extract{
+					App:         app,
+					URL:         cfg.URL,
+					Updated:     now,
+					Status:      WAITING,
+					DeleteOrig:  cfg.DeleteOrig,
+					DeleteDelay: cfg.DeleteDelay.Duration,
+					Syncthing:   cfg.Syncthing,
+					MaxBytes:    cfg.maxBytes,
+					Path:        unpack.getDownloadPath(rec.OutputPath, app, rec.Title, cfg.Paths),
+					IDs:         rec.IDs,
+				}
+				waiting.XProg = &ExtractProgress{Extract: waiting}
+				server.tweakExtract(waiting, rec)
+				unpack.Map[rec.Title] = waiting
+
+				fallthrough
+			default:
+				unpack.Debugf("%s (%s): %s (%s:%d%%): %v%s",
+					app, cfg.URL, rec.Status, rec.Protocol,
+					percent(rec.Sizeleft, rec.Size), rec.Title, rec.DebugExtra)
+			}
+		}
+	}
+}
+
 func haveStarrQitem[T any, P starrApp[T]](list []P, name string) bool {
 	for _, server := range list {
 		for _, rec := range server.queueViews() {

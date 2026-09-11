@@ -2,9 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
-	"time"
 
-	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
 
@@ -54,47 +52,4 @@ func (r *ReadarrConfig) queueViews() []queueView {
 	return out
 }
 
-// checkReadarQueue saves completed Readarr-queued downloads to u.Map.
-func (u *Unpackerr) checkReadarrQueue(now time.Time) {
-	u.lockHistory()
-	defer u.unlockHistory()
-
-	for _, server := range u.Readarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			switch x, ok := u.Map[record.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
-				u.Map[record.Title] = &Extract{
-					App:         starr.Readarr,
-					URL:         server.URL,
-					Updated:     now,
-					Status:      WAITING,
-					DeleteOrig:  server.DeleteOrig,
-					DeleteDelay: server.DeleteDelay.Duration,
-					Syncthing:   server.Syncthing,
-					MaxBytes:    server.maxBytes,
-					Path:        u.getDownloadPath(record.OutputPath, starr.Readarr, record.Title, server.Paths),
-					IDs: map[string]any{
-						"title":      record.Title,
-						"authorId":   record.AuthorID,
-						"bookId":     record.BookID,
-						"downloadId": record.DownloadID,
-						"reason":     buildStatusReason(record.Status, record.StatusMessages),
-					},
-				}
-				u.Map[record.Title].XProg = &ExtractProgress{Extract: u.Map[record.Title]}
-
-				fallthrough
-			default:
-				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Readarr, server.URL, record.Status, record.Protocol,
-					percent(record.Sizeleft, record.Size), record.Title)
-			}
-		}
-	}
-}
+func (*ReadarrConfig) tweakExtract(_ *Extract, _ queueView) {}

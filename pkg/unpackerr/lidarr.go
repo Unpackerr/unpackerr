@@ -5,9 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
-	"golift.io/starr"
 	"golift.io/starr/lidarr"
 )
 
@@ -61,51 +59,9 @@ func (l *LidarrConfig) queueViews() []queueView {
 	return out
 }
 
-// checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
-func (u *Unpackerr) checkLidarrQueue(now time.Time) {
-	u.lockHistory()
-	defer u.unlockHistory()
-
-	for _, server := range u.Lidarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			switch x, ok := u.Map[record.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Lidarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
-				u.Map[record.Title] = &Extract{
-					App:         starr.Lidarr,
-					URL:         server.URL,
-					Updated:     now,
-					Status:      WAITING,
-					DeleteOrig:  server.DeleteOrig,
-					DeleteDelay: server.DeleteDelay.Duration,
-					Syncthing:   server.Syncthing,
-					MaxBytes:    server.maxBytes,
-					SplitFlac:   server.SplitFlac,
-					Path:        u.getDownloadPath(record.OutputPath, starr.Lidarr, record.Title, server.Paths),
-					OutputPath:  record.OutputPath,
-					IDs: map[string]any{
-						"title":      record.Title,
-						"artistId":   record.ArtistID,
-						"albumId":    record.AlbumID,
-						"downloadId": record.DownloadID,
-						"reason":     buildStatusReason(record.Status, record.StatusMessages),
-					},
-				}
-				u.Map[record.Title].XProg = &ExtractProgress{Extract: u.Map[record.Title]}
-
-				fallthrough
-			default:
-				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Lidarr, server.URL, record.Status, record.Protocol,
-					percent(record.Sizeleft, record.Size), record.Title)
-			}
-		}
-	}
+func (l *LidarrConfig) tweakExtract(item *Extract, rec queueView) {
+	item.SplitFlac = l.SplitFlac
+	item.OutputPath = rec.OutputPath
 }
 
 // lidarrServerByURL returns the Lidarr server config that matches the given URL, or nil.

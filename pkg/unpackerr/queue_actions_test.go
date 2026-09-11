@@ -198,7 +198,7 @@ func TestForgottenStarrTitle(t *testing.T) {
 		t.Fatalf("forget %d %s", forgetOK.Code, forgetOK.Body.String())
 	}
 
-	unpack.checkRadarrQueue(time.Now())
+	checkStarrQueue(unpack, unpack.Radarr, starr.Radarr, time.Now())
 
 	if _, exists := unpack.Map["Movie"]; exists {
 		t.Fatal("forgotten title recreated from Starr queue")
@@ -213,7 +213,7 @@ func TestForgottenStarrTitle(t *testing.T) {
 		Protocol:   starr.Protocol("torrent"),
 		OutputPath: "/dl/Movie",
 	}}
-	unpack.checkRadarrQueue(time.Now())
+	checkStarrQueue(unpack, unpack.Radarr, starr.Radarr, time.Now())
 
 	if _, exists := unpack.Map["Movie"]; !exists {
 		t.Fatal("title should track again after leaving the Starr queue")

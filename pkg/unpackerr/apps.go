@@ -11,8 +11,8 @@ import (
 	"golift.io/starr"
 )
 
-/* Shared Starr poll/have lives in starrpoll.go. Per-app files still own check*Queue
-   until the next change; Lidarr SplitFlac stays Lidarr-only.
+/* Shared Starr poll/check/have lives in starrpoll.go. Lidarr SplitFlac is applied
+   via starrApp.tweakExtract so the other apps stay no-ops.
 */
 
 // DefaultQueuePageSize is how many queue items we request from each Starr app.
@@ -132,11 +132,11 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 
 	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
-	u.checkLidarrQueue(now)
-	u.checkRadarrQueue(now)
-	u.checkReadarrQueue(now)
-	u.checkSonarrQueue(now)
-	u.checkWhisparrQueue(now)
+	checkStarrQueue(u, u.Lidarr, starr.Lidarr, now)
+	checkStarrQueue(u, u.Radarr, starr.Radarr, now)
+	checkStarrQueue(u, u.Readarr, starr.Readarr, now)
+	checkStarrQueue(u, u.Sonarr, starr.Sonarr, now)
+	checkStarrQueue(u, u.Whisparr, starr.Whisparr, now)
 	u.sweepForgotten()
 }
 

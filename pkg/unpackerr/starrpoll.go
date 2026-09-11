@@ -105,10 +105,8 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 
 func haveStarrQitem[T any, P starrApp[T]](list []P, name string) bool {
 	for _, server := range list {
-		for _, rec := range server.queueViews() {
-			if rec.Title == name {
-				return true
-			}
+		if server.hasQueueTitle(name) {
+			return true
 		}
 	}
 

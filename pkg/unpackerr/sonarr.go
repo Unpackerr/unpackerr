@@ -53,6 +53,20 @@ func (s *SonarrConfig) queueViews() []queueView {
 	return out
 }
 
+func (s *SonarrConfig) hasQueueTitle(name string) bool {
+	if s.Queue == nil {
+		return false
+	}
+
+	for _, rec := range s.Queue.Records {
+		if rec.Title == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (*SonarrConfig) tweakExtract(_ *Extract, _ queueView) {}
 
 func (*SonarrConfig) logExtra() string { return "" }

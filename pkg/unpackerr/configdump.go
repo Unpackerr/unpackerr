@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	"golift.io/starr"
 	"golift.io/version"
@@ -208,7 +209,7 @@ func (u *Unpackerr) logWebhook(printf configLine) {
 		}
 
 		printf("%s: %s, timeout: %v, ignore ssl: %v, silent: %v%s, events: %q",
-			prefix, hook.Name, hook.Timeout, hook.IgnoreSSL, hook.Silent, vars, logEvents(hook.Events))
+			prefix, hook.Name, hook.Timeout, hook.IgnoreSSL, hook.Silent, vars, hooks.LogEvents(hook.Events))
 	}
 }
 
@@ -224,7 +225,7 @@ func (u *Unpackerr) logCmdhook(printf configLine) {
 
 	for _, hook := range u.Cmdhook {
 		printf("%s: %s, timeout: %v, silent: %v, events: %v, shell: %v, cmd: %s",
-			prefix, hook.Name, hook.Timeout, hook.Silent, logEvents(hook.Events), hook.Shell, hook.Command)
+			prefix, hook.Name, hook.Timeout, hook.Silent, hooks.LogEvents(hook.Events), hook.Shell, hook.Command)
 	}
 }
 

@@ -1,100 +1,37 @@
 package unpackerr
 
 import (
-	"bytes"
-	"context"
-	"crypto/tls"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"runtime"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/extract"
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/cnfg"
-	"golift.io/starr"
 	"golift.io/version"
 )
 
-// WebhookConfig defines the data to send webhooks to a server.
-type WebhookConfig struct {
-	Name       string          `json:"name"         toml:"name"          xml:"name"                    yaml:"name"`
-	URL        string          `json:"url"          toml:"url"           xml:"url,omitempty"           yaml:"url"`
-	Command    string          `json:"command"      toml:"command"       xml:"command,omitempty"       yaml:"command"`
-	CType      string          `json:"contentType"  toml:"content_type"  xml:"content_type,omitempty"  yaml:"contentType"`
-	TmplPath   string          `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
-	TempName   string          `json:"template"     toml:"template"      xml:"template,omitempty"      yaml:"template"`
-	Timeout    cnfg.Duration   `json:"timeout"      toml:"timeout"       xml:"timeout"                 yaml:"timeout"`
-	Shell      bool            `json:"shell"        toml:"shell"         xml:"shell"                   yaml:"shell"`
-	IgnoreSSL  bool            `json:"ignoreSsl"    toml:"ignore_ssl"    xml:"ignore_ssl,omitempty"    yaml:"ignoreSsl"`
-	Silent     bool            `json:"silent"       toml:"silent"        xml:"silent"                  yaml:"silent"`
-	Events     ExtractStatuses `json:"events"       toml:"events"        xml:"events"                  yaml:"events"`
-	Exclude    StringSlice     `json:"exclude"      toml:"exclude"       xml:"exclude"                 yaml:"exclude"`
-	Nickname   string          `json:"nickname"     toml:"nickname"      xml:"nickname,omitempty"      yaml:"nickname"`
-	Token      string          `json:"token"        toml:"token"         xml:"token,omitempty"         yaml:"token"`
-	Channel    string          `json:"channel"      toml:"channel"       xml:"channel,omitempty"       yaml:"channel"`
-	client     *http.Client
-	fails      uint
-	posts      uint
-	sync.Mutex `json:"-" toml:"-" xml:"-" yaml:"-"`
-}
-
-type hookQueueItem struct {
-	*WebhookConfig
-	*WebhookPayload
-}
-
-// Errors produced by this file.
-var (
-	ErrInvalidStatus = errors.New("invalid HTTP status reply")
-	ErrWebhookNoURL  = errors.New("webhook without a URL configured; fix it")
-)
-
-// ExtractStatuses allows us to create a custom environment variable unmarshaller.
-type ExtractStatuses []ExtractStatus
-
-// UnmarshalENV turns environment variables into extraction statuses.
-func (statuses *ExtractStatuses) UnmarshalENV(tag, envval string) error {
-	if envval == "" {
-		return nil
-	}
-
-	envval = strings.Trim(envval, `["',] `)
-	vals := strings.Split(envval, ",")
-	*statuses = make(ExtractStatuses, len(vals))
-
-	for idx, val := range vals {
-		intVal, err := strconv.ParseUint(strings.TrimSpace(val), 10, 8)
-		if err != nil {
-			return fmt.Errorf("converting tag %s value '%s' to number: %w", tag, envval, err)
-		}
-
-		(*statuses)[idx] = ExtractStatus(intVal)
-	}
-
-	return nil
-}
-
-func (statuses *ExtractStatuses) MarshalENV(tag string) (map[string]string, error) {
-	vals := make([]string, len(*statuses))
-
-	for idx, status := range *statuses {
-		vals[idx] = status.String()
-	}
-
-	return map[string]string{tag: strings.Join(vals, ",")}, nil
-}
-
-// runAllHooks sends webhooks and executes command hooks.
 func (u *Unpackerr) runAllHooks(item *Extract) {
 	if item.Status == IMPORTED && item.App == FolderString {
 		return // This is an internal state change we don't need to fire on.
 	}
 
-	payload := &WebhookPayload{
+	payload := hookPayload(item)
+
+	for _, hook := range u.hookList() {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
+			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+		}
+	}
+
+	for _, hook := range u.cmdhookList() {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
+			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+		}
+	}
+}
+
+func hookPayload(item *Extract) *hooks.Payload {
+	payload := &hooks.Payload{
 		Path:  item.Path,
 		App:   item.App,
 		IDs:   item.IDs,
@@ -112,8 +49,8 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 	}
 
 	if item.Status <= EXTRACTED && item.Resp != nil {
-		payload.Data = &XtractPayload{
-			Files:   item.Resp.NewFiles,
+		payload.Data = &hooks.XtractPayload{
+			Files:   hooks.StringSlice(item.Resp.NewFiles),
 			File:    item.Resp.NewFiles,
 			Start:   item.Resp.Started,
 			Output:  item.Resp.Output,
@@ -137,97 +74,17 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 		}
 	}
 
-	for _, hook := range u.hookList() {
-		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
-		}
-	}
-
-	for _, hook := range u.cmdhookList() {
-		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
-			u.queueHook(&hookQueueItem{WebhookConfig: hook, WebhookPayload: payload})
-		}
-	}
+	return payload
 }
 
-func (u *Unpackerr) sendWebhookWithLog(hook *WebhookConfig, payload *WebhookPayload) {
-	var body bytes.Buffer
-
-	if tmpl, err := hook.Template(); err != nil {
-		u.Errorf("Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
-		return
-	} else if err = tmpl.Execute(&body, payload); err != nil {
-		u.Errorf("Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
-		return
-	}
-
-	bodyStr := body.String()
-
-	if reply, err := hook.Send(&body); err != nil {
-		u.Debugf("Webhook Payload: %s", bodyStr)
-		u.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
-		u.Debugf("Webhook Response: %s", string(reply))
-	} else if !hook.Silent {
-		u.Debugf("Webhook Payload: %s", bodyStr)
-		u.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
-	}
-}
-
-// Send marshals an any into json and POSTs it to a URL.
-func (w *WebhookConfig) Send(body io.Reader) ([]byte, error) {
-	if w.URL == "" {
-		return nil, ErrWebhookNoURL
-	}
-
-	w.Lock()
-	defer w.Unlock()
-
-	w.posts++
-
-	ctx, cancel := context.WithTimeout(context.Background(), w.Timeout.Duration+time.Second)
-	defer cancel()
-
-	resp, err := w.send(ctx, body)
-	if err != nil {
-		w.fails++
-	}
-
-	return resp, err
-}
-
-func (w *WebhookConfig) send(ctx context.Context, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.URL, body)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", w.CType)
-
-	res, err := w.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("POSTing payload: %w", err)
-	}
-	defer res.Body.Close()
-
-	// The error is mostly ignored because we don't care about the body.
-	// Read it in to avoid a memopry leak. Used in the if-stanza below.
-	reply, _ := io.ReadAll(res.Body)
-
-	if res.StatusCode < http.StatusOK || res.StatusCode > http.StatusNoContent {
-		return nil, fmt.Errorf("%w (%s): %s", ErrInvalidStatus, res.Status, reply)
-	}
-
-	return reply, nil
-}
-
-func (u *Unpackerr) hookList() []*WebhookConfig {
+func (u *Unpackerr) hookList() []*hooks.Config {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
 	return u.Webhook
 }
 
-func (u *Unpackerr) cmdhookList() []*WebhookConfig {
+func (u *Unpackerr) cmdhookList() []*hooks.Config {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
@@ -238,122 +95,47 @@ func (u *Unpackerr) validateWebhook() error {
 	return u.validateWebhookList(u.Webhook)
 }
 
-func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error { //nolint:cyclop
-	for idx := range list {
-		if list[idx] == nil {
-			return errNilConfigEntry
-		}
-
-		list[idx].Command = ""
-
-		if list[idx].URL == "" {
-			return ErrWebhookNoURL
-		}
-
-		if list[idx].Name == "" {
-			list[idx].Name = list[idx].URL
-		}
-
-		if list[idx].Nickname == "" && list[idx].TmplPath == "" &&
-			!strings.Contains(list[idx].URL, "pushover.net") {
-			list[idx].Nickname = "Unpackerr"
-		}
-
-		if list[idx].CType == "" {
-			list[idx].CType = "application/json"
-			if strings.Contains(list[idx].URL, "pushover.net") {
-				list[idx].CType = "application/x-www-form-urlencoded"
-			}
-		}
-
-		if list[idx].Timeout.Duration == 0 {
-			list[idx].Timeout.Duration = u.Timeout.Duration
-		}
-
-		if len(list[idx].Events) == 0 {
-			list[idx].Events = []ExtractStatus{WAITING}
-		}
-
-		if list[idx].client == nil {
-			list[idx].client = &http.Client{
-				Timeout: list[idx].Timeout.Duration,
-				Transport: &http.Transport{TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: list[idx].IgnoreSSL, //nolint:gosec
-				}},
-			}
-		}
+func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error {
+	if err := hooks.ValidateWebhooks(list, u.Timeout.Duration); err != nil {
+		return fmt.Errorf("validating webhooks: %w", err)
 	}
 
 	return nil
 }
 
-// logEvents is only used in logWebhook to format events for printing.
-func logEvents(events []ExtractStatus) string {
-	if len(events) == 1 && events[0] == WAITING {
-		return "all"
-	}
-
-	var output string
-
-	for _, event := range events {
-		if len(output) > 0 {
-			output += "; "
-		}
-
-		output += event.String()
-	}
-
-	return output
+func (u *Unpackerr) validateCmdhook() error {
+	return u.validateCmdhookList(u.Cmdhook)
 }
 
-// Excluded returns true if an app is in the Exclude slice.
-func (w *WebhookConfig) Excluded(app starr.App) bool {
-	for _, exclude := range w.Exclude {
-		if strings.EqualFold(exclude, string(app)) {
-			return true
-		}
+func (u *Unpackerr) validateCmdhookList(list []*WebhookConfig) error {
+	if err := hooks.ValidateCmdhooks(list, u.Timeout.Duration, expandHomedir); err != nil {
+		return fmt.Errorf("validating cmdhooks: %w", err)
 	}
 
-	return false
-}
-
-// HasEvent returns true if a status event is in the Events slice.
-// Also returns true if the Events slice has only one value of WAITING.
-func (w *WebhookConfig) HasEvent(e ExtractStatus) bool {
-	for _, status := range w.Events {
-		if (status == WAITING && len(w.Events) == 1) || status == e {
-			return true
-		}
-	}
-
-	return false
+	return nil
 }
 
 // WebhookCounts returns the total count of requests and errors for all webhooks.
 func (u *Unpackerr) WebhookCounts() (uint, uint) {
-	return hookCounts(u.hookList())
+	return hooks.CountAll(u.hookList())
 }
 
-func hookCounts(hooks []*WebhookConfig) (uint, uint) {
-	var total, fails uint
+// CmdhookCounts returns the total count of requests and errors for all command hooks.
+func (u *Unpackerr) CmdhookCounts() (uint, uint) {
+	return hooks.CountAll(u.cmdhookList())
+}
 
-	for _, hook := range hooks {
-		if hook == nil {
-			continue
-		}
+func (u *Unpackerr) sampleWebhook(e extract.Status) error {
+	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", e)
 
-		posts, failures := hook.Counts()
-		total += posts
-		fails += failures
+	payload := hooks.SamplePayload()
+	if err := hooks.PrepareSample(payload, e); err != nil {
+		return fmt.Errorf("preparing sample webhook: %w", err)
 	}
 
-	return total, fails
-}
+	for _, hook := range u.Webhook {
+		hooks.SendWithLog(u.Logger, hook, payload)
+	}
 
-// Counts returns the total count of requests and failures for a webhook.
-func (w *WebhookConfig) Counts() (uint, uint) {
-	w.Lock()
-	defer w.Unlock()
-
-	return w.posts, w.fails
+	return nil
 }

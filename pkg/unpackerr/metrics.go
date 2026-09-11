@@ -62,7 +62,7 @@ func (c *MetricsCollector) Collect(metrics chan<- prometheus.Metric) {
 	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.updates)), "xtractr_updates")
 	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.folders.Updates)), "folder_updates")
 	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.delChan)), "deletes")
-	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(len(c.hookChan)), "hooks")
+	metrics <- newMetric(c.buffer, prometheus.GaugeValue, float64(c.hookWorker.Len()), "hooks")
 }
 
 // updateMetrics observes metrics for each completed extraction. The url for a folder is the watch path.

@@ -7,7 +7,7 @@ import (
 	"golift.io/starr/sonarr"
 )
 
-// starrApp is what putStarrList and the clone/carry helpers need from each
+// starrApp is what putStarrList, clone/carry, and the poll helpers need from each
 // Starr config type. P is the pointer type (*SonarrConfig), T the struct.
 type starrApp[T any] interface {
 	*T
@@ -15,6 +15,8 @@ type starrApp[T any] interface {
 	connect()         // build the API client from conf.
 	takeQueue(old *T) // keep the last polled queue from a matching old entry.
 	stripRuntime()    // nil the queue and client on a file-shaped clone.
+	pollQueue() (total, retrieved int, err error)
+	queueViews() []queueView
 }
 
 func (s *SonarrConfig) conf() *StarrConfig { return &s.StarrConfig }

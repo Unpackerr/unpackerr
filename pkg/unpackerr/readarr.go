@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"time"
 
 	"golift.io/starr"
@@ -14,47 +15,43 @@ type ReadarrConfig struct {
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateReadarr() error {
-	tmp := u.Readarr[:0]
-
-	for idx := range u.Readarr {
-		if err := u.validateApp(&u.Readarr[idx].StarrConfig, starr.Readarr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		u.Readarr[idx].Readarr = readarr.New(&u.Readarr[idx].Config)
-		tmp = append(tmp, u.Readarr[idx])
+func (r *ReadarrConfig) pollQueue() (int, int, error) {
+	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		return 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	u.Readarr = tmp
+	r.Queue = queue
 
-	return nil
+	return queue.TotalRecords, len(queue.Records), nil
 }
 
-// getReadarrQueue saves the Readarr Queue(s).
-func (u *Unpackerr) getReadarrQueue(server *ReadarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-		return
+func (r *ReadarrConfig) queueViews() []queueView {
+	if r.Queue == nil {
+		return nil
 	}
 
-	queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
-	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
-		return
+	out := make([]queueView, 0, len(r.Queue.Records))
+
+	for _, rec := range r.Queue.Records {
+		out = append(out, queueView{
+			Title:      rec.Title,
+			Status:     rec.Status,
+			Protocol:   rec.Protocol,
+			OutputPath: rec.OutputPath,
+			Size:       rec.Size,
+			Sizeleft:   rec.Sizeleft,
+			IDs: map[string]any{
+				"title":      rec.Title,
+				"authorId":   rec.AuthorID,
+				"bookId":     rec.BookID,
+				"downloadId": rec.DownloadID,
+				"reason":     buildStatusReason(rec.Status, rec.StatusMessages),
+			},
+		})
 	}
 
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Readarr, server.URL, nil)
-
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-	}
+	return out
 }
 
 // checkReadarQueue saves completed Readarr-queued downloads to u.Map.
@@ -100,21 +97,4 @@ func (u *Unpackerr) checkReadarrQueue(now time.Time) {
 			}
 		}
 	}
-}
-
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveReadarrQitem(name string) bool {
-	for _, server := range u.Readarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
-		}
-	}
-
-	return false
 }

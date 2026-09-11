@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"time"
 
 	"golift.io/starr"
@@ -14,47 +15,44 @@ type SonarrConfig struct {
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateSonarr() error {
-	tmp := u.Sonarr[:0]
-
-	for idx := range u.Sonarr {
-		if err := u.validateApp(&u.Sonarr[idx].StarrConfig, starr.Sonarr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		u.Sonarr[idx].Sonarr = sonarr.New(&u.Sonarr[idx].Config)
-		tmp = append(tmp, u.Sonarr[idx])
+func (s *SonarrConfig) pollQueue() (int, int, error) {
+	queue, err := s.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		return 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	u.Sonarr = tmp
+	s.Queue = queue
 
-	return nil
+	return queue.TotalRecords, len(queue.Records), nil
 }
 
-// getSonarrQueue saves the Sonarr Queue(s).
-func (u *Unpackerr) getSonarrQueue(server *SonarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Sonarr (%s): skipped, no API key", server.URL)
-		return
+func (s *SonarrConfig) queueViews() []queueView {
+	if s.Queue == nil {
+		return nil
 	}
 
-	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Sonarr, server.URL, err)
-		return
+	out := make([]queueView, 0, len(s.Queue.Records))
+
+	for _, rec := range s.Queue.Records {
+		out = append(out, queueView{
+			Title:      rec.Title,
+			Status:     rec.Status,
+			Protocol:   rec.Protocol,
+			OutputPath: rec.OutputPath,
+			Size:       rec.Size,
+			Sizeleft:   rec.Sizeleft,
+			DebugExtra: fmt.Sprintf(" (Ep: %v)", rec.EpisodeID),
+			IDs: map[string]any{
+				"title":      rec.Title,
+				"downloadId": rec.DownloadID,
+				"seriesId":   rec.SeriesID,
+				"episodeId":  rec.EpisodeID,
+				"reason":     buildStatusReason(rec.Status, rec.StatusMessages),
+			},
+		})
 	}
 
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Sonarr, server.URL, nil)
-
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Sonarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-	}
+	return out
 }
 
 // checkSonarrQueue saves completed Sonarr-queued downloads to u.Map.
@@ -100,21 +98,4 @@ func (u *Unpackerr) checkSonarrQueue(now time.Time) {
 			}
 		}
 	}
-}
-
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveSonarrQitem(name string) bool {
-	for _, server := range u.Sonarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
-		}
-	}
-
-	return false
 }

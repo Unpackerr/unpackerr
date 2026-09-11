@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"time"
 
 	"golift.io/starr"
@@ -14,47 +15,42 @@ type RadarrConfig struct {
 	*radarr.Radarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateRadarr() error {
-	tmp := u.Radarr[:0]
-
-	for idx := range u.Radarr {
-		if err := u.validateApp(&u.Radarr[idx].StarrConfig, starr.Radarr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		u.Radarr[idx].Radarr = radarr.New(&u.Radarr[idx].Config)
-		tmp = append(tmp, u.Radarr[idx])
+func (r *RadarrConfig) pollQueue() (int, int, error) {
+	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		return 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	u.Radarr = tmp
+	r.Queue = queue
 
-	return nil
+	return queue.TotalRecords, len(queue.Records), nil
 }
 
-// getRadarrQueue saves the Radarr Queue(s).
-func (u *Unpackerr) getRadarrQueue(server *RadarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Radarr (%s): skipped, no API key", server.URL)
-		return
+func (r *RadarrConfig) queueViews() []queueView {
+	if r.Queue == nil {
+		return nil
 	}
 
-	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Radarr, server.URL, err)
-		return
+	out := make([]queueView, 0, len(r.Queue.Records))
+
+	for _, rec := range r.Queue.Records {
+		out = append(out, queueView{
+			Title:      rec.Title,
+			Status:     rec.Status,
+			Protocol:   rec.Protocol,
+			OutputPath: rec.OutputPath,
+			Size:       rec.Size,
+			Sizeleft:   rec.Sizeleft,
+			IDs: map[string]any{
+				"downloadId": rec.DownloadID,
+				"title":      rec.Title,
+				"movieId":    rec.MovieID,
+				"reason":     buildStatusReason(rec.Status, rec.StatusMessages),
+			},
+		})
 	}
 
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Radarr, server.URL, nil)
-
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Radarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-	}
+	return out
 }
 
 // checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
@@ -99,21 +95,4 @@ func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 			}
 		}
 	}
-}
-
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveRadarrQitem(name string) bool {
-	for _, server := range u.Radarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
-		}
-	}
-
-	return false
 }

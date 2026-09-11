@@ -667,7 +667,7 @@ func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
 		APIKey: "short",
 	}}
 
-	if err := unpack.validateSonarr(); err != nil {
+	if err := validateStarrList(unpack, &unpack.Sonarr, starr.Sonarr); err != nil {
 		t.Fatal(err)
 	}
 

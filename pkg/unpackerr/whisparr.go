@@ -4,10 +4,9 @@ import (
 	"time"
 
 	"golift.io/starr"
-	"golift.io/starr/radarr"
 )
 
-// WhisparrConfig just uses radarr.
+// WhisparrConfig just uses radarr. Queue poll/have is shared via starrApp on *RadarrConfig.
 /*
 type WhisparrConfig struct {
 	starr.Config
@@ -20,51 +19,6 @@ type WhisparrConfig struct {
 	sync.RWMutex   `json:"-" toml:"-" xml:"-" yaml:"-"`
 	*whisparr.Whisparr `json:"-" toml:"-" xml:"-" yaml:"-"`
 } */
-
-func (u *Unpackerr) validateWhisparr() error {
-	tmp := u.Whisparr[:0]
-
-	for idx := range u.Whisparr {
-		if err := u.validateApp(&u.Whisparr[idx].StarrConfig, starr.Whisparr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		// shoehorned into Radarr!
-		u.Whisparr[idx].Radarr = radarr.New(&u.Whisparr[idx].Config)
-		tmp = append(tmp, u.Whisparr[idx])
-	}
-
-	u.Whisparr = tmp
-
-	return nil
-}
-
-// getWhisparrQueue saves the Whisparr Queue(s).
-func (u *Unpackerr) getWhisparrQueue(server *RadarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Whisparr (%s): skipped, no API key", server.URL)
-		return
-	}
-
-	queue, err := server.GetQueue(DefaultQueuePageSize, 1)
-	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Whisparr, server.URL, err)
-		return
-	}
-
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Whisparr, server.URL, nil)
-
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Whisparr] Updated (%s): %d Items Queued, %d Retrieved",
-			server.URL, queue.TotalRecords, len(queue.Records))
-	}
-}
 
 // checkWhisparrQueue saves completed Whisparr-queued downloads to u.Map.
 func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
@@ -107,21 +61,4 @@ func (u *Unpackerr) checkWhisparrQueue(now time.Time) {
 			}
 		}
 	}
-}
-
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveWhisparrQitem(name string) bool {
-	for _, server := range u.Whisparr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
-		}
-	}
-
-	return false
 }

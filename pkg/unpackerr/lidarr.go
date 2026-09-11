@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -21,47 +22,43 @@ type LidarrConfig struct {
 	*lidarr.Lidarr `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
 }
 
-func (u *Unpackerr) validateLidarr() error {
-	tmp := u.Lidarr[:0]
-
-	for idx := range u.Lidarr {
-		if err := u.validateApp(&u.Lidarr[idx].StarrConfig, starr.Lidarr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		u.Lidarr[idx].Lidarr = lidarr.New(&u.Lidarr[idx].Config)
-		tmp = append(tmp, u.Lidarr[idx])
+func (l *LidarrConfig) pollQueue() (int, int, error) {
+	queue, err := l.GetQueue(DefaultQueuePageSize, 1)
+	if err != nil {
+		return 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	u.Lidarr = tmp
+	l.Queue = queue
 
-	return nil
+	return queue.TotalRecords, len(queue.Records), nil
 }
 
-// getLidarrQueue saves the Lidarr Queue(s).
-func (u *Unpackerr) getLidarrQueue(server *LidarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Lidarr (%s): skipped, no API key", server.URL)
-		return
+func (l *LidarrConfig) queueViews() []queueView {
+	if l.Queue == nil {
+		return nil
 	}
 
-	queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
-	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Lidarr, server.URL, err)
-		return
+	out := make([]queueView, 0, len(l.Queue.Records))
+
+	for _, rec := range l.Queue.Records {
+		out = append(out, queueView{
+			Title:      rec.Title,
+			Status:     rec.Status,
+			Protocol:   rec.Protocol,
+			OutputPath: rec.OutputPath,
+			Size:       rec.Size,
+			Sizeleft:   rec.Sizeleft,
+			IDs: map[string]any{
+				"title":      rec.Title,
+				"artistId":   rec.ArtistID,
+				"albumId":    rec.AlbumID,
+				"downloadId": rec.DownloadID,
+				"reason":     buildStatusReason(rec.Status, rec.StatusMessages),
+			},
+		})
 	}
 
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Lidarr, server.URL, nil)
-
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Lidarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-	}
+	return out
 }
 
 // checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
@@ -109,23 +106,6 @@ func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 			}
 		}
 	}
-}
-
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveLidarrQitem(name string) bool {
-	for _, server := range u.Lidarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 // lidarrServerByURL returns the Lidarr server config that matches the given URL, or nil.

@@ -41,18 +41,20 @@ func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list *[]P, app s
 
 func warnDuplicateStarrNames[T any, P starrApp[T]](unpack *Unpackerr, seen map[string]string, app starr.App, list []P) {
 	for _, item := range list {
-		c := item.conf()
-		name := strings.TrimSpace(c.Name)
+		cfg := item.conf()
+		name := strings.TrimSpace(cfg.Name)
+
 		if name == "" {
 			continue
 		}
 
 		key := strings.ToLower(name)
-		loc := fmt.Sprintf("%s (%s)", app, c.URL)
+		loc := fmt.Sprintf("%s (%s)", app, cfg.URL)
 
 		if prev, ok := seen[key]; ok {
 			unpack.Errorf("Config Warning: duplicate Starr instance name %q on %s and %s; hook exclude cannot tell them apart",
 				name, prev, loc)
+
 			continue
 		}
 
@@ -96,15 +98,15 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 		cfg := server.conf()
 
 		for _, rec := range server.queueViews() {
-			item, ok := unpack.Map[rec.Title]
-			if ok {
+			item, found := unpack.Map[rec.Title]
+			if found {
 				item.Name = cfg.Name
 			}
 
 			switch {
-			case ok && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
+			case found && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
 				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", cfg.Label(app), cfg.URL, rec.Protocol, rec.Title)
-			case !ok && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
+			case !found && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
 				waiting := &Extract{
 					App:         app,
 					Name:        cfg.Name,

@@ -120,11 +120,9 @@ func TestCheckStarrQueueSetsName(t *testing.T) {
 
 	unpack := New()
 	unpack.Sonarr = []*SonarrConfig{{
-		StarrConfig: StarrConfig{
-			Name:      "Sportarr",
-			Protocols: defaultProtocol,
-			Paths:     StringSlice{mappedRoot},
-		},
+		Name:      "Sportarr",
+		Protocols: defaultProtocol,
+		Paths:     StringSlice{mappedRoot},
 		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{
 			Title:    title,
 			Status:   "completed",

@@ -59,6 +59,20 @@ func (l *LidarrConfig) queueViews() []queueView {
 	return out
 }
 
+func (l *LidarrConfig) hasQueueTitle(name string) bool {
+	if l.Queue == nil {
+		return false
+	}
+
+	for _, rec := range l.Queue.Records {
+		if rec.Title == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (l *LidarrConfig) tweakExtract(item *Extract, rec queueView) {
 	item.SplitFlac = l.SplitFlac
 	item.OutputPath = rec.OutputPath

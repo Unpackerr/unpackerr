@@ -18,6 +18,7 @@ type starrApp[T any] interface {
 	stripRuntime()    // nil the queue and client on a file-shaped clone.
 	pollQueue() (total, retrieved int, err error)
 	queueViews() []queueView
+	hasQueueTitle(name string) bool
 	tweakExtract(item *Extract, rec queueView)
 	logExtra() string
 }

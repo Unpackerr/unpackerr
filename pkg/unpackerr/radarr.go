@@ -51,6 +51,20 @@ func (r *RadarrConfig) queueViews() []queueView {
 	return out
 }
 
+func (r *RadarrConfig) hasQueueTitle(name string) bool {
+	if r.Queue == nil {
+		return false
+	}
+
+	for _, rec := range r.Queue.Records {
+		if rec.Title == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (*RadarrConfig) tweakExtract(_ *Extract, _ queueView) {}
 
 func (*RadarrConfig) logExtra() string { return "" }

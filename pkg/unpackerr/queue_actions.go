@@ -175,7 +175,7 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 		return errQueueNotFound
 	}
 
-	if !item.Status.isDurableHistory() {
+	if !isDurableHistory(item.Status) {
 		return errQueueNotForgettable
 	}
 

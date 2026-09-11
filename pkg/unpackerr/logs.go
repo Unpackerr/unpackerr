@@ -1,14 +1,12 @@
 package unpackerr
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dromara/carbon/v2"
@@ -27,93 +25,6 @@ const (
 	starrLogLine = "%s, apikey:%v, timeout:%v, verify_ssl:%v, protos:%s, " +
 		"syncthing:%v, delete_orig:%v, delete_delay:%v, paths:%q"
 )
-
-// ExtractStatus is our enum for an extract's status.
-type ExtractStatus uint8
-
-// Extract Statuses.
-const (
-	WAITING = ExtractStatus(iota)
-	QUEUED
-	EXTRACTING
-	EXTRACTFAILED
-	EXTRACTED
-	IMPORTED
-	DELETING
-	DELETEFAILED // unused
-	DELETED
-	EXTRACTEDNOTHING
-)
-
-// Desc makes ExtractStatus human readable.
-func (status ExtractStatus) Desc() string {
-	if status > EXTRACTEDNOTHING {
-		return "Unknown"
-	}
-
-	return []string{
-		// The order must not be faulty.
-		"Waiting, pre-Queue",
-		"Queued",
-		"Extracting",
-		"Extraction Failed",
-		"Extracted, Awaiting Import",
-		"Imported",
-		"Deleting",
-		"Delete Failed",
-		"Deleted",
-		"Nothing Extracted",
-	}[status]
-}
-
-// MarshalText turns a status into a word, for a json identifier.
-func (status ExtractStatus) MarshalText() ([]byte, error) {
-	return []byte(status.String()), nil
-}
-
-// UnmarshalText turns a json identifier or TOML event ID back into a status.
-func (status *ExtractStatus) UnmarshalText(text []byte) error {
-	name := strings.TrimSpace(string(text))
-	if parsed, err := strconv.ParseUint(name, 10, 8); err == nil {
-		got := ExtractStatus(parsed)
-		if got <= EXTRACTEDNOTHING {
-			*status = got
-			return nil
-		}
-	}
-
-	for candidate := WAITING; candidate <= EXTRACTEDNOTHING; candidate++ {
-		if candidate.String() == name {
-			*status = candidate
-			return nil
-		}
-	}
-
-	return fmt.Errorf("%w: %s", errUnknownExtractStatus, name)
-}
-
-var errUnknownExtractStatus = errors.New("unknown extract status")
-
-// String turns a status into a short string.
-func (status ExtractStatus) String() string {
-	if status > EXTRACTEDNOTHING {
-		return "unknown"
-	}
-
-	return []string{
-		// The order must not be faulty.
-		"waiting",
-		"queued",
-		"extracting",
-		"extractfailed",
-		"extracted",
-		"imported",
-		"deleting",
-		"deletefailed",
-		"deleted",
-		"extractednothing",
-	}[status]
-}
 
 // Debugf writes Debug log lines... to stdout and/or a file.
 func (l *Logger) Debugf(msg string, v ...any) {

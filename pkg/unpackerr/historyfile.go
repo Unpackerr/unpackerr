@@ -58,7 +58,7 @@ type QueueItem struct {
 	Error      string        `json:"error,omitempty"`
 }
 
-func (status ExtractStatus) isDurableHistory() bool {
+func isDurableHistory(status ExtractStatus) bool {
 	switch status {
 	case EXTRACTFAILED, EXTRACTEDNOTHING, IMPORTED, DELETED, DELETEFAILED:
 		return true
@@ -182,7 +182,7 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
-	if u.KeepHistory == 0 || !item.Status.isDurableHistory() {
+	if u.KeepHistory == 0 || !isDurableHistory(item.Status) {
 		return
 	}
 

@@ -59,7 +59,7 @@ func (u *Unpackerr) idle() bool {
 	}
 
 	for _, folder := range u.folders.Folders {
-		if folder.status == QUEUED || folder.status == EXTRACTING {
+		if folder.Status == QUEUED || folder.Status == EXTRACTING {
 			return false
 		}
 	}

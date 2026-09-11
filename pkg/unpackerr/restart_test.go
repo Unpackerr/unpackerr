@@ -26,13 +26,13 @@ func TestIdleBlocksOnInFlightWork(t *testing.T) {
 	}
 
 	delete(unpack.Map, "/dl/busy")
-	unpack.folders.Folders["/watch/x"] = &Folder{status: EXTRACTING}
+	unpack.folders.Folders["/watch/x"] = &Folder{Status: EXTRACTING}
 
 	if unpack.idle() {
 		t.Fatal("an extracting folder must block a restart")
 	}
 
-	unpack.folders.Folders["/watch/x"].status = WAITING
+	unpack.folders.Folders["/watch/x"].Status = WAITING
 	unpack.queueDelete(&fileDeleteReq{})
 
 	if unpack.idle() {

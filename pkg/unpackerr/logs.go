@@ -23,7 +23,7 @@ const (
 	logsDirMode  = 0o755
 	starrLogPfx  = " =>    Server: "
 	starrLogLine = "%s, apikey:%v, timeout:%v, verify_ssl:%v, protos:%s, " +
-		"syncthing:%v, delete_orig:%v, delete_delay:%v, paths:%q"
+		"syncthing:%v, delete_orig:%v, delete_delay:%v, max_bytes:%s, paths:%q"
 )
 
 // Debugf writes Debug log lines... to stdout and/or a file.

@@ -102,10 +102,6 @@ func (u *Unpackerr) writeRunningConfig(printf configLine, auth dumpAuth) {
 
 func (u *Unpackerr) logGeneral(printf configLine) {
 	printf(" => Parallel: %d", u.Parallel)
-	printf(" => Default Extract Limits: Sonarr/Whisparr %s, Radarr %s, Lidarr %s, Readarr %s; "+
-		"%d files, %g:1, %d nested, extras depth %d; folders uncapped",
-		defaultSonarrMaxBytes, defaultRadarrMaxBytes, defaultLidarrMaxBytes, defaultReadarrMaxBytes,
-		defaultMaxFiles, defaultMaxRatio, defaultMaxNested, defaultExtrasMaxDepth)
 	printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
 	printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())
 	printf(" => Start/Delete Delay: %s/%s", u.StartDelay.String(), u.DeleteDelay.String())
@@ -137,7 +133,8 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list []P) 
 		printf(" => %s Config: 1 server: "+starrLogLine+"%s",
 			app, c.URL, c.APIKey != "", c.Timeout.String(),
 			c.ValidSSL, c.Protocols, c.Syncthing,
-			c.DeleteOrig, c.DeleteDelay.String(), c.Paths, item.logExtra())
+			c.DeleteOrig, c.DeleteDelay.String(),
+			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, item.logExtra())
 
 		return
 	}
@@ -148,8 +145,18 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list []P) 
 		c := item.conf()
 		printf(starrLogPfx+starrLogLine+"%s",
 			c.URL, c.APIKey != "", c.Timeout.String(), c.ValidSSL, c.Protocols,
-			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(), c.Paths, item.logExtra())
+			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(),
+			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, item.logExtra())
 	}
+}
+
+// logMaxBytes prints the configured size, or fallback when the setting is empty.
+func logMaxBytes(configured, fallback string) string {
+	if size := strings.TrimSpace(configured); size != "" {
+		return size
+	}
+
+	return fallback
 }
 
 func (u *Unpackerr) logFolders(printf configLine) {
@@ -160,9 +167,11 @@ func (u *Unpackerr) logFolders(printf configLine) {
 		}
 
 		printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v event_buffer:%d",
+			"log_file:%v move_back:%v isos:%v max_bytes:%s files:%d ratio:%g nested:%d extras_depth:%d "+
+			"symlinks:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+			logMaxBytes(folder.MaxBytes, "uncapped"), folder.MaxFiles, folder.MaxRatio,
 			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, u.Folder.Buffer)
 	} else {
 		printf(" => Folder Config: %d paths, event_buffer:%d ", count, u.Folder.Buffer)
@@ -173,9 +182,10 @@ func (u *Unpackerr) logFolders(printf configLine) {
 			}
 
 			printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
-				"move_back:%v isos:%v files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v",
+				"move_back:%v isos:%v max_bytes:%s files:%d ratio:%g nested:%d extras_depth:%d symlinks:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.MaxFiles, folder.MaxRatio,
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+				logMaxBytes(folder.MaxBytes, "uncapped"), folder.MaxFiles, folder.MaxRatio,
 				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks)
 		}
 	}

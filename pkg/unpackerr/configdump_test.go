@@ -44,6 +44,74 @@ func TestLiveConfigTextSharesRunningDump(t *testing.T) {
 	if !strings.Contains(got, "Whisparr Config: 0 servers") {
 		t.Fatalf("empty whisparr should print 0 servers: %q", got)
 	}
+
+	if strings.Contains(got, "Default Extract Limits") {
+		t.Fatalf("shared extract-limit defaults must not print:\n%s", got)
+	}
+}
+
+func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Sonarr = []*SonarrConfig{{
+		URL: "http://sonarr.test",
+	}}
+	unpack.Radarr = []*RadarrConfig{{
+		URL:      "http://radarr.test",
+		MaxBytes: "10GB",
+	}}
+	unpack.Lidarr = []*LidarrConfig{{
+		URL: "http://lidarr.test",
+	}}
+	unpack.Readarr = []*ReadarrConfig{{
+		URL:      "http://readarr.test",
+		MaxBytes: "0",
+	}}
+	unpack.Whisparr = []*RadarrConfig{{
+		URL: "http://whisparr.test",
+	}}
+	unpack.Folders = []*FolderConfig{
+		{Path: "/watch"},
+		{Path: "/capped", MaxBytes: "2GB"},
+	}
+
+	got := dumpRunningConfig(unpack, dumpAuth{})
+	if strings.Contains(got, "Default Extract Limits") {
+		t.Fatalf("shared extract-limit defaults must not print:\n%s", got)
+	}
+
+	want := map[string]string{
+		"http://sonarr.test":   "max_bytes:" + defaultSonarrMaxBytes,
+		"http://radarr.test":   "max_bytes:10GB",
+		"http://lidarr.test":   "max_bytes:" + defaultLidarrMaxBytes,
+		"http://readarr.test":  "max_bytes:0",
+		"http://whisparr.test": "max_bytes:" + defaultWhisparrMaxBytes,
+		"Path: /watch":         "max_bytes:uncapped",
+		"Path: /capped":        "max_bytes:2GB",
+	}
+
+	for needle, maxBytes := range want {
+		line := dumpLineContaining(got, needle)
+		if line == "" {
+			t.Errorf("missing %q in:\n%s", needle, got)
+			continue
+		}
+
+		if !strings.Contains(line, maxBytes) {
+			t.Errorf("%q: want %q in %q", needle, maxBytes, line)
+		}
+	}
+}
+
+func dumpLineContaining(dump, needle string) string {
+	for line := range strings.SplitSeq(dump, "\n") {
+		if strings.Contains(line, needle) {
+			return line
+		}
+	}
+
+	return ""
 }
 
 func TestLiveConfigOmitsWithoutSectionRead(t *testing.T) {

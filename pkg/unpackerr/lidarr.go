@@ -61,6 +61,20 @@ func (l *LidarrConfig) queueViews() []queueView {
 	return out
 }
 
+func (l *LidarrConfig) hasQueueTitle(name string) bool {
+	if l.Queue == nil {
+		return false
+	}
+
+	for _, rec := range l.Queue.Records {
+		if rec.Title == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 // checkLidarrQueue saves completed Lidarr-queued downloads to u.Map.
 func (u *Unpackerr) checkLidarrQueue(now time.Time) {
 	u.lockHistory()

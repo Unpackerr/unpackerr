@@ -53,6 +53,20 @@ func (r *RadarrConfig) queueViews() []queueView {
 	return out
 }
 
+func (r *RadarrConfig) hasQueueTitle(name string) bool {
+	if r.Queue == nil {
+		return false
+	}
+
+	for _, rec := range r.Queue.Records {
+		if rec.Title == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 // checkRadarrQueue saves completed Radarr-queued downloads to u.Map.
 func (u *Unpackerr) checkRadarrQueue(now time.Time) {
 	u.lockHistory()

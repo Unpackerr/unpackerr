@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/configdef"
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
 	"golift.io/starr"
@@ -566,7 +567,7 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	unpack.Webhook = []*WebhookConfig{{ //nolint:gosec // filepath: reference, not a credential.
 		Name: "discord", URL: "https://discord.example/hook", CType: "text/plain",
 		Timeout: cnfg.Duration{Duration: 9 * time.Second}, IgnoreSSL: true, Silent: true,
-		Events: ExtractStatuses{EXTRACTED, EXTRACTFAILED}, Exclude: StringSlice{"lidarr"},
+		Events: ExtractStatuses{EXTRACTED, EXTRACTFAILED}, Exclude: hooks.StringSlice{"lidarr"},
 		Nickname: "Bot", Token: "filepath:/run/secrets/hook", Channel: "general",
 	}}
 	unpack.Cmdhook = []*WebhookConfig{{
@@ -667,7 +668,7 @@ func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
 		APIKey: "short",
 	}}
 
-	if err := unpack.validateSonarr(); err != nil {
+	if err := validateStarrList(unpack, &unpack.Sonarr, starr.Sonarr); err != nil {
 		t.Fatal(err)
 	}
 

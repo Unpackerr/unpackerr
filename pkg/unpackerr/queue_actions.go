@@ -175,7 +175,7 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 		return errQueueNotFound
 	}
 
-	if !item.Status.isDurableHistory() {
+	if !isDurableHistory(item.Status) {
 		return errQueueNotForgettable
 	}
 
@@ -203,8 +203,9 @@ func (u *Unpackerr) sweepForgotten() {
 	defer u.unlockHistory()
 
 	for itemID := range u.forgotten {
-		if u.haveLidarrQitem(itemID) || u.haveRadarrQitem(itemID) ||
-			u.haveReadarrQitem(itemID) || u.haveSonarrQitem(itemID) || u.haveWhisparrQitem(itemID) {
+		if haveStarrQitem(u.Lidarr, itemID) || haveStarrQitem(u.Radarr, itemID) ||
+			haveStarrQitem(u.Readarr, itemID) || haveStarrQitem(u.Sonarr, itemID) ||
+			haveStarrQitem(u.Whisparr, itemID) {
 			continue
 		}
 

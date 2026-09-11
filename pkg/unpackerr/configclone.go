@@ -1,13 +1,14 @@
 package unpackerr
 
 import (
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/starr/lidarr"
 	"golift.io/starr/radarr"
 	"golift.io/starr/readarr"
 	"golift.io/starr/sonarr"
 )
 
-// starrApp is what putStarrList and the clone/carry helpers need from each
+// starrApp is what putStarrList, clone/carry, and the poll helpers need from each
 // Starr config type. P is the pointer type (*SonarrConfig), T the struct.
 type starrApp[T any] interface {
 	*T
@@ -15,6 +16,11 @@ type starrApp[T any] interface {
 	connect()         // build the API client from conf.
 	takeQueue(old *T) // keep the last polled queue from a matching old entry.
 	stripRuntime()    // nil the queue and client on a file-shaped clone.
+	pollQueue() (total, retrieved int, err error)
+	queueViews() []queueView
+	hasQueueTitle(name string) bool
+	tweakExtract(item *Extract, rec queueView)
+	logExtra() string
 }
 
 func (s *SonarrConfig) conf() *StarrConfig { return &s.StarrConfig }
@@ -55,8 +61,8 @@ func cloneConfig(src *Config) *Config {
 	dst.Readarr = cloneStarrList(src.Readarr)
 	dst.Sonarr = cloneStarrList(src.Sonarr)
 	dst.Folders = cloneFolderList(src.Folders)
-	dst.Webhook = cloneHookList(src.Webhook)
-	dst.Cmdhook = cloneHookList(src.Cmdhook)
+	dst.Webhook = hooks.CloneList(src.Webhook)
+	dst.Cmdhook = hooks.CloneList(src.Cmdhook)
 
 	return &dst
 }
@@ -150,30 +156,5 @@ func cloneFolderList(src []*FolderConfig) []*FolderConfig {
 
 // cloneHookList copies hooks without the mutex, counters, client, or template.
 func cloneHookList(src []*WebhookConfig) []*WebhookConfig {
-	if src == nil {
-		return nil
-	}
-
-	out := make([]*WebhookConfig, len(src))
-	for idx, hook := range src {
-		out[idx] = &WebhookConfig{
-			Name:      hook.Name,
-			URL:       hook.URL,
-			Command:   hook.Command,
-			CType:     hook.CType,
-			TmplPath:  hook.TmplPath,
-			TempName:  hook.TempName,
-			Timeout:   hook.Timeout,
-			Shell:     hook.Shell,
-			IgnoreSSL: hook.IgnoreSSL,
-			Silent:    hook.Silent,
-			Events:    append(ExtractStatuses(nil), hook.Events...),
-			Exclude:   append(StringSlice(nil), hook.Exclude...),
-			Nickname:  hook.Nickname,
-			Token:     hook.Token,
-			Channel:   hook.Channel,
-		}
-	}
-
-	return out
+	return hooks.CloneList(src)
 }

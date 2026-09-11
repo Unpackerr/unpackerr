@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"github.com/Unpackerr/unpackerr/pkg/ui"
 	flag "github.com/spf13/pflag"
 	"golift.io/cnfg"
@@ -67,15 +68,15 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics  *metrics
-	folders  *Folders
-	sigChan  chan os.Signal
-	updates  chan *xtractr.Response
-	progChan chan *ExtractProgress
-	hookChan chan *hookQueueItem
-	delChan  chan *fileDeleteReq
-	taskChan chan *mainTask // HTTP hands config applies and queue actions to Run().
-	workChan chan []func()
+	metrics    *metrics
+	folders    *Folders
+	sigChan    chan os.Signal
+	updates    chan *xtractr.Response
+	progChan   chan *ExtractProgress
+	hookWorker *hooks.Worker
+	delChan    chan *fileDeleteReq
+	taskChan   chan *mainTask // HTTP hands config applies and queue actions to Run().
+	workChan   chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
 	httpLog  *rotatorr.Logger
@@ -133,17 +134,17 @@ type Flags struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	return &Unpackerr{
-		Flags:    &Flags{EnvPrefix: "UN"},
-		hookChan: make(chan *hookQueueItem, updateChanBuf),
-		delChan:  make(chan *fileDeleteReq, updateChanBuf),
-		taskChan: make(chan *mainTask, updateChanBuf),
-		sigChan:  make(chan os.Signal, signalBuf),
-		workChan: make(chan []func(), 1),
-		History:  &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
-		folders:  &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
-		updates:  make(chan *xtractr.Response, updateChanBuf),
-		progChan: make(chan *ExtractProgress),
-		menu:     make(map[string]ui.MenuItem),
+		Flags:      &Flags{EnvPrefix: "UN"},
+		hookWorker: hooks.NewWorker(updateChanBuf),
+		delChan:    make(chan *fileDeleteReq, updateChanBuf),
+		taskChan:   make(chan *mainTask, updateChanBuf),
+		sigChan:    make(chan os.Signal, signalBuf),
+		workChan:   make(chan []func(), 1),
+		History:    &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		folders:    &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
+		updates:    make(chan *xtractr.Response, updateChanBuf),
+		progChan:   make(chan *ExtractProgress),
+		menu:       make(map[string]ui.MenuItem),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -380,33 +381,15 @@ func dirIsEmpty(path string) bool {
 
 func (u *Unpackerr) ensureHookWorker() {
 	u.hookOnce.Do(func() {
-		go u.watchCmdAndWebhooks()
+		go u.hookWorker.Run(u.Logger, func() { u.inFlight.Add(-1) })
 	})
 }
 
 // queueHook publishes a hook and counts it in flight. See queueDelete.
-func (u *Unpackerr) queueHook(item *hookQueueItem) {
+func (u *Unpackerr) queueHook(item *hooks.Item) {
 	u.inFlight.Add(1)
 
-	u.hookChan <- item
-}
-
-func (u *Unpackerr) watchCmdAndWebhooks() {
-	for hook := range u.hookChan {
-		u.runHook(hook)
-	}
-}
-
-func (u *Unpackerr) runHook(hook *hookQueueItem) {
-	defer u.inFlight.Add(-1) // paired with queueHook.
-
-	if hook.URL != "" {
-		u.sendWebhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-	}
-
-	if hook.Command != "" {
-		u.runCmdhookWithLog(hook.WebhookConfig, hook.WebhookPayload)
-	}
+	u.hookWorker.Enqueue(item)
 }
 
 // ParseFlags turns CLI args into usable data.

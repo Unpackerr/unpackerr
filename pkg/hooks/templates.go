@@ -1,4 +1,4 @@
-package unpackerr
+package hooks
 
 import (
 	"encoding/json"
@@ -9,19 +9,20 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/extract"
 	"golift.io/cnfg"
 	"golift.io/starr"
 )
 
-// WebhookPayload defines the data sent to notifarr.com (and other) webhooks.
-type WebhookPayload struct {
+// Payload defines the data sent to notifarr.com (and other) webhooks.
+type Payload struct {
 	Path   string         `json:"path"`                // Path for the extracted item.
 	App    starr.App      `json:"app"`                 // Application Triggering Event
 	IDs    map[string]any `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event  ExtractStatus  `json:"unpackerr_eventtype"` // The type of the event.
+	Event  extract.Status `json:"unpackerr_eventtype"` // The type of the event.
 	Time   time.Time      `json:"time"`                // Time of this event.
 	Data   *XtractPayload `json:"data,omitempty"`      // Payload from extraction process.
-	Config *WebhookConfig `json:"-"`                   // Payload from extraction process.
+	Config *Config        `json:"-"`                   // Payload from extraction process.
 	// Application Metadata.
 	Go       string    `json:"go"`       // Version of go compiled with
 	OS       string    `json:"os"`       // Operating system: linux, windows, darwin
@@ -253,7 +254,7 @@ const WebhookTemplateSlack = `
 // Template returns a template specific to this webhook.
 //
 //nolint:wrapcheck
-func (w *WebhookConfig) Template() (*template.Template, error) {
+func (w *Config) Template() (*template.Template, error) {
 	template := template.New("webhook").Funcs(template.FuncMap{
 		"encode":     func(v any) string { b, _ := json.Marshal(v); return string(b) },
 		"rawencode":  func(v any) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck

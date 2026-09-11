@@ -11,13 +11,11 @@ import (
 	"golift.io/starr"
 )
 
-/* This file contains all the unique bits for each app. When adding a new app,
-   duplicate the lidarr.go file and rename all the things, then add the new app
-   to the various places below, in this file.
+/* Shared Starr poll/check/have lives in starrpoll.go. Lidarr SplitFlac is applied
+   via starrApp.tweakExtract so the other apps stay no-ops.
 */
 
-// DefaultQueuePageSize is how many items we request from Lidarr and Readarr.
-// Once we have better support for Sonarr/Radarr v3 this will apply to those as well.
+// DefaultQueuePageSize is how many queue items we request from each Starr app.
 // If you have more than this many items queued.. oof.
 // As the queue goes away, more things should get picked up.
 const DefaultQueuePageSize = 2000
@@ -125,35 +123,20 @@ func (u *Unpackerr) ensureWorkThreads(count int) {
 // same goroutine, and it is parked in wait.Wait() until every poll returns.
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	wait := sync.WaitGroup{}
-	wait.Add(len(u.Lidarr) + len(u.Radarr) + len(u.Readarr) + len(u.Sonarr) + len(u.Whisparr))
-	// Run each app's getQueue method in a go routine as a waitgroup.
-	for _, server := range u.Lidarr {
-		u.workChan <- []func(){func() { u.getLidarrQueue(server, now) }, wait.Done}
-	}
-
-	for _, server := range u.Radarr {
-		u.workChan <- []func(){func() { u.getRadarrQueue(server, now) }, wait.Done}
-	}
-
-	for _, server := range u.Readarr {
-		u.workChan <- []func(){func() { u.getReadarrQueue(server, now) }, wait.Done}
-	}
-
-	for _, server := range u.Sonarr {
-		u.workChan <- []func(){func() { u.getSonarrQueue(server, now) }, wait.Done}
-	}
-
-	for _, server := range u.Whisparr {
-		u.workChan <- []func(){func() { u.getWhisparrQueue(server, now) }, wait.Done}
-	}
+	wait.Add(u.starrAppCount())
+	enqueueStarrPoll(u, u.Lidarr, starr.Lidarr, now, &wait)
+	enqueueStarrPoll(u, u.Radarr, starr.Radarr, now, &wait)
+	enqueueStarrPoll(u, u.Readarr, starr.Readarr, now, &wait)
+	enqueueStarrPoll(u, u.Sonarr, starr.Sonarr, now, &wait)
+	enqueueStarrPoll(u, u.Whisparr, starr.Whisparr, now, &wait)
 
 	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
-	u.checkLidarrQueue(now)
-	u.checkRadarrQueue(now)
-	u.checkReadarrQueue(now)
-	u.checkSonarrQueue(now)
-	u.checkWhisparrQueue(now)
+	checkStarrQueue(u, u.Lidarr, starr.Lidarr, now)
+	checkStarrQueue(u, u.Radarr, starr.Radarr, now)
+	checkStarrQueue(u, u.Readarr, starr.Readarr, now)
+	checkStarrQueue(u, u.Sonarr, starr.Sonarr, now)
+	checkStarrQueue(u, u.Whisparr, starr.Whisparr, now)
 	u.sweepForgotten()
 }
 
@@ -161,11 +144,11 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 func (u *Unpackerr) validateApps() error {
 	for _, validate := range []func() error{
 		u.validateRemnantAction,
-		u.validateLidarr,
-		u.validateRadarr,
-		u.validateReadarr,
-		u.validateSonarr,
-		u.validateWhisparr,
+		func() error { return validateStarrList(u, &u.Lidarr, starr.Lidarr) },
+		func() error { return validateStarrList(u, &u.Radarr, starr.Radarr) },
+		func() error { return validateStarrList(u, &u.Readarr, starr.Readarr) },
+		func() error { return validateStarrList(u, &u.Sonarr, starr.Sonarr) },
+		func() error { return validateStarrList(u, &u.Whisparr, starr.Whisparr) },
 		u.validateFolders,
 	} {
 		if err := validate(); err != nil {
@@ -188,15 +171,15 @@ func (u *Unpackerr) validateApps() error {
 func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	switch app {
 	case starr.Lidarr:
-		return u.haveLidarrQitem(name)
+		return haveStarrQitem(u.Lidarr, name)
 	case starr.Radarr:
-		return u.haveRadarrQitem(name)
+		return haveStarrQitem(u.Radarr, name)
 	case starr.Readarr:
-		return u.haveReadarrQitem(name)
+		return haveStarrQitem(u.Readarr, name)
 	case starr.Sonarr:
-		return u.haveSonarrQitem(name)
+		return haveStarrQitem(u.Sonarr, name)
 	case starr.Whisparr:
-		return u.haveWhisparrQitem(name)
+		return haveStarrQitem(u.Whisparr, name)
 	default:
 		return false
 	}

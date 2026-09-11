@@ -1,9 +1,8 @@
 package unpackerr
 
 import (
-	"time"
+	"fmt"
 
-	"golift.io/starr"
 	"golift.io/starr/readarr"
 )
 
@@ -14,107 +13,59 @@ type ReadarrConfig struct {
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (u *Unpackerr) validateReadarr() error {
-	tmp := u.Readarr[:0]
-
-	for idx := range u.Readarr {
-		if err := u.validateApp(&u.Readarr[idx].StarrConfig, starr.Readarr); err != nil {
-			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
-			}
-
-			return err
-		}
-
-		u.Readarr[idx].Readarr = readarr.New(&u.Readarr[idx].Config)
-		tmp = append(tmp, u.Readarr[idx])
-	}
-
-	u.Readarr = tmp
-
-	return nil
-}
-
-// getReadarrQueue saves the Readarr Queue(s).
-func (u *Unpackerr) getReadarrQueue(server *ReadarrConfig, start time.Time) {
-	if server.APIKey == "" {
-		u.Debugf("Readarr (%s): skipped, no API key", server.URL)
-		return
-	}
-
-	queue, err := server.GetQueue(DefaultQueuePageSize, DefaultQueuePageSize)
+func (r *ReadarrConfig) pollQueue() (int, int, error) {
+	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
-		u.saveQueueMetrics(0, start, starr.Readarr, server.URL, err)
-		return
+		return 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	// Only update if there was not an error fetching.
-	server.Queue = queue
-	u.saveQueueMetrics(queue.TotalRecords, start, starr.Readarr, server.URL, nil)
+	r.Queue = queue
 
-	if !u.Activity || queue.TotalRecords > 0 {
-		u.Printf("[Readarr] Updated (%s): %d Items Queued, %d Retrieved", server.URL, queue.TotalRecords, len(queue.Records))
-	}
+	return queue.TotalRecords, len(queue.Records), nil
 }
 
-// checkReadarQueue saves completed Readarr-queued downloads to u.Map.
-func (u *Unpackerr) checkReadarrQueue(now time.Time) {
-	u.lockHistory()
-	defer u.unlockHistory()
-
-	for _, server := range u.Readarr {
-		if server.Queue == nil {
-			continue
-		}
-
-		for _, record := range server.Queue.Records {
-			switch x, ok := u.Map[record.Title]; {
-			case ok && x.Status == EXTRACTED && u.isComplete(record.Status, record.Protocol, server.Protocols):
-				u.Debugf("%s (%s): Item Waiting for Import (%s): %v", starr.Readarr, server.URL, record.Protocol, record.Title)
-			case !ok && u.isComplete(record.Status, record.Protocol, server.Protocols) && !u.isForgotten(record.Title):
-				u.Map[record.Title] = &Extract{
-					App:         starr.Readarr,
-					URL:         server.URL,
-					Updated:     now,
-					Status:      WAITING,
-					DeleteOrig:  server.DeleteOrig,
-					DeleteDelay: server.DeleteDelay.Duration,
-					Syncthing:   server.Syncthing,
-					MaxBytes:    server.maxBytes,
-					Path:        u.getDownloadPath(record.OutputPath, starr.Readarr, record.Title, server.Paths),
-					IDs: map[string]any{
-						"title":      record.Title,
-						"authorId":   record.AuthorID,
-						"bookId":     record.BookID,
-						"downloadId": record.DownloadID,
-						"reason":     buildStatusReason(record.Status, record.StatusMessages),
-					},
-				}
-				u.Map[record.Title].XProg = &ExtractProgress{Extract: u.Map[record.Title]}
-
-				fallthrough
-			default:
-				u.Debugf("%s: (%s): %s (%s:%d%%): %v",
-					starr.Readarr, server.URL, record.Status, record.Protocol,
-					percent(record.Sizeleft, record.Size), record.Title)
-			}
-		}
+func (r *ReadarrConfig) queueViews() []queueView {
+	if r.Queue == nil {
+		return nil
 	}
+
+	out := make([]queueView, 0, len(r.Queue.Records))
+
+	for _, rec := range r.Queue.Records {
+		out = append(out, queueView{
+			Title:      rec.Title,
+			Status:     rec.Status,
+			Protocol:   rec.Protocol,
+			OutputPath: rec.OutputPath,
+			Size:       rec.Size,
+			Sizeleft:   rec.Sizeleft,
+			IDs: map[string]any{
+				"title":      rec.Title,
+				"authorId":   rec.AuthorID,
+				"bookId":     rec.BookID,
+				"downloadId": rec.DownloadID,
+				"reason":     buildStatusReason(rec.Status, rec.StatusMessages),
+			},
+		})
+	}
+
+	return out
 }
 
-// checks if the application currently has an item in its queue.
-func (u *Unpackerr) haveReadarrQitem(name string) bool {
-	for _, server := range u.Readarr {
-		if server.Queue == nil {
-			continue
-		}
+func (r *ReadarrConfig) hasQueueTitle(name string) bool {
+	if r.Queue == nil {
+		return false
+	}
 
-		for _, record := range server.Queue.Records {
-			if record.Title == name {
-				return true
-			}
+	for _, rec := range r.Queue.Records {
+		if rec.Title == name {
+			return true
 		}
 	}
 
 	return false
 }
+
+func (*ReadarrConfig) tweakExtract(_ *Extract, _ queueView) {}
+
+func (*ReadarrConfig) logExtra() string { return "" }

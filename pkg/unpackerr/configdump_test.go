@@ -104,6 +104,31 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 	}
 }
 
+func TestRunningDumpPrintsSingleFolderMaxBytes(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Folders = []*FolderConfig{{
+		Path:     "/watch",
+		MaxBytes: "2GB",
+	}}
+
+	got := dumpRunningConfig(unpack, dumpAuth{})
+
+	line := dumpLineContaining(got, "Folder Config: 1 path:")
+	if line == "" {
+		t.Fatalf("missing single-folder dump:\n%s", got)
+	}
+
+	if !strings.Contains(line, "/watch") || !strings.Contains(line, "max_bytes:2GB") {
+		t.Fatalf("single-folder dump missing path or max_bytes: %q", line)
+	}
+
+	if strings.Contains(got, " =>    Path:") {
+		t.Fatalf("single folder used multi-path format:\n%s", got)
+	}
+}
+
 func dumpLineContaining(dump, needle string) string {
 	for line := range strings.SplitSeq(dump, "\n") {
 		if strings.Contains(line, needle) {

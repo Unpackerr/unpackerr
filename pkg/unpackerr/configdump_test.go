@@ -55,7 +55,8 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 
 	unpack := testAuthUnpackerr(t)
 	unpack.Sonarr = []*SonarrConfig{{
-		URL: "http://sonarr.test",
+		URL:  "http://sonarr.test",
+		Name: "Sportarr",
 	}}
 	unpack.Radarr = []*RadarrConfig{{
 		URL:      "http://radarr.test",
@@ -101,6 +102,11 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 		if !strings.Contains(line, maxBytes) {
 			t.Errorf("%q: want %q in %q", needle, maxBytes, line)
 		}
+	}
+
+	sonarrLine := dumpLineContaining(got, "http://sonarr.test")
+	if !strings.Contains(sonarrLine, `name:"Sportarr"`) {
+		t.Errorf("named instance missing from dump: %q", sonarrLine)
 	}
 }
 

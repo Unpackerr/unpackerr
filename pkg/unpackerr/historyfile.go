@@ -197,7 +197,7 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 
 	rec := HistoryRecord{
 		ID:         itemID,
-		App:        string(item.App),
+		App:        item.Label(),
 		URL:        item.URL,
 		Path:       item.Path,
 		OutputPath: item.OutputPath,
@@ -334,7 +334,7 @@ func (u *Unpackerr) queueSnapshot() []QueueItem {
 func queueFromExtract(id string, item *Extract) QueueItem {
 	queue := QueueItem{
 		ID:         id,
-		App:        string(item.App),
+		App:        item.Label(),
 		URL:        item.URL,
 		Path:       item.Path,
 		OutputPath: item.OutputPath,

@@ -127,7 +127,7 @@
         "type": "object",
         "properties": {
           "id": {"type": "string"},
-          "app": {"type": "string"},
+          "app": {"type": "string", "description": "Instance name when set, otherwise the Starr dialect (Sonarr, Radarr, Folder, …)."},
           "url": {"type": "string"},
           "path": {"type": "string"},
           "outputPath": {"type": "string"},
@@ -142,7 +142,7 @@
         "type": "object",
         "properties": {
           "id": {"type": "string"},
-          "app": {"type": "string"},
+          "app": {"type": "string", "description": "Instance name when set, otherwise the Starr dialect (Sonarr, Radarr, Folder, …)."},
           "url": {"type": "string"},
           "path": {"type": "string"},
           "outputPath": {"type": "string"},

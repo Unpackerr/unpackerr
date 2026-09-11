@@ -451,6 +451,8 @@ func expandHomedir(filePath string) string {
 }
 
 func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
+	conf.Name = strings.TrimSpace(conf.Name)
+
 	if conf.URL == "" {
 		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", app)
 		return ErrInvalidURL // this error is not printed.

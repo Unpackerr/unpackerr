@@ -130,8 +130,8 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list []P) 
 	if count == 1 {
 		item := list[0]
 		c := item.conf()
-		printf(" => %s Config: 1 server: "+starrLogLine+"%s",
-			app, c.URL, c.APIKey != "", c.Timeout.String(),
+		printf(" => %s Config: 1 server: %s"+starrLogLine+"%s",
+			app, starrNamePrefix(c.Name), c.URL, c.APIKey != "", c.Timeout.String(),
 			c.ValidSSL, c.Protocols, c.Syncthing,
 			c.DeleteOrig, c.DeleteDelay.String(),
 			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, item.logExtra())
@@ -143,11 +143,20 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list []P) 
 
 	for _, item := range list {
 		c := item.conf()
-		printf(starrLogPfx+starrLogLine+"%s",
+		printf(starrLogPfx+"%s"+starrLogLine+"%s",
+			starrNamePrefix(c.Name),
 			c.URL, c.APIKey != "", c.Timeout.String(), c.ValidSSL, c.Protocols,
 			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(),
 			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, item.logExtra())
 	}
+}
+
+func starrNamePrefix(name string) string {
+	if name = strings.TrimSpace(name); name == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("name:%q, ", name)
 }
 
 // logMaxBytes prints the configured size, or fallback when the setting is empty.

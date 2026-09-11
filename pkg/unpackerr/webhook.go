@@ -7,6 +7,7 @@ import (
 	"github.com/Unpackerr/unpackerr/pkg/extract"
 	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/cnfg"
+	"golift.io/starr"
 	"golift.io/version"
 )
 
@@ -18,13 +19,13 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 	payload := hookPayload(item)
 
 	for _, hook := range u.hookList() {
-		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
 			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 
 	for _, hook := range u.cmdhookList() {
-		if hook.HasEvent(item.Status) && !hook.Excluded(item.App) {
+		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
 			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
 		}
 	}
@@ -33,7 +34,7 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 func hookPayload(item *Extract) *hooks.Payload {
 	payload := &hooks.Payload{
 		Path:  item.Path,
-		App:   item.App,
+		App:   starr.App(item.Label()),
 		IDs:   item.IDs,
 		Time:  item.Updated,
 		Data:  nil,

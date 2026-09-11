@@ -136,10 +136,16 @@ func (w *Config) ensureClient() {
 	}
 }
 
-// Excluded returns true if an app is in the Exclude slice.
-func (w *Config) Excluded(app starr.App) bool {
+// Excluded returns true if the dialect or instance name is in the Exclude slice.
+// Dialect tokens (sonarr, radarr, …) skip every instance of that API.
+// Any other value matches an instance name, case-insensitive.
+func (w *Config) Excluded(app starr.App, name string) bool {
 	for _, exclude := range w.Exclude {
 		if strings.EqualFold(exclude, string(app)) {
+			return true
+		}
+
+		if name != "" && strings.EqualFold(exclude, name) {
 			return true
 		}
 	}

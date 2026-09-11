@@ -2,6 +2,7 @@ package extract
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"golift.io/starr"
@@ -10,12 +11,15 @@ import (
 
 // Extract holds data for files being extracted.
 type Extract struct {
-	Syncthing   bool
-	SplitFlac   bool
-	Retries     uint
-	Path        string // Local path (resolved for extraction on this host).
-	OutputPath  string // Original path from Starr app (may be UNC/remote — used for ManualImport).
-	App         starr.App
+	Syncthing  bool
+	SplitFlac  bool
+	Retries    uint
+	Path       string // Local path (resolved for extraction on this host).
+	OutputPath string // Original path from Starr app (may be UNC/remote — used for ManualImport).
+	App        starr.App
+	// Name is an optional Starr instance label for logs, hooks, and the dashboard.
+	// Empty uses App (Sonarr, Radarr, Folder, …). App stays the dialect for logic.
+	Name        string
 	URL         string
 	Updated     time.Time
 	DeleteDelay time.Duration
@@ -36,4 +40,17 @@ type Extract struct {
 	NoRetry bool
 	// MaxBytes is the resolved byte cap for this Starr item (0 = unlimited).
 	MaxBytes uint64
+}
+
+// Label is the human-facing instance name, or the dialect when Name is empty.
+func (e *Extract) Label() string {
+	if e == nil {
+		return ""
+	}
+
+	if name := strings.TrimSpace(e.Name); name != "" {
+		return name
+	}
+
+	return string(e.App)
 }

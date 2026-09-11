@@ -151,6 +151,13 @@ func (u *Unpackerr) validateApps() error {
 		}
 	}
 
+	seen := make(map[string]string)
+	warnDuplicateStarrNames(u, seen, starr.Lidarr, u.Lidarr)
+	warnDuplicateStarrNames(u, seen, starr.Radarr, u.Radarr)
+	warnDuplicateStarrNames(u, seen, starr.Readarr, u.Readarr)
+	warnDuplicateStarrNames(u, seen, starr.Sonarr, u.Sonarr)
+	warnDuplicateStarrNames(u, seen, starr.Whisparr, u.Whisparr)
+
 	for _, validate := range []func() error{
 		u.validateCmdhook,
 		u.validateWebhook,

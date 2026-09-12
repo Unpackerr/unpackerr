@@ -24,6 +24,7 @@ Two stacked feature series plus a follow-up mux swap. Closed duplicates (`#688`,
 | [#692](https://github.com/Unpackerr/unpackerr/pull/692) | Config PUT | Per-section PUT, `onMainLoop`, idle restart. Replaced the overbuilt `#688`. |
 | [#693](https://github.com/Unpackerr/unpackerr/pull/693) | OpenAPI | Embedded `pkg/unpackerr/openapi.json`. |
 | [#697](https://github.com/Unpackerr/unpackerr/pull/697) | Stdlib mux | Dropped `julienschmidt/httprouter`. Go `http.ServeMux` with `{section}` and `GET …/{$}` for the index. |
+| [#722](https://github.com/Unpackerr/unpackerr/pull/722) | PUT env overlay | Starr / folder / hook PUTs re-apply `UN_*` onto live so `[]` cannot wipe env-only rows. File snapshot stays file-shaped. |
 
 The mux PR is routing only. Behavior below is from the API stacks unless noted.
 
@@ -163,7 +164,7 @@ Empty / missing secret file is an error on PUT (400) when the `filepath:` was al
 
 ### Env (`UN_*`)
 
-Env overlays **live only**. They are not merged into `fileConfig`. A later PUT that rewrites the whole Starr list from a **file GET** will not include an env-only extra server — that is intentional. Env-only extra keys/roles exist at runtime until restart unless you add them in the PUT body.
+Env overlays **live only**. They are not merged into `fileConfig`. Starr / folder / hook PUTs re-apply the overlay onto the live copy after the file-shaped body is written, so env-only list rows survive a save that omitted them; they still never land in `fileConfig` or the TOML. Env-only extra keys/roles exist at runtime until restart unless you add them in the PUT body. General scalars (`UN_INTERVAL`, `UN_PASSWORDS`, …) still overlay only at startup.
 
 `UN_WEBSERVER_UI_PASSWORD`:
 
@@ -217,7 +218,7 @@ Env-only (no config path): skip write, still apply live.
 
 **New `ui_password` on PUT:** `!!cryptd!!…`, `webauth`, `noauth`, or `user:<64-char hex>` where the hex is the same PBKDF2 digest as login (`CryptPass.Set`, then bcrypt; mixed-case hex is stored lowercase). Plaintext `user:pass` is **400**. While live auth is local password, changing the hash or switching to header/noauth requires `uiCurrentKdf` (login `Valid()` on the current username). Header/noauth live mode does not. `uiCurrentKdf` is a PUT-only JSON field and is never written to TOML. A body that contains only `uiCurrentKdf` is **400** (empty section), so it cannot wipe `listen_addr` / keys / roles. Omitting `uiPassword` or sending the on-disk value unchanged keeps the live overlay, so `UN_WEBSERVER_UI_PASSWORD` is not replaced by the file hash.
 
-**Starr PUT:** invalid URL/key is **400** (startup *skips* bad apps; PUT does not). `path` merges into `paths` without dupes. Last poll `Queue` carries over when `url` + expanded `apiKey` match. Work thread pool **grows** to `starrAppCount`.
+**Starr PUT:** invalid URL/key is **400** (startup *skips* bad apps; PUT does not). Live list is the file-shaped body plus the env overlay, so an env-only extra instance survives `[]`. `path` merges into `paths` without dupes. Last poll `Queue` carries over when `url` + expanded `apiKey` match. Work thread pool **grows** to `starrAppCount`.
 
 **Folders PUT:** always `restartRequired: true`. Watcher is built once; rebuilding in-process was rejected (leak / dual poller).
 

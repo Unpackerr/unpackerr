@@ -1560,7 +1560,7 @@ func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // 
 		t.Fatalf("file readarr %+v", unpack.fileConfig.Readarr)
 	}
 
-	if len(unpack.Readarr) != 1 || unpack.Readarr[0].URL != url {
+	if len(unpack.Readarr) != 1 || unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
 		t.Fatalf("live readarr %+v", unpack.Readarr)
 	}
 }
@@ -1586,7 +1586,8 @@ func TestConfigPutReadarrNameKeepsEnv(t *testing.T) { //nolint:paralleltest // t
 		t.Fatalf("env leaked into file url=%q key=%q", unpack.fileConfig.Readarr[0].URL, unpack.fileConfig.Readarr[0].APIKey)
 	}
 
-	if len(unpack.Readarr) != 1 || unpack.Readarr[0].Name != "books" || unpack.Readarr[0].URL != url {
+	if len(unpack.Readarr) != 1 || unpack.Readarr[0].Name != "books" ||
+		unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
 		t.Fatalf("live %+v", unpack.Readarr)
 	}
 }

@@ -185,7 +185,7 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 
 	if item.Status == IMPORTED {
 		u.Printf("[%s] User forgot imported item; skipping file cleanup: %s (%s)",
-			item.App, itemID, item.Path)
+			item.Label(), itemID, item.Path)
 	}
 
 	delete(u.Map, itemID)

@@ -37,13 +37,15 @@ func (s *SonarrConfig) queueViews() []queueView {
 
 	for _, rec := range s.Queue.Records {
 		out = append(out, queueView{
-			Title:      rec.Title,
-			Status:     rec.Status,
-			Protocol:   rec.Protocol,
-			OutputPath: rec.OutputPath,
-			Size:       rec.Size,
-			Sizeleft:   rec.Sizeleft,
-			DebugExtra: fmt.Sprintf(" (Ep: %v)", rec.EpisodeID),
+			Title:         rec.Title,
+			Status:        rec.Status,
+			TrackedStatus: rec.TrackedDownloadStatus,
+			TrackedState:  rec.TrackedDownloadState,
+			Protocol:      rec.Protocol,
+			OutputPath:    rec.OutputPath,
+			Size:          rec.Size,
+			Sizeleft:      rec.Sizeleft,
+			DebugExtra:    fmt.Sprintf(" (Ep: %v)", rec.EpisodeID),
 			IDs: map[string]any{
 				"title":      rec.Title,
 				"downloadId": rec.DownloadID,

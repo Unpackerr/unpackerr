@@ -90,7 +90,43 @@
           "cmdOK": {"type": "integer"},
           "cmdFail": {"type": "integer"},
           "retries": {"type": "integer"},
-          "finished": {"type": "integer"}
+          "finished": {"type": "integer"},
+          "starrs": {"type": "integer", "description": "Configured Sonarr+Radarr+Lidarr+Readarr instance count"},
+          "folders": {"type": "integer", "description": "Configured watch-folder count"},
+          "webhooks": {"type": "integer", "description": "Configured webhook count"},
+          "cmdhooks": {"type": "integer", "description": "Configured command-hook count"},
+          "stackFS": {"$ref": "#/components/schemas/BufferStat", "description": "Folder-watch filesystem event channel"},
+          "stackXtractr": {"$ref": "#/components/schemas/BufferStat", "description": "Starr extract callback channel"},
+          "stackFolder": {"$ref": "#/components/schemas/BufferStat", "description": "Folder-watch extract callback channel"},
+          "stackHook": {"$ref": "#/components/schemas/BufferStat", "description": "Webhook and command-hook delivery channel"},
+          "stackDel": {"$ref": "#/components/schemas/BufferStat", "description": "File-delete job channel"},
+          "stackTask": {"$ref": "#/components/schemas/BufferStat", "description": "Config apply and queue-action channel"},
+          "starrQueues": {
+            "type": "array",
+            "description": "Last activity-queue poll per configured Starr app",
+            "items": {
+              "type": "object",
+              "properties": {
+                "app": {"type": "string"},
+                "name": {"type": "string"},
+                "url": {"type": "string"},
+                "queued": {"type": "integer", "description": "Starr TotalRecords"},
+                "retrieved": {"type": "integer", "description": "Records returned this poll"},
+                "complete": {"type": "integer", "description": "Retrieved items with Status completed"},
+                "match": {"type": "integer", "description": "Completed items whose protocol is in this instance's protocol list"},
+                "issues": {"type": "integer", "description": "Retrieved items that failed, warned, or have a tracked-download error/warning"},
+                "downloading": {"type": "integer", "description": "Retrieved items with Status downloading"},
+                "error": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "BufferStat": {
+        "type": "object",
+        "properties": {
+          "len": {"type": "integer", "description": "Items currently queued"},
+          "cap": {"type": "integer", "description": "Channel capacity"}
         }
       },
       "SystemInfo": {

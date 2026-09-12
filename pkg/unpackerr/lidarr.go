@@ -44,12 +44,13 @@ func (l *LidarrConfig) queueViews() []queueView {
 
 	for _, rec := range l.Queue.Records {
 		out = append(out, queueView{
-			Title:      rec.Title,
-			Status:     rec.Status,
-			Protocol:   rec.Protocol,
-			OutputPath: rec.OutputPath,
-			Size:       rec.Size,
-			Sizeleft:   rec.Sizeleft,
+			Title:         rec.Title,
+			Status:        rec.Status,
+			TrackedStatus: rec.TrackedDownloadStatus,
+			Protocol:      rec.Protocol,
+			OutputPath:    rec.OutputPath,
+			Size:          rec.Size,
+			Sizeleft:      rec.Sizeleft,
 			IDs: map[string]any{
 				"title":      rec.Title,
 				"artistId":   rec.ArtistID,

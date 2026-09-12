@@ -28,6 +28,7 @@ func (s *SonarrConfig) conf() *StarrConfig { return &s.StarrConfig }
 func (s *SonarrConfig) connect()           { s.Sonarr = sonarr.New(&s.Config) }
 func (s *SonarrConfig) takeQueue(o *SonarrConfig) {
 	s.Queue = o.Queue
+	s.takePoll(&o.StarrConfig)
 }
 func (s *SonarrConfig) stripRuntime() { s.Queue, s.Sonarr = nil, nil }
 
@@ -35,6 +36,7 @@ func (r *RadarrConfig) conf() *StarrConfig { return &r.StarrConfig }
 func (r *RadarrConfig) connect()           { r.Radarr = radarr.New(&r.Config) }
 func (r *RadarrConfig) takeQueue(o *RadarrConfig) {
 	r.Queue = o.Queue
+	r.takePoll(&o.StarrConfig)
 }
 func (r *RadarrConfig) stripRuntime() { r.Queue, r.Radarr = nil, nil }
 
@@ -42,6 +44,7 @@ func (l *LidarrConfig) conf() *StarrConfig { return &l.StarrConfig }
 func (l *LidarrConfig) connect()           { l.Lidarr = lidarr.New(&l.Config) }
 func (l *LidarrConfig) takeQueue(o *LidarrConfig) {
 	l.Queue = o.Queue
+	l.takePoll(&o.StarrConfig)
 }
 func (l *LidarrConfig) stripRuntime() { l.Queue, l.Lidarr = nil, nil }
 
@@ -49,6 +52,7 @@ func (r *ReadarrConfig) conf() *StarrConfig { return &r.StarrConfig }
 func (r *ReadarrConfig) connect()           { r.Readarr = readarr.New(&r.Config) }
 func (r *ReadarrConfig) takeQueue(o *ReadarrConfig) {
 	r.Queue = o.Queue
+	r.takePoll(&o.StarrConfig)
 }
 func (r *ReadarrConfig) stripRuntime() { r.Queue, r.Readarr = nil, nil }
 

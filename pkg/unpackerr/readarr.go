@@ -37,12 +37,14 @@ func (r *ReadarrConfig) queueViews() []queueView {
 
 	for _, rec := range r.Queue.Records {
 		out = append(out, queueView{
-			Title:      rec.Title,
-			Status:     rec.Status,
-			Protocol:   rec.Protocol,
-			OutputPath: rec.OutputPath,
-			Size:       rec.Size,
-			Sizeleft:   rec.Sizeleft,
+			Title:         rec.Title,
+			Status:        rec.Status,
+			TrackedStatus: rec.TrackedDownloadStatus,
+			TrackedState:  rec.TrackedDownloadState,
+			Protocol:      rec.Protocol,
+			OutputPath:    rec.OutputPath,
+			Size:          rec.Size,
+			Sizeleft:      rec.Sizeleft,
 			IDs: map[string]any{
 				"title":      rec.Title,
 				"authorId":   rec.AuthorID,

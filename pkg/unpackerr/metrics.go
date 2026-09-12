@@ -153,32 +153,88 @@ func (u *Unpackerr) setupMetrics() {
 
 // Stats is filled and returned when a stats request is issued.
 type Stats struct {
-	Waiting    uint `json:"waiting"`
-	Queued     uint `json:"queued"`
-	Extracting uint `json:"extracting"`
-	Failed     uint `json:"failed"`
-	Extracted  uint `json:"extracted"`
-	Imported   uint `json:"imported"`
-	Deleted    uint `json:"deleted"`
-	HookOK     uint `json:"hookOK"`
-	HookFail   uint `json:"hookFail"`
-	CmdOK      uint `json:"cmdOK"`
-	CmdFail    uint `json:"cmdFail"`
-	Retries    uint `json:"retries"`
-	Finished   uint `json:"finished"`
+	Waiting      uint             `json:"waiting"`
+	Queued       uint             `json:"queued"`
+	Extracting   uint             `json:"extracting"`
+	Failed       uint             `json:"failed"`
+	Extracted    uint             `json:"extracted"`
+	Imported     uint             `json:"imported"`
+	Deleted      uint             `json:"deleted"`
+	HookOK       uint             `json:"hookOK"`
+	HookFail     uint             `json:"hookFail"`
+	CmdOK        uint             `json:"cmdOK"`
+	CmdFail      uint             `json:"cmdFail"`
+	Retries      uint             `json:"retries"`
+	Finished     uint             `json:"finished"`
+	Starrs       uint             `json:"starrs"`
+	Folders      uint             `json:"folders"`
+	Webhooks     uint             `json:"webhooks"`
+	Cmdhooks     uint             `json:"cmdhooks"`
+	StackFS      BufferStat       `json:"stackFS"`
+	StackXtractr BufferStat       `json:"stackXtractr"`
+	StackFolder  BufferStat       `json:"stackFolder"`
+	StackHook    BufferStat       `json:"stackHook"`
+	StackDel     BufferStat       `json:"stackDel"`
+	StackTask    BufferStat       `json:"stackTask"`
+	StarrQueues  []StarrQueueStat `json:"starrQueues,omitempty"`
+}
+
+// BufferStat is occupancy and capacity of one internal channel.
+type BufferStat struct {
+	Len uint `json:"len"`
+	Cap uint `json:"cap"`
+}
+
+func (s *Stats) stackTotal() uint {
+	if s == nil {
+		return 0
+	}
+
+	return s.StackFS.Len + s.StackXtractr.Len + s.StackFolder.Len +
+		s.StackHook.Len + s.StackDel.Len + s.StackTask.Len
+}
+
+func chanStat[T any](ch <-chan T) BufferStat {
+	return BufferStat{Len: uint(len(ch)), Cap: uint(cap(ch))}
+}
+
+// StarrQueueStat is one Starr instance's last activity-queue poll.
+type StarrQueueStat struct {
+	App         string `json:"app"`
+	Name        string `json:"name"`
+	URL         string `json:"url,omitempty"`
+	Queued      int    `json:"queued"`
+	Retrieved   int    `json:"retrieved"`
+	Complete    int    `json:"complete"`
+	Match       int    `json:"match"`
+	Issues      int    `json:"issues"`
+	Downloading int    `json:"downloading"`
+	Error       string `json:"error,omitempty"`
 }
 
 // stats compiles and builds the statistics for the app.
 func (u *Unpackerr) stats() *Stats {
 	stats := &Stats{}
-	stats.HookOK, stats.HookFail = u.WebhookCounts()
-	stats.CmdOK, stats.CmdFail = u.CmdhookCounts()
 
 	u.rLockHistory()
 	defer u.rUnlockHistory()
 
+	u.fillQueueStats(stats)
+
+	return stats
+}
+
+func (u *Unpackerr) fillQueueStats(stats *Stats) {
 	stats.Retries = u.Retries
 	stats.Finished = u.Finished
+	stats.Starrs = uint(u.starrAppCount())
+	stats.Folders = uint(len(u.Folders))
+	stats.Webhooks = uint(len(u.hookList()))
+	stats.Cmdhooks = uint(len(u.cmdhookList()))
+	stats.HookOK, stats.HookFail = u.WebhookCounts()
+	stats.CmdOK, stats.CmdFail = u.CmdhookCounts()
+	u.fillStackDepths(stats)
+	stats.StarrQueues = u.starrQueueStats()
 
 	for name := range u.Map {
 		switch u.Map[name].Status {
@@ -198,6 +254,20 @@ func (u *Unpackerr) stats() *Stats {
 			stats.Imported++
 		}
 	}
+}
 
-	return stats
+// fillStackDepths is channel occupancy for the totals log and /api/stats stacks.
+func (u *Unpackerr) fillStackDepths(stats *Stats) {
+	stats.StackXtractr = chanStat(u.updates)
+	stats.StackDel = chanStat(u.delChan)
+	stats.StackTask = chanStat(u.taskChan)
+
+	if u.folders != nil {
+		stats.StackFS = chanStat(u.folders.Events)
+		stats.StackFolder = chanStat(u.folders.Updates)
+	}
+
+	if u.hookWorker != nil {
+		stats.StackHook = BufferStat{Len: uint(u.hookWorker.Len()), Cap: uint(u.hookWorker.Cap())}
+	}
 }

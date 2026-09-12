@@ -41,7 +41,6 @@ func (u *Unpackerr) liveConfigText(info authInfo) string {
 		fmt.Fprintf(&buf, format+"\n", v...)
 	}
 
-	printf("==> %s <==", helpLink)
 	printf("==> Live Settings <==")
 	printf(" => Version: v%s-%s (%s/%s)", version.Version, version.Revision, runtime.GOOS, runtime.GOARCH)
 

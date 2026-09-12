@@ -257,85 +257,6 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 	}
 }
 
-func TestUnmarshalConfigAdoptsWhisparrBeforePersist(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	conf := filepath.Join(dir, "unpackerr.conf")
-	key := strings.Repeat("b", apiKeyMinLength)
-	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n\n" +
-		"[[radarr]]\nurl = \"http://radarr:7878\"\napi_key = \"" + strings.Repeat("a", apiKeyMinLength) + "\"\n\n" +
-		"[[whisparr]]\nurl = \"http://whisparr:6969\"\napi_key = \"" + key + "\"\n"
-
-	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack := New()
-	unpack.ConfigFile = conf
-
-	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(unpack.Whisparr) != 0 {
-		t.Fatalf("live whisparr leftover: %d", len(unpack.Whisparr))
-	}
-
-	if unpack.fileConfig == nil || len(unpack.fileConfig.Whisparr) != 0 {
-		t.Fatalf("file whisparr leftover: %+v", unpack.fileConfig)
-	}
-
-	written, err := os.ReadFile(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	text := string(written)
-	if strings.Contains(text, "[[whisparr]]") {
-		t.Fatalf("password persist dropped [[whisparr]] instead of folding it:\n%s", text)
-	}
-
-	if !strings.Contains(text, "http://whisparr:6969") || !strings.Contains(text, "[[radarr]]") {
-		t.Fatalf("folded whisparr missing from radarr persist:\n%s", text)
-	}
-}
-
-func TestWriteConfigFileAdoptsWhisparr(t *testing.T) {
-	t.Parallel()
-
-	unpack := New()
-	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
-	unpack.Radarr = []*RadarrConfig{{
-		URL:    "http://radarr:7878",
-		APIKey: strings.Repeat("a", apiKeyMinLength),
-	}}
-	unpack.Whisparr = []*RadarrConfig{{
-		URL:    "http://whisparr:6969",
-		APIKey: strings.Repeat("b", apiKeyMinLength),
-	}}
-	unpack.snapshotFileConfig()
-	unpack.adoptWhisparr()
-
-	if err := unpack.writeConfigFile(); err != nil {
-		t.Fatal(err)
-	}
-
-	written, err := os.ReadFile(unpack.ConfigFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	text := string(written)
-	if strings.Contains(text, "[[whisparr]]") {
-		t.Fatalf("--reset persist dropped [[whisparr]]:\n%s", text)
-	}
-
-	if !strings.Contains(text, "http://whisparr:6969") {
-		t.Fatalf("folded whisparr url missing:\n%s", text)
-	}
-}
-
 func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "unpackerr.conf")
@@ -440,9 +361,8 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	}
 
 	skip := map[string]struct{}{
-		"path":     {}, // legacy StarrConfig alias for paths
-		"key":      {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
-		"whisparr": {}, // accepted on load, folded into [[radarr]]
+		"path": {}, // legacy StarrConfig alias for paths
+		"key":  {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)

@@ -83,15 +83,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	u.folders.Folders[name].Updated = now
 	u.folders.Folders[name].Status = QUEUED
 
-	// Do not extract r00 file if rar file with same name exists.
-	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
-		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
-		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
-		u.folders.Folders[name].Status = EXTRACTEDNOTHING
-		u.lockHistory()
-		u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTEDNOTHING}, now, false)
-		u.unlockHistory()
-
+	if u.skipR00Extraction(name, now) {
 		return
 	}
 
@@ -146,6 +138,22 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+}
+
+// skipR00Extraction drops a tracked .r00 when a sibling .rar exists (xtractr would extract the rar).
+func (u *Unpackerr) skipR00Extraction(name string, now time.Time) bool {
+	if !strings.HasSuffix(strings.ToLower(name), ".r00") ||
+		!xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
+		return false
+	}
+
+	u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
+	u.folders.Folders[name].Status = EXTRACTEDNOTHING
+	u.lockHistory()
+	u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTEDNOTHING}, now, false)
+	u.unlockHistory()
+
+	return true
 }
 
 // folderExcludeSuffixes returns archive suffixes to ignore when scanning for items to extract.
@@ -356,14 +364,27 @@ func (u *Unpackerr) syncFolderQueue(dirPath string) {
 	item.Updated = folder.Updated
 }
 
+func (u *Unpackerr) checkWaitingFolder(name string, folder *Folder, now time.Time) {
+	if _, err := os.Stat(name); err != nil {
+		delete(u.folders.Folders, name)
+		u.folders.Remove(name)
+		u.syncFolderQueue(name)
+
+		return
+	}
+
+	if now.Sub(folder.Updated) >= u.StartDelay.Duration {
+		u.extractTrackedItem(name, folder, now)
+	}
+}
+
 // checkFolderStats runs at an interval to see if any folders need work done on them.
 // This runs on an interval ticker in the main go routine.
 func (u *Unpackerr) checkFolderStats(now time.Time) {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := now.Sub(folder.Updated); {
-		case WAITING == folder.Status && elapsed >= u.StartDelay.Duration:
-			// The folder hasn't been written to in a while, extract it.
-			u.extractTrackedItem(name, folder, now)
+		case WAITING == folder.Status:
+			u.checkWaitingFolder(name, folder, now)
 		case EXTRACTEDNOTHING == folder.Status:
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
 			if now.Sub(folder.Updated) > u.StartDelay.Duration {

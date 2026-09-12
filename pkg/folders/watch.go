@@ -38,7 +38,7 @@ func (c WatchConfig) NewWatcher(
 	}
 
 	folders.Watcher = watcher.New()
-	folders.Watcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create)
+	folders.Watcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create, watcher.Remove)
 	folders.Watcher.IgnoreHiddenFiles(true)
 
 	fsn, err := fsnotify.NewWatcher()
@@ -190,6 +190,13 @@ func (f *Folders) ProcessEvent(event *Event, now time.Time) {
 
 	if stat.IsDir() && f.isExtractDest(dirPath) {
 		f.Debugf("Folder: Ignored File Event (%s) '%s' (extract output)", event.Op, event.File)
+
+		if _, ok := f.Folders[dirPath]; ok {
+			f.Debugf("Folder: Removing Tracked Item: %v", dirPath)
+			delete(f.Folders, dirPath)
+			f.Remove(dirPath)
+		}
+
 		return
 	}
 

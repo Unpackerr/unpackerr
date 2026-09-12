@@ -256,6 +256,38 @@ func TestFoldersIgnoreExtractDestSiblingArchive(t *testing.T) {
 	}
 }
 
+func TestFoldersUntrackExtractDestAfterSiblingAppears(t *testing.T) {
+	t.Parallel()
+
+	watchPath := t.TempDir()
+	cfg := &FolderConfig{Path: watchPath}
+	tracker := newTestFolders(t, cfg)
+	tracker.IgnoreSuffix = "_unpackerred"
+
+	dest := filepath.Join(watchPath, "Win10")
+	if err := os.Mkdir(dest, 0o700); err != nil {
+		t.Fatalf("creating dest: %v", err)
+	}
+
+	now := time.Now()
+	tracker.ProcessEvent(&Event{Config: cfg, Name: "Win10", File: dest, Op: "test"}, now)
+
+	if _, ok := tracker.Folders[dest]; !ok {
+		t.Fatalf("expected dest to be tracked before sibling archive: %s", dest)
+	}
+
+	iso := filepath.Join(watchPath, "Win10.iso")
+	if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+		t.Fatalf("creating sibling iso: %v", err)
+	}
+
+	tracker.ProcessEvent(&Event{Config: cfg, Name: "Win10", File: dest, Op: "write"}, now.Add(time.Second))
+
+	if _, ok := tracker.Folders[dest]; ok {
+		t.Fatalf("expected dest to be untracked after sibling archive appeared: %s", dest)
+	}
+}
+
 func TestFoldersHandleFileEventIgnoreExtractSuffixNested(t *testing.T) {
 	t.Parallel()
 

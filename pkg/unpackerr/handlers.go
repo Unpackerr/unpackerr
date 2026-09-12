@@ -419,11 +419,6 @@ func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []str
 	return filepath.Join(paths[0], title) // useless, but return something. :(
 }
 
-// isComplete is run so many times in different places that it became a method.
-func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos string) bool {
-	return isComplete(status, protocol, protos)
-}
-
 // added for https://github.com/Unpackerr/unpackerr/issues/235
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
 	files, _ := u.GetFileList(dirPath)

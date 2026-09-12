@@ -130,9 +130,9 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 			}
 
 			switch {
-			case found && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
+			case found && item.Status == EXTRACTED && isComplete(rec.Status, rec.Protocol, cfg.Protocols):
 				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", cfg.Label(app), cfg.URL, rec.Protocol, rec.Title)
-			case !found && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
+			case !found && isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
 				waiting := &Extract{
 					App:         app,
 					Name:        cfg.Name,

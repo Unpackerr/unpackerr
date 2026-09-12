@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"bytes"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -58,6 +59,50 @@ func TestQueueRetryAndForget(t *testing.T) {
 	missing := doAuth(t, unpack, http.MethodPost, "/api/queue/forget", `{"id":"/nope"}`, withKey)
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("forget missing %d", missing.Code)
+	}
+}
+
+func TestQueueForgetImportedAndDeleted(t *testing.T) {
+	t.Parallel()
+
+	var logs bytes.Buffer
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Info.SetOutput(&logs)
+	unpack.Map["/dl/imp"] = &Extract{Path: "/dl/imp", Status: IMPORTED, App: starr.Sonarr}
+	unpack.Map["/dl/gone"] = &Extract{Path: "/dl/gone", Status: DELETED, App: starr.Sonarr}
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	imp := doAuth(t, unpack, http.MethodPost, "/api/queue/forget", `{"id":"/dl/imp"}`, withKey)
+	if imp.Code != http.StatusOK {
+		t.Fatalf("forget imported %d %s", imp.Code, imp.Body.String())
+	}
+
+	if unpack.Finished != 0 {
+		t.Fatalf("imported forget must not count finished: %d", unpack.Finished)
+	}
+
+	if _, exists := unpack.Map["/dl/imp"]; exists {
+		t.Fatal("imported item still in map")
+	}
+
+	logged := logs.String()
+	if !strings.Contains(logged, "User forgot imported item") ||
+		!strings.Contains(logged, "skipping file cleanup") ||
+		!strings.Contains(logged, "/dl/imp") {
+		t.Fatalf("imported forget log: %s", logged)
+	}
+
+	gone := doAuth(t, unpack, http.MethodPost, "/api/queue/forget", `{"id":"/dl/gone"}`, withKey)
+	if gone.Code != http.StatusOK {
+		t.Fatalf("forget deleted %d %s", gone.Code, gone.Body.String())
+	}
+
+	if unpack.Finished != 1 {
+		t.Fatalf("deleted forget should count finished, got %d", unpack.Finished)
 	}
 }
 

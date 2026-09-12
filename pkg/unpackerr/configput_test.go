@@ -1544,7 +1544,7 @@ func envReadarrUnpackerr(t *testing.T, url, secret string) *Unpackerr {
 }
 
 // A save of [] must not drop an env-only Starr instance from live.
-func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) {
+func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
 	secret := strings.Repeat("R", apiKeyMinLength)
 	url := "http://readarr:8787/readarr"
 	unpack := envReadarrUnpackerr(t, url, secret)
@@ -1566,7 +1566,7 @@ func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) {
 }
 
 // Name is not an env field; PUT can write it to the file while env still fills URL/key.
-func TestConfigPutReadarrNameKeepsEnv(t *testing.T) {
+func TestConfigPutReadarrNameKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
 	secret := strings.Repeat("R", apiKeyMinLength)
 	url := "http://readarr:8787/readarr"
 	unpack := envReadarrUnpackerr(t, url, secret)

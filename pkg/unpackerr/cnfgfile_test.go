@@ -257,7 +257,7 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 	}
 }
 
-func TestUnmarshalConfigAdoptsWhisparrBeforePersist(t *testing.T) {
+func TestUnmarshalConfigIgnoresWhisparr(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -278,30 +278,17 @@ func TestUnmarshalConfigAdoptsWhisparrBeforePersist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(unpack.Whisparr) != 0 {
-		t.Fatalf("live whisparr leftover: %d", len(unpack.Whisparr))
+	if len(unpack.Radarr) != 1 || unpack.Radarr[0].URL != "http://radarr:7878" {
+		t.Fatalf("live radarr %+v", unpack.Radarr)
 	}
 
-	if unpack.fileConfig == nil || len(unpack.fileConfig.Whisparr) != 0 {
-		t.Fatalf("file whisparr leftover: %+v", unpack.fileConfig)
-	}
-
-	written, err := os.ReadFile(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	text := string(written)
-	if strings.Contains(text, "[[whisparr]]") {
-		t.Fatalf("password persist dropped [[whisparr]] instead of folding it:\n%s", text)
-	}
-
-	if !strings.Contains(text, "http://whisparr:6969") || !strings.Contains(text, "[[radarr]]") {
-		t.Fatalf("folded whisparr missing from radarr persist:\n%s", text)
+	if unpack.fileConfig == nil || len(unpack.fileConfig.Radarr) != 1 ||
+		unpack.fileConfig.Radarr[0].URL != "http://radarr:7878" {
+		t.Fatalf("file radarr %+v", unpack.fileConfig)
 	}
 }
 
-func TestWriteConfigFileAdoptsWhisparr(t *testing.T) {
+func TestWriteConfigFileOmitsWhisparr(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
@@ -310,12 +297,7 @@ func TestWriteConfigFileAdoptsWhisparr(t *testing.T) {
 		URL:    "http://radarr:7878",
 		APIKey: strings.Repeat("a", apiKeyMinLength),
 	}}
-	unpack.Whisparr = []*RadarrConfig{{
-		URL:    "http://whisparr:6969",
-		APIKey: strings.Repeat("b", apiKeyMinLength),
-	}}
 	unpack.snapshotFileConfig()
-	unpack.adoptWhisparr()
 
 	if err := unpack.writeConfigFile(); err != nil {
 		t.Fatal(err)
@@ -327,12 +309,12 @@ func TestWriteConfigFileAdoptsWhisparr(t *testing.T) {
 	}
 
 	text := string(written)
-	if strings.Contains(text, "[[whisparr]]") {
-		t.Fatalf("--reset persist dropped [[whisparr]]:\n%s", text)
+	if strings.Contains(text, "[[whisparr]]") || strings.Contains(text, "http://whisparr") {
+		t.Fatalf("wrote whisparr:\n%s", text)
 	}
 
-	if !strings.Contains(text, "http://whisparr:6969") {
-		t.Fatalf("folded whisparr url missing:\n%s", text)
+	if !strings.Contains(text, "[[radarr]]") || !strings.Contains(text, "http://radarr:7878") {
+		t.Fatalf("missing radarr:\n%s", text)
 	}
 }
 
@@ -440,9 +422,8 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	}
 
 	skip := map[string]struct{}{
-		"path":     {}, // legacy StarrConfig alias for paths
-		"key":      {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
-		"whisparr": {}, // accepted on load, folded into [[radarr]]
+		"path": {}, // legacy StarrConfig alias for paths
+		"key":  {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)

@@ -89,7 +89,6 @@ type Config struct {
 	Webserver     *WebServer       `json:"webserver"          toml:"webserver"      xml:"webserver"      yaml:"webserver"`
 	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"   toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
 	Radarr        []*RadarrConfig  `json:"radarr,omitempty"   toml:"radarr"         xml:"radarr"         yaml:"radarr,omitempty"`
-	Whisparr      []*RadarrConfig  `json:"whisparr,omitempty" toml:"whisparr"       xml:"whisparr"       yaml:"whisparr,omitempty"` // load only; folded into Radarr
 	Readarr       []*ReadarrConfig `json:"readarr,omitempty"  toml:"readarr"        xml:"readarr"        yaml:"readarr,omitempty"`
 	Sonarr        []*SonarrConfig  `json:"sonarr,omitempty"   toml:"sonarr"         xml:"sonarr"         yaml:"sonarr,omitempty"`
 	Folders       []*FolderConfig  `json:"folder,omitempty"   toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
@@ -147,58 +146,8 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	u.sweepForgotten()
 }
 
-const whisparrConfigDocs = "https://unpackerr.zip/docs/install/configuration"
-
-// adoptWhisparrList moves deprecated [[whisparr]] instances onto a Radarr list.
-func adoptWhisparrList(dst *[]*RadarrConfig, src []*RadarrConfig) {
-	for _, conf := range src {
-		if conf == nil {
-			continue
-		}
-
-		if strings.TrimSpace(conf.Name) == "" {
-			conf.Name = string(starr.Whisparr)
-		}
-
-		*dst = append(*dst, conf)
-	}
-}
-
-// adoptWhisparr folds deprecated [[whisparr]] / UN_WHISPARR_* into Radarr so
-// existing configs keep working. The on-disk snapshot is adopted too so the
-// next config write emits [[radarr]] instead of dropping those instances.
-// Idempotent. Does not log: unmarshalConfig runs this before setupLogging.
-func (u *Unpackerr) adoptWhisparr() {
-	if len(u.Whisparr) == 0 && (u.fileConfig == nil || len(u.fileConfig.Whisparr) == 0) {
-		return
-	}
-
-	u.whisparrAdopted = true
-
-	if len(u.Whisparr) > 0 {
-		adoptWhisparrList(&u.Radarr, u.Whisparr)
-		u.Whisparr = nil
-	}
-
-	if u.fileConfig != nil && len(u.fileConfig.Whisparr) > 0 {
-		adoptWhisparrList(&u.fileConfig.Radarr, u.fileConfig.Whisparr)
-		u.fileConfig.Whisparr = nil
-	}
-}
-
-func (u *Unpackerr) warnAdoptedWhisparr() {
-	if !u.whisparrAdopted {
-		return
-	}
-
-	u.Errorf("Config Warning: [[whisparr]] is now [[radarr]]. Rename UN_WHISPARR_* to UN_RADARR_* and see %s",
-		whisparrConfigDocs)
-}
-
 // validateApps is broken-out into this file to make adding new apps easier.
 func (u *Unpackerr) validateApps() error {
-	u.adoptWhisparr()
-
 	for _, validate := range []func() error{
 		u.validateRemnantAction,
 		func() error { return validateStarrList(u, &u.Lidarr, starr.Lidarr) },
@@ -240,8 +189,6 @@ func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 		return haveStarrQitem(u.Readarr, name)
 	case starr.Sonarr:
 		return haveStarrQitem(u.Sonarr, name)
-	case starr.Whisparr:
-		return haveStarrQitem(u.Radarr, name)
 	default:
 		return false
 	}

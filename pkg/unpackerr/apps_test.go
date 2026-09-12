@@ -1,55 +1,22 @@
 package unpackerr
 
 import (
+	"strings"
 	"testing"
 
-	"golift.io/starr"
+	"golift.io/cnfg"
 )
 
-func TestAdoptWhisparrFoldsIntoRadarr(t *testing.T) {
-	t.Parallel()
+func TestWhisparrEnvIsIgnored(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	t.Setenv("UN_WHISPARR_0_URL", "http://whisparr:6969")
+	t.Setenv("UN_WHISPARR_0_API_KEY", strings.Repeat("W", apiKeyMinLength))
 
 	unpack := New()
-	unpack.Radarr = []*RadarrConfig{{
-		Name: "Movies",
-		URL:  "http://radarr:7878",
-	}}
-	unpack.Whisparr = []*RadarrConfig{
-		{URL: "http://whisparr:6969"},
-		{Name: "Adult", URL: "http://whisparr2:6969"},
-	}
-	unpack.snapshotFileConfig()
-	unpack.adoptWhisparr()
-
-	if len(unpack.Whisparr) != 0 {
-		t.Fatalf("live whisparr leftover: %d", len(unpack.Whisparr))
+	if _, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix); err != nil {
+		t.Fatal(err)
 	}
 
-	if unpack.fileConfig == nil || len(unpack.fileConfig.Whisparr) != 0 {
-		t.Fatalf("file whisparr leftover: %+v", unpack.fileConfig)
-	}
-
-	if len(unpack.Radarr) != 3 {
-		t.Fatalf("live radarr count: %d", len(unpack.Radarr))
-	}
-
-	if unpack.Radarr[0].Name != "Movies" {
-		t.Fatalf("existing radarr name: %q", unpack.Radarr[0].Name)
-	}
-
-	if unpack.Radarr[1].Name != string(starr.Whisparr) {
-		t.Fatalf("unnamed whisparr name: %q", unpack.Radarr[1].Name)
-	}
-
-	if unpack.Radarr[2].Name != "Adult" {
-		t.Fatalf("named whisparr name: %q", unpack.Radarr[2].Name)
-	}
-
-	if len(unpack.fileConfig.Radarr) != 3 {
-		t.Fatalf("file radarr count: %d", len(unpack.fileConfig.Radarr))
-	}
-
-	if unpack.fileConfig.Radarr[1].Name != string(starr.Whisparr) || unpack.fileConfig.Radarr[2].Name != "Adult" {
-		t.Fatalf("file names: %q %q", unpack.fileConfig.Radarr[1].Name, unpack.fileConfig.Radarr[2].Name)
+	if len(unpack.Radarr) != 0 {
+		t.Fatalf("UN_WHISPARR_* must not become radarr: %+v", unpack.Radarr)
 	}
 }

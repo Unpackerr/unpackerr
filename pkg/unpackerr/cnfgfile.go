@@ -76,9 +76,6 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 
 	u.envUsed = envSuffixes(res.Used, u.EnvPrefix)
 
-	// Fold before setupUIPassword / --reset can persist fileConfig without whisparr in DefOrder.
-	u.adoptWhisparr()
-
 	u.snapshotLivePasswords()
 
 	if err := u.setPasswords(); err != nil {

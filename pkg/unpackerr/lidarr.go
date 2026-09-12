@@ -21,6 +21,10 @@ type LidarrConfig struct {
 }
 
 func (l *LidarrConfig) pollQueue() (int, int, error) {
+	if l.Lidarr == nil {
+		l.connect()
+	}
+
 	queue, err := l.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
 		return 0, 0, fmt.Errorf("getting queue: %w", err)

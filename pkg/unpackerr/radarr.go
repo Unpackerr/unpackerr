@@ -14,6 +14,10 @@ type RadarrConfig struct {
 }
 
 func (r *RadarrConfig) pollQueue() (int, int, error) {
+	if r.Radarr == nil {
+		r.connect()
+	}
+
 	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
 		return 0, 0, fmt.Errorf("getting queue: %w", err)

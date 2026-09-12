@@ -58,7 +58,6 @@ func cloneConfig(src *Config) *Config {
 	dst.Webserver = cloneWebserver(src.Webserver)
 	dst.Lidarr = cloneStarrList(src.Lidarr)
 	dst.Radarr = cloneStarrList(src.Radarr)
-	dst.Whisparr = cloneStarrList(src.Whisparr)
 	dst.Readarr = cloneStarrList(src.Readarr)
 	dst.Sonarr = cloneStarrList(src.Sonarr)
 	dst.Folders = cloneFolderList(src.Folders)

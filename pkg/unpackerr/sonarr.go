@@ -14,6 +14,10 @@ type SonarrConfig struct {
 }
 
 func (s *SonarrConfig) pollQueue() (int, int, error) {
+	if s.Sonarr == nil {
+		s.connect()
+	}
+
 	queue, err := s.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
 		return 0, 0, fmt.Errorf("getting queue: %w", err)

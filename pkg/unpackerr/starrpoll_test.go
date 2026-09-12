@@ -11,6 +11,7 @@ import (
 	"golift.io/starr/radarr"
 	"golift.io/starr/readarr"
 	"golift.io/starr/sonarr"
+	"golift.io/xtractr"
 )
 
 func TestQueueViewsIDs(t *testing.T) {
@@ -196,5 +197,152 @@ func TestStarrConfigLabel(t *testing.T) {
 	cfg := &StarrConfig{Name: "  Sportarr "}
 	if got := cfg.Label(starr.Sonarr); got != "Sportarr" {
 		t.Fatalf("named Label: %q", got)
+	}
+}
+
+func TestTallyQueueViews(t *testing.T) {
+	t.Parallel()
+
+	got := tallyQueueViews([]queueView{
+		{Status: "completed", Protocol: "torrent"},
+		{Status: "Completed", Protocol: "usenet", TrackedStatus: "error"},
+		{Status: "failed"},
+		{Status: "downloading"},
+		{Status: "paused", TrackedState: "downloadFailed"},
+		{Status: "queued"},
+		{Status: "warning"},
+		{Status: "completed", TrackedStatus: "warning"},
+	}, "torrent")
+	if got.complete != 3 || got.match != 1 || got.issues != 5 || got.downloading != 1 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestStarrQueueStatsCountsRecords(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{
+		Name: "Sportarr", Protocols: "torrent", lastQueued: 6, lastRetrieved: 4,
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{
+			{Status: "completed", Protocol: "torrent"},
+			{Status: "completed", Protocol: "usenet", TrackedDownloadStatus: "error"},
+			{Status: "failed"},
+			{Status: "downloading"},
+			{Status: "warning"},
+		}},
+	}}
+
+	stats := &Stats{}
+	unpack.fillQueueStats(stats)
+
+	got := stats.StarrQueues[0]
+	if got.Queued != 6 || got.Retrieved != 4 || got.Complete != 2 || got.Match != 1 ||
+		got.Issues != 3 || got.Downloading != 1 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestFillQueueStatsConfigCounts(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}, {}}
+	unpack.Radarr = []*RadarrConfig{{}}
+	unpack.Folders = []*FolderConfig{{Path: "/watch"}, {Path: "/other"}}
+	unpack.Finished = 9
+	unpack.Map["live"] = &Extract{Status: IMPORTED, Updated: time.Now()}
+	unpack.Map["out"] = &Extract{Status: EXTRACTED, Updated: time.Now()}
+
+	stats := &Stats{}
+	unpack.fillQueueStats(stats)
+
+	if stats.Starrs != 3 {
+		t.Fatalf("starrs %d", stats.Starrs)
+	}
+
+	if stats.Folders != 2 {
+		t.Fatalf("folders %d", stats.Folders)
+	}
+
+	unpack.Webhook = []*WebhookConfig{{}}
+
+	stats = &Stats{}
+	unpack.fillQueueStats(stats)
+
+	if stats.Webhooks != 1 || stats.Cmdhooks != 0 {
+		t.Fatalf("hooks configured webhook:%d cmd:%d", stats.Webhooks, stats.Cmdhooks)
+	}
+
+	if stats.Imported != 1 {
+		t.Fatalf("live imported %d", stats.Imported)
+	}
+
+	if stats.Extracted != 1 || stats.Finished != 9 {
+		t.Fatalf("extracted %d finished %d", stats.Extracted, stats.Finished)
+	}
+
+	if len(stats.StarrQueues) != 3 {
+		t.Fatalf("starr queues %d", len(stats.StarrQueues))
+	}
+}
+
+func TestFillStackDepthsSplitsChannels(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.folders.Events = make(chan *eventData, 8)
+
+	unpack.folders.Updates = make(chan *xtractr.Response, 8)
+	unpack.folders.Events <- &eventData{}
+
+	unpack.folders.Events <- &eventData{}
+
+	unpack.folders.Updates <- &xtractr.Response{}
+
+	unpack.updates <- &xtractr.Response{}
+
+	unpack.delChan <- &fileDeleteReq{}
+
+	unpack.taskChan <- nil
+
+	stats := &Stats{}
+	unpack.fillStackDepths(stats)
+
+	if stats.StackFS != (BufferStat{Len: 2, Cap: 8}) ||
+		stats.StackFolder != (BufferStat{Len: 1, Cap: 8}) ||
+		stats.StackXtractr != (BufferStat{Len: 1, Cap: updateChanBuf}) ||
+		stats.StackDel != (BufferStat{Len: 1, Cap: updateChanBuf}) ||
+		stats.StackTask != (BufferStat{Len: 1, Cap: updateChanBuf}) ||
+		stats.StackHook != (BufferStat{Len: 0, Cap: updateChanBuf}) {
+		t.Fatalf("%+v", stats)
+	}
+
+	if stats.stackTotal() != 6 {
+		t.Fatalf("stack total %d", stats.stackTotal())
+	}
+}
+
+func TestStarrQueueStatsShowsPollCounts(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].Name = "Sportarr"
+	unpack.Sonarr[0].URL = "http://127.0.0.1:8989"
+	unpack.Sonarr[0].lastQueued = 12
+	unpack.Sonarr[0].lastRetrieved = 8
+	unpack.Sonarr[0].lastPollErr = "timeout"
+
+	stats := &Stats{}
+	unpack.fillQueueStats(stats)
+
+	if len(stats.StarrQueues) != 1 {
+		t.Fatalf("starr queues %d", len(stats.StarrQueues))
+	}
+
+	got := stats.StarrQueues[0]
+	if got.Name != "Sportarr" || got.Queued != 12 || got.Retrieved != 8 || got.Error != "timeout" {
+		t.Fatalf("%+v", got)
 	}
 }

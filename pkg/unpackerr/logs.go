@@ -57,13 +57,14 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 		stats.Waiting, stats.Queued, stats.Extracting, stats.Extracted, stats.Imported, stats.Failed, stats.Deleted)
 
 	u.Printf("[Unpackerr] Totals: %d retries, %d finished, %d|%d webhooks,"+
-		" %d|%d cmdhooks, stacks; event:%d, hook:%d, del:%d, up %s",
+		" %d|%d cmdhooks, stacks; fs:%d/%d, xtractr:%d/%d, folder:%d/%d, hook:%d/%d, del:%d/%d, task:%d/%d, up %s",
 		stats.Retries, stats.Finished, stats.HookOK, stats.HookFail, stats.CmdOK, stats.CmdFail,
-		len(u.folders.Events)+len(u.updates)+len(u.folders.Updates), u.hookWorker.Len(), len(u.delChan),
+		stats.StackFS.Len, stats.StackFS.Cap, stats.StackXtractr.Len, stats.StackXtractr.Cap,
+		stats.StackFolder.Len, stats.StackFolder.Cap, stats.StackHook.Len, stats.StackHook.Cap,
+		stats.StackDel.Len, stats.StackDel.Cap, stats.StackTask.Len, stats.StackTask.Cap,
 		carbon.CreateFromStdTime(version.Started).DiffAbsInString(carbon.CreateFromStdTime(now)))
 
-	u.updateTray(stats, uint(len(u.folders.Events)+len(u.updates)+
-		len(u.folders.Updates)+len(u.delChan)+u.hookWorker.Len()))
+	u.updateTray(stats, stats.stackTotal())
 }
 
 // setupLogging splits log write into a file and/or stdout.

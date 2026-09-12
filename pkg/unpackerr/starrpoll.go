@@ -11,11 +11,12 @@ import (
 
 // queueView is the subset of a Starr queue record Unpackerr needs to start an extract.
 type queueView struct {
-	Title, Status, OutputPath string
-	Protocol                  starr.Protocol
-	Size, Sizeleft            float64
-	IDs                       map[string]any
-	DebugExtra                string
+	Title, Status, OutputPath   string
+	TrackedStatus, TrackedState string
+	Protocol                    starr.Protocol
+	Size, Sizeleft              float64
+	IDs                         map[string]any
+	DebugExtra                  string
 }
 
 func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list *[]P, app starr.App) error {
@@ -79,9 +80,12 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 		return
 	}
 
-	total, retrieved, err := server.pollQueue()
+	bind, total, retrieved, err := server.pollQueue()
+	u.publishStarrPoll(cfg, bind, total, retrieved, err)
+
 	if err != nil {
 		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)
+
 		return
 	}
 
@@ -90,6 +94,26 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 	if !u.Activity || total > 0 {
 		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", label, cfg.URL, total, retrieved)
 	}
+}
+
+// publishStarrPoll stores the last poll snapshot under History.mu so HTTP
+// stats() and Prometheus Collect cannot race the pointer swap or lastPollErr.
+// GetQueue stays outside this lock.
+func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retrieved int, err error) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	if err != nil {
+		cfg.lastPollErr = err.Error()
+
+		return
+	}
+
+	bind()
+
+	cfg.lastQueued = total
+	cfg.lastRetrieved = retrieved
+	cfg.lastPollErr = ""
 }
 
 func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app starr.App, now time.Time) {
@@ -106,9 +130,9 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 			}
 
 			switch {
-			case found && item.Status == EXTRACTED && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols):
+			case found && item.Status == EXTRACTED && isComplete(rec.Status, rec.Protocol, cfg.Protocols):
 				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", cfg.Label(app), cfg.URL, rec.Protocol, rec.Title)
-			case !found && unpack.isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
+			case !found && isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
 				waiting := &Extract{
 					App:         app,
 					Name:        cfg.Name,
@@ -140,6 +164,88 @@ func haveStarrQitem[T any, P starrApp[T]](list []P, name string) bool {
 	for _, server := range list {
 		if server.hasQueueTitle(name) {
 			return true
+		}
+	}
+
+	return false
+}
+
+func (u *Unpackerr) starrQueueStats() []StarrQueueStat {
+	n := u.starrAppCount()
+	if n == 0 {
+		return nil
+	}
+
+	out := make([]StarrQueueStat, 0, n)
+	out = append(out, starrQueueRows(u.Lidarr, starr.Lidarr)...)
+	out = append(out, starrQueueRows(u.Radarr, starr.Radarr)...)
+	out = append(out, starrQueueRows(u.Readarr, starr.Readarr)...)
+	out = append(out, starrQueueRows(u.Sonarr, starr.Sonarr)...)
+
+	return out
+}
+
+func starrQueueRows[T any, P starrApp[T]](list []P, app starr.App) []StarrQueueStat {
+	out := make([]StarrQueueStat, 0, len(list))
+
+	for _, server := range list {
+		cfg := server.conf()
+		counts := tallyQueueViews(server.queueViews(), cfg.Protocols)
+		out = append(out, StarrQueueStat{
+			App:         string(app),
+			Name:        cfg.Label(app),
+			URL:         cfg.URL,
+			Queued:      cfg.lastQueued,
+			Retrieved:   cfg.lastRetrieved,
+			Complete:    counts.complete,
+			Match:       counts.match,
+			Issues:      counts.issues,
+			Downloading: counts.downloading,
+			Error:       cfg.lastPollErr,
+		})
+	}
+
+	return out
+}
+
+type queueStatusCounts struct {
+	complete, match, issues, downloading int
+}
+
+func tallyQueueViews(views []queueView, protocols string) queueStatusCounts {
+	var counts queueStatusCounts
+
+	for _, rec := range views {
+		status := strings.ToLower(rec.Status)
+		tracked := strings.ToLower(rec.TrackedStatus)
+		state := strings.ToLower(rec.TrackedState)
+
+		if status == "completed" {
+			counts.complete++
+		}
+
+		if isComplete(rec.Status, rec.Protocol, protocols) {
+			counts.match++
+		}
+
+		if status == "failed" || status == "warning" ||
+			tracked == "error" || tracked == "warning" ||
+			strings.Contains(state, "fail") {
+			counts.issues++
+		}
+
+		if status == "downloading" {
+			counts.downloading++
+		}
+	}
+
+	return counts
+}
+
+func isComplete(status string, protocol starr.Protocol, protos string) bool {
+	for s := range strings.FieldsSeq(strings.ReplaceAll(protos, ",", " ")) {
+		if strings.EqualFold(string(protocol), s) {
+			return strings.EqualFold(status, "completed")
 		}
 	}
 

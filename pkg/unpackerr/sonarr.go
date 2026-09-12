@@ -13,19 +13,17 @@ type SonarrConfig struct {
 	*sonarr.Sonarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (s *SonarrConfig) pollQueue() (int, int, error) {
+func (s *SonarrConfig) pollQueue() (func(), int, int, error) {
 	if s.Sonarr == nil {
 		s.connect()
 	}
 
 	queue, err := s.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
-		return 0, 0, fmt.Errorf("getting queue: %w", err)
+		return nil, 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	s.Queue = queue
-
-	return queue.TotalRecords, len(queue.Records), nil
+	return func() { s.Queue = queue }, queue.TotalRecords, len(queue.Records), nil
 }
 
 func (s *SonarrConfig) queueViews() []queueView {
@@ -37,13 +35,15 @@ func (s *SonarrConfig) queueViews() []queueView {
 
 	for _, rec := range s.Queue.Records {
 		out = append(out, queueView{
-			Title:      rec.Title,
-			Status:     rec.Status,
-			Protocol:   rec.Protocol,
-			OutputPath: rec.OutputPath,
-			Size:       rec.Size,
-			Sizeleft:   rec.Sizeleft,
-			DebugExtra: fmt.Sprintf(" (Ep: %v)", rec.EpisodeID),
+			Title:         rec.Title,
+			Status:        rec.Status,
+			TrackedStatus: rec.TrackedDownloadStatus,
+			TrackedState:  rec.TrackedDownloadState,
+			Protocol:      rec.Protocol,
+			OutputPath:    rec.OutputPath,
+			Size:          rec.Size,
+			Sizeleft:      rec.Sizeleft,
+			DebugExtra:    fmt.Sprintf(" (Ep: %v)", rec.EpisodeID),
 			IDs: map[string]any{
 				"title":      rec.Title,
 				"downloadId": rec.DownloadID,

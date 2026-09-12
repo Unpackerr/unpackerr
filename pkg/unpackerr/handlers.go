@@ -29,6 +29,20 @@ type StarrConfig struct {
 	// Empty uses that default. `0` or `0B` is unlimited.
 	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
 	maxBytes uint64
+	// Last poll snapshot for GET /api/stats starrQueues. Published under History.mu.
+	lastQueued    int
+	lastRetrieved int
+	lastPollErr   string
+}
+
+func (c *StarrConfig) takePoll(old *StarrConfig) {
+	if c == nil || old == nil {
+		return
+	}
+
+	c.lastQueued = old.lastQueued
+	c.lastRetrieved = old.lastRetrieved
+	c.lastPollErr = old.lastPollErr
 }
 
 // Label is the human-facing instance name, or app when Name is empty.
@@ -403,17 +417,6 @@ func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []str
 	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", label, title)
 
 	return filepath.Join(paths[0], title) // useless, but return something. :(
-}
-
-// isComplete is run so many times in different places that it became a method.
-func (u *Unpackerr) isComplete(status string, protocol starr.Protocol, protos string) bool {
-	for s := range strings.FieldsSeq(strings.ReplaceAll(protos, ",", " ")) {
-		if strings.EqualFold(string(protocol), s) {
-			return strings.EqualFold(status, "completed")
-		}
-	}
-
-	return false
 }
 
 // added for https://github.com/Unpackerr/unpackerr/issues/235

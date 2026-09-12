@@ -42,7 +42,7 @@ Unpackerr is **one process**. One goroutine — `(*Unpackerr).Run()` in `pkg/unp
 
 HTTP handlers **must not** mutate those on the HTTP goroutine. They validate the body, then call `onMainLoop`. Queue retry/forget use the same handoff. Config GET of the **file** snapshot does **not** need the main loop (it is under `configMu`). Config GET of **live** general/starr/folders **does**, because live `Config` is main-loop memory.
 
-If a new reader of live `u.Sonarr` / `u.Passwords` / `u.StartDelay` runs off the main loop, do not add a mutex. Route it through `onMainLoop`.
+`GET /api/stats` (and Prometheus `Collect`) is the exception that reads live Starr/folder slice headers off-loop. That path takes `configMu` for the slice headers (same as hook counts) and `History.mu` for `Queue` / `lastQueued` / `lastRetrieved` / `lastPollErr`. Poll workers publish those fields under the history write lock **after** `GetQueue` returns. Do not hop stats onto `onMainLoop`; that would stall scrapes behind Starr HTTP. Other new readers of live `u.Sonarr` / `u.Passwords` / `u.StartDelay` still go through `onMainLoop`.
 
 ---
 
@@ -106,7 +106,7 @@ What the daemon *runs*: Starr HTTP clients, expanded secrets, hashed UI password
 **HTTP readers that are allowed off-loop:**
 
 - `uiPassMu` covers live webserver **auth** fields HTTP hits every request: `UIPassword`, `APIKeys`, `Roles`, `keyPerms`, `Upstreams`, `allow`. PUT applies those under that lock via `applyLiveWebserverAuth`.
-- Stats/queue/history have their own locks (`History.mu`, `histMu`, `configMu` for hook *counts*).
+- Stats/queue/history have their own locks (`History.mu`, `histMu`, `configMu` for hook/Starr/folder *counts* and the last Starr poll snapshot).
 
 Everything else live is main-loop only.
 
@@ -337,12 +337,14 @@ This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` “
 | Lock | Guards |
 | --- | --- |
 | (none — main loop) | live `Config` minus webserver auth, `Map`, folders, tickers, `pendingRestart` |
-| `configMu` | `fileConfig` + hook slices `/api/stats` counts |
+| `configMu` | `fileConfig` + hook/Starr/folder slices `/api/stats` counts |
 | `uiPassMu` | live webserver auth fields HTTP reads |
 | `histMu` | history records + JSONL |
-| `History.mu` | extract map for HTTP queue GET |
+| `History.mu` | extract map; Starr poll snapshot (`Queue`, `lastQueued`, `lastRetrieved`, `lastPollErr`) |
 
 `syncFileUIPassword` takes `uiPassword()` (uiPassMu) **then** `configMu`. That order is intentional.
+
+`GET /api/stats` takes `History.mu` **then** `configMu`. `commitConfig` holds `configMu` and must not take `History.mu`.
 
 The tray reads live `Config` in `readyTray` **before** `go u.Run()`. A PUT cannot apply until the loop exists and drains `taskChan`. That is not a race.
 

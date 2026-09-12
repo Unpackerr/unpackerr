@@ -82,7 +82,7 @@ type Unpackerr struct {
 	menu     map[string]ui.MenuItem
 	// Live Config is owned by the main goroutine in Run(). fileConfig is the
 	// on-disk shape (filepath: values kept) and is also written by the tray,
-	// so it and the hook slices that /api/stats counts sit under configMu.
+	// so it and the hook/Starr/folder slices that /api/stats counts sit under configMu.
 	fileConfig       *Config
 	envUsed          map[string]string // UN_* suffixes that ParseENV wrote; immutable after startup
 	livePasswords    StringSlice       // post-env, pre-expansion; GET /live uses this

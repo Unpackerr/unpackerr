@@ -83,12 +83,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	u.folders.Folders[name].Updated = now
 	u.folders.Folders[name].Status = QUEUED
 
-	// Do not extract r00 file if rar file with same name exists.
-	if strings.HasSuffix(strings.ToLower(name), ".r00") &&
-		xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
-		u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
-		u.folders.Folders[name].Status = EXTRACTEDNOTHING
-
+	if u.skipR00Extraction(name, now) {
 		return
 	}
 
@@ -143,6 +138,22 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	}
 
 	u.Printf("[Folder] Queued: %s, queue size: %d", name, queueSize)
+}
+
+// skipR00Extraction drops a tracked .r00 when a sibling .rar exists (xtractr would extract the rar).
+func (u *Unpackerr) skipR00Extraction(name string, now time.Time) bool {
+	if !strings.HasSuffix(strings.ToLower(name), ".r00") ||
+		!xtractr.CheckR00ForRarFile(getFileList(filepath.Dir(name)), filepath.Base(name)) {
+		return false
+	}
+
+	u.Printf("[Folder] Removing tracked item without extraction: %v (rar file exists)", name)
+	u.folders.Folders[name].Status = EXTRACTEDNOTHING
+	u.lockHistory()
+	u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTEDNOTHING}, now, false)
+	u.unlockHistory()
+
+	return true
 }
 
 // folderExcludeSuffixes returns archive suffixes to ignore when scanning for items to extract.
@@ -308,12 +319,63 @@ func (u *Unpackerr) finishFolderRemnants(folder *Folder, resp *xtractr.Response,
 
 // processEvent is here to process the event in the `*Unpackerr` scope before sending it back to the `*Folders` scope.
 func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
+	if event == nil || event.Config == nil {
+		return
+	}
+
 	// Do not watch our own log file.
 	if event.File == u.LogFile || event.File == u.Webserver.LogFile {
 		return
 	}
 
 	u.folders.ProcessEvent(event, now)
+	u.syncFolderQueue(filepath.Join(event.Config.Path, event.Name))
+}
+
+// syncFolderQueue mirrors a watched folder into the overview queue while it is
+// still tracking writes (before start_delay queues extraction).
+func (u *Unpackerr) syncFolderQueue(dirPath string) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	folder, ok := u.folders.Folders[dirPath]
+	if !ok {
+		if item := u.Map[dirPath]; item != nil && item.App == FolderString && item.Status == WAITING {
+			delete(u.Map, dirPath)
+		}
+
+		return
+	}
+
+	if folder.Status != WAITING {
+		return
+	}
+
+	if _, exists := u.Map[dirPath]; !exists {
+		u.updateQueueStatus(&newStatus{Name: dirPath, Status: WAITING}, folder.Updated, false)
+		return
+	}
+
+	item := u.Map[dirPath]
+	if item.Status != WAITING {
+		return
+	}
+
+	item.Updated = folder.Updated
+}
+
+func (u *Unpackerr) checkWaitingFolder(name string, folder *Folder, now time.Time) {
+	if _, err := os.Stat(name); err != nil {
+		delete(u.folders.Folders, name)
+		u.folders.Remove(name)
+		u.syncFolderQueue(name)
+
+		return
+	}
+
+	if now.Sub(folder.Updated) >= u.StartDelay.Duration {
+		u.extractTrackedItem(name, folder, now)
+	}
 }
 
 // checkFolderStats runs at an interval to see if any folders need work done on them.
@@ -321,9 +383,8 @@ func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 func (u *Unpackerr) checkFolderStats(now time.Time) {
 	for name, folder := range u.folders.Folders {
 		switch elapsed := now.Sub(folder.Updated); {
-		case WAITING == folder.Status && elapsed >= u.StartDelay.Duration:
-			// The folder hasn't been written to in a while, extract it.
-			u.extractTrackedItem(name, folder, now)
+		case WAITING == folder.Status:
+			u.checkWaitingFolder(name, folder, now)
 		case EXTRACTEDNOTHING == folder.Status:
 			// Wait until this item hasn't been touched for a while, so it doesn't re-queue.
 			if now.Sub(folder.Updated) > u.StartDelay.Duration {
@@ -409,12 +470,12 @@ type newStatus struct {
 // This is used by apps and Folders in a few other places as well.
 func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook bool) *Extract {
 	if _, ok := u.Map[data.Name]; !ok {
-		// This is a new Folder being queued for extraction.
-		// Arr apps do not land here. They create their own queued items in u.Map.
+		// This is a new Folder item. Arr apps do not land here.
+		// They create their own queued items in u.Map.
 		u.Map[data.Name] = &Extract{
 			Path:    data.Name,
 			App:     FolderString,
-			Status:  QUEUED,
+			Status:  data.Status,
 			Updated: now,
 			IDs:     map[string]any{"title": data.Name}, // required or webhook may break.
 		}

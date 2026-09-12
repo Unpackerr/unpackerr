@@ -343,6 +343,10 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 		Updated:    item.Updated,
 	}
 
+	if item.Status == WAITING && item.App == FolderString {
+		queue.Progress = "last write"
+	}
+
 	if item.XProg != nil {
 		if prog := item.XProg.String(); prog != "no progress yet" {
 			queue.Progress = prog

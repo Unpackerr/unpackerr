@@ -180,6 +180,121 @@ func TestFoldersHandleFileEventExcludedPath(t *testing.T) {
 	}
 }
 
+func TestFoldersIgnoreExtractDestLogFile(t *testing.T) {
+	t.Parallel()
+
+	watchPath := t.TempDir()
+	cfg := &FolderConfig{Path: watchPath}
+	tracker := newTestFolders(t, cfg)
+	tracker.IgnoreSuffix = "_unpackerred"
+
+	dest := filepath.Join(watchPath, "Win10")
+	if err := os.Mkdir(dest, 0o700); err != nil {
+		t.Fatalf("creating extract dest: %v", err)
+	}
+
+	logName := filepath.Join(dest, "_unpackerred.Win10.iso.txt")
+	if err := os.WriteFile(logName, []byte("x"), 0o600); err != nil {
+		t.Fatalf("creating extract log: %v", err)
+	}
+
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   "Win10",
+		File:   dest,
+		Op:     "test",
+	}, time.Now())
+
+	if _, ok := tracker.Folders[dest]; ok {
+		t.Fatalf("did not expect extract dest to be tracked: %s", dest)
+	}
+}
+
+func TestFoldersIgnoreExtractDestSiblingArchive(t *testing.T) {
+	t.Parallel()
+
+	watchPath := t.TempDir()
+	cfg := &FolderConfig{Path: watchPath}
+	tracker := newTestFolders(t, cfg)
+	tracker.IgnoreSuffix = "_unpackerred"
+
+	iso := filepath.Join(watchPath, "Win10.iso")
+	if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+		t.Fatalf("creating sibling iso: %v", err)
+	}
+
+	dest := filepath.Join(watchPath, "Win10")
+	if err := os.Mkdir(dest, 0o700); err != nil {
+		t.Fatalf("creating extract dest: %v", err)
+	}
+
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   "Win10",
+		File:   dest,
+		Op:     "test",
+	}, time.Now())
+
+	if _, ok := tracker.Folders[dest]; ok {
+		t.Fatalf("did not expect sibling-of-archive dest to be tracked: %s", dest)
+	}
+
+	incoming := filepath.Join(watchPath, "incoming")
+	if err := os.Mkdir(incoming, 0o700); err != nil {
+		t.Fatalf("creating incoming dir: %v", err)
+	}
+
+	tracker.ProcessEvent(&Event{
+		Config: cfg,
+		Name:   "incoming",
+		File:   incoming,
+		Op:     "test",
+	}, time.Now())
+
+	if _, ok := tracker.Folders[incoming]; !ok {
+		t.Fatalf("expected unrelated folder to be tracked: %s", incoming)
+	}
+}
+
+func TestFoldersHandleFileEventIgnoreExtractSuffixNested(t *testing.T) {
+	t.Parallel()
+
+	watchPath := t.TempDir()
+	tracker := &Folders{
+		Config:       []*FolderConfig{{Path: watchPath}},
+		Events:       make(chan *Event, 1),
+		Logs:         noopLogger{},
+		IgnoreSuffix: "_unpackerred",
+	}
+
+	nested := filepath.Join(watchPath, "Win10.iso_unpackerred", "autorun.inf")
+	tracker.handleFileEvent(nested, "test")
+
+	select {
+	case event := <-tracker.Events:
+		t.Fatalf("did not expect event for nested extract path: %+v", event)
+	default:
+	}
+}
+
+func TestArchiveStem(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"Win10.iso":    "Win10",
+		"movie.tar.gz": "movie",
+		"show.7z":      "show",
+		"plain":        "plain",
+		"archive.ZIP":  "archive",
+	}
+
+	for name, want := range tests {
+		if got := archiveStem(name); got != want {
+			t.Fatalf("archiveStem(%q)=%q want %q", name, got, want)
+		}
+	}
+}
+
 func newTestFolders(t *testing.T, cfg *FolderConfig) *Folders {
 	t.Helper()
 

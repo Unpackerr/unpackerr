@@ -124,7 +124,7 @@ func (f *Folders) WatchFSNotify() {
 }
 
 func (f *Folders) handleFileEvent(name, operation string) {
-	if f.IgnoreSuffix != "" && strings.HasSuffix(name, f.IgnoreSuffix) {
+	if f.ignoredExtractName(name) {
 		return
 	}
 
@@ -183,6 +183,16 @@ func (f *Folders) ProcessEvent(event *Event, now time.Time) {
 		return
 	}
 
+	if f.ignoredExtractName(dirPath) || f.ignoredExtractName(event.File) {
+		f.Debugf("Folder: Ignored File Event (%s) '%s' (extract path)", event.Op, event.File)
+		return
+	}
+
+	if stat.IsDir() && f.isExtractDest(dirPath) {
+		f.Debugf("Folder: Ignored File Event (%s) '%s' (extract output)", event.Op, event.File)
+		return
+	}
+
 	f.saveEvent(event, dirPath, now)
 }
 
@@ -207,4 +217,107 @@ func (f *Folders) saveEvent(event *Event, dirPath string, now time.Time) {
 		Status:  extract.WAITING,
 		Config:  event.Config,
 	}
+}
+
+// ignoredExtractName is true when a path component is the temp extract folder
+// (ends with IgnoreSuffix) or the extract log (_unpackerred.<archive>.txt).
+func (f *Folders) ignoredExtractName(path string) bool {
+	if f == nil || f.IgnoreSuffix == "" || path == "" {
+		return false
+	}
+
+	for {
+		base := filepath.Base(path)
+		if strings.HasSuffix(base, f.IgnoreSuffix) || strings.HasPrefix(base, f.IgnoreSuffix+".") {
+			return true
+		}
+
+		next := filepath.Dir(path)
+		if next == path {
+			return false
+		}
+
+		path = next
+	}
+}
+
+// isExtractDest reports whether dir is xtractr output: it has the extract log,
+// or it sits next to an archive whose stem matches the directory name
+// (movie.iso → movie/ after the temp _unpackerred folder is renamed).
+func (f *Folders) isExtractDest(dirPath string) bool {
+	if hasExtractLog(dirPath, f.IgnoreSuffix) {
+		return true
+	}
+
+	return hasSiblingArchiveStem(dirPath)
+}
+
+func hasExtractLog(dirPath, suffix string) bool {
+	if suffix == "" {
+		return false
+	}
+
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return false
+	}
+
+	prefix := suffix + "."
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if strings.HasPrefix(name, prefix) && strings.HasSuffix(strings.ToLower(name), ".txt") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasSiblingArchiveStem(dirPath string) bool {
+	base := filepath.Base(dirPath)
+	parent := filepath.Dir(dirPath)
+
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return false
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if xtractr.IsArchiveFile(name) && archiveStem(name) == base {
+			return true
+		}
+	}
+
+	return false
+}
+
+// archiveStem strips archive extensions the same way xtractr names the final
+// extract folder (twice, for tar.gz and friends).
+func archiveStem(name string) string {
+	stem := name
+
+	for range 2 {
+		if !xtractr.IsArchiveFile(stem) {
+			break
+		}
+
+		next := strings.TrimSuffix(stem, filepath.Ext(stem))
+		if next == stem {
+			break
+		}
+
+		stem = next
+	}
+
+	return stem
 }

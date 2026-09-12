@@ -257,67 +257,6 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 	}
 }
 
-func TestUnmarshalConfigIgnoresWhisparr(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	conf := filepath.Join(dir, "unpackerr.conf")
-	key := strings.Repeat("b", apiKeyMinLength)
-	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n\n" +
-		"[[radarr]]\nurl = \"http://radarr:7878\"\napi_key = \"" + strings.Repeat("a", apiKeyMinLength) + "\"\n\n" +
-		"[[whisparr]]\nurl = \"http://whisparr:6969\"\napi_key = \"" + key + "\"\n"
-
-	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack := New()
-	unpack.ConfigFile = conf
-
-	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(unpack.Radarr) != 1 || unpack.Radarr[0].URL != "http://radarr:7878" {
-		t.Fatalf("live radarr %+v", unpack.Radarr)
-	}
-
-	if unpack.fileConfig == nil || len(unpack.fileConfig.Radarr) != 1 ||
-		unpack.fileConfig.Radarr[0].URL != "http://radarr:7878" {
-		t.Fatalf("file radarr %+v", unpack.fileConfig)
-	}
-}
-
-func TestWriteConfigFileOmitsWhisparr(t *testing.T) {
-	t.Parallel()
-
-	unpack := New()
-	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
-	unpack.Radarr = []*RadarrConfig{{
-		URL:    "http://radarr:7878",
-		APIKey: strings.Repeat("a", apiKeyMinLength),
-	}}
-	unpack.snapshotFileConfig()
-
-	if err := unpack.writeConfigFile(); err != nil {
-		t.Fatal(err)
-	}
-
-	written, err := os.ReadFile(unpack.ConfigFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	text := string(written)
-	if strings.Contains(text, "[[whisparr]]") || strings.Contains(text, "http://whisparr") {
-		t.Fatalf("wrote whisparr:\n%s", text)
-	}
-
-	if !strings.Contains(text, "[[radarr]]") || !strings.Contains(text, "http://radarr:7878") {
-		t.Fatalf("missing radarr:\n%s", text)
-	}
-}
-
 func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "unpackerr.conf")

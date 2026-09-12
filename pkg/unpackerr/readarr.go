@@ -14,6 +14,10 @@ type ReadarrConfig struct {
 }
 
 func (r *ReadarrConfig) pollQueue() (int, int, error) {
+	if r.Readarr == nil {
+		r.connect()
+	}
+
 	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
 		return 0, 0, fmt.Errorf("getting queue: %w", err)

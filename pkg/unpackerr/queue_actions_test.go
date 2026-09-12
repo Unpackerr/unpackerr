@@ -66,6 +66,7 @@ func TestQueueForgetImportedAndDeleted(t *testing.T) {
 	t.Parallel()
 
 	var logs bytes.Buffer
+
 	unpack := testAuthUnpackerr(t)
 	unpack.Info.SetOutput(&logs)
 	unpack.Map["/dl/imp"] = &Extract{Path: "/dl/imp", Status: IMPORTED, App: starr.Sonarr}

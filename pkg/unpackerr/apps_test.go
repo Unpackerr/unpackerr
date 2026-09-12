@@ -7,7 +7,7 @@ import (
 	"golift.io/cnfg"
 )
 
-func TestWhisparrEnvIsIgnored(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestWhisparrEnvIsIgnored(t *testing.T) {
 	t.Setenv("UN_WHISPARR_0_URL", "http://whisparr:6969")
 	t.Setenv("UN_WHISPARR_0_API_KEY", strings.Repeat("W", apiKeyMinLength))
 

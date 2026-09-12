@@ -13,19 +13,17 @@ type ReadarrConfig struct {
 	*readarr.Readarr `json:"-" toml:"-" xml:"-" yaml:"-"`
 }
 
-func (r *ReadarrConfig) pollQueue() (int, int, error) {
+func (r *ReadarrConfig) pollQueue() (func(), int, int, error) {
 	if r.Readarr == nil {
 		r.connect()
 	}
 
 	queue, err := r.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
-		return 0, 0, fmt.Errorf("getting queue: %w", err)
+		return nil, 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	r.Queue = queue
-
-	return queue.TotalRecords, len(queue.Records), nil
+	return func() { r.Queue = queue }, queue.TotalRecords, len(queue.Records), nil
 }
 
 func (r *ReadarrConfig) queueViews() []queueView {

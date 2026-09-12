@@ -29,7 +29,7 @@ type StarrConfig struct {
 	// Empty uses that default. `0` or `0B` is unlimited.
 	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
 	maxBytes uint64
-	// Last poll snapshot for GET /api/stats starrQueues.
+	// Last poll snapshot for GET /api/stats starrQueues. Published under History.mu.
 	lastQueued    int
 	lastRetrieved int
 	lastPollErr   string

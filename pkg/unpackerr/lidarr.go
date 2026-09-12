@@ -20,19 +20,17 @@ type LidarrConfig struct {
 	*lidarr.Lidarr `json:"-"          toml:"-"          xml:"-"          yaml:"-"`
 }
 
-func (l *LidarrConfig) pollQueue() (int, int, error) {
+func (l *LidarrConfig) pollQueue() (func(), int, int, error) {
 	if l.Lidarr == nil {
 		l.connect()
 	}
 
 	queue, err := l.GetQueue(DefaultQueuePageSize, 1)
 	if err != nil {
-		return 0, 0, fmt.Errorf("getting queue: %w", err)
+		return nil, 0, 0, fmt.Errorf("getting queue: %w", err)
 	}
 
-	l.Queue = queue
-
-	return queue.TotalRecords, len(queue.Records), nil
+	return func() { l.Queue = queue }, queue.TotalRecords, len(queue.Records), nil
 }
 
 func (l *LidarrConfig) queueViews() []queueView {

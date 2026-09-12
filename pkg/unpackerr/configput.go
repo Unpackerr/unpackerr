@@ -312,7 +312,7 @@ func walkMapStrings(val reflect.Value, visit func(string) error) error {
 
 // commitConfig stages the change onto a clone of fileConfig, writes the TOML,
 // then publishes live. A failed write changes nothing. Runs on the main loop;
-// configMu covers fileConfig and the hook slices that /api/stats reads.
+// configMu covers fileConfig and the hook/Starr/folder slices that /api/stats reads.
 func (u *Unpackerr) commitConfig(mutateFile func(*Config), applyLive func()) error {
 	u.configMu.Lock()
 	defer u.configMu.Unlock()

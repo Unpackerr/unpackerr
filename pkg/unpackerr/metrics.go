@@ -227,14 +227,16 @@ func (u *Unpackerr) stats() *Stats {
 func (u *Unpackerr) fillQueueStats(stats *Stats) {
 	stats.Retries = u.Retries
 	stats.Finished = u.Finished
+	u.configMu.RLock()
 	stats.Starrs = uint(u.starrAppCount())
 	stats.Folders = uint(len(u.Folders))
+	stats.StarrQueues = u.starrQueueStats()
+	u.configMu.RUnlock()
 	stats.Webhooks = uint(len(u.hookList()))
 	stats.Cmdhooks = uint(len(u.cmdhookList()))
 	stats.HookOK, stats.HookFail = u.WebhookCounts()
 	stats.CmdOK, stats.CmdFail = u.CmdhookCounts()
 	u.fillStackDepths(stats)
-	stats.StarrQueues = u.starrQueueStats()
 
 	for name := range u.Map {
 		switch u.Map[name].Status {

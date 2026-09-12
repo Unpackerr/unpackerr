@@ -17,7 +17,9 @@ type starrApp[T any] interface {
 	connect()         // build the API client from conf.
 	takeQueue(old *T) // keep the last polled queue from a matching old entry.
 	stripRuntime()    // nil the queue and client on a file-shaped clone.
-	pollQueue() (total, retrieved int, err error)
+	// pollQueue fetches without publishing. The returned bind assigns Queue and
+	// must run under History.mu with lastQueued/lastRetrieved/lastPollErr.
+	pollQueue() (bind func(), total, retrieved int, err error)
 	queueViews() []queueView
 	hasQueueTitle(name string) bool
 	tweakExtract(item *Extract, rec queueView)

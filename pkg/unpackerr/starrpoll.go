@@ -80,22 +80,40 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 		return
 	}
 
-	total, retrieved, err := server.pollQueue()
+	bind, total, retrieved, err := server.pollQueue()
+	u.publishStarrPoll(cfg, bind, total, retrieved, err)
+
 	if err != nil {
-		cfg.lastPollErr = err.Error()
 		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)
 
 		return
 	}
 
-	cfg.lastQueued = total
-	cfg.lastRetrieved = retrieved
-	cfg.lastPollErr = ""
 	u.saveQueueMetrics(total, start, app, cfg.URL, label, nil)
 
 	if !u.Activity || total > 0 {
 		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", label, cfg.URL, total, retrieved)
 	}
+}
+
+// publishStarrPoll stores the last poll snapshot under History.mu so HTTP
+// stats() and Prometheus Collect cannot race the pointer swap or lastPollErr.
+// GetQueue stays outside this lock.
+func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retrieved int, err error) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	if err != nil {
+		cfg.lastPollErr = err.Error()
+
+		return
+	}
+
+	bind()
+
+	cfg.lastQueued = total
+	cfg.lastRetrieved = retrieved
+	cfg.lastPollErr = ""
 }
 
 func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app starr.App, now time.Time) {

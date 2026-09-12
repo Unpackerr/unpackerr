@@ -15,7 +15,7 @@ func TestPollQueueNilClientDoesNotPanic(t *testing.T) {
 	app.URL = "http://127.0.0.1:1"
 	app.APIKey = "k"
 
-	if _, _, err := app.pollQueue(); err == nil {
+	if _, _, _, err := app.pollQueue(); err == nil {
 		t.Fatal("expected a queue request error")
 	}
 }

@@ -41,6 +41,10 @@ func TestLiveConfigTextSharesRunningDump(t *testing.T) {
 		t.Fatalf("live dump missing header/config file: %q", live)
 	}
 
+	if strings.Contains(live, helpLink) {
+		t.Fatalf("live dump must not include discord help link: %q", live)
+	}
+
 	if !strings.Contains(got, "Radarr Config: 0 servers") {
 		t.Fatalf("empty radarr should print 0 servers: %q", got)
 	}

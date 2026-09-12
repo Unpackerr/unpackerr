@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/starr/sonarr"
 )
 
@@ -1519,5 +1520,74 @@ func TestConfigPutCanceledRequestIsGatewayTimeout(t *testing.T) {
 
 	if _, err := os.Stat(unpack.ConfigFile); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("canceled PUT must not write %s: %v", unpack.ConfigFile, err)
+	}
+}
+
+func envReadarrUnpackerr(t *testing.T, url, secret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_READARR_0_URL", url)
+	t.Setenv("UN_READARR_0_API_KEY", secret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// A save of [] must not drop an env-only Starr instance from live.
+func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	secret := strings.Repeat("R", apiKeyMinLength)
+	url := "http://readarr:8787/readarr"
+	unpack := envReadarrUnpackerr(t, url, secret)
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `[]`, func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig != nil && len(unpack.fileConfig.Readarr) != 0 {
+		t.Fatalf("file readarr %+v", unpack.fileConfig.Readarr)
+	}
+
+	if len(unpack.Readarr) != 1 || unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
+		t.Fatalf("live readarr %+v", unpack.Readarr)
+	}
+}
+
+// Name is not an env field; PUT can write it to the file while env still fills URL/key.
+func TestConfigPutReadarrNameKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	secret := strings.Repeat("R", apiKeyMinLength)
+	url := "http://readarr:8787/readarr"
+	unpack := envReadarrUnpackerr(t, url, secret)
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `[{"name":"books"}]`, func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig == nil || len(unpack.fileConfig.Readarr) != 1 || unpack.fileConfig.Readarr[0].Name != "books" {
+		t.Fatalf("file %+v", unpack.fileConfig.Readarr)
+	}
+
+	if unpack.fileConfig.Readarr[0].URL != "" || unpack.fileConfig.Readarr[0].APIKey != "" {
+		t.Fatalf("env leaked into file url=%q key=%q", unpack.fileConfig.Readarr[0].URL, unpack.fileConfig.Readarr[0].APIKey)
+	}
+
+	if len(unpack.Readarr) != 1 || unpack.Readarr[0].Name != "books" ||
+		unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
+		t.Fatalf("live %+v", unpack.Readarr)
 	}
 }

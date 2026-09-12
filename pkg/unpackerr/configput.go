@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 
+	"golift.io/cnfg"
 	"golift.io/cnfgfile"
 	"golift.io/starr"
 )
@@ -331,6 +332,41 @@ func (u *Unpackerr) commitConfig(mutateFile func(*Config), applyLive func()) err
 	applyLive()
 
 	return nil
+}
+
+func (u *Unpackerr) cloneFileConfig() *Config {
+	if u.fileConfig == nil {
+		return &Config{}
+	}
+
+	return cloneConfig(u.fileConfig)
+}
+
+// overlayEnv applies the UN_* values captured at startup onto cfg. PUT writes
+// the file-shaped payload, then live is this overlay so env-only list rows
+// (Readarr, folders, …) cannot be wiped by a save that omitted them.
+func (u *Unpackerr) overlayEnv(cfg *Config) error {
+	if cfg == nil || len(u.envUsed) == 0 {
+		return nil
+	}
+
+	_, err := cnfg.ParseENV(cfg, u.EnvPrefix)
+	if err != nil {
+		return fmt.Errorf("environment variables: %w", err)
+	}
+
+	return nil
+}
+
+func (u *Unpackerr) applyEnvOverlay(mutate func(*Config)) (*Config, error) {
+	preview := u.cloneFileConfig()
+	mutate(preview)
+
+	if err := u.overlayEnv(preview); err != nil {
+		return nil, err
+	}
+
+	return preview, nil
 }
 
 func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
@@ -656,11 +692,23 @@ func putStarrList[T any, P starrApp[T]](
 
 	fileList := cloneStarrList(list)
 
-	if err := expandFilepaths(&list); err != nil {
+	preview, err := unpackerr.applyEnvOverlay(func(cfg *Config) {
+		*field(cfg) = cloneStarrList(list)
+	})
+	if err != nil {
 		return err
 	}
 
-	for _, item := range list {
+	liveList := *field(preview)
+	if err := expandFilepaths(&liveList); err != nil {
+		return err
+	}
+
+	for _, item := range liveList {
+		if item == nil {
+			return errNilConfigEntry
+		}
+
 		if err := unpackerr.validateApp(item.conf(), app); err != nil {
 			return err
 		}
@@ -670,8 +718,8 @@ func putStarrList[T any, P starrApp[T]](
 
 	return unpackerr.commitConfig(func(cfg *Config) { *field(cfg) = fileList }, func() {
 		live := field(unpackerr.Config)
-		carryQueues(*live, list)
-		*live = list
+		carryQueues(*live, liveList)
+		*live = liveList
 
 		unpackerr.ensureWorkThreads(unpackerr.starrAppCount())
 	})
@@ -712,11 +760,20 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 
 	fileList := cloneFolderList(next.Folder)
 
-	if err := expandFilepaths(&next.Folder); err != nil {
+	preview, err := u.applyEnvOverlay(func(cfg *Config) {
+		cfg.Folder.Interval = next.Interval
+		cfg.Folder.Buffer = next.Buffer
+		cfg.Folders = cloneFolderList(next.Folder)
+	})
+	if err != nil {
 		return false, err
 	}
 
-	if err := validateFolderList(next.Folder); err != nil {
+	if err := expandFilepaths(&preview.Folders); err != nil {
+		return false, err
+	}
+
+	if err := validateFolderList(preview.Folders); err != nil {
 		return false, err
 	}
 
@@ -726,9 +783,9 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 		cfg.Folder.Buffer = next.Buffer
 		cfg.Folders = fileList
 	}, func() {
-		u.Folder.Interval = next.Interval
-		u.Folder.Buffer = next.Buffer
-		u.Folders = next.Folder
+		u.Folder.Interval = preview.Folder.Interval
+		u.Folder.Buffer = preview.Folder.Buffer
+		u.Folders = preview.Folders
 	})
 }
 
@@ -749,18 +806,26 @@ func (u *Unpackerr) putHooks(
 
 	fileList := cloneHookList(list)
 
-	if err := expandFilepaths(&list); err != nil {
+	preview, err := u.applyEnvOverlay(func(cfg *Config) {
+		*field(cfg) = cloneHookList(list)
+	})
+	if err != nil {
 		return err
 	}
 
-	if err := validate(list); err != nil {
+	liveList := *field(preview)
+	if err := expandFilepaths(&liveList); err != nil {
+		return err
+	}
+
+	if err := validate(liveList); err != nil {
 		return err
 	}
 
 	return u.commitConfig(func(cfg *Config) {
 		*field(cfg) = fileList
 	}, func() {
-		*field(u.Config) = list
+		*field(u.Config) = liveList
 		u.ensureHookWorker()
 	})
 }

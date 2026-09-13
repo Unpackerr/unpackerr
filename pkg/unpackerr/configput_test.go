@@ -1760,3 +1760,129 @@ func TestConfigPutFoldersKeepsEnvExtractPath(t *testing.T) {
 		t.Fatalf("file after PUT %+v", file)
 	}
 }
+
+type envFolderExcludes struct {
+	unpack *Unpackerr
+	watch  string
+}
+
+func envFolderExcludeUnpackerr(t *testing.T) envFolderExcludes {
+	t.Helper()
+
+	watch := t.TempDir()
+
+	t.Setenv("UN_FOLDER_watch_EXCLUDE_PATH_0", "/c")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Folders = InstanceMap[FolderConfig]{
+		"watch": {Path: watch, ExcludePaths: []string{"/a", "/b"}},
+	}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return envFolderExcludes{unpack: unpack, watch: watch}
+}
+
+// Indexed env must not wipe sibling exclude_paths out of the file commit.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutFoldersKeepsSiblingExcludePaths(t *testing.T) {
+	setup := envFolderExcludeUnpackerr(t)
+
+	body, err := json.Marshal(map[string]any{
+		"interval": "2s",
+		"buffer":   1000,
+		"folder": map[string]any{
+			"watch": map[string]any{
+				"path":          setup.watch,
+				"exclude_paths": []string{"/a", "/b"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, setup.unpack, http.MethodPut, "/api/config/folders", string(body), putKey(setup.unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := setup.unpack.Folders["watch"]
+	if live == nil || len(live.ExcludePaths) != 2 || live.ExcludePaths[0] != "/c" || live.ExcludePaths[1] != "/b" {
+		t.Fatalf("live exclude_paths after PUT %+v", live)
+	}
+
+	file := setup.unpack.fileConfig.Folders["watch"]
+	if file == nil || len(file.ExcludePaths) != 2 || file.ExcludePaths[0] != "" || file.ExcludePaths[1] != "/b" {
+		t.Fatalf("file after PUT %+v", file)
+	}
+}
+
+func envSonarrURLUnpackerr(t *testing.T, secret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	app := &SonarrConfig{}
+	app.URL = "http://file.invalid:8989"
+	app.APIKey = secret
+	app.Name = "uhd"
+	app.Paths = StringSlice{"/downloads/tv"}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// File API key + env URL must survive a config PUT; empty URL after strip is not env-only.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutSonarrKeepsFileAPIKeyWhenURLIsEnv(t *testing.T) {
+	secret := strings.Repeat("F", apiKeyMinLength)
+	unpack := envSonarrURLUnpackerr(t, secret)
+
+	body, err := json.Marshal(map[string]any{
+		"0": map[string]any{
+			"url":    "http://file.invalid:8989",
+			"apiKey": secret,
+			"name":   "uhd",
+			"paths":  []string{"/downloads/tv"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", string(body), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := unpack.Sonarr["0"]
+	if live == nil || live.URL != "http://127.0.0.1:8989" || live.APIKey != secret || live.Name != "uhd" {
+		t.Fatalf("live after PUT %+v", live)
+	}
+
+	file := unpack.fileConfig.Sonarr["0"]
+	if file == nil || file.URL != "" || file.APIKey != secret || file.Name != "uhd" {
+		t.Fatalf("file after PUT %+v", file)
+	}
+}

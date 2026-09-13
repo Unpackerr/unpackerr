@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 
 	"golift.io/cnfg"
@@ -23,72 +24,26 @@ func envPrefixForSection(section ConfigSection) string {
 func (u *Unpackerr) stripEnvFromStarr[T any, P starrApp[T]](
 	section ConfigSection, items InstanceMap[T],
 ) InstanceMap[T] {
-	if items == nil {
-		return nil
-	}
-
-	u.zeroEnvOwnedFields(section, items)
-
-	for key, item := range items {
-		if item == nil {
-			delete(items, key)
-			continue
-		}
-
-		app := asStarr[T, P](item)
-		if strings.TrimSpace(app.conf().URL) == "" {
-			delete(items, key)
-		}
-	}
-
-	if len(items) == 0 {
-		return nil
-	}
-
-	return items
+	return dropEmptyInstances(u.zeroEnvOwnedFields(section, items))
 }
 
 func (u *Unpackerr) stripEnvFromFolders(items InstanceMap[FolderConfig]) InstanceMap[FolderConfig] {
-	if items == nil {
-		return nil
-	}
-
-	u.zeroEnvOwnedFields(SectionFolders, items)
-
-	for key, item := range items {
-		if item == nil || strings.TrimSpace(item.Path) == "" {
-			delete(items, key)
-		}
-	}
-
-	if len(items) == 0 {
-		return nil
-	}
-
-	return items
+	return dropEmptyInstances(u.zeroEnvOwnedFields(SectionFolders, items))
 }
 
 func (u *Unpackerr) stripEnvFromHooks(
-	section ConfigSection, items InstanceMap[WebhookConfig], cmd bool,
+	section ConfigSection, items InstanceMap[WebhookConfig],
 ) InstanceMap[WebhookConfig] {
+	return dropEmptyInstances(u.zeroEnvOwnedFields(section, items))
+}
+
+func dropEmptyInstances[T any](items InstanceMap[T]) InstanceMap[T] {
 	if items == nil {
 		return nil
 	}
 
-	u.zeroEnvOwnedFields(section, items)
-
 	for key, item := range items {
-		if item == nil {
-			delete(items, key)
-			continue
-		}
-
-		if cmd && strings.TrimSpace(item.Command) == "" {
-			delete(items, key)
-			continue
-		}
-
-		if !cmd && strings.TrimSpace(item.URL) == "" {
+		if item == nil || !persistableConfig(item) {
 			delete(items, key)
 		}
 	}
@@ -100,16 +55,71 @@ func (u *Unpackerr) stripEnvFromHooks(
 	return items
 }
 
-func (u *Unpackerr) zeroEnvOwnedFields[T any](section ConfigSection, items InstanceMap[T]) {
+// persistableConfig is true when a stripped instance still has file-owned
+// fields. Name-only stubs stay out of the file; env fills live identity.
+func persistableConfig(item any) bool {
+	return persistableValue(reflect.ValueOf(item))
+}
+
+func persistableValue(val reflect.Value) bool {
+	val = derefValue(val)
+	if !val.IsValid() {
+		return false
+	}
+
+	if val.Kind() != reflect.Struct {
+		return !val.IsZero()
+	}
+
+	typ := val.Type()
+
+	for idx := range typ.NumField() {
+		field := typ.Field(idx)
+		if !field.IsExported() {
+			continue
+		}
+
+		tag, _, _ := strings.Cut(field.Tag.Get(cnfg.ENVTag), ",")
+		if tag == "-" {
+			continue
+		}
+
+		member := val.Field(idx)
+		if field.Anonymous && tag == "" {
+			if persistableValue(member) {
+				return true
+			}
+
+			continue
+		}
+
+		name := strings.ToUpper(strings.ReplaceAll(tag, "-", "_"))
+		if name == "NAME" {
+			continue
+		}
+
+		if persistableValue(member) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (u *Unpackerr) zeroEnvOwnedFields[T any](section ConfigSection, items InstanceMap[T]) InstanceMap[T] {
+	if items == nil {
+		return nil
+	}
+
 	if u == nil || len(u.envUsed) == 0 || len(items) == 0 {
-		return
+		return items
 	}
 
 	pfx := envPrefixForSection(section)
 	typ := reflect.TypeFor[T]()
 
 	for suffix := range u.envUsed {
-		key, field, ok := peelInstanceEnv(suffix, pfx, typ)
+		key, field, indexes, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok {
 			continue
 		}
@@ -119,8 +129,10 @@ func (u *Unpackerr) zeroEnvOwnedFields[T any](section ConfigSection, items Insta
 			continue
 		}
 
-		zeroTOMLField(item, field)
+		zeroTOMLField(item, field, indexes)
 	}
+
+	return items
 }
 
 // keepPutInstanceFields copies file/PUT fields back onto slugs that ParseENV replaced,
@@ -170,20 +182,20 @@ func (u *Unpackerr) copyEnvOwnedFields[T any](section ConfigSection, key string,
 	typ := reflect.TypeFor[T]()
 
 	for suffix := range u.envUsed {
-		envKey, field, ok := peelInstanceEnv(suffix, pfx, typ)
+		envKey, field, indexes, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok || envKey != key {
 			continue
 		}
 
-		copyTOMLField(src, dst, field)
+		copyTOMLField(src, dst, field, indexes)
 	}
 }
 
-func copyTOMLField(src, dst any, envField string) {
-	copyNamedTOMLField(reflect.ValueOf(src), reflect.ValueOf(dst), envField)
+func copyTOMLField(src, dst any, envField string, indexes []int) {
+	copyNamedTOMLField(reflect.ValueOf(src), reflect.ValueOf(dst), envField, indexes)
 }
 
-func copyNamedTOMLField(src, dst reflect.Value, envField string) bool {
+func copyNamedTOMLField(src, dst reflect.Value, envField string, indexes []int) bool {
 	src = derefValue(src)
 
 	dst = derefValue(dst)
@@ -208,7 +220,7 @@ func copyNamedTOMLField(src, dst reflect.Value, envField string) bool {
 
 		from := src.Field(idx)
 		if field.Anonymous && tag == "" {
-			if copyNamedTOMLField(from, member, envField) {
+			if copyNamedTOMLField(from, member, envField, indexes) {
 				return true
 			}
 
@@ -216,11 +228,11 @@ func copyNamedTOMLField(src, dst reflect.Value, envField string) bool {
 		}
 
 		name := strings.ToUpper(strings.ReplaceAll(tag, "-", "_"))
-		if name != envField || !member.CanSet() {
+		if name != envField {
 			continue
 		}
 
-		member.Set(from)
+		writeEnvMember(from, member, indexes, false)
 
 		return true
 	}
@@ -255,7 +267,7 @@ func (u *Unpackerr) redactMapSecrets[T any](section ConfigSection, items Instanc
 			continue
 		}
 
-		key, field, ok := peelInstanceEnv(suffix, pfx, typ)
+		key, field, indexes, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok {
 			continue
 		}
@@ -265,25 +277,69 @@ func (u *Unpackerr) redactMapSecrets[T any](section ConfigSection, items Instanc
 			continue
 		}
 
-		zeroTOMLField(item, field)
+		zeroTOMLField(item, field, indexes)
 	}
 }
 
-func peelInstanceEnv(suffix, prefix string, typ reflect.Type) (string, string, bool) {
+func peelInstanceEnv(suffix, prefix string, typ reflect.Type) (string, string, []int, bool) {
 	rest, found := strings.CutPrefix(suffix, prefix)
 	if !found || rest == "" {
-		return "", "", false
+		return "", "", nil, false
 	}
 
 	key, field, ok := cnfg.PeelMapKey(rest, typ, cnfg.ENVTag, false)
 	if !ok || field == "" {
-		return "", "", false
+		return "", "", nil, false
 	}
 
-	return key, field, true
+	return key, field, envFieldIndexes(envFieldExtra(rest, key, field)), true
 }
 
-func zeroTOMLField(ptr any, envField string) {
+func envFieldExtra(rest, key, field string) string {
+	head := strings.Join([]string{key, field}, cnfg.LevelSeparator)
+
+	extra, found := strings.CutPrefix(rest, head)
+	if !found {
+		return ""
+	}
+
+	return strings.TrimPrefix(extra, cnfg.LevelSeparator)
+}
+
+func envFieldIndexes(extra string) []int {
+	if extra == "" {
+		return nil
+	}
+
+	var out []int
+
+	for tok := range strings.SplitSeq(extra, cnfg.LevelSeparator) {
+		if tok == "" || !envIndexToken(tok) {
+			return nil
+		}
+
+		n, err := strconv.Atoi(tok)
+		if err != nil {
+			return nil
+		}
+
+		out = append(out, n)
+	}
+
+	return out
+}
+
+func envIndexToken(tok string) bool {
+	for _, r := range tok {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
+}
+
+func zeroTOMLField(ptr any, envField string, indexes []int) {
 	val := reflect.ValueOf(ptr)
 	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
@@ -293,10 +349,10 @@ func zeroTOMLField(ptr any, envField string) {
 		val = val.Elem()
 	}
 
-	zeroNamedTOMLField(val, envField)
+	zeroNamedTOMLField(val, envField, indexes)
 }
 
-func zeroNamedTOMLField(val reflect.Value, envField string) bool {
+func zeroNamedTOMLField(val reflect.Value, envField string, indexes []int) bool {
 	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return false
@@ -324,7 +380,7 @@ func zeroNamedTOMLField(val reflect.Value, envField string) bool {
 
 		member := val.Field(idx)
 		if field.Anonymous && tag == "" {
-			if zeroNamedTOMLField(member, envField) {
+			if zeroNamedTOMLField(member, envField, indexes) {
 				return true
 			}
 
@@ -332,14 +388,95 @@ func zeroNamedTOMLField(val reflect.Value, envField string) bool {
 		}
 
 		name := strings.ToUpper(strings.ReplaceAll(tag, "-", "_"))
-		if name != envField || !member.CanSet() {
+		if name != envField {
 			continue
 		}
 
-		member.Set(reflect.Zero(member.Type()))
+		writeEnvMember(reflect.Value{}, member, indexes, true)
 
 		return true
 	}
 
 	return false
+}
+
+func writeEnvMember(from, member reflect.Value, indexes []int, zero bool) {
+	if len(indexes) == 0 {
+		if !member.CanSet() {
+			return
+		}
+
+		if zero {
+			member.Set(reflect.Zero(member.Type()))
+			return
+		}
+
+		member.Set(from)
+
+		return
+	}
+
+	if zero {
+		zeroIndexedValue(member, indexes)
+		return
+	}
+
+	copyIndexedValue(from, member, indexes)
+}
+
+func copyIndexedValue(from, to reflect.Value, indexes []int) {
+	dst, found := indexValue(to, indexes, true)
+	if !found || !dst.CanSet() {
+		return
+	}
+
+	src, found := indexValue(from, indexes, false)
+	if !found {
+		return
+	}
+
+	dst.Set(src)
+}
+
+func zeroIndexedValue(to reflect.Value, indexes []int) {
+	dst, ok := indexValue(to, indexes, false)
+	if !ok || !dst.CanSet() {
+		return
+	}
+
+	dst.Set(reflect.Zero(dst.Type()))
+}
+
+func indexValue(val reflect.Value, indexes []int, grow bool) (reflect.Value, bool) {
+	for _, idx := range indexes {
+		val = derefValue(val)
+		if !val.IsValid() || idx < 0 {
+			return reflect.Value{}, false
+		}
+
+		switch val.Kind() { //nolint:exhaustive
+		case reflect.Slice:
+			if grow && idx >= val.Len() && val.CanSet() {
+				next := reflect.MakeSlice(val.Type(), idx+1, idx+1)
+				reflect.Copy(next, val)
+				val.Set(next)
+			}
+
+			if idx >= val.Len() {
+				return reflect.Value{}, false
+			}
+
+			val = val.Index(idx)
+		case reflect.Array:
+			if idx >= val.Len() {
+				return reflect.Value{}, false
+			}
+
+			val = val.Index(idx)
+		default:
+			return reflect.Value{}, false
+		}
+	}
+
+	return val, val.IsValid()
 }

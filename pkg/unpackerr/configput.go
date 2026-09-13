@@ -835,7 +835,7 @@ func (u *Unpackerr) putHooks(
 		return err
 	}
 
-	fileList := u.stripEnvFromHooks(section, cloneHookMap(list), section == SectionCmdhooks)
+	fileList := u.stripEnvFromHooks(section, cloneHookMap(list))
 
 	preview, err := u.applyEnvOverlay(func(cfg *Config) {
 		*field(cfg) = cloneHookMap(list)

@@ -3,6 +3,8 @@ package unpackerr
 import (
 	"reflect"
 	"strings"
+
+	"golift.io/cnfg"
 )
 
 func envPrefixForSection(section ConfigSection) string {
@@ -104,10 +106,10 @@ func (u *Unpackerr) zeroEnvOwnedFields[T any](section ConfigSection, items Insta
 	}
 
 	pfx := envPrefixForSection(section)
-	fields := tomlEnvFieldNames(reflect.TypeFor[T]())
+	typ := reflect.TypeFor[T]()
 
 	for suffix := range u.envUsed {
-		key, field, ok := peelInstanceEnv(suffix, pfx, fields)
+		key, field, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok {
 			continue
 		}
@@ -165,10 +167,10 @@ func (u *Unpackerr) copyEnvOwnedFields[T any](section ConfigSection, key string,
 	}
 
 	pfx := envPrefixForSection(section)
-	fields := tomlEnvFieldNames(reflect.TypeFor[T]())
+	typ := reflect.TypeFor[T]()
 
 	for suffix := range u.envUsed {
-		envKey, field, ok := peelInstanceEnv(suffix, pfx, fields)
+		envKey, field, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok || envKey != key {
 			continue
 		}
@@ -197,7 +199,7 @@ func copyNamedTOMLField(src, dst reflect.Value, envField string) bool {
 			continue
 		}
 
-		tag, _, _ := strings.Cut(field.Tag.Get("toml"), ",")
+		tag, _, _ := strings.Cut(field.Tag.Get(cnfg.ENVTag), ",")
 		if tag == "-" {
 			continue
 		}
@@ -246,14 +248,14 @@ func (u *Unpackerr) redactMapSecrets[T any](section ConfigSection, items Instanc
 	}
 
 	pfx := envPrefixForSection(section)
-	fields := tomlEnvFieldNames(reflect.TypeFor[T]())
+	typ := reflect.TypeFor[T]()
 
 	for suffix := range u.envUsed {
 		if !envValueSecret(suffix) {
 			continue
 		}
 
-		key, field, ok := peelInstanceEnv(suffix, pfx, fields)
+		key, field, ok := peelInstanceEnv(suffix, pfx, typ)
 		if !ok {
 			continue
 		}
@@ -267,83 +269,18 @@ func (u *Unpackerr) redactMapSecrets[T any](section ConfigSection, items Instanc
 	}
 }
 
-func peelInstanceEnv(suffix, prefix string, fields map[string]struct{}) (string, string, bool) {
+func peelInstanceEnv(suffix, prefix string, typ reflect.Type) (string, string, bool) {
 	rest, found := strings.CutPrefix(suffix, prefix)
 	if !found || rest == "" {
 		return "", "", false
 	}
 
-	parts := strings.Split(rest, "_")
-	// Longest field path first, matching cnfg.peelMapKey (idx starts at 1).
-	// Shortest-first would map UN_FOLDER_watch_EXTRACT_PATH onto field PATH.
-	for take := 1; take < len(parts); take++ {
-		name := strings.Join(parts[take:], "_")
-		if _, exists := fields[name]; exists {
-			return strings.Join(parts[:take], "_"), name, true
-		}
-
-		if isEnvIndex(parts[len(parts)-1]) && take < len(parts)-1 {
-			name = strings.Join(parts[take:len(parts)-1], "_")
-			if _, exists := fields[name]; exists {
-				return strings.Join(parts[:take], "_"), name, true
-			}
-		}
+	key, field, ok := cnfg.PeelMapKey(rest, typ, cnfg.ENVTag, false)
+	if !ok || field == "" {
+		return "", "", false
 	}
 
-	return "", "", false
-}
-
-func isEnvIndex(token string) bool {
-	if token == "" {
-		return false
-	}
-
-	for _, char := range token {
-		if char < '0' || char > '9' {
-			return false
-		}
-	}
-
-	return true
-}
-
-func tomlEnvFieldNames(typ reflect.Type) map[string]struct{} {
-	out := make(map[string]struct{})
-	collectTOMLEnvFields(typ, out)
-
-	return out
-}
-
-func collectTOMLEnvFields(typ reflect.Type, out map[string]struct{}) {
-	for typ.Kind() == reflect.Pointer {
-		typ = typ.Elem()
-	}
-
-	if typ.Kind() != reflect.Struct {
-		return
-	}
-
-	for field := range typ.Fields() {
-		if !field.IsExported() {
-			continue
-		}
-
-		tag, _, _ := strings.Cut(field.Tag.Get("toml"), ",")
-		if tag == "-" {
-			continue
-		}
-
-		if field.Anonymous && tag == "" {
-			collectTOMLEnvFields(field.Type, out)
-			continue
-		}
-
-		if tag == "" {
-			continue
-		}
-
-		out[strings.ToUpper(strings.ReplaceAll(tag, "-", "_"))] = struct{}{}
-	}
+	return key, field, true
 }
 
 func zeroTOMLField(ptr any, envField string) {
@@ -380,7 +317,7 @@ func zeroNamedTOMLField(val reflect.Value, envField string) bool {
 			continue
 		}
 
-		tag, _, _ := strings.Cut(field.Tag.Get("toml"), ",")
+		tag, _, _ := strings.Cut(field.Tag.Get(cnfg.ENVTag), ",")
 		if tag == "-" {
 			continue
 		}

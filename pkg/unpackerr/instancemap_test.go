@@ -95,52 +95,52 @@ func TestInstanceMapRejectsBadSlug(t *testing.T) {
 func TestPeelInstanceEnvKeepsKeyCase(t *testing.T) {
 	t.Parallel()
 
-	fields := tomlEnvFieldNames(reflect.TypeFor[SonarrConfig]())
+	typ := reflect.TypeFor[SonarrConfig]()
 
-	key, field, matched := peelInstanceEnv("SONARR_uhd_API_KEY", "SONARR_", fields)
+	key, field, matched := peelInstanceEnv("SONARR_uhd_API_KEY", "SONARR_", typ)
 	if !matched || key != "uhd" || field != "API_KEY" {
-		t.Fatalf("got key=%q field=%q ok=%v fields=%v", key, field, matched, fields)
+		t.Fatalf("got key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("SONARR_0_URL", "SONARR_", fields)
+	key, field, matched = peelInstanceEnv("SONARR_0_URL", "SONARR_", typ)
 	if !matched || key != "0" || field != "URL" {
 		t.Fatalf("index: key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("SONARR_starrs_stripes_URL", "SONARR_", fields)
+	key, field, matched = peelInstanceEnv("SONARR_starrs_stripes_URL", "SONARR_", typ)
 	if !matched || key != "starrs_stripes" || field != "URL" {
 		t.Fatalf("underscore: key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("SONARR_0_PATHS_0", "SONARR_", fields)
+	key, field, matched = peelInstanceEnv("SONARR_0_PATHS", "SONARR_", typ)
 	if !matched || key != "0" || field != "PATHS" {
-		t.Fatalf("indexed paths: key=%q field=%q ok=%v", key, field, matched)
+		t.Fatalf("paths: key=%q field=%q ok=%v", key, field, matched)
 	}
 }
 
 func TestPeelInstanceEnvLongestFieldFirst(t *testing.T) {
 	t.Parallel()
 
-	fields := tomlEnvFieldNames(reflect.TypeFor[FolderConfig]())
+	typ := reflect.TypeFor[FolderConfig]()
 
-	key, field, matched := peelInstanceEnv("FOLDER_watch_EXTRACT_PATH", "FOLDER_", fields)
+	key, field, matched := peelInstanceEnv("FOLDER_watch_EXTRACT_PATH", "FOLDER_", typ)
 	if !matched || key != "watch" || field != "EXTRACT_PATH" {
-		t.Fatalf("extract_path: key=%q field=%q ok=%v fields=%v", key, field, matched, fields)
+		t.Fatalf("extract_path: key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("FOLDER_watch_PATH", "FOLDER_", fields)
+	key, field, matched = peelInstanceEnv("FOLDER_watch_PATH", "FOLDER_", typ)
 	if !matched || key != "watch" || field != "PATH" {
 		t.Fatalf("path: key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("FOLDER_watch_DELETE_AFTER", "FOLDER_", fields)
+	key, field, matched = peelInstanceEnv("FOLDER_watch_DELETE_AFTER", "FOLDER_", typ)
 	if !matched || key != "watch" || field != "DELETE_AFTER" {
 		t.Fatalf("delete_after: key=%q field=%q ok=%v", key, field, matched)
 	}
 
-	key, field, matched = peelInstanceEnv("FOLDER_watch_EXCLUDE_PATHS_0", "FOLDER_", fields)
-	if !matched || key != "watch" || field != "EXCLUDE_PATHS" {
-		t.Fatalf("exclude_paths: key=%q field=%q ok=%v", key, field, matched)
+	key, field, matched = peelInstanceEnv("FOLDER_watch_EXCLUDE_PATH_0", "FOLDER_", typ)
+	if !matched || key != "watch" || field != "EXCLUDE_PATH" {
+		t.Fatalf("exclude_path: key=%q field=%q ok=%v", key, field, matched)
 	}
 }
 

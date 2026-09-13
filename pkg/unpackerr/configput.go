@@ -398,7 +398,7 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 	restart := generalRestartRequired(u.Config, &staged)
 	historyWasOff := u.KeepHistory == 0
 
-	return restart, u.commitConfig(func(cfg *Config) {
+	if err := u.commitConfig(func(cfg *Config) {
 		applyGeneral(cfg, next)
 	}, func() {
 		applyGeneral(u.Config, next)
@@ -408,11 +408,17 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 		clampConfig(u.Config)
 		u.ensureTrayRing()
 		u.resetTickers()
+	}); err != nil {
+		return restart, err
+	}
 
-		if historyWasOff && u.KeepHistory > 0 {
-			u.loadHistory() // histPath is only resolved while history is enabled.
-		}
-	})
+	// After configMu: restore takes History.mu, and /api/stats does the reverse.
+	if historyWasOff && u.KeepHistory > 0 {
+		u.loadHistory() // histPath is only resolved while history is enabled.
+		u.restoreQueueFromHistory()
+	}
+
+	return restart, nil
 }
 
 // generalRestartRequired lists the general fields the main loop cannot re-apply

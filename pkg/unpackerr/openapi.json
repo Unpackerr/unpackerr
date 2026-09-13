@@ -193,7 +193,17 @@
           "ratio": {"type": "number"},
           "elapsed": {"type": "string"},
           "error": {"type": "string"},
-          "progress": {"type": "string"}
+          "progress": {"type": "string"},
+          "kind": {"type": "string", "description": "Starr dialect or Folder. app is the instance label."},
+          "deleteOrig": {"type": "boolean"},
+          "deleteDelay": {"type": "string", "description": "Go duration, e.g. 5m0s"},
+          "syncthing": {"type": "boolean"},
+          "splitFlac": {"type": "boolean"},
+          "maxBytes": {"type": "integer"},
+          "noRetry": {"type": "boolean"},
+          "newFiles": {"type": "array", "items": {"type": "string"}},
+          "preFiles": {"type": "array", "items": {"type": "string"}, "description": "Dest paths that existed before extract; used after a restart"},
+          "forgotten": {"type": "boolean", "description": "User dropped this item from the live queue; restart must not restore it"}
         }
       },
       "IDRequest": {

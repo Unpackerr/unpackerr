@@ -199,6 +199,8 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 		delete(u.folders.Folders, itemID)
 	}
 
+	u.markHistoryForgotten(itemID)
+
 	return nil
 }
 
@@ -210,6 +212,11 @@ func (u *Unpackerr) isForgotten(id string) bool {
 func (u *Unpackerr) sweepForgotten() {
 	u.lockHistory()
 	defer u.unlockHistory()
+
+	if !u.allStarrSnapshotsReady() {
+		// nil Queue is "never polled", not proof the title is gone.
+		return
+	}
 
 	for itemID := range u.forgotten {
 		if haveStarrQitem(u.Lidarr, itemID) || haveStarrQitem(u.Radarr, itemID) ||

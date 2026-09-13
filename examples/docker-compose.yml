@@ -33,7 +33,7 @@ services:
     - UN_LOG_FILES=10
     - UN_LOG_FILE_MB=10
     - UN_LOG_FILE_MODE=0600
-    - UN_KEEP_HISTORY=200
+    - UN_KEEP_HISTORY=400
     - UN_INTERVAL=2m
     - UN_PROGRESS=15s
     - UN_START_DELAY=1m
@@ -167,4 +167,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 11 SEP 2026 06:50 UTC
+## => Content Auto Generated, 13 SEP 2026 07:39 UTC

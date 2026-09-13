@@ -258,6 +258,56 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 	}
 }
 
+func TestUnmarshalConfigKeepsFileInstanceFieldsAcrossEnvURL(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	secret := strings.Repeat("F", 32)
+	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n" +
+		"[sonarr.0]\nurl = \"http://file.invalid:8989\"\napi_key = \"" + secret + "\"\n" +
+		"name = \"uhd\"\npaths = [\"/downloads/tv\"]\n"
+
+	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatal(err)
+	}
+
+	got := unpack.Sonarr["0"]
+	if got == nil {
+		t.Fatal("live sonarr.0 missing")
+	}
+
+	if got.URL != "http://127.0.0.1:8989" {
+		t.Fatalf("live url %q", got.URL)
+	}
+
+	if got.APIKey != secret || got.Name != "uhd" || len(got.Paths) != 1 || got.Paths[0] != "/downloads/tv" {
+		t.Fatalf("ParseENV replaced file instance fields: %+v", got)
+	}
+
+	file := unpack.fileConfig.Sonarr["0"]
+	if file == nil || file.URL != "http://file.invalid:8989" || file.APIKey != secret {
+		t.Fatalf("file snapshot took the env URL: %+v", unpack.fileConfig.Sonarr)
+	}
+
+	written, err := os.ReadFile(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "http://127.0.0.1:8989") {
+		t.Fatalf("env URL leaked into the config file:\n%s", text)
+	}
+}
+
 func TestUnmarshalConfigEnvUIPasswordStaysOutOfFile(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "unpackerr.conf")

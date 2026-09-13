@@ -74,14 +74,16 @@ func (h *Header) makeSection(name section, showHeader, showValue bool) string {
 		buf.WriteString(h.Text)
 	}
 
-	space, comment := "", "#"
-	if showHeader {
-		// this only happens when a defined section has a comment override on the repeating headers.
-		comment = ""
-	}
+	space := ""
 
 	if !h.NoHeader { // Print the [section], [section.0], or [[section]] header.
 		space = " "
+		comment := ""
+		// Repeatable templates start commented. Singleton tables ([webserver],
+		// [folders]) stay live so their keys do not fall into the root table.
+		if h.repeatable() && !showHeader {
+			comment = "#"
+		}
 
 		h.writeTOMLHeader(&buf, name, "0", comment)
 	}

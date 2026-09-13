@@ -69,10 +69,21 @@ func TestExampleTOMLContainsWebserver(t *testing.T) {
 	t.Parallel()
 
 	body := MustLoad(t).ExampleTOML()
-	for _, want := range []string{"[webserver]", "listen_addr", "metrics"} {
+	for _, want := range []string{"[webserver]", "[folders]", "listen_addr", "metrics"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("example TOML missing %q", want)
 		}
+	}
+
+	for _, bad := range []string{"#[webserver]", "#[folders]"} {
+		if strings.Contains(body, bad) {
+			t.Fatalf("singleton header must stay live, found %q", bad)
+		}
+	}
+
+	var dest map[string]any
+	if _, err := toml.Decode(body, &dest); err != nil {
+		t.Fatalf("example TOML must parse: %v", err)
 	}
 }
 

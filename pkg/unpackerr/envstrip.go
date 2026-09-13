@@ -121,7 +121,7 @@ func (u *Unpackerr) zeroEnvOwnedFields[T any](section ConfigSection, items Insta
 	}
 }
 
-// keepPutInstanceFields copies PUT fields back onto slugs that ParseENV replaced,
+// keepPutInstanceFields copies file/PUT fields back onto slugs that ParseENV replaced,
 // then writes env-owned fields from the overlay. Env-only slugs stay as parsed.
 func (u *Unpackerr) keepPutInstanceFields(before, after *Config) {
 	if before == nil || after == nil {

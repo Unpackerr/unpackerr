@@ -98,7 +98,7 @@ dir_mode = "0755"
 ## passwords = [ "filepath:/path/to/passwords.txt" ]
 passwords = []
 
-#[webserver]
+[webserver]
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
 ## this only controls the /metrics route. Scrapes must send an API key with
 ## system:metrics:read via Authorization: Bearer or X-Api-Key.
@@ -150,7 +150,7 @@ passwords = []
 ## permissions = ["system:stats:read"]
 
 ## Global Folder configuration that affects all watched folders.
-#[folders]
+[folders]
 ## How often poller checks for new folders.
 ## The default of `0s` will disable the poller on all systems except Docker.
 ## Set this value to `1ms` to disable it in Docker.
@@ -475,4 +475,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 13 SEP 2026 07:48 UTC
+## => Content Auto Generated, 13 SEP 2026 08:49 UTC

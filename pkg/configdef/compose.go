@@ -90,7 +90,7 @@ func (h *Header) makeCompose(prefix string, bare bool) string {
 			continue
 		}
 
-		if h.Kind == list {
+		if h.repeatable() {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix + "0_"))
 		} else {
 			buf.WriteString(param.Compose(pfx + prefix + h.Prefix))

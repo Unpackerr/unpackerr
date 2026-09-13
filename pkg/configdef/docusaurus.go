@@ -97,14 +97,19 @@ func (h *Header) makeDocs(prefix string, section section) string {
 
 	if !h.NoHeader {
 		brace1, brace2 := "[", "]"
-		if h.Kind == list {
+		inner := string(section)
+
+		switch h.Kind {
+		case list:
 			brace1, brace2 = "[[", "]]"
+		case named:
+			inner = string(section) + ".0"
 		}
 
 		buf.WriteString(h.Prefix)
 		buf.WriteString("</b>, Header: <b> ")
 		buf.WriteString(brace1)
-		buf.WriteString(string(section))
+		buf.WriteString(inner)
 		buf.WriteString(brace2)
 	}
 

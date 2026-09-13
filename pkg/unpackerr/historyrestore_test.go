@@ -17,9 +17,9 @@ func restoreTestUnpackerr(t *testing.T) *Unpackerr {
 	unpack.KeepHistory = 20
 	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
 	unpack.RetryDelay.Duration = time.Minute
-	unpack.Sonarr = []*SonarrConfig{{}}
-	unpack.Sonarr[0].Name = "Sportarr"
-	unpack.Sonarr[0].URL = "http://sonarr:8989"
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}})
+	unpack.Sonarr["0"].Name = "Sportarr"
+	unpack.Sonarr["0"].URL = "http://sonarr:8989"
 
 	return unpack
 }
@@ -152,8 +152,8 @@ func TestRestoreQueueMatchesURLWhenKindMissing(t *testing.T) {
 	unpack := New()
 	unpack.KeepHistory = 10
 	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
-	unpack.Sonarr = []*SonarrConfig{{}}
-	unpack.Sonarr[0].URL = "http://sonarr:8989"
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}})
+	unpack.Sonarr["0"].URL = "http://sonarr:8989"
 
 	unpack.upsertHistory(HistoryRecord{
 		ID: "legacy", App: "Sportarr", URL: "http://sonarr:8989", Path: "/dl/legacy",

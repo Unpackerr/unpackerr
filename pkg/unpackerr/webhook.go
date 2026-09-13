@@ -82,22 +82,28 @@ func (u *Unpackerr) hookList() []*hooks.Config {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
-	return u.Webhook
+	return instanceValues(u.Webhook)
 }
 
 func (u *Unpackerr) cmdhookList() []*hooks.Config {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
-	return u.Cmdhook
+	return instanceValues(u.Cmdhook)
 }
 
 func (u *Unpackerr) validateWebhook() error {
 	return u.validateWebhookList(u.Webhook)
 }
 
-func (u *Unpackerr) validateWebhookList(list []*WebhookConfig) error {
-	if err := hooks.ValidateWebhooks(list, u.Timeout.Duration); err != nil {
+func (u *Unpackerr) validateWebhookList(list InstanceMap[WebhookConfig]) error {
+	for key := range list {
+		if err := validateInstanceSlug(key); err != nil {
+			return err
+		}
+	}
+
+	if err := hooks.ValidateWebhooks(instanceValues(list), u.Timeout.Duration); err != nil {
 		return fmt.Errorf("validating webhooks: %w", err)
 	}
 
@@ -108,8 +114,14 @@ func (u *Unpackerr) validateCmdhook() error {
 	return u.validateCmdhookList(u.Cmdhook)
 }
 
-func (u *Unpackerr) validateCmdhookList(list []*WebhookConfig) error {
-	if err := hooks.ValidateCmdhooks(list, u.Timeout.Duration, expandHomedir); err != nil {
+func (u *Unpackerr) validateCmdhookList(list InstanceMap[WebhookConfig]) error {
+	for key := range list {
+		if err := validateInstanceSlug(key); err != nil {
+			return err
+		}
+	}
+
+	if err := hooks.ValidateCmdhooks(instanceValues(list), u.Timeout.Duration, expandHomedir); err != nil {
 		return fmt.Errorf("validating cmdhooks: %w", err)
 	}
 
@@ -134,7 +146,7 @@ func (u *Unpackerr) sampleWebhook(e extract.Status) error {
 		return fmt.Errorf("preparing sample webhook: %w", err)
 	}
 
-	for _, hook := range u.Webhook {
+	for _, hook := range instanceValues(u.Webhook) {
 		hooks.SendWithLog(u.Logger, hook, payload)
 	}
 

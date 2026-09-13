@@ -227,6 +227,114 @@
           "restartRequired": {"type": "boolean"}
         }
       },
+      "StarrInstance": {
+        "type": "object",
+        "description": "One Sonarr, Radarr, Lidarr, or Readarr instance. The map key is the slug, not this object. name is display only. Changed in v1.0.0 (September 2026).",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"},
+          "apiKey": {"type": "string"},
+          "httpUser": {"type": "string"},
+          "httpPass": {"type": "string"},
+          "username": {"type": "string"},
+          "password": {"type": "string"},
+          "path": {"type": "string"},
+          "paths": {"type": "array", "items": {"type": "string"}},
+          "protocols": {"type": "string"},
+          "delete_orig": {"type": "boolean"},
+          "delete_delay": {"type": "string", "description": "Go duration"},
+          "syncthing": {"type": "boolean"},
+          "valid_ssl": {"type": "boolean"},
+          "timeout": {"type": "string", "description": "Go duration"},
+          "maxBytes": {"type": "string"},
+          "split_flac": {"type": "boolean", "description": "Lidarr only"}
+        }
+      },
+      "StarrMap": {
+        "type": "object",
+        "description": "Starr instances keyed by slug (letters, digits, _, -). Empty object clears file instances. Legacy arrays still load as keys 0, 1, ….",
+        "additionalProperties": {"$ref": "#/components/schemas/StarrInstance"}
+      },
+      "FolderInstance": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "extract_path": {"type": "string"},
+          "delete_original": {"type": "boolean"},
+          "delete_files": {"type": "boolean"},
+          "disable_log": {"type": "boolean"},
+          "move_back": {"type": "boolean"},
+          "delete_after": {"type": "string", "nullable": true, "description": "Go duration; null omits"},
+          "extract_isos": {"type": "boolean"},
+          "disableRecursion": {"type": "boolean"},
+          "maxNested": {"type": "integer"},
+          "extrasMaxDepth": {"type": "integer"},
+          "allowSymlinks": {"type": "boolean"},
+          "maxBytes": {"type": "string"},
+          "maxFiles": {"type": "integer"},
+          "maxRatio": {"type": "number"},
+          "exclude_paths": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "FolderMap": {
+        "type": "object",
+        "description": "Watch folders keyed by slug. Empty object clears file folders.",
+        "additionalProperties": {"$ref": "#/components/schemas/FolderInstance"}
+      },
+      "FoldersSection": {
+        "type": "object",
+        "description": "Folders wrapper. Empty {} is 400; send interval, buffer, and folder (possibly {}).",
+        "properties": {
+          "interval": {"type": "string", "description": "Go duration"},
+          "buffer": {"type": "integer"},
+          "folder": {"$ref": "#/components/schemas/FolderMap"}
+        }
+      },
+      "HookInstance": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"},
+          "command": {"type": "string"},
+          "contentType": {"type": "string"},
+          "templatePath": {"type": "string"},
+          "template": {"type": "string"},
+          "timeout": {"type": "string", "description": "Go duration"},
+          "shell": {"type": "boolean"},
+          "ignoreSsl": {"type": "boolean"},
+          "silent": {"type": "boolean"},
+          "events": {"type": "array", "items": {"oneOf": [{"type": "integer"}, {"type": "string"}]}},
+          "exclude": {"type": "array", "items": {"type": "string"}},
+          "nickname": {"type": "string"},
+          "token": {"type": "string"},
+          "channel": {"type": "string"}
+        }
+      },
+      "HookMap": {
+        "type": "object",
+        "description": "Webhooks or cmdhooks keyed by slug. Empty object clears file instances. Legacy arrays still load as keys 0, 1, ….",
+        "additionalProperties": {"$ref": "#/components/schemas/HookInstance"}
+      },
+      "ConfigSection": {
+        "description": "Shape depends on section. Starr (sonarr/radarr/lidarr/readarr) and hooks are slug maps. Folders is {interval, buffer, folder} with folder a slug map. General and webserver stay objects. Changed in v1.0.0 (September 2026).",
+        "oneOf": [
+          {"$ref": "#/components/schemas/StarrMap"},
+          {"$ref": "#/components/schemas/FoldersSection"},
+          {"$ref": "#/components/schemas/HookMap"},
+          {"type": "object", "description": "general or webserver object"}
+        ]
+      },
+      "ConfigSectionPut": {
+        "description": "Same as GET, plus legacy Starr/hook/folder arrays (loaded as keys 0, 1, …). Starr/hooks {} clears file instances. Folders still needs the wrapper; folder may be {}. Empty object is 400 for general/webserver. Unknown fields and [null] are 400. PUT of a map writes named TOML tables.",
+        "oneOf": [
+          {"$ref": "#/components/schemas/StarrMap"},
+          {"type": "array", "items": {"$ref": "#/components/schemas/StarrInstance"}, "description": "Legacy Starr list"},
+          {"$ref": "#/components/schemas/FoldersSection"},
+          {"$ref": "#/components/schemas/HookMap"},
+          {"type": "array", "items": {"$ref": "#/components/schemas/HookInstance"}, "description": "Legacy webhook/cmdhook list"},
+          {"type": "object", "description": "general or webserver object"}
+        ]
+      },
       "BrowseDir": {
         "type": "object",
         "properties": {
@@ -555,7 +663,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Environment variables that overlaid config at startup",
-        "description": "Requires authentication. Keys are UN_* suffixes (DEBUG, SONARR_0_URL). Values are the env strings cnfg wrote into fields. Password, API key, webhook token, and webserver api key values are blank unless the caller has *.",
+        "description": "Requires authentication. Keys are UN_* suffixes with the same case as the TOML map key (DEBUG, SONARR_0_URL, SONARR_uhd_URL, WEBSERVER_ROLES_stats_PERMISSIONS_0). Values are the env strings cnfg wrote into fields. Password, API key, webhook token, and webserver api key values are blank unless the caller has *.",
         "responses": {
           "200": {
             "description": "Map of env suffix to value",
@@ -600,11 +708,11 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the on-disk config section",
-        "description": "Requires config:{section}:read. Returns file-shaped values (filepath: prefixes kept). Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. PUT a new password as user:<kdf-hex> (same digest as login), not plaintext. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
+        "description": "Requires config:{section}:read. Returns file-shaped values (filepath: prefixes kept). Starr, folders.folder, webhooks, and cmdhooks are objects keyed by slug (v1.0.0, September 2026); env-only slugs are omitted. Starr API keys are visible as stored. Unpackerr webserver apiKeys[].key is returned only to callers with *; PUT keeps a blank key of the same name. ui_password is !!cryptd!!, webauth, noauth, or filepath:; plaintext user:pass is blanked. PUT a new password as user:<kdf-hex> (same digest as login), not plaintext. Use GET /api/config/{section}/live for expanded running values. PUT this payload back to save.",
         "responses": {
           "200": {
             "description": "On-disk section payload",
-            "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigSection"}}}
           },
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
@@ -614,10 +722,10 @@
       "put": {
         "tags": ["config"],
         "summary": "Replace one config section and rewrite the TOML file",
-        "description": "Requires config:{section}:write. Body is the file-shaped GET payload (not /live). Unknown JSON fields, extra values, empty object sections, and nil list entries return 400. Arrays may be [] to clear. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. webserver uiPassword on PUT is !!cryptd!!, webauth, noauth, an existing filepath:, or user:<64-char PBKDF2 hex> (the same kdf as login); plaintext user:pass is 400. Changing the live password hash or auth type while local password auth is on requires uiCurrentKdf (KDF of the current username+password). General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled.",
+        "description": "Requires config:{section}:write. Body is the file-shaped GET payload (not /live). Starr/hooks are slug maps; {} clears file instances (legacy [] still loads as keys 0, 1, …). Folders is {interval, buffer, folder}; empty {} is 400, folder may be {}. File commit strips envUsed fields and drops env-only slugs. Live overlay still creates missing env slugs. Unknown JSON fields, extra values, empty general/webserver objects, and nil list entries return 400. Validation, the TOML write, and the live apply run on the main loop; a persist failure is 500 and leaves runtime unchanged. An existing filepath: string in the same section is expanded for the running process and kept as filepath: on disk. A new or changed filepath: is 400; the API will not read a file that was not already referenced in that section. Replacing filepath: with a literal value is allowed. Empty apiKeys[].key keeps the existing key of the same name so a redacted GET can round-trip without *. webserver uiPassword on PUT is !!cryptd!!, webauth, noauth, an existing filepath:, or user:<64-char PBKDF2 hex> (the same kdf as login); plaintext user:pass is 400. Changing the live password hash or auth type while local password auth is on requires uiCurrentKdf (KDF of the current username+password). General interval changes reset the running tickers. Folder lists, webserver listen_addr, urlbase, TLS, metrics, pprof, log settings, debug, quiet, parallel, and file modes return restartRequired: true; the daemon then re-execs itself once nothing is queued, extracting, or awaiting delete. In-flight extracts are never cancelled. Changed in v1.0.0 (September 2026).",
         "requestBody": {
           "required": true,
-          "content": {"application/json": {"schema": {"description": "Same shape as GET /api/config/{section}"}}}
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigSectionPut"}}}
         },
         "responses": {
           "200": {
@@ -648,11 +756,11 @@
       "get": {
         "tags": ["config"],
         "summary": "Read the expanded running config section",
-        "description": "Requires config:{section}:read. Most filepath: values are expanded. Archive passwords are the post-env, pre-expansion slice, so filepath: from the file or UN_PASSWORDS is not replaced with secret-file contents. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
+        "description": "Requires config:{section}:read. Most filepath: values are expanded. Archive passwords are the post-env, pre-expansion slice, so filepath: from the file or UN_PASSWORDS is not replaced with secret-file contents. Starr/folders/hooks include env-created slugs; env secrets (apiKey, HTTP/native passwords, webhook token) are redacted even for *. Unpackerr webserver apiKeys[].key is returned only to callers with *. ui_password is the stored hash or auth mode, not plaintext. Do not PUT this payload if you need to keep filepath: lines.",
         "responses": {
           "200": {
             "description": "Live section payload",
-            "content": {"application/json": {"schema": {"description": "Shape depends on section"}}}
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigSection"}}}
           },
           "404": {"description": "Unknown section", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "504": {"$ref": "#/components/responses/GatewayTimeout"},

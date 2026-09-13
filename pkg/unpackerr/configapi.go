@@ -34,9 +34,9 @@ type generalConfig struct {
 
 // foldersConfigAPI is global folder poller settings plus the watch list.
 type foldersConfigAPI struct {
-	Interval cnfg.Duration   `json:"interval"`
-	Buffer   uint            `json:"buffer"`
-	Folder   []*FolderConfig `json:"folder"`
+	Interval cnfg.Duration             `json:"interval"`
+	Buffer   uint                      `json:"buffer"`
+	Folder   InstanceMap[FolderConfig] `json:"folder"`
 }
 
 func (u *Unpackerr) requireConfigPerm(write bool, next http.HandlerFunc) http.HandlerFunc {
@@ -96,7 +96,9 @@ func (u *Unpackerr) configGetLiveHandler(response http.ResponseWriter, request *
 			return nil
 		}
 
-		payload = configSectionFrom(cloneConfig(u.Config), section)
+		cfg := cloneConfig(u.Config)
+		u.redactEnvSecrets(cfg)
+		payload = configSectionFrom(cfg, section)
 
 		return nil
 	})
@@ -120,19 +122,19 @@ func configSectionFrom(cfg *Config, section ConfigSection) any {
 
 		return cfg.Webserver
 	case SectionSonarr:
-		return emptyIfNil(cfg.Sonarr)
+		return emptyIfNilMap(cfg.Sonarr)
 	case SectionRadarr:
-		return emptyIfNil(cfg.Radarr)
+		return emptyIfNilMap(cfg.Radarr)
 	case SectionLidarr:
-		return emptyIfNil(cfg.Lidarr)
+		return emptyIfNilMap(cfg.Lidarr)
 	case SectionReadarr:
-		return emptyIfNil(cfg.Readarr)
+		return emptyIfNilMap(cfg.Readarr)
 	case SectionFolders:
 		return foldersConfigFrom(cfg)
 	case SectionWebhooks:
-		return emptyIfNil(cfg.Webhook)
+		return emptyIfNilMap(cfg.Webhook)
 	case SectionCmdhooks:
-		return emptyIfNil(cfg.Cmdhook)
+		return emptyIfNilMap(cfg.Cmdhook)
 	default:
 		return nil
 	}
@@ -203,7 +205,7 @@ func foldersConfigFrom(cfg *Config) foldersConfigAPI {
 	return foldersConfigAPI{
 		Interval: cfg.Folder.Interval,
 		Buffer:   cfg.Folder.Buffer,
-		Folder:   emptyIfNil(cfg.Folders),
+		Folder:   emptyIfNilMap(cfg.Folders),
 	}
 }
 

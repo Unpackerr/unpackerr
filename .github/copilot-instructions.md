@@ -12,7 +12,7 @@ in mind; the items below have been raised and rejected before.
 - Live `Config` fields are read and written only on the main loop. Do not ask for a
   mutex around `u.StartDelay`, `u.Passwords`, `u.Sonarr`, and similar. If a new reader
   runs on another goroutine, route it through `onMainLoop` instead.
-  Exception: `GET /api/stats` / Prometheus `Collect` read Starr/folder slice headers
+  Exception: `GET /api/stats` / Prometheus `Collect` read Starr/folder map headers
   under `configMu` and the last poll snapshot under `History.mu`. Poll workers publish
   `Queue` and `last*` after `GetQueue` returns. Do not hop that path onto `onMainLoop`.
 - `retrieveAppQueues` does not need to snapshot the app lists. A config PUT applies on

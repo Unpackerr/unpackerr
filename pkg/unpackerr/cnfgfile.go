@@ -75,6 +75,10 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	}
 
 	u.envUsed = envSuffixes(res.Used, u.EnvPrefix)
+	// ParseENV replaces map values instead of overlaying fields. Merge the same
+	// way overlayEnv does after a PUT so file-only instance data (api_key, name,
+	// paths) survives a partial UN_* fill.
+	u.keepPutInstanceFields(u.fileConfig, u.Config)
 
 	u.snapshotLivePasswords()
 

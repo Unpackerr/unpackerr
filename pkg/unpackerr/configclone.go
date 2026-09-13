@@ -62,13 +62,13 @@ func cloneConfig(src *Config) *Config {
 	dst := *src
 	dst.Passwords = append(StringSlice(nil), src.Passwords...)
 	dst.Webserver = cloneWebserver(src.Webserver)
-	dst.Lidarr = cloneStarrList(src.Lidarr)
-	dst.Radarr = cloneStarrList(src.Radarr)
-	dst.Readarr = cloneStarrList(src.Readarr)
-	dst.Sonarr = cloneStarrList(src.Sonarr)
-	dst.Folders = cloneFolderList(src.Folders)
-	dst.Webhook = hooks.CloneList(src.Webhook)
-	dst.Cmdhook = hooks.CloneList(src.Cmdhook)
+	dst.Lidarr = cloneStarrMap[LidarrConfig, *LidarrConfig](src.Lidarr)
+	dst.Radarr = cloneStarrMap[RadarrConfig, *RadarrConfig](src.Radarr)
+	dst.Readarr = cloneStarrMap[ReadarrConfig, *ReadarrConfig](src.Readarr)
+	dst.Sonarr = cloneStarrMap[SonarrConfig, *SonarrConfig](src.Sonarr)
+	dst.Folders = cloneFolderMap(src.Folders)
+	dst.Webhook = cloneHookMap(src.Webhook)
+	dst.Cmdhook = cloneHookMap(src.Cmdhook)
 
 	return &dst
 }
@@ -120,31 +120,68 @@ func cloneRoles(src map[string]Role) map[string]Role {
 	return out
 }
 
-// cloneStarrList copies a Starr list into its file shape: config only,
+func asStarr[T any, P starrApp[T]](item *T) P { //nolint:ireturn // P is *T with the starr methods.
+	return any(item).(P) //nolint:forcetypeassert // callers only pass *T that implements starrApp.
+}
+
+// cloneStarrMap copies a Starr map into its file shape: config only,
 // no queue, no client. Nil in, nil out so the TOML writer omits the table.
-func cloneStarrList[T any, P starrApp[T]](src []P) []P {
+func cloneStarrMap[T any, P starrApp[T]](src InstanceMap[T]) InstanceMap[T] {
 	if src == nil {
 		return nil
 	}
 
-	out := make([]P, len(src))
+	out := make(InstanceMap[T], len(src))
 
-	for idx, app := range src {
+	for key, app := range src {
+		if app == nil {
+			continue
+		}
+
 		cloned := *app
-		out[idx] = &cloned
+		item := asStarr[T, P](&cloned)
+		item.conf().Paths = append(StringSlice(nil), asStarr[T, P](app).conf().Paths...)
+		item.stripRuntime()
 
-		out[idx].conf().Paths = append(StringSlice(nil), app.conf().Paths...)
-		out[idx].stripRuntime()
+		out[key] = &cloned
 	}
 
 	return out
 }
 
-func cloneFolderList(src []*FolderConfig) []*FolderConfig {
-	return folders.CloneList(src)
+func cloneFolderMap(src InstanceMap[FolderConfig]) InstanceMap[FolderConfig] {
+	if src == nil {
+		return nil
+	}
+
+	out := make(InstanceMap[FolderConfig], len(src))
+	for key, folder := range src {
+		if folder == nil {
+			continue
+		}
+
+		cloned := folders.CloneList([]*FolderConfig{folder})
+		out[key] = cloned[0]
+	}
+
+	return out
 }
 
-// cloneHookList copies hooks without the mutex, counters, client, or template.
-func cloneHookList(src []*WebhookConfig) []*WebhookConfig {
-	return hooks.CloneList(src)
+// cloneHookMap copies hooks without the mutex, counters, client, or template.
+func cloneHookMap(src InstanceMap[WebhookConfig]) InstanceMap[WebhookConfig] {
+	if src == nil {
+		return nil
+	}
+
+	out := make(InstanceMap[WebhookConfig], len(src))
+	for key, hook := range src {
+		if hook == nil {
+			continue
+		}
+
+		cloned := hooks.CloneList([]*WebhookConfig{hook})
+		out[key] = cloned[0]
+	}
+
+	return out
 }

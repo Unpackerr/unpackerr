@@ -89,12 +89,12 @@ func (c *Config) renderLive(live any, persist persistSet) string {
 			sectionVal, _ = fieldByTOML(root, string(name))
 		}
 
-		if header.Kind == list {
+		if header.Kind == list || header.Kind == named {
 			buf.WriteString(header.renderListLive(name, sectionVal, persist))
 			continue
 		}
 
-		buf.WriteString(header.makeSectionLive(name, false, sectionVal, persist))
+		buf.WriteString(header.makeSectionLive(name, "", false, sectionVal, persist))
 	}
 
 	return buf.String()
@@ -119,6 +119,10 @@ func (c *Config) renderDefinedLive(name section, root reflect.Value, persist per
 
 func (h *Header) renderListLive(name section, live reflect.Value, persist persistSet) string {
 	live = derefValue(live)
+	if h.Kind == named {
+		return h.renderNamedLive(name, live, persist)
+	}
+
 	if !live.IsValid() || live.Kind() != reflect.Slice || live.Len() == 0 {
 		return h.makeSection(name, false, false)
 	}
@@ -126,13 +130,48 @@ func (h *Header) renderListLive(name section, live reflect.Value, persist persis
 	var buf bytes.Buffer
 
 	for idx := range live.Len() {
-		buf.WriteString(h.makeSectionLive(name, true, derefValue(live.Index(idx)), persist))
+		buf.WriteString(h.makeSectionLive(name, "", true, derefValue(live.Index(idx)), persist))
 	}
 
 	return buf.String()
 }
 
-func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Value, persist persistSet) string {
+func (h *Header) renderNamedLive(name section, live reflect.Value, persist persistSet) string {
+	if !live.IsValid() || live.Kind() != reflect.Map || live.Len() == 0 {
+		return h.makeSection(name, false, false)
+	}
+
+	keys := make([]string, 0, live.Len())
+
+	for _, keyVal := range live.MapKeys() {
+		if keyVal.Kind() == reflect.String {
+			keys = append(keys, keyVal.String())
+		}
+	}
+
+	slices.Sort(keys)
+
+	var buf bytes.Buffer
+
+	for _, key := range keys {
+		item := derefValue(live.MapIndex(reflect.ValueOf(key)))
+		if !item.IsValid() {
+			continue
+		}
+
+		buf.WriteString(h.makeSectionLive(name, key, true, item, persist))
+	}
+
+	if buf.Len() == 0 {
+		return h.makeSection(name, false, false)
+	}
+
+	return buf.String()
+}
+
+func (h *Header) makeSectionLive(
+	name section, key string, showHeader bool, live reflect.Value, persist persistSet,
+) string {
 	var buf bytes.Buffer
 
 	if h.Text != "" {
@@ -143,22 +182,13 @@ func (h *Header) makeSectionLive(name section, showHeader bool, live reflect.Val
 
 	if !h.NoHeader {
 		space = " "
-		left, right := "[", "]"
-
-		if h.Kind == list {
-			left, right = "[[", "]]"
-		}
-
 		comment := ""
-		if h.Kind == list && !showHeader {
+
+		if h.repeatable() && !showHeader {
 			comment = "#"
 		}
 
-		buf.WriteString(comment)
-		buf.WriteString(left)
-		buf.WriteString(string(name))
-		buf.WriteString(right)
-		buf.WriteByte('\n')
+		h.writeTOMLHeader(&buf, name, key, comment)
 	}
 
 	live = derefValue(live)

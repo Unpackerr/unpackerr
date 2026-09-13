@@ -19,30 +19,39 @@ type queueView struct {
 	DebugExtra                  string
 }
 
-func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list *[]P, app starr.App) error {
-	tmp := (*list)[:0]
+func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T], app starr.App) error {
+	for key, item := range list {
+		if err := validateInstanceSlug(key); err != nil {
+			return err
+		}
 
-	for idx := range *list {
-		if err := unpack.validateApp((*list)[idx].conf(), app); err != nil {
+		if item == nil {
+			delete(list, key)
+			continue
+		}
+
+		server := asStarr[T, P](item)
+		if err := unpack.validateApp(server.conf(), app); err != nil {
 			if skipInvalidApp(err) {
-				continue // We ignore these errors, just remove the instance from the list.
+				delete(list, key)
+				continue
 			}
 
 			return err
 		}
 
-		(*list)[idx].connect()
-		tmp = append(tmp, (*list)[idx])
+		server.connect()
 	}
-
-	*list = tmp
 
 	return nil
 }
 
-func warnDuplicateStarrNames[T any, P starrApp[T]](unpack *Unpackerr, seen map[string]string, app starr.App, list []P) {
-	for _, item := range list {
-		cfg := item.conf()
+func warnDuplicateStarrNames[T any, P starrApp[T]](
+	unpack *Unpackerr, seen map[string]string, app starr.App, list InstanceMap[T],
+) {
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
+		cfg := server.conf()
 		name := strings.TrimSpace(cfg.Name)
 
 		if name == "" {
@@ -64,9 +73,10 @@ func warnDuplicateStarrNames[T any, P starrApp[T]](unpack *Unpackerr, seen map[s
 }
 
 func enqueueStarrPoll[T any, P starrApp[T]](
-	unpack *Unpackerr, list []P, app starr.App, start time.Time, wait *sync.WaitGroup,
+	unpack *Unpackerr, list InstanceMap[T], app starr.App, start time.Time, wait *sync.WaitGroup,
 ) {
-	for _, server := range list {
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
 		unpack.workChan <- []func(){func() { unpack.getStarrQueue(server, app, start) }, wait.Done}
 	}
 }
@@ -117,11 +127,12 @@ func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retri
 	cfg.polled = true
 }
 
-func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app starr.App, now time.Time) {
+func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T], app starr.App, now time.Time) {
 	unpack.lockHistory()
 	defer unpack.unlockHistory()
 
-	for _, server := range list {
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
 		cfg := server.conf()
 
 		for _, rec := range server.queueViews() {
@@ -161,8 +172,13 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list []P, app star
 	}
 }
 
-func haveStarrQitem[T any, P starrApp[T]](list []P, name string) bool {
-	for _, server := range list {
+func haveStarrQitem[T any, P starrApp[T]](list InstanceMap[T], name string) bool {
+	for _, item := range list {
+		if item == nil {
+			continue
+		}
+
+		server := asStarr[T, P](item)
 		if server.hasQueueTitle(name) {
 			return true
 		}
@@ -181,22 +197,23 @@ func (u *Unpackerr) queueSnapshotReady(item *Extract) bool {
 
 	switch item.App {
 	case starr.Lidarr:
-		return starrSnapshotReady(u.Lidarr, item.URL)
+		return starrSnapshotReady[LidarrConfig, *LidarrConfig](u.Lidarr, item.URL)
 	case starr.Radarr:
-		return starrSnapshotReady(u.Radarr, item.URL)
+		return starrSnapshotReady[RadarrConfig, *RadarrConfig](u.Radarr, item.URL)
 	case starr.Readarr:
-		return starrSnapshotReady(u.Readarr, item.URL)
+		return starrSnapshotReady[ReadarrConfig, *ReadarrConfig](u.Readarr, item.URL)
 	case starr.Sonarr:
-		return starrSnapshotReady(u.Sonarr, item.URL)
+		return starrSnapshotReady[SonarrConfig, *SonarrConfig](u.Sonarr, item.URL)
 	default:
 		return true
 	}
 }
 
-func starrSnapshotReady[T any, P starrApp[T]](list []P, url string) bool {
+func starrSnapshotReady[T any, P starrApp[T]](list InstanceMap[T], url string) bool {
 	if url != "" {
-		for _, server := range list {
-			if server != nil && server.conf().URL == url {
+		for _, item := range instanceValues(list) {
+			server := asStarr[T, P](item)
+			if server.conf().URL == url {
 				return server.conf().hasPolled()
 			}
 		}
@@ -204,8 +221,9 @@ func starrSnapshotReady[T any, P starrApp[T]](list []P, url string) bool {
 		return true // instance is gone from config; missing from the queue is real.
 	}
 
-	for _, server := range list {
-		if server != nil && !server.conf().hasPolled() {
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
+		if !server.conf().hasPolled() {
 			return false
 		}
 	}
@@ -214,10 +232,10 @@ func starrSnapshotReady[T any, P starrApp[T]](list []P, url string) bool {
 }
 
 func (u *Unpackerr) allStarrSnapshotsReady() bool {
-	return starrSnapshotReady(u.Lidarr, "") &&
-		starrSnapshotReady(u.Radarr, "") &&
-		starrSnapshotReady(u.Readarr, "") &&
-		starrSnapshotReady(u.Sonarr, "")
+	return starrSnapshotReady[LidarrConfig, *LidarrConfig](u.Lidarr, "") &&
+		starrSnapshotReady[RadarrConfig, *RadarrConfig](u.Radarr, "") &&
+		starrSnapshotReady[ReadarrConfig, *ReadarrConfig](u.Readarr, "") &&
+		starrSnapshotReady[SonarrConfig, *SonarrConfig](u.Sonarr, "")
 }
 
 func (u *Unpackerr) starrQueueStats() []StarrQueueStat {
@@ -227,18 +245,19 @@ func (u *Unpackerr) starrQueueStats() []StarrQueueStat {
 	}
 
 	out := make([]StarrQueueStat, 0, n)
-	out = append(out, starrQueueRows(u.Lidarr, starr.Lidarr)...)
-	out = append(out, starrQueueRows(u.Radarr, starr.Radarr)...)
-	out = append(out, starrQueueRows(u.Readarr, starr.Readarr)...)
-	out = append(out, starrQueueRows(u.Sonarr, starr.Sonarr)...)
+	out = append(out, starrQueueRows[LidarrConfig, *LidarrConfig](u.Lidarr, starr.Lidarr)...)
+	out = append(out, starrQueueRows[RadarrConfig, *RadarrConfig](u.Radarr, starr.Radarr)...)
+	out = append(out, starrQueueRows[ReadarrConfig, *ReadarrConfig](u.Readarr, starr.Readarr)...)
+	out = append(out, starrQueueRows[SonarrConfig, *SonarrConfig](u.Sonarr, starr.Sonarr)...)
 
 	return out
 }
 
-func starrQueueRows[T any, P starrApp[T]](list []P, app starr.App) []StarrQueueStat {
+func starrQueueRows[T any, P starrApp[T]](list InstanceMap[T], app starr.App) []StarrQueueStat {
 	out := make([]StarrQueueStat, 0, len(list))
 
-	for _, server := range list {
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
 		cfg := server.conf()
 		counts := tallyQueueViews(server.queueViews(), cfg.Protocols)
 		out = append(out, StarrQueueStat{

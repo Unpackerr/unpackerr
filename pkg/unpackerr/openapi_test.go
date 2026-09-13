@@ -129,6 +129,29 @@ func TestOpenAPILoginRequestOnlyRequiresKDF(t *testing.T) {
 	}
 }
 
+func TestOpenAPIConfigSectionUsesAnyOf(t *testing.T) {
+	t.Parallel()
+
+	var doc map[string]any
+	if err := json.Unmarshal(openapiJSON, &doc); err != nil {
+		t.Fatal(err)
+	}
+
+	comps, _ := doc["components"].(map[string]any)
+	schemas, _ := comps["schemas"].(map[string]any)
+
+	for _, name := range []string{"ConfigSection", "ConfigSectionPut"} {
+		schema, _ := schemas[name].(map[string]any)
+		if _, ok := schema["anyOf"]; !ok {
+			t.Fatalf("%s missing anyOf: %v", name, schema)
+		}
+
+		if _, ok := schema["oneOf"]; ok {
+			t.Fatalf("%s still uses oneOf", name)
+		}
+	}
+}
+
 func decodeOpenAPI(t *testing.T, body []byte) map[string]any {
 	t.Helper()
 

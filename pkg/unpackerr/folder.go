@@ -19,8 +19,14 @@ func (u *Unpackerr) validateFolders() error {
 	return validateFolderList(u.Folders)
 }
 
-func validateFolderList(list []*FolderConfig) error {
-	if err := folders.ValidateList(list, parseOptionalMaxBytes); err != nil {
+func validateFolderList(list InstanceMap[FolderConfig]) error {
+	for key := range list {
+		if err := validateInstanceSlug(key); err != nil {
+			return err
+		}
+	}
+
+	if err := folders.ValidateList(instanceValues(list), parseOptionalMaxBytes); err != nil {
 		return fmt.Errorf("validating folders: %w", err)
 	}
 
@@ -42,7 +48,7 @@ func (u *Unpackerr) PollFolders() {
 
 	// Abs-expand a clone so GET /api/config/folders/live keeps the configured
 	// path (file vs env), not the runtime filepath.Abs rewrite.
-	watched, flist := folders.Check(folders.CloneList(u.Folders), u.Logger)
+	watched, flist := folders.Check(folders.CloneList(instanceValues(u.Folders)), u.Logger)
 
 	tracker, err := u.Folder.NewWatcher(watched, u.Logger, updateChanBuf, suffix)
 	if err != nil {

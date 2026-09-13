@@ -254,7 +254,7 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 		t.Fatalf("good %d %s", good.Code, good.Body.String())
 	}
 
-	if len(unpack.Sonarr) != 1 || unpack.Sonarr[0].URL != "http://127.0.0.1:8989" {
+	if len(unpack.Sonarr) != 1 || unpack.Sonarr["0"].URL != "http://127.0.0.1:8989" {
 		t.Fatalf("sonarr %+v", unpack.Sonarr)
 	}
 
@@ -265,6 +265,14 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 
 	if !strings.Contains(string(written), "http://127.0.0.1:8989") {
 		t.Fatalf("sonarr PUT missed fileConfig:\n%s", written)
+	}
+
+	if !strings.Contains(string(written), "[sonarr.0]") {
+		t.Fatalf("sonarr PUT should write named tables:\n%s", written)
+	}
+
+	if strings.Contains(string(written), "[[sonarr]]") {
+		t.Fatalf("sonarr PUT wrote a 0.x array table:\n%s", written)
 	}
 }
 
@@ -287,6 +295,10 @@ func TestConfigPutLidarrURLNeedsAPIKey(t *testing.T) {
 
 	if !strings.Contains(emptyKey.Body.String(), "API Key") {
 		t.Fatalf("want API key error, got %s", emptyKey.Body.String())
+	}
+
+	if !strings.Contains(emptyKey.Body.String(), `\"0\"`) {
+		t.Fatalf("want instance key in error, got %s", emptyKey.Body.String())
 	}
 
 	shortKey := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
@@ -519,14 +531,14 @@ func TestConfigPutSonarrPreservesQueueAndPath(t *testing.T) {
 	app := &SonarrConfig{Queue: queued}
 	app.URL = "http://127.0.0.1:8989"
 	app.APIKey = strings.Repeat("k", apiKeyMinLength)
-	unpack.Sonarr = []*SonarrConfig{app}
+	unpack.Sonarr = instanceMap([]*SonarrConfig{app})
 
 	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `","path":"/dl"}]`
 	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, key); rec.Code != http.StatusOK {
 		t.Fatalf("first put %d %s", rec.Code, rec.Body.String())
 	}
 
-	if unpack.Sonarr[0].Queue != queued {
+	if unpack.Sonarr["0"].Queue != queued {
 		t.Fatal("PUT dropped last-known Starr queue")
 	}
 
@@ -536,14 +548,14 @@ func TestConfigPutSonarrPreservesQueueAndPath(t *testing.T) {
 
 	var hits int
 
-	for _, path := range unpack.Sonarr[0].Paths {
+	for _, path := range unpack.Sonarr["0"].Paths {
 		if path == "/dl" {
 			hits++
 		}
 	}
 
 	if hits != 1 {
-		t.Fatalf("path merged %d times: %+v", hits, unpack.Sonarr[0].Paths)
+		t.Fatalf("path merged %d times: %+v", hits, unpack.Sonarr["0"].Paths)
 	}
 }
 
@@ -1003,7 +1015,7 @@ func TestEnsureWorkThreadsGrowsWithApps(t *testing.T) {
 		t.Fatalf("floor workers %d", unpack.workThreads)
 	}
 
-	unpack.Sonarr = []*SonarrConfig{{}, {}, {}}
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}, {}, {}})
 	unpack.ensureWorkThreads(unpack.starrAppCount())
 
 	if unpack.workThreads != 3 {
@@ -1124,7 +1136,7 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 	app := &SonarrConfig{}
 	app.URL = "http://127.0.0.1:8989"
 	app.APIKey = filePrefix + keyFile
-	unpack.fileConfig.Sonarr = []*SonarrConfig{app}
+	unpack.fileConfig.Sonarr = instanceMap([]*SonarrConfig{app})
 
 	body, err := json.Marshal([]map[string]string{{"url": "http://127.0.0.1:8989", "apiKey": filePrefix + keyFile}})
 	if err != nil {
@@ -1139,11 +1151,11 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 		t.Fatalf("put %d %s", put.Code, put.Body.String())
 	}
 
-	if got := unpack.Sonarr[0].APIKey; got != secret {
+	if got := unpack.Sonarr["0"].APIKey; got != secret {
 		t.Fatalf("live api key %q, want the file contents", got)
 	}
 
-	if got := unpack.fileConfig.Sonarr[0].APIKey; got != "filepath:"+keyFile {
+	if got := unpack.fileConfig.Sonarr["0"].APIKey; got != "filepath:"+keyFile {
 		t.Fatalf("file api key %q, want filepath: kept", got)
 	}
 
@@ -1305,7 +1317,7 @@ func TestConfigPutReplacesFilepathWithLiteral(t *testing.T) {
 	app := &SonarrConfig{}
 	app.URL = "http://127.0.0.1:8989"
 	app.APIKey = filePrefix + "/run/secrets/sonarr"
-	unpack.fileConfig.Sonarr = []*SonarrConfig{app}
+	unpack.fileConfig.Sonarr = instanceMap([]*SonarrConfig{app})
 
 	literal := strings.Repeat("k", apiKeyMinLength)
 	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + literal + `"}]`
@@ -1315,11 +1327,11 @@ func TestConfigPutReplacesFilepathWithLiteral(t *testing.T) {
 		t.Fatalf("replace filepath: put %d %s", rec.Code, rec.Body.String())
 	}
 
-	if got := unpack.Sonarr[0].APIKey; got != literal {
+	if got := unpack.Sonarr["0"].APIKey; got != literal {
 		t.Fatalf("live api key %q", got)
 	}
 
-	if got := unpack.fileConfig.Sonarr[0].APIKey; got != literal {
+	if got := unpack.fileConfig.Sonarr["0"].APIKey; got != literal {
 		t.Fatalf("file api key %q", got)
 	}
 }
@@ -1523,10 +1535,12 @@ func TestConfigPutCanceledRequestIsGatewayTimeout(t *testing.T) {
 	}
 }
 
-func envReadarrUnpackerr(t *testing.T, url, secret string) *Unpackerr {
+const envReadarrURL = "http://readarr:8787/readarr"
+
+func envReadarrUnpackerr(t *testing.T, secret string) *Unpackerr {
 	t.Helper()
 
-	t.Setenv("UN_READARR_0_URL", url)
+	t.Setenv("UN_READARR_0_URL", envReadarrURL)
 	t.Setenv("UN_READARR_0_API_KEY", secret)
 
 	unpack := testAuthUnpackerr(t)
@@ -1546,10 +1560,9 @@ func envReadarrUnpackerr(t *testing.T, url, secret string) *Unpackerr {
 // A save of [] must not drop an env-only Starr instance from live.
 func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
 	secret := strings.Repeat("R", apiKeyMinLength)
-	url := "http://readarr:8787/readarr"
-	unpack := envReadarrUnpackerr(t, url, secret)
+	unpack := envReadarrUnpackerr(t, secret)
 
-	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `[]`, func(req *http.Request) {
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `{}`, func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
 	})
 	if put.Code != http.StatusOK {
@@ -1560,34 +1573,575 @@ func TestConfigPutReadarrEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // 
 		t.Fatalf("file readarr %+v", unpack.fileConfig.Readarr)
 	}
 
-	if len(unpack.Readarr) != 1 || unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
+	got := unpack.Readarr["0"]
+	if len(unpack.Readarr) != 1 || got == nil || got.URL != envReadarrURL || got.APIKey != secret {
 		t.Fatalf("live readarr %+v", unpack.Readarr)
 	}
 }
 
-// Name is not an env field; PUT can write it to the file while env still fills URL/key.
+// A name-only stub is written to the file. Env still fills live URL/key.
 func TestConfigPutReadarrNameKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
 	secret := strings.Repeat("R", apiKeyMinLength)
-	url := "http://readarr:8787/readarr"
-	unpack := envReadarrUnpackerr(t, url, secret)
+	unpack := envReadarrUnpackerr(t, secret)
 
-	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `[{"name":"books"}]`, func(req *http.Request) {
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", `{"0":{"name":"books"}}`, func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
 	})
 	if put.Code != http.StatusOK {
 		t.Fatalf("put %d %s", put.Code, put.Body.String())
 	}
 
-	if unpack.fileConfig == nil || len(unpack.fileConfig.Readarr) != 1 || unpack.fileConfig.Readarr[0].Name != "books" {
-		t.Fatalf("file %+v", unpack.fileConfig.Readarr)
+	file := unpack.fileConfig.Readarr["0"]
+	if file == nil || file.Name != "books" {
+		t.Fatalf("name-only PUT missing from file: %+v", unpack.fileConfig.Readarr)
 	}
 
-	if unpack.fileConfig.Readarr[0].URL != "" || unpack.fileConfig.Readarr[0].APIKey != "" {
-		t.Fatalf("env leaked into file url=%q key=%q", unpack.fileConfig.Readarr[0].URL, unpack.fileConfig.Readarr[0].APIKey)
+	if file.URL != "" || file.APIKey != "" {
+		t.Fatalf("file picked up env identity: %+v", file)
 	}
 
-	if len(unpack.Readarr) != 1 || unpack.Readarr[0].Name != "books" ||
-		unpack.Readarr[0].URL != url || unpack.Readarr[0].APIKey != secret {
-		t.Fatalf("live %+v", unpack.Readarr)
+	got := unpack.Readarr["0"]
+	if got == nil || got.Name != "books" || got.URL != envReadarrURL || got.APIKey != secret {
+		name, gotURL, key := "", "", ""
+		if got != nil {
+			name, gotURL, key = got.Name, got.URL, got.APIKey
+		}
+
+		t.Fatalf("live name=%q url=%q key=%q", name, gotURL, key)
+	}
+}
+
+func TestConfigPutOtherSlugDoesNotWriteEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	secret := strings.Repeat("R", apiKeyMinLength)
+	unpack := envReadarrUnpackerr(t, secret)
+
+	otherKey := strings.Repeat("U", apiKeyMinLength)
+	body := `{"uhd":{"url":"http://readarr-uhd:8787","apiKey":"` + otherKey + `"}}`
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/readarr", body, func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, secret) || strings.Contains(text, envReadarrURL) {
+		t.Fatalf("env leaked into file:\n%s", text)
+	}
+
+	if !strings.Contains(text, "[readarr.uhd]") || !strings.Contains(text, "http://readarr-uhd:8787") {
+		t.Fatalf("named slug missing from file:\n%s", text)
+	}
+
+	if unpack.fileConfig.Readarr["0"] != nil {
+		t.Fatalf("env slug written to file: %+v", unpack.fileConfig.Readarr)
+	}
+
+	if unpack.Readarr["0"] == nil || unpack.Readarr["0"].APIKey != secret {
+		t.Fatalf("live env slug %+v", unpack.Readarr)
+	}
+
+	if unpack.Readarr["uhd"] == nil || unpack.Readarr["uhd"].APIKey != otherKey {
+		t.Fatalf("live uhd %+v", unpack.Readarr)
+	}
+}
+
+func TestConfigGetLiveRedactsEnvAPIKey(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	secret := strings.Repeat("R", apiKeyMinLength)
+	unpack := envReadarrUnpackerr(t, secret)
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/config/readarr/live", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("live get %d %s", rec.Code, rec.Body.String())
+	}
+
+	if strings.Contains(rec.Body.String(), secret) {
+		t.Fatalf("env api key leaked on live GET: %s", rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), envReadarrURL) {
+		t.Fatalf("live GET should still show env url: %s", rec.Body.String())
+	}
+}
+
+func TestConfigGetLiveRedactsInstanceSecrets(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	app := &SonarrConfig{}
+	app.URL = "http://127.0.0.1:8989"
+	app.APIKey = strings.Repeat("S", apiKeyMinLength)
+	app.HTTPPass = "basic-secret"
+	app.Password = "native-secret"
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"uhd": app}
+	unpack.Webhook = InstanceMap[WebhookConfig]{
+		"discord": {URL: "http://hooks.example/discord", Token: "hook-token", Name: "discord"},
+	}
+	unpack.Cmdhook = InstanceMap[WebhookConfig]{
+		"script": {Command: "/bin/true", Token: "cmd-token", Name: "script"},
+	}
+	unpack.snapshotFileConfig()
+
+	key := putKey(unpack)
+	secrets := []string{app.APIKey, app.HTTPPass, app.Password, "hook-token", "cmd-token"}
+
+	for _, path := range []string{
+		"/api/config/sonarr/live",
+		"/api/config/webhooks/live",
+		"/api/config/cmdhooks/live",
+	} {
+		rec := doAuth(t, unpack, http.MethodGet, path, "", key)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s %d %s", path, rec.Code, rec.Body.String())
+		}
+
+		body := rec.Body.String()
+		for _, secret := range secrets {
+			if strings.Contains(body, secret) {
+				t.Fatalf("%s leaked %q: %s", path, secret, body)
+			}
+		}
+	}
+
+	fileSonarr := doAuth(t, unpack, http.MethodGet, "/api/config/sonarr", "", key)
+	if fileSonarr.Code != http.StatusOK {
+		t.Fatalf("file sonarr %d %s", fileSonarr.Code, fileSonarr.Body.String())
+	}
+
+	if !strings.Contains(fileSonarr.Body.String(), app.APIKey) ||
+		!strings.Contains(fileSonarr.Body.String(), app.HTTPPass) ||
+		!strings.Contains(fileSonarr.Body.String(), app.Password) {
+		t.Fatalf("file GET should still show Starr secrets: %s", fileSonarr.Body.String())
+	}
+
+	fileHook := doAuth(t, unpack, http.MethodGet, "/api/config/webhooks", "", key)
+	if fileHook.Code != http.StatusOK || !strings.Contains(fileHook.Body.String(), "hook-token") {
+		t.Fatalf("file webhooks %d %s", fileHook.Code, fileHook.Body.String())
+	}
+
+	fileCmd := doAuth(t, unpack, http.MethodGet, "/api/config/cmdhooks", "", key)
+	if fileCmd.Code != http.StatusOK || !strings.Contains(fileCmd.Body.String(), "cmd-token") {
+		t.Fatalf("file cmdhooks %d %s", fileCmd.Code, fileCmd.Body.String())
+	}
+}
+
+func envWebhookUnpackerr(t *testing.T, envURL, envSecret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_WEBHOOK_0_URL", envURL)
+	t.Setenv("UN_WEBHOOK_0_TOKEN", envSecret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// A save of {} must not drop an env-only webhook from live.
+func TestConfigPutWebhooksEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	const envURL = "http://hooks.example/env"
+
+	unpack := envWebhookUnpackerr(t, envURL, "env-hook-token")
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks", `{}`, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig != nil && len(unpack.fileConfig.Webhook) != 0 {
+		t.Fatalf("file webhook %+v", unpack.fileConfig.Webhook)
+	}
+
+	got := unpack.Webhook["0"]
+	if len(unpack.Webhook) != 1 || got == nil || got.URL != envURL || got.Token != "env-hook-token" {
+		t.Fatalf("live webhook %+v", unpack.Webhook)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "env-hook-token") || strings.Contains(text, envURL) {
+		t.Fatalf("env leaked into file:\n%s", text)
+	}
+}
+
+// Env token without a URL must not 400 a save of a different slug.
+func TestConfigPutWebhooksOtherSlugWhenEnvHasNoURL(t *testing.T) {
+	t.Setenv("UN_WEBHOOK_0_TOKEN", "env-only-token")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks",
+		`{"discord":{"url":"http://hooks.example/file"}}`, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig.Webhook["0"] != nil {
+		t.Fatalf("env slug written to file: %+v", unpack.fileConfig.Webhook)
+	}
+
+	if unpack.Webhook["0"] != nil {
+		t.Fatalf("incomplete env leftover on live: %+v", unpack.Webhook["0"])
+	}
+
+	got := unpack.Webhook["discord"]
+	if got == nil || got.URL != "http://hooks.example/file" {
+		t.Fatalf("live discord %+v", got)
+	}
+}
+
+func TestConfigPutRejectsBadInstanceSlug(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr",
+		`{"starrs & stripes":{"url":"http://127.0.0.1:8989","apiKey":"`+strings.Repeat("k", apiKeyMinLength)+`"}}`, withKey)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad slug %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+type envFolderWatch struct {
+	unpack      *Unpackerr
+	watch       string
+	fileExtract string
+	envExtract  string
+}
+
+func envFolderExtractUnpackerr(t *testing.T) envFolderWatch {
+	t.Helper()
+
+	watch := t.TempDir()
+	fileExtract := t.TempDir()
+	envExtract := t.TempDir()
+
+	t.Setenv("UN_FOLDER_watch_EXTRACT_PATH", envExtract)
+	t.Setenv("UN_FOLDER_watch_DELETE_AFTER", "5m")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Folders = InstanceMap[FolderConfig]{
+		"watch": {Path: watch, ExtractPath: fileExtract},
+	}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return envFolderWatch{unpack: unpack, watch: watch, fileExtract: fileExtract, envExtract: envExtract}
+}
+
+// Env extract_path overlays live; the PUT body is what lands in the file.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutFoldersKeepsEnvExtractPath(t *testing.T) {
+	setup := envFolderExtractUnpackerr(t)
+	if got := setup.unpack.Folders["watch"]; got == nil || got.ExtractPath != setup.envExtract {
+		t.Fatalf("startup env extract %+v", got)
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"interval": "2s",
+		"buffer":   1000,
+		"folder": map[string]any{
+			"watch": map[string]any{
+				"path":         setup.watch,
+				"extract_path": setup.fileExtract,
+				"delete_after": "10m",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, setup.unpack, http.MethodPut, "/api/config/folders", string(body), putKey(setup.unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := setup.unpack.Folders["watch"]
+	if live == nil || live.ExtractPath != setup.envExtract {
+		t.Fatalf("live extract_path after PUT %+v", live)
+	}
+
+	if live.DeleteAfter == nil || live.DeleteAfter.Duration != 5*time.Minute {
+		t.Fatalf("live delete_after %+v", live.DeleteAfter)
+	}
+
+	file := setup.unpack.fileConfig.Folders["watch"]
+	if file == nil || file.ExtractPath != setup.fileExtract || file.Path != setup.watch {
+		t.Fatalf("file after PUT %+v", file)
+	}
+
+	if file.DeleteAfter == nil || file.DeleteAfter.Duration != 10*time.Minute {
+		t.Fatalf("file delete_after %+v", file.DeleteAfter)
+	}
+}
+
+type envFolderExcludes struct {
+	unpack *Unpackerr
+	watch  string
+}
+
+func envFolderExcludeUnpackerr(t *testing.T) envFolderExcludes {
+	t.Helper()
+
+	watch := t.TempDir()
+
+	t.Setenv("UN_FOLDER_watch_EXCLUDE_PATH_0", "/c")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Folders = InstanceMap[FolderConfig]{
+		"watch": {Path: watch, ExcludePaths: []string{"/a", "/b"}},
+	}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return envFolderExcludes{unpack: unpack, watch: watch}
+}
+
+// Indexed env must not wipe sibling exclude_paths out of the file commit.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutFoldersKeepsSiblingExcludePaths(t *testing.T) {
+	setup := envFolderExcludeUnpackerr(t)
+
+	body, err := json.Marshal(map[string]any{
+		"interval": "2s",
+		"buffer":   1000,
+		"folder": map[string]any{
+			"watch": map[string]any{
+				"path":          setup.watch,
+				"exclude_paths": []string{"/a", "/b"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, setup.unpack, http.MethodPut, "/api/config/folders", string(body), putKey(setup.unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := setup.unpack.Folders["watch"]
+	if live == nil || len(live.ExcludePaths) != 2 || live.ExcludePaths[0] != "/c" || live.ExcludePaths[1] != "/b" {
+		t.Fatalf("live exclude_paths after PUT %+v", live)
+	}
+
+	file := setup.unpack.fileConfig.Folders["watch"]
+	if file == nil || len(file.ExcludePaths) != 2 || file.ExcludePaths[0] != "/a" || file.ExcludePaths[1] != "/b" {
+		t.Fatalf("file after PUT %+v", file)
+	}
+}
+
+func envSonarrURLUnpackerr(t *testing.T, secret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	app := &SonarrConfig{}
+	app.URL = "http://file.invalid:8989"
+	app.APIKey = secret
+	app.Name = "uhd"
+	app.Paths = StringSlice{"/downloads/tv"}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// File API key + env URL must survive a config PUT; ParseENV overlays the URL on live.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutSonarrKeepsFileAPIKeyWhenURLIsEnv(t *testing.T) {
+	secret := strings.Repeat("F", apiKeyMinLength)
+	unpack := envSonarrURLUnpackerr(t, secret)
+
+	body, err := json.Marshal(map[string]any{
+		"0": map[string]any{
+			"url":    "http://file.invalid:8989",
+			"apiKey": secret,
+			"name":   "uhd",
+			"paths":  []string{"/downloads/tv"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", string(body), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := unpack.Sonarr["0"]
+	if live == nil || live.URL != "http://127.0.0.1:8989" || live.APIKey != secret || live.Name != "uhd" {
+		t.Fatalf("live after PUT %+v", live)
+	}
+
+	file := unpack.fileConfig.Sonarr["0"]
+	if file == nil || file.URL != "http://file.invalid:8989" || file.APIKey != secret || file.Name != "uhd" {
+		t.Fatalf("file after PUT %+v", file)
+	}
+}
+
+func envSonarrAPIKeyUnpackerr(t *testing.T, secret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_SONARR_0_API_KEY", secret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	app := &SonarrConfig{}
+	app.URL = "http://file.invalid:8989"
+	app.Name = "uhd"
+	app.Paths = StringSlice{"/downloads/tv"}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// Official UI GET file (no apiKey) then Save. Overlay must fill UN_SONARR_0_API_KEY.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutSonarrOmitsEnvAPIKey(t *testing.T) {
+	secret := strings.Repeat("E", apiKeyMinLength)
+	unpack := envSonarrAPIKeyUnpackerr(t, secret)
+
+	for _, body := range []string{
+		`{"0":{"url":"http://file.invalid:8989","name":"uhd","paths":["/downloads/tv"]}}`,
+		`{"0":{"url":"http://file.invalid:8989","apiKey":"","name":"uhd","paths":["/downloads/tv"]}}`,
+	} {
+		put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+		if put.Code != http.StatusOK {
+			t.Fatalf("put %s → %d %s", body, put.Code, put.Body.String())
+		}
+
+		live := unpack.Sonarr["0"]
+		if live == nil || live.URL != "http://file.invalid:8989" || live.APIKey != secret || live.Name != "uhd" {
+			t.Fatalf("live after PUT %s: %+v", body, live)
+		}
+
+		file := unpack.fileConfig.Sonarr["0"]
+		if file == nil || file.URL != "http://file.invalid:8989" || file.APIKey != "" || file.Name != "uhd" {
+			t.Fatalf("file after PUT %s: %+v", body, file)
+		}
+	}
+}
+
+// Env URL without a key must not 400 a save of a different slug.
+func TestConfigPutSonarrOtherSlugWhenEnvURLHasNoKey(t *testing.T) {
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	fileKey := strings.Repeat("F", apiKeyMinLength)
+	otherKey := strings.Repeat("U", apiKeyMinLength)
+	zero := &SonarrConfig{}
+	zero.URL = "http://file.invalid:8989"
+	zero.APIKey = fileKey
+	zero.Name = "hd"
+	one := &SonarrConfig{}
+	one.URL = "http://sonarr-uhd:8989"
+	one.APIKey = otherKey
+	one.Name = "uhd"
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": zero, "1": one}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	body := `{"1":{"url":"http://sonarr-uhd:8989","apiKey":"` + otherKey + `","name":"uhd"}}`
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig.Sonarr["0"] != nil {
+		t.Fatalf("omitted slug written to file: %+v", unpack.fileConfig.Sonarr)
+	}
+
+	if unpack.Sonarr["0"] != nil {
+		t.Fatalf("incomplete env leftover on live: %+v", unpack.Sonarr["0"])
+	}
+
+	got := unpack.Sonarr["1"]
+	if got == nil || got.URL != "http://sonarr-uhd:8989" || got.APIKey != otherKey {
+		t.Fatalf("live slug 1 %+v", got)
 	}
 }

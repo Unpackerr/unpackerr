@@ -265,13 +265,13 @@ func TestLiveExportOmitsWithoutConfigRead(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Webhook = []*WebhookConfig{{
+	unpack.Webhook = instanceMap([]*WebhookConfig{{
 		Name: "https://example.com/hook?token=hook-secret",
-	}}
-	unpack.Cmdhook = []*WebhookConfig{{
+	}})
+	unpack.Cmdhook = instanceMap([]*WebhookConfig{{
 		Name:    "cmd",
 		Command: "/usr/bin/env token=cmd-secret",
-	}}
+	}})
 
 	infoKey := strings.Repeat("I", apiKeyMinLen)
 	unpack.Webserver.Roles = map[string]Role{

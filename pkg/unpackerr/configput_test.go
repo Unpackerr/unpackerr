@@ -1668,6 +1668,118 @@ func TestConfigGetLiveRedactsEnvAPIKey(t *testing.T) { //nolint:paralleltest // 
 	}
 }
 
+func TestConfigGetLiveRedactsInstanceSecrets(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	app := &SonarrConfig{}
+	app.URL = "http://127.0.0.1:8989"
+	app.APIKey = strings.Repeat("S", apiKeyMinLength)
+	app.HTTPPass = "basic-secret"
+	app.Password = "native-secret"
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"uhd": app}
+	unpack.Webhook = InstanceMap[WebhookConfig]{
+		"discord": {URL: "http://hooks.example/discord", Token: "hook-token", Name: "discord"},
+	}
+	unpack.Cmdhook = InstanceMap[WebhookConfig]{
+		"script": {Command: "/bin/true", Token: "cmd-token", Name: "script"},
+	}
+	unpack.snapshotFileConfig()
+
+	key := putKey(unpack)
+	secrets := []string{app.APIKey, app.HTTPPass, app.Password, "hook-token", "cmd-token"}
+
+	for _, path := range []string{
+		"/api/config/sonarr/live",
+		"/api/config/webhooks/live",
+		"/api/config/cmdhooks/live",
+	} {
+		rec := doAuth(t, unpack, http.MethodGet, path, "", key)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s %d %s", path, rec.Code, rec.Body.String())
+		}
+
+		body := rec.Body.String()
+		for _, secret := range secrets {
+			if strings.Contains(body, secret) {
+				t.Fatalf("%s leaked %q: %s", path, secret, body)
+			}
+		}
+	}
+
+	fileSonarr := doAuth(t, unpack, http.MethodGet, "/api/config/sonarr", "", key)
+	if fileSonarr.Code != http.StatusOK {
+		t.Fatalf("file sonarr %d %s", fileSonarr.Code, fileSonarr.Body.String())
+	}
+
+	if !strings.Contains(fileSonarr.Body.String(), app.APIKey) ||
+		!strings.Contains(fileSonarr.Body.String(), app.HTTPPass) ||
+		!strings.Contains(fileSonarr.Body.String(), app.Password) {
+		t.Fatalf("file GET should still show Starr secrets: %s", fileSonarr.Body.String())
+	}
+
+	fileHook := doAuth(t, unpack, http.MethodGet, "/api/config/webhooks", "", key)
+	if fileHook.Code != http.StatusOK || !strings.Contains(fileHook.Body.String(), "hook-token") {
+		t.Fatalf("file webhooks %d %s", fileHook.Code, fileHook.Body.String())
+	}
+
+	fileCmd := doAuth(t, unpack, http.MethodGet, "/api/config/cmdhooks", "", key)
+	if fileCmd.Code != http.StatusOK || !strings.Contains(fileCmd.Body.String(), "cmd-token") {
+		t.Fatalf("file cmdhooks %d %s", fileCmd.Code, fileCmd.Body.String())
+	}
+}
+
+func envWebhookUnpackerr(t *testing.T, envURL, envSecret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_WEBHOOK_0_URL", envURL)
+	t.Setenv("UN_WEBHOOK_0_TOKEN", envSecret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// A save of {} must not drop an env-only webhook from live.
+func TestConfigPutWebhooksEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+	const envURL = "http://hooks.example/env"
+
+	unpack := envWebhookUnpackerr(t, envURL, "env-hook-token")
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks", `{}`, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig != nil && len(unpack.fileConfig.Webhook) != 0 {
+		t.Fatalf("file webhook %+v", unpack.fileConfig.Webhook)
+	}
+
+	got := unpack.Webhook["0"]
+	if len(unpack.Webhook) != 1 || got == nil || got.URL != envURL || got.Token != "env-hook-token" {
+		t.Fatalf("live webhook %+v", unpack.Webhook)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "env-hook-token") || strings.Contains(text, envURL) {
+		t.Fatalf("env leaked into file:\n%s", text)
+	}
+}
+
 func TestConfigPutRejectsBadInstanceSlug(t *testing.T) {
 	t.Parallel()
 

@@ -316,8 +316,8 @@
         "additionalProperties": {"$ref": "#/components/schemas/HookInstance"}
       },
       "ConfigSection": {
-        "description": "Shape depends on section. Starr (sonarr/radarr/lidarr/readarr) and hooks are slug maps. Folders is {interval, buffer, folder} with folder a slug map. General and webserver stay objects. Changed in v1.0.0 (September 2026).",
-        "oneOf": [
+        "description": "Shape depends on section. Starr (sonarr/radarr/lidarr/readarr) and hooks are slug maps. Folders is {interval, buffer, folder} with folder a slug map. General and webserver stay objects. anyOf (not oneOf): the object alternatives overlap (optional properties, catch-all object). Changed in v1.0.0 (September 2026).",
+        "anyOf": [
           {"$ref": "#/components/schemas/StarrMap"},
           {"$ref": "#/components/schemas/FoldersSection"},
           {"$ref": "#/components/schemas/HookMap"},
@@ -325,8 +325,8 @@
         ]
       },
       "ConfigSectionPut": {
-        "description": "Same as GET, plus legacy Starr/hook/folder arrays (loaded as keys 0, 1, …). Starr/hooks {} clears file instances. Folders still needs the wrapper; folder may be {}. Empty object is 400 for general/webserver. Unknown fields and [null] are 400. PUT of a map writes named TOML tables.",
-        "oneOf": [
+        "description": "Same as GET, plus legacy Starr/hook/folder arrays (loaded as keys 0, 1, …). Starr/hooks {} clears file instances. Folders still needs the wrapper; folder may be {}. Empty object is 400 for general/webserver. Unknown fields and [null] are 400. PUT of a map writes named TOML tables. anyOf (not oneOf): the alternatives overlap.",
+        "anyOf": [
           {"$ref": "#/components/schemas/StarrMap"},
           {"type": "array", "items": {"$ref": "#/components/schemas/StarrInstance"}, "description": "Legacy Starr list"},
           {"$ref": "#/components/schemas/FoldersSection"},

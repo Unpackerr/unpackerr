@@ -241,7 +241,7 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		PreFiles:   preFileKeys(item.PreFiles),
 	}
 
-	if item.DeleteDelay > 0 {
+if item.DeleteDelay != 0 {
 		rec.DeleteDelay = item.DeleteDelay.String()
 	}
 

@@ -19,29 +19,44 @@ const (
 	// historyCompactFactor: rewrite the file once appended lines exceed this
 	// many times keep_history, so the on-disk log stays bounded.
 	historyCompactFactor = 2
+	// historyRestoreAge is how long a JSONL row may sit and still be copied
+	// back into the live queue after a restart.
+	historyRestoreAge = 72 * time.Hour
 )
 
-var errHistoryNotFound = errors.New("not found")
+var (
+	errHistoryNotFound    = errors.New("not found")
+	errInterruptedRestart = errors.New("interrupted by restart")
+)
 
-// HistoryRecord is one completed or failed pipeline item (JSONL + API).
+// HistoryRecord is one JSONL row (history API + restart resume).
 type HistoryRecord struct {
-	ID         string        `json:"id"`
-	App        string        `json:"app"`
-	URL        string        `json:"url,omitempty"`
-	Path       string        `json:"path"`
-	OutputPath string        `json:"outputPath,omitempty"`
-	Status     ExtractStatus `json:"status"`
-	Retries    uint          `json:"retries"`
-	Started    time.Time     `json:"started"`
-	Updated    time.Time     `json:"updated"`
-	Finished   time.Time     `json:"finished"`
-	Archives   int           `json:"archives,omitempty"`
-	Files      int           `json:"files,omitempty"`
-	Bytes      uint64        `json:"bytes,omitempty"`
-	Ratio      float64       `json:"ratio,omitempty"`
-	Elapsed    string        `json:"elapsed,omitempty"`
-	Error      string        `json:"error,omitempty"`
-	Progress   string        `json:"progress,omitempty"`
+	ID          string        `json:"id"`
+	App         string        `json:"app"`
+	Kind        string        `json:"kind,omitempty"` // Starr dialect or Folder; App is the instance label.
+	URL         string        `json:"url,omitempty"`
+	Path        string        `json:"path"`
+	OutputPath  string        `json:"outputPath,omitempty"`
+	Status      ExtractStatus `json:"status"`
+	Retries     uint          `json:"retries"`
+	Started     time.Time     `json:"started"`
+	Updated     time.Time     `json:"updated"`
+	Finished    time.Time     `json:"finished,omitempty"`
+	Archives    int           `json:"archives,omitempty"`
+	Files       int           `json:"files,omitempty"`
+	Bytes       uint64        `json:"bytes,omitempty"`
+	Ratio       float64       `json:"ratio,omitempty"`
+	Elapsed     string        `json:"elapsed,omitempty"`
+	Error       string        `json:"error,omitempty"`
+	Progress    string        `json:"progress,omitempty"`
+	DeleteOrig  bool          `json:"deleteOrig,omitempty"`
+	DeleteDelay string        `json:"deleteDelay,omitempty"` // Go duration, e.g. 5m0s
+	Syncthing   bool          `json:"syncthing,omitempty"`
+	SplitFlac   bool          `json:"splitFlac,omitempty"`
+	MaxBytes    uint64        `json:"maxBytes,omitempty"`
+	NoRetry     bool          `json:"noRetry,omitempty"`
+	NewFiles    []string      `json:"newFiles,omitempty"`
+	PreFiles    []string      `json:"preFiles,omitempty"`
 }
 
 // QueueItem is a live in-flight extract for GET /api/queue.
@@ -61,6 +76,18 @@ type QueueItem struct {
 func isDurableHistory(status ExtractStatus) bool {
 	switch status {
 	case EXTRACTFAILED, EXTRACTEDNOTHING, IMPORTED, DELETED, DELETEFAILED:
+		return true
+	default:
+		return false
+	}
+}
+
+// isPersistedHistory is written to JSONL so a restart can rebuild the live queue.
+// WAITING is left out; the next Starr poll recreates it.
+func isPersistedHistory(status ExtractStatus) bool {
+	switch status {
+	case QUEUED, EXTRACTING, EXTRACTFAILED, EXTRACTED, IMPORTED,
+		DELETING, DELETEFAILED, DELETED, EXTRACTEDNOTHING:
 		return true
 	default:
 		return false
@@ -182,7 +209,7 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
-	if u.KeepHistory == 0 || !isDurableHistory(item.Status) {
+	if u.KeepHistory == 0 || !isPersistedHistory(item.Status) {
 		return
 	}
 
@@ -198,6 +225,7 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 	rec := HistoryRecord{
 		ID:         itemID,
 		App:        item.Label(),
+		Kind:       string(item.App),
 		URL:        item.URL,
 		Path:       item.Path,
 		OutputPath: item.OutputPath,
@@ -205,9 +233,28 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		Retries:    item.Retries,
 		Started:    now,
 		Updated:    now,
-		Finished:   now,
+		DeleteOrig: item.DeleteOrig,
+		Syncthing:  item.Syncthing,
+		SplitFlac:  item.SplitFlac,
+		MaxBytes:   item.MaxBytes,
+		NoRetry:    item.NoRetry,
+		PreFiles:   preFileKeys(item.PreFiles),
 	}
 
+	if item.DeleteDelay > 0 {
+		rec.DeleteDelay = item.DeleteDelay.String()
+	}
+
+	if isDurableHistory(item.Status) {
+		rec.Finished = now
+	}
+
+	fillHistoryStats(&rec, item)
+
+	return rec
+}
+
+func fillHistoryStats(rec *HistoryRecord, item *Extract) {
 	if item.XProg != nil {
 		if prog := item.XProg.String(); prog != "no progress yet" {
 			rec.Progress = prog
@@ -218,25 +265,26 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		}
 	}
 
-	if item.Resp != nil {
-		if !item.Resp.Started.IsZero() {
-			rec.Started = item.Resp.Started
-		}
-
-		rec.Archives = item.Resp.Archives.Count() + item.Resp.Extras.Count()
-		rec.Files = len(item.Resp.NewFiles)
-		rec.Bytes = item.Resp.Size
-
-		if item.Resp.Elapsed > 0 {
-			rec.Elapsed = item.Resp.Elapsed.Round(time.Second).String()
-		}
-
-		if item.Resp.Error != nil {
-			rec.Error = item.Resp.Error.Error()
-		}
+	if item.Resp == nil {
+		return
 	}
 
-	return rec
+	if !item.Resp.Started.IsZero() {
+		rec.Started = item.Resp.Started
+	}
+
+	rec.Archives = item.Resp.Archives.Count() + item.Resp.Extras.Count()
+	rec.Files = len(item.Resp.NewFiles)
+	rec.Bytes = item.Resp.Size
+	rec.NewFiles = append([]string(nil), item.Resp.NewFiles...)
+
+	if item.Resp.Elapsed > 0 {
+		rec.Elapsed = item.Resp.Elapsed.Round(time.Second).String()
+	}
+
+	if item.Resp.Error != nil {
+		rec.Error = item.Resp.Error.Error()
+	}
 }
 
 // upsertHistory records one durable transition: update memory, append one
@@ -310,9 +358,12 @@ func (u *Unpackerr) historySnapshot() []HistoryRecord {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
-	out := make([]HistoryRecord, len(u.records))
-	for idx := range u.records {
-		out[len(out)-1-idx] = u.records[idx]
+	out := make([]HistoryRecord, 0, len(u.records))
+
+	for idx := len(u.records) - 1; idx >= 0; idx-- {
+		if isDurableHistory(u.records[idx].Status) {
+			out = append(out, u.records[idx])
+		}
 	}
 
 	return out

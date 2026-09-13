@@ -153,7 +153,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
 	snap, err := keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
-	u.markItemQueued(item, snap, err, now)
+	u.markItemQueued(name, item, snap, err, now)
 
 	// This queues the extraction. Which may start right away.
 	archiveTypes := []string{".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2"}
@@ -181,7 +181,13 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	u.logQueuedDownload(queueSize, item, files)
 }
 
-func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, snapErr error, now time.Time) {
+func (u *Unpackerr) markItemQueued(
+	name string,
+	item *Extract,
+	snap map[string]os.FileInfo,
+	snapErr error,
+	now time.Time,
+) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
@@ -193,6 +199,7 @@ func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, s
 
 	item.Status = QUEUED
 	item.Updated = now
+	u.maybeRecordHistory(name, item)
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {

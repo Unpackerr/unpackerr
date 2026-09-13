@@ -324,11 +324,13 @@ Custom roles are a map of name → permission list. Env for roles is picky: do *
 
 Path: next to the log file if rotating, else next to the config file, else `~/.unpackerr/unpackerr.history.jsonl`.
 
-Append-only one line per durable transition (`extractfailed`, `extractednothing`, `imported`, `deleted`, `deletefailed`). Compact on load and when appends reach `2 × keep_history`. `histMu` covers records + file; HTTP reads, main loop appends.
+Append-only one line per persisted transition (`queued`, `extracting`, `extractfailed`, `extracted`, `extractednothing`, `imported`, `deleting`, `deleted`, `deletefailed`). Compact on load and when appends reach `2 × keep_history`. `histMu` covers records + file; HTTP reads, main loop appends. `GET /api/history` still returns only completed or failed rows.
 
-This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` “hardening”.
+On startup (after `validateApps`) rows newer than 72 hours are copied into `History.Map` so a crash can resume import-wait and delete-delay. `queued` becomes `waiting` (extract again). `extracting` / `deleting` become `extractfailed` so remnant cleanup can run on retry. Folder rows are not restored.
 
-`keep_history = 0` disables. Turning it on via general PUT loads the file on the main loop.
+This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` hardening.
+
+`keep_history = 0` disables the file and restart resume. Turning it on via general PUT loads the file on the main loop and restores recent rows.
 
 ---
 

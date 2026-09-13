@@ -411,6 +411,7 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 
 		if historyWasOff && u.KeepHistory > 0 {
 			u.loadHistory() // histPath is only resolved while history is enabled.
+			u.restoreQueueFromHistory()
 		}
 	})
 }

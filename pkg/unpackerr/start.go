@@ -224,6 +224,8 @@ func Start() error {
 		return err
 	}
 
+	unpackerr.restoreQueueFromHistory()
+
 	unpackerr.logStartupInfo(msg, output)
 
 	if unpackerr.webhook > 0 {

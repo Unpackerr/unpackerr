@@ -325,11 +325,13 @@ Custom roles are a map of name → permission list. Env for roles is picky: do *
 
 Path: next to the log file if rotating, else next to the config file, else `~/.unpackerr/unpackerr.history.jsonl`.
 
-Append-only one line per durable transition (`extractfailed`, `extractednothing`, `imported`, `deleted`, `deletefailed`). Compact on load and when appends reach `2 × keep_history`. `histMu` covers records + file; HTTP reads, main loop appends.
+Append-only one line per persisted transition (`queued`, `extracting`, `extractfailed`, `extracted`, `extractednothing`, `imported`, `deleting`, `deleted`, `deletefailed`). Compact on load and when appends reach `2 × keep_history`. `histMu` covers records + file; HTTP reads, main loop appends. `GET /api/history` still returns only completed or failed rows.
 
-This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` “hardening”.
+On startup (after `validateApps`) rows newer than 72 hours are copied into `History.Map` so a crash can resume import-wait and delete-delay. `queued` becomes `waiting` (extract again). `extracting` / `deleting` become `extractfailed` so remnant cleanup can run on retry. Folder rows are not restored. Forgotten rows stay in the file with `forgotten: true` and are not put back on the live queue (the in-memory tombstone is rehydrated so a poll cannot recreate them). `sweepForgotten` waits until every configured Starr instance has polled this process before dropping a tombstone; a nil queue is not absence. `checkQueueChanges` must not treat `Queue == nil` as imported — that is “never polled this process”, not an empty queue. Startup pairs `retrieveAppQueues` with `checkQueueChanges`. `checkExtractDone` does not delete an `IMPORTED` item that is still in a polled Starr queue, or before that poll.
 
-`keep_history = 0` disables. Turning it on via general PUT loads the file on the main loop.
+This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` hardening.
+
+`keep_history = 0` disables the file and restart resume. Turning it on via general PUT loads the file on the main loop and restores recent rows.
 
 ---
 
@@ -345,7 +347,7 @@ This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` “
 
 `syncFileUIPassword` takes `uiPassword()` (uiPassMu) **then** `configMu`. That order is intentional.
 
-`GET /api/stats` takes `History.mu` **then** `configMu`. `commitConfig` holds `configMu` and must not take `History.mu`.
+`GET /api/stats` takes `History.mu` **then** `configMu`. `commitConfig` holds `configMu` and must not take `History.mu`. Enabling `keep_history` at runtime loads/restores **after** `commitConfig` returns.
 
 The tray reads live `Config` in `readyTray` **before** `go u.Run()`. A PUT cannot apply until the loop exists and drains `taskChan`. That is not a race.
 

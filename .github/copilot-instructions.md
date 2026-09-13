@@ -31,6 +31,8 @@ in mind; the items below have been raised and rejected before.
 - The history JSONL is written by this process, capped at `keep_history`, and read
   with `bufio.Reader.ReadBytes`. It is not untrusted input. Do not request line
   caps, bounded readers, atomic rename, rollback copies, or `.bak` handling for it.
+  Starr rows newer than 72 hours are restored into `History.Map` after `validateApps`.
+  Do not restore Folder rows that way; the watch tracker owns those.
 - A local admin POST does not need context-cancellation checks between enqueue and
   execution on the main loop.
 - `New()` allocates `Config`, `Webserver`, `History`, and `folders`. Nil checks on

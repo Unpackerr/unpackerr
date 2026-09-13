@@ -33,6 +33,7 @@ type StarrConfig struct {
 	lastQueued    int
 	lastRetrieved int
 	lastPollErr   string
+	polled        bool // true after a successful GetQueue in this process (Queue != nil).
 }
 
 func (c *StarrConfig) takePoll(old *StarrConfig) {
@@ -43,7 +44,10 @@ func (c *StarrConfig) takePoll(old *StarrConfig) {
 	c.lastQueued = old.lastQueued
 	c.lastRetrieved = old.lastRetrieved
 	c.lastPollErr = old.lastPollErr
+	c.polled = old.polled
 }
+
+func (c *StarrConfig) hasPolled() bool { return c != nil && c.polled }
 
 // Label is the human-facing instance name, or app when Name is empty.
 func (c *StarrConfig) Label(app starr.App) string {
@@ -65,6 +69,9 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 		switch {
 		case data.App == FolderString:
 			continue // folders are handled in folder.go.
+		case !u.haveQitem(name, data.App) && !u.queueSnapshotReady(data):
+			// Queue == nil is "never fetched", not "empty"; wait for a successful poll.
+			u.Debugf("%s: Queue not polled yet; not treating as imported: %s", data.Label(), name)
 		case !u.haveQitem(name, data.App):
 			// This fires when an items becomes missing (imported/deleted) from the application queue.
 			switch elapsed := now.Sub(data.Updated); {
@@ -110,7 +117,7 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 	jobs := make([]pending, 0)
 
 	for name, item := range u.Map {
-		if item.App != FolderString && item.Status < QUEUED {
+		if item.App != FolderString && item.Status < QUEUED && u.queueSnapshotReady(item) {
 			jobs = append(jobs, pending{name: name, item: item})
 		}
 	}
@@ -153,7 +160,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
 	snap, err := keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
-	u.markItemQueued(item, snap, err, now)
+	u.markItemQueued(name, item, snap, err, now)
 
 	// This queues the extraction. Which may start right away.
 	archiveTypes := []string{".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2"}
@@ -181,7 +188,13 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	u.logQueuedDownload(queueSize, item, files)
 }
 
-func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, snapErr error, now time.Time) {
+func (u *Unpackerr) markItemQueued(
+	name string,
+	item *Extract,
+	snap map[string]os.FileInfo,
+	snapErr error,
+	now time.Time,
+) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
@@ -193,6 +206,7 @@ func (u *Unpackerr) markItemQueued(item *Extract, snap map[string]os.FileInfo, s
 
 	item.Status = QUEUED
 	item.Updated = now
+	u.maybeRecordHistory(name, item)
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
@@ -261,6 +275,11 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Stale item removed after %v at status %s: %v",
 				item.Label(), elapsed.Round(time.Second), item.Status.Desc(), name)
+		case item.Status == IMPORTED && elapsed >= item.DeleteDelay &&
+			(!u.queueSnapshotReady(item) || u.haveQitem(name, item.App)):
+			// Still in Starr, or we have not polled this process; checkQueueChanges will
+			// reset IMPORTED→EXTRACTED when the title is back in the queue.
+			u.Debugf("%s: not deleting imported item still queued or unpolled: %s", item.Label(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 

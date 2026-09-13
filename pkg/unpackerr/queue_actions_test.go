@@ -232,6 +232,7 @@ func TestForgottenStarrTitle(t *testing.T) {
 			OutputPath: "/dl/Movie",
 		}}},
 	}})
+	unpack.Radarr["0"].polled = true
 	unpack.Map["Movie"] = &Extract{App: starr.Radarr, Path: "/dl/Movie", Status: EXTRACTFAILED, NoRetry: true}
 
 	withKey := func(req *http.Request) {
@@ -262,6 +263,29 @@ func TestForgottenStarrTitle(t *testing.T) {
 
 	if _, exists := unpack.Map["Movie"]; !exists {
 		t.Fatal("title should track again after leaving the Starr queue")
+	}
+}
+
+func TestSweepForgottenSkipsUnpolledSnapshot(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}})
+	unpack.Radarr = instanceMap([]*RadarrConfig{{}})
+	unpack.Radarr["0"].polled = true
+	unpack.forgotten["show"] = struct{}{}
+
+	unpack.sweepForgotten()
+
+	if !unpack.isForgotten("show") {
+		t.Fatal("swept tombstone while Sonarr has not polled")
+	}
+
+	unpack.Sonarr["0"].polled = true
+	unpack.sweepForgotten()
+
+	if unpack.isForgotten("show") {
+		t.Fatal("tombstone should drop after every app has polled empty")
 	}
 }
 

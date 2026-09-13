@@ -124,6 +124,7 @@ func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retri
 	cfg.lastQueued = total
 	cfg.lastRetrieved = retrieved
 	cfg.lastPollErr = ""
+	cfg.polled = true
 }
 
 func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T], app starr.App, now time.Time) {
@@ -184,6 +185,57 @@ func haveStarrQitem[T any, P starrApp[T]](list InstanceMap[T], name string) bool
 	}
 
 	return false
+}
+
+// queueSnapshotReady is true when "not in the Starr queue" may mean imported.
+// A fresh process has Queue == nil until the first successful poll; treating
+// that as imported deletes restored extracts while the app is still down.
+func (u *Unpackerr) queueSnapshotReady(item *Extract) bool {
+	if item == nil {
+		return true
+	}
+
+	switch item.App {
+	case starr.Lidarr:
+		return starrSnapshotReady[LidarrConfig, *LidarrConfig](u.Lidarr, item.URL)
+	case starr.Radarr:
+		return starrSnapshotReady[RadarrConfig, *RadarrConfig](u.Radarr, item.URL)
+	case starr.Readarr:
+		return starrSnapshotReady[ReadarrConfig, *ReadarrConfig](u.Readarr, item.URL)
+	case starr.Sonarr:
+		return starrSnapshotReady[SonarrConfig, *SonarrConfig](u.Sonarr, item.URL)
+	default:
+		return true
+	}
+}
+
+func starrSnapshotReady[T any, P starrApp[T]](list InstanceMap[T], url string) bool {
+	if url != "" {
+		for _, item := range instanceValues(list) {
+			server := asStarr[T, P](item)
+			if server.conf().URL == url {
+				return server.conf().hasPolled()
+			}
+		}
+
+		return true // instance is gone from config; missing from the queue is real.
+	}
+
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
+		if !server.conf().hasPolled() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (u *Unpackerr) allStarrSnapshotsReady() bool {
+	return starrSnapshotReady[LidarrConfig, *LidarrConfig](u.Lidarr, "") &&
+		starrSnapshotReady[RadarrConfig, *RadarrConfig](u.Radarr, "") &&
+		starrSnapshotReady[ReadarrConfig, *ReadarrConfig](u.Readarr, "") &&
+		starrSnapshotReady[SonarrConfig, *SonarrConfig](u.Sonarr, "")
 }
 
 func (u *Unpackerr) starrQueueStats() []StarrQueueStat {

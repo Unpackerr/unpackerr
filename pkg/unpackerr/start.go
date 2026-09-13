@@ -46,7 +46,7 @@ const (
 	minimumDeleteDelay     = time.Second
 	defaultDeleteDelay     = 5 * time.Minute
 	staleItemTimeout       = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory         = 200            // JSONL cap; tray still shows trayHistory names.
+	defaultHistory         = 400            // JSONL cap; tray still shows trayHistory names.
 	trayHistory            = 10             // items kept in the GUI history menu.
 	suffix                 = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf          = 100            // Size of xtractr callback update channels.
@@ -223,6 +223,8 @@ func Start() error {
 	if err := unpackerr.validateApps(); err != nil {
 		return err
 	}
+
+	unpackerr.restoreQueueFromHistory()
 
 	unpackerr.logStartupInfo(msg, output)
 
@@ -445,6 +447,7 @@ func (u *Unpackerr) Run() {
 
 	u.PollFolders()          // This initializes channel(s) used below.
 	u.retrieveAppQueues(now) // Get in-app queues on startup.
+	u.checkQueueChanges(now) // Same pairing as the poller tick; restored IMPORTED may still be queued.
 
 	// This is the "main go routine" in start.go.
 	for {

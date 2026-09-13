@@ -286,7 +286,7 @@ sections:
         short: 'POSIX mode used for new log files; not for Windows'
       - name: keep_history
         envvar: KEEP_HISTORY
-        default: 200
+        default: 400
         recommend:
           - value: 0
           - value: 5
@@ -296,6 +296,7 @@ sections:
           - value: 100
           - value: 200
           - value: 300
+          - value: 400
           - value: 500
           - value: 750
           - value: 1000
@@ -305,7 +306,10 @@ sections:
         desc: |
           How many completed or failed items to keep in unpackerr.history.jsonl
           (next to the log file, or the config file if logs go to stdout).
-          The tray menu still shows only the last 10 names. `0` disables history.
+          In-flight Starr items are also written so a restart can put EXTRACTED
+          and IMPORTED work back on the live queue for 72 hours. The history API
+          still lists only completed or failed rows. The tray menu still shows
+          only the last 10 names. `0` disables history and restart resume.
       - name: interval
         envvar: INTERVAL
         default: 2m

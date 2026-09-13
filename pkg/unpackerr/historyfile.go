@@ -41,7 +41,7 @@ type HistoryRecord struct {
 	Retries     uint          `json:"retries"`
 	Started     time.Time     `json:"started"`
 	Updated     time.Time     `json:"updated"`
-	Finished    time.Time     `json:"finished,omitempty"`
+	Finished    time.Time     `json:"finished,omitzero"`
 	Archives    int           `json:"archives,omitempty"`
 	Files       int           `json:"files,omitempty"`
 	Bytes       uint64        `json:"bytes,omitempty"`
@@ -360,9 +360,9 @@ func (u *Unpackerr) historySnapshot() []HistoryRecord {
 
 	out := make([]HistoryRecord, 0, len(u.records))
 
-	for idx := len(u.records) - 1; idx >= 0; idx-- {
-		if isDurableHistory(u.records[idx].Status) {
-			out = append(out, u.records[idx])
+	for _, rec := range slices.Backward(u.records) {
+		if isDurableHistory(rec.Status) {
+			out = append(out, rec)
 		}
 	}
 

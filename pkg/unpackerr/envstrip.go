@@ -274,7 +274,9 @@ func peelInstanceEnv(suffix, prefix string, fields map[string]struct{}) (string,
 	}
 
 	parts := strings.Split(rest, "_")
-	for take := len(parts) - 1; take >= 1; take-- {
+	// Longest field path first, matching cnfg.peelMapKey (idx starts at 1).
+	// Shortest-first would map UN_FOLDER_watch_EXTRACT_PATH onto field PATH.
+	for take := 1; take < len(parts); take++ {
 		name := strings.Join(parts[take:], "_")
 		if _, exists := fields[name]; exists {
 			return strings.Join(parts[:take], "_"), name, true

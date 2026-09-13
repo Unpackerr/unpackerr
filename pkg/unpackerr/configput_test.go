@@ -1680,3 +1680,83 @@ func TestConfigPutRejectsBadInstanceSlug(t *testing.T) {
 		t.Fatalf("bad slug %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+type envFolderWatch struct {
+	unpack      *Unpackerr
+	watch       string
+	fileExtract string
+	envExtract  string
+}
+
+func envFolderExtractUnpackerr(t *testing.T) envFolderWatch {
+	t.Helper()
+
+	watch := t.TempDir()
+	fileExtract := t.TempDir()
+	envExtract := t.TempDir()
+
+	t.Setenv("UN_FOLDER_watch_EXTRACT_PATH", envExtract)
+	t.Setenv("UN_FOLDER_watch_DELETE_AFTER", "5m")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.Folders = InstanceMap[FolderConfig]{
+		"watch": {Path: watch, ExtractPath: fileExtract},
+	}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return envFolderWatch{unpack: unpack, watch: watch, fileExtract: fileExtract, envExtract: envExtract}
+}
+
+// Shortest-field peel would treat EXTRACT_PATH as PATH on slug watch_EXTRACT,
+// so a folders PUT that only changes interval would copy the file extract_path
+// onto live and write it back to the file.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutFoldersKeepsEnvExtractPath(t *testing.T) {
+	setup := envFolderExtractUnpackerr(t)
+	if got := setup.unpack.Folders["watch"]; got == nil || got.ExtractPath != setup.envExtract {
+		t.Fatalf("startup env extract %+v", got)
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"interval": "2s",
+		"buffer":   1000,
+		"folder": map[string]any{
+			"watch": map[string]any{
+				"path":         setup.watch,
+				"extract_path": setup.fileExtract,
+				"delete_after": "10m",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, setup.unpack, http.MethodPut, "/api/config/folders", string(body), putKey(setup.unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := setup.unpack.Folders["watch"]
+	if live == nil || live.ExtractPath != setup.envExtract {
+		t.Fatalf("live extract_path after PUT %+v", live)
+	}
+
+	if live.DeleteAfter == nil || live.DeleteAfter.Duration != 5*time.Minute {
+		t.Fatalf("live delete_after %+v", live.DeleteAfter)
+	}
+
+	file := setup.unpack.fileConfig.Folders["watch"]
+	if file == nil || file.ExtractPath != "" || file.DeleteAfter != nil || file.Path != setup.watch {
+		t.Fatalf("file after PUT %+v", file)
+	}
+}

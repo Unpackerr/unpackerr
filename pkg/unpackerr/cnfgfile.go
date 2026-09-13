@@ -66,7 +66,8 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 		msg = msgConfigCreate + u.ConfigFileWithAge()
 	}
 
-	// File snapshot first so UN_* overlays stay on the live Config and never get written back.
+	// File snapshot first so ParseENV overlays onto live only; PUT writes the
+	// request body, not this overlay.
 	u.snapshotFileConfig()
 
 	res, err := cnfg.ParseENV(u.Config, u.EnvPrefix)

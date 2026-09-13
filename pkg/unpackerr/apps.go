@@ -64,37 +64,37 @@ func skipInvalidApp(err error) bool {
 //
 //nolint:lll
 type Config struct {
-	Debug         bool             `json:"debug"             toml:"debug"          xml:"debug"          yaml:"debug"`
-	Quiet         bool             `json:"quiet"             toml:"quiet"          xml:"quiet"          yaml:"quiet"`
-	Activity      bool             `json:"activity"          toml:"activity"       xml:"activity"       yaml:"activity"`
-	Parallel      uint             `json:"parallel"          toml:"parallel"       xml:"parallel"       yaml:"parallel"`
-	ErrorStdErr   bool             `json:"errorStderr"       toml:"error_stderr"   xml:"error_stderr"   yaml:"errorStderr"`
-	LogFile       string           `json:"logFile"           toml:"log_file"       xml:"log_file"       yaml:"logFile"`
-	LogFiles      int              `json:"logFiles"          toml:"log_files"      xml:"log_files"      yaml:"logFiles"`
-	LogFileMb     int              `json:"logFileMb"         toml:"log_file_mb"    xml:"log_file_mb"    yaml:"logFileMb"`
-	LogFileMode   string           `json:"logFileMode"       toml:"log_file_mode"  xml:"log_file_mode"  yaml:"logFileMode"`
-	MaxRetries    uint             `json:"maxRetries"        toml:"max_retries"    xml:"max_retries"    yaml:"maxRetries"`
-	RemnantAction string           `json:"remnantAction"     toml:"remnant_action" xml:"remnant_action" yaml:"remnantAction"`
-	FileMode      string           `json:"fileMode"          toml:"file_mode"      xml:"file_mode"      yaml:"fileMode"`
-	DirMode       string           `json:"dirMode"           toml:"dir_mode"       xml:"dir_mode"       yaml:"dirMode"`
-	LogQueues     cnfg.Duration    `json:"logQueues"         toml:"log_queues"     xml:"log_queues"     yaml:"logQueues"`
-	Interval      cnfg.Duration    `json:"interval"          toml:"interval"       xml:"interval"       yaml:"interval"`
-	Timeout       cnfg.Duration    `json:"timeout"           toml:"timeout"        xml:"timeout"        yaml:"timeout"`
-	DeleteDelay   cnfg.Duration    `json:"deleteDelay"       toml:"delete_delay"   xml:"delete_delay"   yaml:"deleteDelay"`
-	StartDelay    cnfg.Duration    `json:"startDelay"        toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
-	RetryDelay    cnfg.Duration    `json:"retryDelay"        toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
-	Progress      cnfg.Duration    `json:"progress"          toml:"progress"       xml:"progress"       yaml:"progress"`
-	KeepHistory   uint             `json:"keepHistory"       toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"`
-	Passwords     StringSlice      `json:"passwords"         toml:"passwords"      xml:"password"       yaml:"passwords"`
-	Webserver     *WebServer       `json:"webserver"         toml:"webserver"      xml:"webserver"      yaml:"webserver"`
-	Lidarr        []*LidarrConfig  `json:"lidarr,omitempty"  toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
-	Radarr        []*RadarrConfig  `json:"radarr,omitempty"  toml:"radarr"         xml:"radarr"         yaml:"radarr,omitempty"`
-	Readarr       []*ReadarrConfig `json:"readarr,omitempty" toml:"readarr"        xml:"readarr"        yaml:"readarr,omitempty"`
-	Sonarr        []*SonarrConfig  `json:"sonarr,omitempty"  toml:"sonarr"         xml:"sonarr"         yaml:"sonarr,omitempty"`
-	Folders       []*FolderConfig  `json:"folder,omitempty"  toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
-	Webhook       []*WebhookConfig `json:"webhook,omitempty" toml:"webhook"        xml:"webhook"        yaml:"webhook,omitempty"`
-	Cmdhook       []*WebhookConfig `json:"cmdhook,omitempty" toml:"cmdhook"        xml:"cmdhook"        yaml:"cmdhook,omitempty"`
-	Folder        FoldersConfig    `json:"folders"           toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
+	Debug         bool                       `json:"debug"             toml:"debug"          xml:"debug"          yaml:"debug"`
+	Quiet         bool                       `json:"quiet"             toml:"quiet"          xml:"quiet"          yaml:"quiet"`
+	Activity      bool                       `json:"activity"          toml:"activity"       xml:"activity"       yaml:"activity"`
+	Parallel      uint                       `json:"parallel"          toml:"parallel"       xml:"parallel"       yaml:"parallel"`
+	ErrorStdErr   bool                       `json:"errorStderr"       toml:"error_stderr"   xml:"error_stderr"   yaml:"errorStderr"`
+	LogFile       string                     `json:"logFile"           toml:"log_file"       xml:"log_file"       yaml:"logFile"`
+	LogFiles      int                        `json:"logFiles"          toml:"log_files"      xml:"log_files"      yaml:"logFiles"`
+	LogFileMb     int                        `json:"logFileMb"         toml:"log_file_mb"    xml:"log_file_mb"    yaml:"logFileMb"`
+	LogFileMode   string                     `json:"logFileMode"       toml:"log_file_mode"  xml:"log_file_mode"  yaml:"logFileMode"`
+	MaxRetries    uint                       `json:"maxRetries"        toml:"max_retries"    xml:"max_retries"    yaml:"maxRetries"`
+	RemnantAction string                     `json:"remnantAction"     toml:"remnant_action" xml:"remnant_action" yaml:"remnantAction"`
+	FileMode      string                     `json:"fileMode"          toml:"file_mode"      xml:"file_mode"      yaml:"fileMode"`
+	DirMode       string                     `json:"dirMode"           toml:"dir_mode"       xml:"dir_mode"       yaml:"dirMode"`
+	LogQueues     cnfg.Duration              `json:"logQueues"         toml:"log_queues"     xml:"log_queues"     yaml:"logQueues"`
+	Interval      cnfg.Duration              `json:"interval"          toml:"interval"       xml:"interval"       yaml:"interval"`
+	Timeout       cnfg.Duration              `json:"timeout"           toml:"timeout"        xml:"timeout"        yaml:"timeout"`
+	DeleteDelay   cnfg.Duration              `json:"deleteDelay"       toml:"delete_delay"   xml:"delete_delay"   yaml:"deleteDelay"`
+	StartDelay    cnfg.Duration              `json:"startDelay"        toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
+	RetryDelay    cnfg.Duration              `json:"retryDelay"        toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
+	Progress      cnfg.Duration              `json:"progress"          toml:"progress"       xml:"progress"       yaml:"progress"`
+	KeepHistory   uint                       `json:"keepHistory"       toml:"keep_history"   xml:"keep_history"   yaml:"keepHistory"`
+	Passwords     StringSlice                `json:"passwords"         toml:"passwords"      xml:"password"       yaml:"passwords"`
+	Webserver     *WebServer                 `json:"webserver"         toml:"webserver"      xml:"webserver"      yaml:"webserver"`
+	Lidarr        InstanceMap[LidarrConfig]  `json:"lidarr,omitempty"  toml:"lidarr"         xml:"lidarr"         yaml:"lidarr,omitempty"`
+	Radarr        InstanceMap[RadarrConfig]  `json:"radarr,omitempty"  toml:"radarr"         xml:"radarr"         yaml:"radarr,omitempty"`
+	Readarr       InstanceMap[ReadarrConfig] `json:"readarr,omitempty" toml:"readarr"        xml:"readarr"        yaml:"readarr,omitempty"`
+	Sonarr        InstanceMap[SonarrConfig]  `json:"sonarr,omitempty"  toml:"sonarr"         xml:"sonarr"         yaml:"sonarr,omitempty"`
+	Folders       InstanceMap[FolderConfig]  `json:"folder,omitempty"  toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
+	Webhook       InstanceMap[WebhookConfig] `json:"webhook,omitempty" toml:"webhook"        xml:"webhook"        yaml:"webhook,omitempty"`
+	Cmdhook       InstanceMap[WebhookConfig] `json:"cmdhook,omitempty" toml:"cmdhook"        xml:"cmdhook"        yaml:"cmdhook,omitempty"`
+	Folder        FoldersConfig              `json:"folders"           toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
 }
 
 func (u *Unpackerr) watchWorkThread() {
@@ -132,17 +132,17 @@ func (u *Unpackerr) ensureWorkThreads(count int) {
 func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 	wait := sync.WaitGroup{}
 	wait.Add(u.starrAppCount())
-	enqueueStarrPoll(u, u.Lidarr, starr.Lidarr, now, &wait)
-	enqueueStarrPoll(u, u.Radarr, starr.Radarr, now, &wait)
-	enqueueStarrPoll(u, u.Readarr, starr.Readarr, now, &wait)
-	enqueueStarrPoll(u, u.Sonarr, starr.Sonarr, now, &wait)
+	enqueueStarrPoll[LidarrConfig, *LidarrConfig](u, u.Lidarr, starr.Lidarr, now, &wait)
+	enqueueStarrPoll[RadarrConfig, *RadarrConfig](u, u.Radarr, starr.Radarr, now, &wait)
+	enqueueStarrPoll[ReadarrConfig, *ReadarrConfig](u, u.Readarr, starr.Readarr, now, &wait)
+	enqueueStarrPoll[SonarrConfig, *SonarrConfig](u, u.Sonarr, starr.Sonarr, now, &wait)
 
 	wait.Wait()
 	// These are not thread safe because they call saveCompletedDownload.
-	checkStarrQueue(u, u.Lidarr, starr.Lidarr, now)
-	checkStarrQueue(u, u.Radarr, starr.Radarr, now)
-	checkStarrQueue(u, u.Readarr, starr.Readarr, now)
-	checkStarrQueue(u, u.Sonarr, starr.Sonarr, now)
+	checkStarrQueue[LidarrConfig, *LidarrConfig](u, u.Lidarr, starr.Lidarr, now)
+	checkStarrQueue[RadarrConfig, *RadarrConfig](u, u.Radarr, starr.Radarr, now)
+	checkStarrQueue[ReadarrConfig, *ReadarrConfig](u, u.Readarr, starr.Readarr, now)
+	checkStarrQueue[SonarrConfig, *SonarrConfig](u, u.Sonarr, starr.Sonarr, now)
 	u.sweepForgotten()
 }
 
@@ -150,10 +150,10 @@ func (u *Unpackerr) retrieveAppQueues(now time.Time) {
 func (u *Unpackerr) validateApps() error {
 	for _, validate := range []func() error{
 		u.validateRemnantAction,
-		func() error { return validateStarrList(u, &u.Lidarr, starr.Lidarr) },
-		func() error { return validateStarrList(u, &u.Radarr, starr.Radarr) },
-		func() error { return validateStarrList(u, &u.Readarr, starr.Readarr) },
-		func() error { return validateStarrList(u, &u.Sonarr, starr.Sonarr) },
+		func() error { return validateStarrList[LidarrConfig, *LidarrConfig](u, u.Lidarr, starr.Lidarr) },
+		func() error { return validateStarrList[RadarrConfig, *RadarrConfig](u, u.Radarr, starr.Radarr) },
+		func() error { return validateStarrList[ReadarrConfig, *ReadarrConfig](u, u.Readarr, starr.Readarr) },
+		func() error { return validateStarrList[SonarrConfig, *SonarrConfig](u, u.Sonarr, starr.Sonarr) },
 		u.validateFolders,
 	} {
 		if err := validate(); err != nil {
@@ -162,10 +162,10 @@ func (u *Unpackerr) validateApps() error {
 	}
 
 	seen := make(map[string]string)
-	warnDuplicateStarrNames(u, seen, starr.Lidarr, u.Lidarr)
-	warnDuplicateStarrNames(u, seen, starr.Radarr, u.Radarr)
-	warnDuplicateStarrNames(u, seen, starr.Readarr, u.Readarr)
-	warnDuplicateStarrNames(u, seen, starr.Sonarr, u.Sonarr)
+	warnDuplicateStarrNames[LidarrConfig, *LidarrConfig](u, seen, starr.Lidarr, u.Lidarr)
+	warnDuplicateStarrNames[RadarrConfig, *RadarrConfig](u, seen, starr.Radarr, u.Radarr)
+	warnDuplicateStarrNames[ReadarrConfig, *ReadarrConfig](u, seen, starr.Readarr, u.Readarr)
+	warnDuplicateStarrNames[SonarrConfig, *SonarrConfig](u, seen, starr.Sonarr, u.Sonarr)
 
 	for _, validate := range []func() error{
 		u.validateCmdhook,
@@ -182,13 +182,13 @@ func (u *Unpackerr) validateApps() error {
 func (u *Unpackerr) haveQitem(name string, app starr.App) bool {
 	switch app {
 	case starr.Lidarr:
-		return haveStarrQitem(u.Lidarr, name)
+		return haveStarrQitem[LidarrConfig, *LidarrConfig](u.Lidarr, name)
 	case starr.Radarr:
-		return haveStarrQitem(u.Radarr, name)
+		return haveStarrQitem[RadarrConfig, *RadarrConfig](u.Radarr, name)
 	case starr.Readarr:
-		return haveStarrQitem(u.Readarr, name)
+		return haveStarrQitem[ReadarrConfig, *ReadarrConfig](u.Readarr, name)
 	case starr.Sonarr:
-		return haveStarrQitem(u.Sonarr, name)
+		return haveStarrQitem[SonarrConfig, *SonarrConfig](u.Sonarr, name)
 	default:
 		return false
 	}

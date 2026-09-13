@@ -124,7 +124,7 @@ func (h *Header) exampleEnv(prefix string, param *Param) string {
 	}
 
 	hSuffix := ""
-	if h.Kind == list {
+	if h.repeatable() {
 		hSuffix = "0_"
 	}
 

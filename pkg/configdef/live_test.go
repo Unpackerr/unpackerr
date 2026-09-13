@@ -12,12 +12,12 @@ import (
 )
 
 type liveRoot struct {
-	Debug     bool         `toml:"debug"`
-	Interval  liveDuration `toml:"interval"`
-	Webserver *liveWeb     `toml:"webserver"`
-	Sonarr    []liveStarr  `toml:"sonarr"`
-	Folder    []liveFolder `toml:"folder"`
-	Webhook   []liveHook   `toml:"webhook"`
+	Debug     bool                  `toml:"debug"`
+	Interval  liveDuration          `toml:"interval"`
+	Webserver *liveWeb              `toml:"webserver"`
+	Sonarr    map[string]liveStarr  `toml:"sonarr"`
+	Folder    map[string]liveFolder `toml:"folder"`
+	Webhook   map[string]liveHook   `toml:"webhook"`
 }
 
 type liveWeb struct {
@@ -69,10 +69,21 @@ func TestExampleTOMLContainsWebserver(t *testing.T) {
 	t.Parallel()
 
 	body := MustLoad(t).ExampleTOML()
-	for _, want := range []string{"[webserver]", "listen_addr", "metrics"} {
+	for _, want := range []string{"[webserver]", "[folders]", "listen_addr", "metrics"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("example TOML missing %q", want)
 		}
+	}
+
+	for _, bad := range []string{"#[webserver]", "#[folders]"} {
+		if strings.Contains(body, bad) {
+			t.Fatalf("singleton header must stay live, found %q", bad)
+		}
+	}
+
+	var dest map[string]any
+	if _, err := toml.Decode(body, &dest); err != nil {
+		t.Fatalf("example TOML must parse: %v", err)
 	}
 }
 
@@ -99,8 +110,8 @@ func TestRenderLiveCommentsDefaults(t *testing.T) {
 		t.Fatalf("default listen_addr should stay commented, got:\n%s", snippet(body, "listen_addr"))
 	}
 
-	if !strings.Contains(body, "#[[sonarr]]") && !strings.Contains(body, "# [[sonarr]]") {
-		t.Fatalf("empty sonarr list should keep the commented template, got:\n%s", snippet(body, "sonarr"))
+	if !strings.Contains(body, "#[sonarr.0]") && !strings.Contains(body, "# [sonarr.0]") {
+		t.Fatalf("empty sonarr map should keep the commented template, got:\n%s", snippet(body, "sonarr"))
 	}
 }
 
@@ -109,26 +120,26 @@ func TestRenderLiveWritesNonDefaultList(t *testing.T) {
 
 	schema := MustLoad(t)
 	live := &liveRoot{
-		Sonarr: []liveStarr{{URL: "http://sonarr:8989", APIKey: "0123456789abcdef0123456789abcdef"}},
-		Folder: []liveFolder{{Path: "/downloads/watch"}},
+		Sonarr: map[string]liveStarr{"0": {URL: "http://sonarr:8989", APIKey: "0123456789abcdef0123456789abcdef"}},
+		Folder: map[string]liveFolder{"watch": {Path: "/downloads/watch"}},
 	}
 
 	body := schema.RenderTOML(live, RenderOpts{Mode: RenderLive})
 
-	if strings.Contains(body, "#[[sonarr]]") {
+	if strings.Contains(body, "#[sonarr.0]") {
 		t.Fatal("configured sonarr instance should not use the commented template header")
 	}
 
-	if !strings.Contains(body, "[[sonarr]]") {
-		t.Fatalf("missing live [[sonarr]]:\n%s", snippet(body, "sonarr"))
+	if !strings.Contains(body, "[sonarr.0]") {
+		t.Fatalf("missing live [sonarr.0]:\n%s", snippet(body, "sonarr"))
 	}
 
 	if !strings.Contains(body, `url = "http://sonarr:8989"`) {
 		t.Fatalf("missing live sonarr url:\n%s", snippet(body, "url"))
 	}
 
-	if !strings.Contains(body, "[[folder]]") {
-		t.Fatalf("missing live [[folder]]:\n%s", snippet(body, "folder"))
+	if !strings.Contains(body, "[folder.watch]") {
+		t.Fatalf("missing live [folder.watch]:\n%s", snippet(body, "folder"))
 	}
 }
 
@@ -136,7 +147,7 @@ func TestRenderLiveNilDurationStaysCommented(t *testing.T) {
 	t.Parallel()
 
 	body := MustLoad(t).RenderTOML(&liveRoot{
-		Folder: []liveFolder{{Path: "/downloads/watch"}},
+		Folder: map[string]liveFolder{"0": {Path: "/downloads/watch"}},
 	}, RenderOpts{Mode: RenderLive})
 
 	if strings.Contains(body, "delete_after = ''") {
@@ -152,7 +163,7 @@ func TestRenderLiveEventsStayNumeric(t *testing.T) {
 	t.Parallel()
 
 	body := MustLoad(t).RenderTOML(&liveRoot{
-		Webhook: []liveHook{{
+		Webhook: map[string]liveHook{"discord": {
 			URL:    "https://example.invalid/hook",
 			Token:  "tok",
 			Events: []liveStatus{1, 4},

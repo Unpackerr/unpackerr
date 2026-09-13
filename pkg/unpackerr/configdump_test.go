@@ -58,25 +58,25 @@ func TestRunningDumpPrintsPerAppMaxBytes(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Sonarr = []*SonarrConfig{{
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
 		URL:  "http://sonarr.test",
 		Name: "Sportarr",
-	}}
-	unpack.Radarr = []*RadarrConfig{{
+	}})
+	unpack.Radarr = instanceMap([]*RadarrConfig{{
 		URL:      "http://radarr.test",
 		MaxBytes: "10GB",
-	}}
-	unpack.Lidarr = []*LidarrConfig{{
+	}})
+	unpack.Lidarr = instanceMap([]*LidarrConfig{{
 		URL: "http://lidarr.test",
-	}}
-	unpack.Readarr = []*ReadarrConfig{{
+	}})
+	unpack.Readarr = instanceMap([]*ReadarrConfig{{
 		URL:      "http://readarr.test",
 		MaxBytes: "0",
-	}}
-	unpack.Folders = []*FolderConfig{
+	}})
+	unpack.Folders = instanceMap([]*FolderConfig{
 		{Path: "/watch"},
 		{Path: "/capped", MaxBytes: "2GB"},
-	}
+	})
 
 	got := dumpRunningConfig(unpack, dumpAuth{})
 	if strings.Contains(got, "Default Extract Limits") {
@@ -114,10 +114,10 @@ func TestRunningDumpPrintsSingleFolderMaxBytes(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Folders = []*FolderConfig{{
+	unpack.Folders = instanceMap([]*FolderConfig{{
 		Path:     "/watch",
 		MaxBytes: "2GB",
-	}}
+	}})
 
 	got := dumpRunningConfig(unpack, dumpAuth{})
 
@@ -149,13 +149,13 @@ func TestLiveConfigOmitsWithoutSectionRead(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Webhook = []*WebhookConfig{{
+	unpack.Webhook = instanceMap([]*WebhookConfig{{
 		Name: "https://example.com/hook?token=hook-secret",
-	}}
-	unpack.Cmdhook = []*WebhookConfig{{
+	}})
+	unpack.Cmdhook = instanceMap([]*WebhookConfig{{
 		Name:    "cmd",
 		Command: "/usr/bin/env token=cmd-secret",
-	}}
+	}})
 
 	got := dumpRunningConfig(unpack, dumpAuth{
 		gated: true,

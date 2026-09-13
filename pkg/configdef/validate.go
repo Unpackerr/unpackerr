@@ -213,6 +213,12 @@ func (h *Header) validate(name section) []string {
 	errs = append(errs, mdxProblems(h.Tail, string(name)+" tail")...)
 	errs = append(errs, mdxProblems(h.Prefix, string(name)+" envvar_prefix")...)
 
+	switch h.Kind {
+	case "", list, named:
+	default:
+		errs = append(errs, string(name)+": unknown kind "+h.Kind)
+	}
+
 	for _, param := range h.Params {
 		if param == nil {
 			errs = append(errs, string(name)+": param is empty (null)")

@@ -213,6 +213,13 @@ func starrSnapshotReady[T any, P starrApp[T]](list []P, url string) bool {
 	return true
 }
 
+func (u *Unpackerr) allStarrSnapshotsReady() bool {
+	return starrSnapshotReady(u.Lidarr, "") &&
+		starrSnapshotReady(u.Radarr, "") &&
+		starrSnapshotReady(u.Readarr, "") &&
+		starrSnapshotReady(u.Sonarr, "")
+}
+
 func (u *Unpackerr) starrQueueStats() []StarrQueueStat {
 	n := u.starrAppCount()
 	if n == 0 {

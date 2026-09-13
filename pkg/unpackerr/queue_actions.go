@@ -213,6 +213,11 @@ func (u *Unpackerr) sweepForgotten() {
 	u.lockHistory()
 	defer u.unlockHistory()
 
+	if !u.allStarrSnapshotsReady() {
+		// nil Queue is "never polled", not proof the title is gone.
+		return
+	}
+
 	for itemID := range u.forgotten {
 		if haveStarrQitem(u.Lidarr, itemID) || haveStarrQitem(u.Radarr, itemID) ||
 			haveStarrQitem(u.Readarr, itemID) || haveStarrQitem(u.Sonarr, itemID) {

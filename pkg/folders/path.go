@@ -26,6 +26,11 @@ func Check(list []*FolderConfig, log Logs) ([]*FolderConfig, []string) {
 	)
 
 	for _, folder := range list {
+		if strings.TrimSpace(folder.Path) == "" {
+			log.Errorf("Folder (empty path): cannot watch")
+			continue
+		}
+
 		folder.Path, err = filepath.Abs(expandHomedir(folder.Path))
 		if err != nil {
 			log.Errorf("Folder '%s' (bad path): %v", folder.Path, err)

@@ -499,6 +499,11 @@ func TestConfigPutFoldersValidationDoesNotApply(t *testing.T) {
 	if len(unpack.fileConfig.Folders) != 0 {
 		t.Fatalf("rejected folder staged: %+v", unpack.fileConfig.Folders)
 	}
+
+	emptyPath := `{"interval":"1s","buffer":1000,"folder":{"foo2":{"delete_original":true}}}`
+	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/folders", emptyPath, key); rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty folder path %d %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestConfigPutWebhooksValidationDoesNotApply(t *testing.T) {
@@ -1981,6 +1986,53 @@ func TestConfigPutFoldersKeepsSiblingExcludePaths(t *testing.T) {
 	file := setup.unpack.fileConfig.Folders["watch"]
 	if file == nil || len(file.ExcludePaths) != 2 || file.ExcludePaths[0] != "/a" || file.ExcludePaths[1] != "/b" {
 		t.Fatalf("file after PUT %+v", file)
+	}
+}
+
+// Env DELETE_ORIGINAL without a path must not 400 a save of a different slug.
+func TestConfigPutFoldersOtherSlugWhenEnvHasNoPath(t *testing.T) {
+	t.Setenv("UN_FOLDER_foo2_DELETE_ORIGINAL", "true")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	watch := t.TempDir()
+
+	body, err := json.Marshal(map[string]any{
+		"interval": "1s",
+		"buffer":   1000,
+		"folder": map[string]any{
+			"tv": map[string]any{"path": watch},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/folders", string(body), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig.Folders["foo2"] != nil {
+		t.Fatalf("env slug written to file: %+v", unpack.fileConfig.Folders)
+	}
+
+	if unpack.Folders["foo2"] != nil {
+		t.Fatalf("incomplete env leftover on live: %+v", unpack.Folders["foo2"])
+	}
+
+	got := unpack.Folders["tv"]
+	if got == nil || got.Path != watch {
+		t.Fatalf("live tv %+v", got)
 	}
 }
 

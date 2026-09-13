@@ -3,6 +3,7 @@ package folders
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"golift.io/cnfg"
 )
@@ -10,11 +11,18 @@ import (
 // ErrNilConfig is returned when a folder list contains a nil entry.
 var ErrNilConfig = errors.New("nil config entry")
 
+// ErrNoPath is returned when a folder instance has no watch path.
+var ErrNoPath = errors.New("path is required")
+
 // ValidateList applies folder defaults and parses max_bytes.
 func ValidateList(list []*FolderConfig, parseMax func(string) (uint64, bool, error)) error {
 	for idx := range list {
 		if list[idx] == nil {
 			return ErrNilConfig
+		}
+
+		if strings.TrimSpace(list[idx].Path) == "" {
+			return ErrNoPath
 		}
 
 		if list[idx].DeleteAfter == nil {

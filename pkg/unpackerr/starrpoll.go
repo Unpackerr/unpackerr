@@ -31,13 +31,13 @@ func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap
 		}
 
 		server := asStarr[T, P](item)
-		if err := unpack.validateApp(server.conf(), app); err != nil {
+		if err := unpack.validateApp(server.conf(), app, key); err != nil {
 			if skipInvalidApp(err) {
 				delete(list, key)
 				continue
 			}
 
-			return err
+			return fmt.Errorf("%s instance %q: %w", app, key, err)
 		}
 
 		server.connect()
@@ -49,7 +49,11 @@ func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap
 func warnDuplicateStarrNames[T any, P starrApp[T]](
 	unpack *Unpackerr, seen map[string]string, app starr.App, list InstanceMap[T],
 ) {
-	for _, item := range instanceValues(list) {
+	for slug, item := range list {
+		if item == nil {
+			continue
+		}
+
 		server := asStarr[T, P](item)
 		cfg := server.conf()
 		name := strings.TrimSpace(cfg.Name)
@@ -58,17 +62,17 @@ func warnDuplicateStarrNames[T any, P starrApp[T]](
 			continue
 		}
 
-		key := strings.ToLower(name)
-		loc := fmt.Sprintf("%s (%s)", app, cfg.URL)
+		dupKey := strings.ToLower(name)
+		loc := fmt.Sprintf("%s instance %q (%s)", app, slug, cfg.URL)
 
-		if prev, ok := seen[key]; ok {
+		if prev, ok := seen[dupKey]; ok {
 			unpack.Errorf("Config Warning: duplicate Starr instance name %q on %s and %s; hook exclude cannot tell them apart",
 				name, prev, loc)
 
 			continue
 		}
 
-		seen[key] = loc
+		seen[dupKey] = loc
 	}
 }
 

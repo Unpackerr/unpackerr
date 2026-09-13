@@ -1,11 +1,14 @@
 package unpackerr
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/folders"
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
@@ -258,6 +261,44 @@ func TestValidateFoldersExtrasDefaults(t *testing.T) {
 
 	if unpack.Folders["2"].MaxNested != -1 || unpack.Folders["2"].ExtrasMaxDepth != -1 {
 		t.Fatalf("unlimited: %+v", unpack.Folders["2"])
+	}
+}
+
+func TestValidateFoldersRequiresPath(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Folders = InstanceMap[FolderConfig]{
+		"foo2": {DeleteOrig: true},
+	}
+
+	err := unpack.validateFolders()
+	if !errors.Is(err, folders.ErrNoPath) {
+		t.Fatalf("empty path: %v", err)
+	}
+
+	if err.Error() != `folder "foo2": path is required` {
+		t.Fatalf("error %q", err)
+	}
+}
+
+func TestValidateFoldersEnvWithoutPath(t *testing.T) {
+	t.Setenv("UN_FOLDER_foo2_DELETE_ORIGINAL", "true")
+
+	unpack := New()
+
+	if _, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix); err != nil {
+		t.Fatal(err)
+	}
+
+	got := unpack.Folders["foo2"]
+	if got == nil || !got.DeleteOrig || got.Path != "" {
+		t.Fatalf("env overlay %+v", got)
+	}
+
+	err := unpack.validateFolders()
+	if !errors.Is(err, folders.ErrNoPath) {
+		t.Fatalf("env folder without path: %v", err)
 	}
 }
 

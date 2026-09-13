@@ -722,7 +722,7 @@ func putStarrList[T any, P starrApp[T]](
 		}
 
 		server := asStarr[T, P](item)
-		if err := unpackerr.validateApp(server.conf(), app); err != nil {
+		if err := unpackerr.validateApp(server.conf(), app, key); err != nil {
 			// Env overlay may recreate a slug the PUT omitted. Incomplete
 			// leftovers (URL in env, key in the deleted file row) must not
 			// 400 the save; startup already skips those. A PUT-body row
@@ -808,6 +808,8 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 	if err := expandFilepaths(&preview.Folders); err != nil {
 		return false, err
 	}
+
+	dropInvalidEnvOverlay(next.Folder, preview.Folders, validateFolderList)
 
 	if err := validateFolderList(preview.Folders); err != nil {
 		return false, err

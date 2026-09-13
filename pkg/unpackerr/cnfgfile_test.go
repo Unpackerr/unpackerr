@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -765,7 +766,7 @@ func TestValidateAppUsesInstanceLabel(t *testing.T) {
 	conf.URL = "ftp://127.0.0.1:8989"
 	conf.APIKey = key
 
-	err := unpack.validateApp(conf, starr.Sonarr)
+	err := unpack.validateApp(conf, starr.Sonarr, "uhd")
 	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
 		t.Fatalf("invalid URL: %v", err)
 	}
@@ -774,7 +775,7 @@ func TestValidateAppUsesInstanceLabel(t *testing.T) {
 	conf.URL = "http://127.0.0.1:8989"
 	conf.APIKey = "short"
 
-	err = unpack.validateApp(conf, starr.Sonarr)
+	err = unpack.validateApp(conf, starr.Sonarr, "uhd")
 	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
 		t.Fatalf("short key: %v", err)
 	}
@@ -783,9 +784,38 @@ func TestValidateAppUsesInstanceLabel(t *testing.T) {
 	conf.URL = "http://127.0.0.1:8989"
 	conf.APIKey = key
 
-	err = unpack.validateApp(conf, starr.Sonarr)
+	err = unpack.validateApp(conf, starr.Sonarr, "uhd")
 	if err == nil || !strings.Contains(err.Error(), "Sportarr") {
 		t.Fatalf("max bytes: %v", err)
+	}
+}
+
+func TestValidateAppSkipLogsInstanceSlug(t *testing.T) {
+	t.Parallel()
+
+	var logs bytes.Buffer
+
+	unpack := New()
+	unpack.Error.SetOutput(&logs)
+
+	err := unpack.validateApp(&StarrConfig{}, starr.Readarr, "0")
+	if !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("empty URL: %v", err)
+	}
+
+	if !strings.Contains(logs.String(), `instance "0"`) {
+		t.Fatalf("skip log missing slug: %q", logs.String())
+	}
+
+	logs.Reset()
+
+	err = unpack.validateApp(&StarrConfig{URL: "http://127.0.0.1:8787"}, starr.Readarr, "books")
+	if !errors.Is(err, ErrInvalidKey) {
+		t.Fatalf("empty key: %v", err)
+	}
+
+	if !strings.Contains(logs.String(), `instance "books"`) {
+		t.Fatalf("skip log missing slug: %q", logs.String())
 	}
 }
 
@@ -802,6 +832,10 @@ func TestValidateStarrListRejectsBadName(t *testing.T) {
 	err := validateStarrList[SonarrConfig, *SonarrConfig](unpack, unpack.Sonarr, starr.Sonarr)
 	if !errors.Is(err, ErrInvalidName) {
 		t.Fatalf("got %v want ErrInvalidName", err)
+	}
+
+	if !strings.Contains(err.Error(), `instance "0"`) {
+		t.Fatalf("fatal error missing slug: %v", err)
 	}
 
 	if len(unpack.Sonarr) != 1 {

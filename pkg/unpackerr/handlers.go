@@ -275,6 +275,11 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Stale item removed after %v at status %s: %v",
 				item.Label(), elapsed.Round(time.Second), item.Status.Desc(), name)
+		case item.Status == IMPORTED && elapsed >= item.DeleteDelay &&
+			(!u.queueSnapshotReady(item) || u.haveQitem(name, item.App)):
+			// Still in Starr, or we have not polled this process; checkQueueChanges will
+			// reset IMPORTED→EXTRACTED when the title is back in the queue.
+			u.Debugf("%s: not deleting imported item still queued or unpolled: %s", item.Label(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
 			var webhook bool
 

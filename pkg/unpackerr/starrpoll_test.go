@@ -403,3 +403,78 @@ func TestCheckQueueChangesKeepsExtractedWhenStillQueued(t *testing.T) {
 		t.Fatalf("still queued %+v", got)
 	}
 }
+
+func importedTestItem(url string) *Extract {
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show",
+		Status: IMPORTED, Updated: time.Now().Add(-time.Hour),
+		Resp:        &xtractr.Response{NewFiles: []string{"/dl/show/ep.mkv"}},
+		DeleteDelay: time.Minute,
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+
+	return item
+}
+
+func TestCheckQueueChangesResetsImportedWhenStillQueued(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].URL = url
+	unpack.Sonarr[0].polled = true
+	unpack.Sonarr[0].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Map["show"] = importedTestItem(url)
+
+	unpack.checkQueueChanges(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != EXTRACTED {
+		t.Fatalf("imported still queued %+v", got)
+	}
+}
+
+func TestCheckExtractDoneSkipsImportedStillQueued(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].URL = url
+	unpack.Sonarr[0].polled = true
+	unpack.Sonarr[0].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Map["show"] = importedTestItem(url)
+
+	unpack.checkExtractDone(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != IMPORTED {
+		t.Fatalf("deleted while still queued %+v", got)
+	}
+}
+
+func TestCheckExtractDoneSkipsImportedUntilPolled(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].URL = url
+	unpack.Map["show"] = importedTestItem(url)
+
+	unpack.checkExtractDone(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != IMPORTED {
+		t.Fatalf("deleted before poll %+v", got)
+	}
+
+	unpack.Sonarr[0].polled = true
+	unpack.Sonarr[0].Queue = &sonarr.Queue{}
+	unpack.checkExtractDone(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != DELETED {
+		t.Fatalf("should delete after empty poll %+v", got)
+	}
+}

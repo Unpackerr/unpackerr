@@ -297,6 +297,10 @@ func TestConfigPutLidarrURLNeedsAPIKey(t *testing.T) {
 		t.Fatalf("want API key error, got %s", emptyKey.Body.String())
 	}
 
+	if !strings.Contains(emptyKey.Body.String(), `\"0\"`) {
+		t.Fatalf("want instance key in error, got %s", emptyKey.Body.String())
+	}
+
 	shortKey := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
 		`[{"url":"http://sdfsdf.sdsd.com/lidarr","apiKey":"tooshort"}]`, withKey)
 	if shortKey.Code != http.StatusBadRequest {
@@ -1780,6 +1784,41 @@ func TestConfigPutWebhooksEmptyKeepsEnv(t *testing.T) { //nolint:paralleltest //
 	}
 }
 
+// Env token without a URL must not 400 a save of a different slug.
+func TestConfigPutWebhooksOtherSlugWhenEnvHasNoURL(t *testing.T) {
+	t.Setenv("UN_WEBHOOK_0_TOKEN", "env-only-token")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks",
+		`{"discord":{"url":"http://hooks.example/file"}}`, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig.Webhook["0"] != nil {
+		t.Fatalf("env slug written to file: %+v", unpack.fileConfig.Webhook)
+	}
+
+	if unpack.Webhook["0"] != nil {
+		t.Fatalf("incomplete env leftover on live: %+v", unpack.Webhook["0"])
+	}
+
+	got := unpack.Webhook["discord"]
+	if got == nil || got.URL != "http://hooks.example/file" {
+		t.Fatalf("live discord %+v", got)
+	}
+}
+
 func TestConfigPutRejectsBadInstanceSlug(t *testing.T) {
 	t.Parallel()
 
@@ -2003,5 +2042,106 @@ func TestConfigPutSonarrKeepsFileAPIKeyWhenURLIsEnv(t *testing.T) {
 	file := unpack.fileConfig.Sonarr["0"]
 	if file == nil || file.URL != "http://file.invalid:8989" || file.APIKey != secret || file.Name != "uhd" {
 		t.Fatalf("file after PUT %+v", file)
+	}
+}
+
+func envSonarrAPIKeyUnpackerr(t *testing.T, secret string) *Unpackerr {
+	t.Helper()
+
+	t.Setenv("UN_SONARR_0_API_KEY", secret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	app := &SonarrConfig{}
+	app.URL = "http://file.invalid:8989"
+	app.Name = "uhd"
+	app.Paths = StringSlice{"/downloads/tv"}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	return unpack
+}
+
+// Official UI GET file (no apiKey) then Save. Overlay must fill UN_SONARR_0_API_KEY.
+//
+//nolint:paralleltest // t.Setenv cannot run with t.Parallel.
+func TestConfigPutSonarrOmitsEnvAPIKey(t *testing.T) {
+	secret := strings.Repeat("E", apiKeyMinLength)
+	unpack := envSonarrAPIKeyUnpackerr(t, secret)
+
+	for _, body := range []string{
+		`{"0":{"url":"http://file.invalid:8989","name":"uhd","paths":["/downloads/tv"]}}`,
+		`{"0":{"url":"http://file.invalid:8989","apiKey":"","name":"uhd","paths":["/downloads/tv"]}}`,
+	} {
+		put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+		if put.Code != http.StatusOK {
+			t.Fatalf("put %s → %d %s", body, put.Code, put.Body.String())
+		}
+
+		live := unpack.Sonarr["0"]
+		if live == nil || live.URL != "http://file.invalid:8989" || live.APIKey != secret || live.Name != "uhd" {
+			t.Fatalf("live after PUT %s: %+v", body, live)
+		}
+
+		file := unpack.fileConfig.Sonarr["0"]
+		if file == nil || file.URL != "http://file.invalid:8989" || file.APIKey != "" || file.Name != "uhd" {
+			t.Fatalf("file after PUT %s: %+v", body, file)
+		}
+	}
+}
+
+// Env URL without a key must not 400 a save of a different slug.
+func TestConfigPutSonarrOtherSlugWhenEnvURLHasNoKey(t *testing.T) {
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+
+	fileKey := strings.Repeat("F", apiKeyMinLength)
+	otherKey := strings.Repeat("U", apiKeyMinLength)
+	zero := &SonarrConfig{}
+	zero.URL = "http://file.invalid:8989"
+	zero.APIKey = fileKey
+	zero.Name = "hd"
+	one := &SonarrConfig{}
+	one.URL = "http://sonarr-uhd:8989"
+	one.APIKey = otherKey
+	one.Name = "uhd"
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": zero, "1": one}
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	body := `{"1":{"url":"http://sonarr-uhd:8989","apiKey":"` + otherKey + `","name":"uhd"}}`
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.fileConfig.Sonarr["0"] != nil {
+		t.Fatalf("omitted slug written to file: %+v", unpack.fileConfig.Sonarr)
+	}
+
+	if unpack.Sonarr["0"] != nil {
+		t.Fatalf("incomplete env leftover on live: %+v", unpack.Sonarr["0"])
+	}
+
+	got := unpack.Sonarr["1"]
+	if got == nil || got.URL != "http://sonarr-uhd:8989" || got.APIKey != otherKey {
+		t.Fatalf("live slug 1 %+v", got)
 	}
 }

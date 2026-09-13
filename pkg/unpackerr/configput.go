@@ -723,7 +723,16 @@ func putStarrList[T any, P starrApp[T]](
 
 		server := asStarr[T, P](item)
 		if err := unpackerr.validateApp(server.conf(), app); err != nil {
-			return err
+			// Env overlay may recreate a slug the PUT omitted. Incomplete
+			// leftovers (URL in env, key in the deleted file row) must not
+			// 400 the save; startup already skips those. A PUT-body row
+			// still 400s after overlay fills env secrets.
+			if _, inPut := list[key]; !inPut && skipInvalidApp(err) {
+				delete(liveList, key)
+				continue
+			}
+
+			return fmt.Errorf("%s instance %q: %w", app, key, err)
 		}
 
 		server.connect()
@@ -845,6 +854,8 @@ func (u *Unpackerr) putHooks(
 		return err
 	}
 
+	dropInvalidEnvOverlay(list, liveList, validate)
+
 	if err := validate(liveList); err != nil {
 		return err
 	}
@@ -855,4 +866,18 @@ func (u *Unpackerr) putHooks(
 		*field(u.Config) = liveList
 		u.ensureHookWorker()
 	})
+}
+
+// dropInvalidEnvOverlay removes live slugs that ParseENV created (not in the
+// PUT body) when they fail validation. PUT-body slugs stay and still 400.
+func dropInvalidEnvOverlay[T any](put, live InstanceMap[T], validate func(InstanceMap[T]) error) {
+	for key, item := range live {
+		if _, inPut := put[key]; inPut {
+			continue
+		}
+
+		if err := validate(InstanceMap[T]{key: item}); err != nil {
+			delete(live, key)
+		}
+	}
 }

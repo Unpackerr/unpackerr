@@ -54,8 +54,10 @@ func checkStarrName(name string) error {
 	return nil
 }
 
-// skipInvalidApp reports whether a Starr instance should be dropped at
-// startup (missing/short URL or API key) rather than aborting the process.
+// skipInvalidApp reports whether a Starr instance should be dropped
+// (missing/short URL or API key) rather than failing the operation.
+// Startup uses this for every instance. PUT uses it only for env overlay
+// slugs that were not in the request body.
 func skipInvalidApp(err error) bool {
 	return errors.Is(err, ErrInvalidURL) || errors.Is(err, ErrInvalidKey)
 }

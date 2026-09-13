@@ -48,7 +48,7 @@ log_file_mode = "0600"
 ## and IMPORTED work back on the live queue for 72 hours. The history API
 ## still lists only completed or failed rows. The tray menu still shows
 ## only the last 10 names. `0` disables history and restart resume.
-keep_history = 200
+keep_history = 400
 
 ## How often to poll starr apps (sonarr, radarr, etc).
 ## Recommend 1m-5m. Uses Go Duration.
@@ -475,4 +475,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 13 SEP 2026 06:01 UTC
+## => Content Auto Generated, 13 SEP 2026 07:39 UTC

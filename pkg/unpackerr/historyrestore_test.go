@@ -212,3 +212,61 @@ func TestMaybeRecordHistoryWritesExtracted(t *testing.T) {
 		t.Fatal("extracted should not appear on GET /api/history")
 	}
 }
+
+func TestRestoreQueueSkipsForgotten(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "kept", Kind: string(starr.Sonarr), Path: "/dl/kept",
+		Status: IMPORTED, Updated: time.Now(), Forgotten: true,
+		NewFiles: []string{"/dl/kept/ep.mkv"}, DeleteDelay: "1s",
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map["kept"] != nil {
+		t.Fatal("forgotten item restored into map")
+	}
+
+	if !unpack.isForgotten("kept") {
+		t.Fatal("forgotten tombstone not rehydrated")
+	}
+}
+
+func TestForgetPersistsAndSkipsRestore(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	now := time.Now()
+	item := &Extract{
+		App: starr.Sonarr, Path: "/dl/show", Status: IMPORTED, Updated: now,
+		Resp:        &xtractr.Response{NewFiles: []string{"/dl/show/ep.mkv"}},
+		DeleteDelay: time.Minute,
+	}
+	unpack.Map["show"] = item
+	unpack.maybeRecordHistory("show", item)
+
+	if err := unpack.forgetQueueID("show"); err != nil {
+		t.Fatal(err)
+	}
+
+	if unpack.Map["show"] != nil {
+		t.Fatal("still in map")
+	}
+
+	if len(unpack.records) != 1 || !unpack.records[0].Forgotten {
+		t.Fatalf("history forgotten flag %+v", unpack.records)
+	}
+
+	unpack.Map = make(map[string]*Extract)
+	unpack.forgotten = make(map[string]struct{})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map["show"] != nil {
+		t.Fatal("forgotten imported item resurrected")
+	}
+
+	if !unpack.isForgotten("show") {
+		t.Fatal("tombstone missing after restore")
+	}
+}

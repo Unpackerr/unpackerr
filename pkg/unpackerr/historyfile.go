@@ -57,6 +57,7 @@ type HistoryRecord struct {
 	NoRetry     bool          `json:"noRetry,omitempty"`
 	NewFiles    []string      `json:"newFiles,omitempty"`
 	PreFiles    []string      `json:"preFiles,omitempty"`
+	Forgotten   bool          `json:"forgotten,omitempty"`
 }
 
 // QueueItem is a live in-flight extract for GET /api/queue.
@@ -241,7 +242,7 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		PreFiles:   preFileKeys(item.PreFiles),
 	}
 
-if item.DeleteDelay != 0 {
+	if item.DeleteDelay != 0 {
 		rec.DeleteDelay = item.DeleteDelay.String()
 	}
 
@@ -423,6 +424,28 @@ func (u *Unpackerr) deleteHistoryID(itemID string) error {
 	u.records = slices.Delete(u.records, idx, idx+1)
 
 	return u.compactHistoryLocked()
+}
+
+// markHistoryForgotten keeps the history row and flags it so a restart does
+// not restore the item into Map (and re-arm post-import delete).
+func (u *Unpackerr) markHistoryForgotten(itemID string) {
+	if u.KeepHistory == 0 || itemID == "" {
+		return
+	}
+
+	u.histMu.Lock()
+
+	idx := slices.IndexFunc(u.records, func(r HistoryRecord) bool { return r.ID == itemID })
+	if idx < 0 {
+		u.histMu.Unlock()
+		return
+	}
+
+	rec := u.records[idx]
+	u.histMu.Unlock()
+
+	rec.Forgotten = true
+	u.upsertHistory(rec)
 }
 
 func (u *Unpackerr) clearHistory() error {

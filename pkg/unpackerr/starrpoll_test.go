@@ -346,3 +346,60 @@ func TestStarrQueueStatsShowsPollCounts(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestCheckQueueChangesSkipsUnpolledSnapshot(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].URL = url
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show",
+		Status: EXTRACTED, Updated: time.Now().Add(-time.Hour),
+		Resp:        &xtractr.Response{NewFiles: []string{"/dl/show/ep.mkv"}},
+		DeleteDelay: 5 * time.Minute,
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+
+	unpack.checkQueueChanges(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != EXTRACTED {
+		t.Fatalf("unpolled import %+v", got)
+	}
+
+	unpack.Sonarr[0].Queue = &sonarr.Queue{}
+	unpack.Sonarr[0].polled = true
+	unpack.checkQueueChanges(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != IMPORTED {
+		t.Fatalf("polled empty queue %+v", got)
+	}
+}
+
+func TestCheckQueueChangesKeepsExtractedWhenStillQueued(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = []*SonarrConfig{{}}
+	unpack.Sonarr[0].URL = url
+	unpack.Sonarr[0].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show",
+		Status: EXTRACTED, Updated: time.Now().Add(-time.Hour),
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+
+	unpack.checkQueueChanges(time.Now())
+
+	if got := unpack.Map["show"]; got == nil || got.Status != EXTRACTED {
+		t.Fatalf("still queued %+v", got)
+	}
+}

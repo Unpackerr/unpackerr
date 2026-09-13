@@ -286,7 +286,7 @@ sections:
         short: 'POSIX mode used for new log files; not for Windows'
       - name: keep_history
         envvar: KEEP_HISTORY
-        default: 200
+        default: 400
         recommend:
           - value: 0
           - value: 5
@@ -296,6 +296,7 @@ sections:
           - value: 100
           - value: 200
           - value: 300
+          - value: 400
           - value: 500
           - value: 750
           - value: 1000

@@ -35,8 +35,21 @@ func (u *Unpackerr) restoreQueueFromHistory() {
 	u.lockHistory()
 	defer u.unlockHistory()
 
-	for i := range rows {
-		item, itemID, ok := u.extractFromHistory(rows[i], now, cutoff)
+	for _, rec := range rows {
+		itemID := rec.ID
+		if itemID == "" {
+			itemID = rec.Path
+		}
+
+		if rec.Forgotten {
+			if itemID != "" && rec.Kind != FolderString {
+				u.forgotten[itemID] = struct{}{}
+			}
+
+			continue
+		}
+
+		item, itemID, ok := u.extractFromHistory(rec, now, cutoff)
 		if !ok {
 			continue
 		}

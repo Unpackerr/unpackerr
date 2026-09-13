@@ -199,6 +199,8 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 		delete(u.folders.Folders, itemID)
 	}
 
+	u.markHistoryForgotten(itemID)
+
 	return nil
 }
 

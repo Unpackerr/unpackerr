@@ -202,7 +202,8 @@
           "maxBytes": {"type": "integer"},
           "noRetry": {"type": "boolean"},
           "newFiles": {"type": "array", "items": {"type": "string"}},
-          "preFiles": {"type": "array", "items": {"type": "string"}, "description": "Dest paths that existed before extract; used after a restart"}
+          "preFiles": {"type": "array", "items": {"type": "string"}, "description": "Dest paths that existed before extract; used after a restart"},
+          "forgotten": {"type": "boolean", "description": "User dropped this item from the live queue; restart must not restore it"}
         }
       },
       "IDRequest": {

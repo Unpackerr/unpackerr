@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/frontend"
 	"github.com/gorilla/securecookie"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -142,11 +143,25 @@ func (w *WebServer) handlePut(route string, handler http.HandlerFunc) {
 	w.handle(http.MethodPut, route, handler)
 }
 
+func (w *WebServer) handleDelete(route string, handler http.HandlerFunc) {
+	w.handle(http.MethodDelete, route, handler)
+}
+
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", Index)
+	base := strings.TrimSuffix(u.Webserver.URLBase, "/")
+	u.Webserver.handleGet(base+"/{$}", u.serveUI)
+
+	if base == "" {
+		u.Webserver.handleGet("/{path...}", u.serveUI)
+	} else {
+		u.Webserver.handleGet(base+"/{path...}", u.serveUI)
+	}
+
 	u.registerOpenAPIRoute()
 	u.registerAuthRoutes()
 	u.registerAPIRoutes()
+	u.registerLiveWS()
+	u.registerLogRoutes()
 
 	if u.Webserver.Pprof {
 		u.registerPprof()
@@ -196,8 +211,21 @@ func (u *Unpackerr) runWebServer() {
 	}
 }
 
-func Index(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprint(w, "Welcome!\n")
+func (u *Unpackerr) serveUI(resp http.ResponseWriter, req *http.Request) {
+	base := strings.TrimSuffix(u.Webserver.URLBase, "/")
+	if base != "" {
+		cloned := req.Clone(req.Context())
+
+		path := strings.TrimPrefix(req.URL.Path, base)
+		if path == "" {
+			path = "/"
+		}
+
+		cloned.URL.Path = path
+		req = cloned
+	}
+
+	frontend.IndexHandler(resp, req)
 }
 
 // fixForwardedFor sets the X-Forwarded-For header to the client IP

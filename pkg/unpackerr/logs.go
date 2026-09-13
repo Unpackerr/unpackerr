@@ -44,9 +44,15 @@ func (l *Logger) Printf(msg string, v ...any) {
 
 // Errorf writes log errors... to stdout and/or a file.
 func (l *Logger) Errorf(msg string, v ...any) {
-	err := l.Error.Output(callDepth, fmt.Sprintf(msg, v...))
+	formatted := fmt.Sprintf(msg, v...)
+
+	err := l.Error.Output(callDepth, formatted)
 	if err != nil {
 		fmt.Println("Logger Error:", err) //nolint:forbidigo
+	}
+
+	if l.onError != nil {
+		l.onError(formatted)
 	}
 }
 
@@ -182,6 +188,10 @@ func (u *Unpackerr) reopenLogs() {
 }
 
 func (u *Unpackerr) updateLogOutput(writer io.Writer, errors io.Writer) {
+	tee := u.ensureAppLogTee()
+	writer = io.MultiWriter(writer, tee)
+	errors = io.MultiWriter(errors, tee)
+
 	if u.Webserver != nil && u.Webserver.LogFile != "" {
 		u.setupHTTPLogging()
 	} else {
@@ -211,13 +221,13 @@ func (u *Unpackerr) setupHTTPLogging() {
 
 	switch { // only use MultiWriter if we have > 1 writer.
 	case !u.Quiet && u.Webserver.LogFile != "":
-		u.HTTP.SetOutput(io.MultiWriter(u.httpLog, os.Stdout))
+		u.HTTP.SetOutput(io.MultiWriter(u.httpLog, os.Stdout, u.ensureHTTPLogTee()))
 	case !u.Quiet && u.Webserver.LogFile == "":
-		u.HTTP.SetOutput(os.Stdout)
+		u.HTTP.SetOutput(io.MultiWriter(os.Stdout, u.ensureHTTPLogTee()))
 	case u.Quiet && u.Webserver.LogFile == "":
-		u.HTTP.SetOutput(io.Discard)
+		u.HTTP.SetOutput(u.ensureHTTPLogTee())
 	default: // u.Config.Quiet && u.Webserver.LogFile != ""
-		u.HTTP.SetOutput(u.httpLog)
+		u.HTTP.SetOutput(io.MultiWriter(u.httpLog, u.ensureHTTPLogTee()))
 	}
 }
 

@@ -621,7 +621,7 @@ func TestLoginUnregisteredWithoutCookies(t *testing.T) {
 	unpack.webRoutes()
 
 	rec := doAuth(t, unpack, http.MethodPost, "/api/auth/login", `{}`, nil)
-	if rec.Code != http.StatusNotFound {
+	if rec.Code != http.StatusNotFound && rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("got %d", rec.Code)
 	}
 }

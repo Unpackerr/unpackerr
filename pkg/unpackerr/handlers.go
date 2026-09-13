@@ -13,6 +13,8 @@ import (
 	"golift.io/xtractr"
 )
 
+const noteNoExtractable = "no extractable files"
+
 // StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
 	starr.Config
@@ -79,6 +81,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
 				delete(u.Map, name)
 				u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.Label(), name)
+				u.notifyQueueLocked()
 			case data.Status > IMPORTED:
 				u.Debugf("Already imported? %s", name)
 			case data.Status == IMPORTED:
@@ -92,11 +95,15 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			// The item fell out of the app queue and came back. Reset it.
 			u.Printf("%s: Extraction Not Imported: %s - De-queued and returned.", data.Label(), name)
 			data.Status = EXTRACTED
+
+			u.notifyQueueLocked()
 		case data.Status > IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
 			u.Printf("%s: Extraction Restarting: %s - Deleted Item De-queued and returned.", data.Label(), name)
 			data.Status = WAITING
 			data.Updated = now
+
+			u.notifyQueueLocked()
 		}
 
 		u.Printf("[%s] Status: %s (%v, elapsed: %v) %s", data.Label(), name, data.Status.Desc(),
@@ -146,6 +153,8 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (%s Activity Queue status: %v)",
 				item.Label(), name, item.Path, item.Label(), item.IDs["reason"])
 		}
+
+		u.setItemNote(name, item, noteNoExtractable)
 
 		return
 	}
@@ -206,7 +215,9 @@ func (u *Unpackerr) markItemQueued(
 
 	item.Status = QUEUED
 	item.Updated = now
+	item.Note = ""
 	u.maybeRecordHistory(name, item)
+	u.notifyQueueLocked()
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
@@ -218,6 +229,20 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 	u.Printf("[%s] Extraction Queued: %s, retries: %d, %s, delete orig: %v, queue size: %d",
 		item.Label(), item.Path, item.Retries, count, item.DeleteOrig, queueSize)
 	u.updateHistory(item.Label() + ": " + item.Path)
+}
+
+func (u *Unpackerr) setItemNote(name string, item *Extract, note string) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	if item.Note == note {
+		return
+	}
+
+	item.Note = note
+	if u.hub != nil {
+		u.hub.notifyProgress(queueFromExtract(name, item))
+	}
 }
 
 func (u *Unpackerr) getPasswordFromPath(path string) string {
@@ -248,6 +273,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.Finished++
 			delete(u.Map, name)
 			u.Printf("[%s] Finished, Removed History: %v", item.Label(), name)
+			u.notifyQueueLocked()
 		case item.App == FolderString:
 			continue // folders are handled in folder.go.
 		case item.Status == EXTRACTFAILED && item.NoRetry:
@@ -261,6 +287,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			item.Updated = now
 			u.Printf("[%s] Extract failed %v ago, triggering restart (%d/%d): %v",
 				item.Label(), elapsed.Round(time.Second), item.Retries, u.maxRetries(), name)
+			u.notifyQueueLocked()
 		case item.Status == EXTRACTFAILED && item.Retries >= u.maxRetries():
 			// Stay EXTRACTFAILED. DELETED is > IMPORTED, so checkQueueChanges
 			// would bounce a still-completed Starr item back to WAITING.
@@ -364,6 +391,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		item.Updated = now
 		item.Resp = resp
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.Label(), resp.X.Name)
+		u.notifyQueueLocked()
 	case remnants:
 		if remnantAction(u.RemnantAction) == "off" {
 			item.NoRetry = true

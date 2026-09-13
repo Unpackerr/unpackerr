@@ -15,9 +15,11 @@ const (
 	PermReadSystemHeaders  = "system:headers:read"
 	PermReadSystemBrowse   = "system:browse:read"
 	PermWriteSystemBrowse  = "system:browse:write"
+	PermReadSystemLogs     = "system:logs:read"
+	PermWriteSystemLogs    = "system:logs:write"
 	PermAll                = "*"
 	RoleAdmin              = "admin"
-	systemPermCount        = 11
+	systemPermCount        = 13
 )
 
 // ConfigSection is a per-section config API resource name.
@@ -71,6 +73,8 @@ func AllPermissions() []string {
 		PermReadSystemHeaders,
 		PermReadSystemBrowse,
 		PermWriteSystemBrowse,
+		PermReadSystemLogs,
+		PermWriteSystemLogs,
 		PermAll,
 	)
 

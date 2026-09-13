@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	code.cloudfoundry.org/bytefmt v0.88.0
 	github.com/BurntSushi/toml v1.6.0
+	github.com/coder/websocket v1.8.15
 	github.com/dromara/carbon/v2 v2.6.17
 	github.com/energye/systray v1.0.3
 	github.com/fsnotify/fsnotify v1.10.1

@@ -20,9 +20,17 @@ func (u *Unpackerr) validateFolders() error {
 }
 
 func validateFolderList(list InstanceMap[FolderConfig]) error {
-	for key := range list {
+	for key, folder := range list {
 		if err := validateInstanceSlug(key); err != nil {
 			return err
+		}
+
+		if folder == nil {
+			return errNilConfigEntry
+		}
+
+		if strings.TrimSpace(folder.Path) == "" {
+			return fmt.Errorf("folder %q: %w", key, folders.ErrNoPath)
 		}
 	}
 

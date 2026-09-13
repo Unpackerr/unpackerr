@@ -451,7 +451,7 @@ func expandHomedir(filePath string) string {
 	return expanded
 }
 
-func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
+func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) error {
 	conf.Name = strings.TrimSpace(conf.Name)
 
 	if err := checkStarrName(conf.Name); err != nil {
@@ -460,7 +460,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 
 	label := conf.Label(app)
 
-	if err := u.requireStarrAccess(conf, label); err != nil {
+	if err := u.requireStarrAccess(conf, label, slug); err != nil {
 		return err
 	}
 
@@ -502,14 +502,14 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App) error {
 	return nil
 }
 
-func (u *Unpackerr) requireStarrAccess(conf *StarrConfig, label string) error {
+func (u *Unpackerr) requireStarrAccess(conf *StarrConfig, label, slug string) error {
 	if conf.URL == "" {
-		u.Errorf("Missing %s URL in one of your configurations, skipped and ignored.", label)
+		u.Errorf("Missing %s URL in instance %q, skipped and ignored.", label, slug)
 		return ErrInvalidURL // this error is not printed.
 	}
 
 	if conf.APIKey == "" {
-		u.Errorf("Missing %s API Key in one of your configurations, skipped and ignored.", label)
+		u.Errorf("Missing %s API Key in instance %q, skipped and ignored.", label, slug)
 		return ErrInvalidKey // this error is not printed at startup; PUT returns it.
 	}
 
@@ -518,8 +518,8 @@ func (u *Unpackerr) requireStarrAccess(conf *StarrConfig, label string) error {
 	}
 
 	if len(conf.APIKey) < apiKeyMinLength {
-		u.Errorf("%s (%s) API Key is too short (%d < %d), skipped and ignored.",
-			label, conf.URL, len(conf.APIKey), apiKeyMinLength)
+		u.Errorf("%s instance %q (%s) API Key is too short (%d < %d), skipped and ignored.",
+			label, slug, conf.URL, len(conf.APIKey), apiKeyMinLength)
 
 		return fmt.Errorf("%s (%s) %w, your key length: %d",
 			label, conf.URL, ErrInvalidKey, len(conf.APIKey))

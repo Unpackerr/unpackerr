@@ -1,8 +1,11 @@
 package folders
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,6 +15,53 @@ type noopLogger struct{}
 func (noopLogger) Printf(string, ...any) {}
 func (noopLogger) Errorf(string, ...any) {}
 func (noopLogger) Debugf(string, ...any) {}
+
+type captureLogger struct {
+	errs []string
+}
+
+func (c *captureLogger) Printf(string, ...any) {}
+func (c *captureLogger) Debugf(string, ...any) {}
+func (c *captureLogger) Errorf(msg string, v ...any) {
+	c.errs = append(c.errs, fmt.Sprintf(msg, v...))
+}
+
+func TestValidateListRequiresPath(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateList([]*FolderConfig{{DeleteOrig: true}}, func(string) (uint64, bool, error) {
+		return 0, false, nil
+	})
+	if !errors.Is(err, ErrNoPath) {
+		t.Fatalf("empty path: %v", err)
+	}
+}
+
+func TestCheckSkipsEmptyPath(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log := &captureLogger{}
+
+	good, names := Check([]*FolderConfig{{Path: "", DeleteOrig: true}}, log)
+	if len(good) != 0 || len(names) != 0 {
+		t.Fatalf("watched empty path: %v %v", names, good)
+	}
+
+	for _, name := range names {
+		if name == cwd {
+			t.Fatal("empty path must not watch the working directory")
+		}
+	}
+
+	if len(log.errs) == 0 || !strings.Contains(log.errs[0], "empty path") {
+		t.Fatalf("log %v", log.errs)
+	}
+}
 
 func TestNormalizeExcludePaths(t *testing.T) {
 	t.Parallel()

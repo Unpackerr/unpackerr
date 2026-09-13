@@ -46,11 +46,11 @@ func TestQueueViewsIDs(t *testing.T) {
 		t.Fatalf("readarr bookId: got %v", got)
 	}
 
-	if haveStarrQitem([]*SonarrConfig{son}, "Show") != true {
+	if haveStarrQitem[SonarrConfig, *SonarrConfig](instanceMap([]*SonarrConfig{son}), "Show") != true {
 		t.Fatal("expected haveStarrQitem true for Show")
 	}
 
-	if haveStarrQitem([]*SonarrConfig{son}, "Nope") {
+	if haveStarrQitem[SonarrConfig, *SonarrConfig](instanceMap([]*SonarrConfig{son}), "Nope") {
 		t.Fatal("expected haveStarrQitem false for Nope")
 	}
 }
@@ -71,7 +71,7 @@ func TestCheckStarrQueueLidarrTweak(t *testing.T) {
 	}
 
 	unpack := New()
-	unpack.Lidarr = []*LidarrConfig{{
+	unpack.Lidarr = instanceMap([]*LidarrConfig{{
 		Protocols: defaultProtocol,
 		Paths:     StringSlice{mappedRoot},
 		SplitFlac: true,
@@ -81,7 +81,7 @@ func TestCheckStarrQueueLidarrTweak(t *testing.T) {
 			Protocol:   starr.Protocol("torrent"),
 			OutputPath: outputPath,
 		}}},
-	}}
+	}})
 
 	checkStarrQueue(unpack, unpack.Lidarr, starr.Lidarr, time.Now())
 
@@ -120,7 +120,7 @@ func TestCheckStarrQueueSetsName(t *testing.T) {
 	}
 
 	unpack := New()
-	unpack.Sonarr = []*SonarrConfig{{
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
 		Name:      "Sportarr",
 		Protocols: defaultProtocol,
 		Paths:     StringSlice{mappedRoot},
@@ -129,7 +129,7 @@ func TestCheckStarrQueueSetsName(t *testing.T) {
 			Status:   "completed",
 			Protocol: starr.Protocol("torrent"),
 		}}},
-	}}
+	}})
 
 	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, time.Now())
 
@@ -150,7 +150,7 @@ func TestCheckStarrQueueSetsName(t *testing.T) {
 		t.Fatalf("Label: got %q want Sportarr", item.Label())
 	}
 
-	unpack.Sonarr[0].Name = "Fightarr"
+	unpack.Sonarr["0"].Name = "Fightarr"
 	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, time.Now())
 
 	if unpack.Map[title].Name != "Fightarr" {
@@ -169,7 +169,7 @@ func TestCheckStarrQueueKeepsForeignName(t *testing.T) {
 		Name: "Movies",
 		URL:  "http://radarr:7878",
 	}
-	unpack.Sonarr = []*SonarrConfig{{
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
 		Name:      "Sportarr",
 		URL:       "http://sonarr:8989",
 		Protocols: defaultProtocol,
@@ -178,7 +178,7 @@ func TestCheckStarrQueueKeepsForeignName(t *testing.T) {
 			Status:   "downloading",
 			Protocol: starr.Protocol("torrent"),
 		}}},
-	}}
+	}})
 
 	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, time.Now())
 
@@ -222,7 +222,7 @@ func TestStarrQueueStatsCountsRecords(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.Sonarr = []*SonarrConfig{{
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
 		Name: "Sportarr", Protocols: "torrent", lastQueued: 6, lastRetrieved: 4,
 		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{
 			{Status: "completed", Protocol: "torrent"},
@@ -231,7 +231,7 @@ func TestStarrQueueStatsCountsRecords(t *testing.T) {
 			{Status: "downloading"},
 			{Status: "warning"},
 		}},
-	}}
+	}})
 
 	stats := &Stats{}
 	unpack.fillQueueStats(stats)
@@ -247,9 +247,9 @@ func TestFillQueueStatsConfigCounts(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.Sonarr = []*SonarrConfig{{}, {}}
-	unpack.Radarr = []*RadarrConfig{{}}
-	unpack.Folders = []*FolderConfig{{Path: "/watch"}, {Path: "/other"}}
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}, {}})
+	unpack.Radarr = instanceMap([]*RadarrConfig{{}})
+	unpack.Folders = instanceMap([]*FolderConfig{{Path: "/watch"}, {Path: "/other"}})
 	unpack.Finished = 9
 	unpack.Map["live"] = &Extract{Status: IMPORTED, Updated: time.Now()}
 	unpack.Map["out"] = &Extract{Status: EXTRACTED, Updated: time.Now()}
@@ -265,7 +265,7 @@ func TestFillQueueStatsConfigCounts(t *testing.T) {
 		t.Fatalf("folders %d", stats.Folders)
 	}
 
-	unpack.Webhook = []*WebhookConfig{{}}
+	unpack.Webhook = instanceMap([]*WebhookConfig{{}})
 
 	stats = &Stats{}
 	unpack.fillQueueStats(stats)
@@ -327,12 +327,12 @@ func TestStarrQueueStatsShowsPollCounts(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.Sonarr = []*SonarrConfig{{}}
-	unpack.Sonarr[0].Name = "Sportarr"
-	unpack.Sonarr[0].URL = "http://127.0.0.1:8989"
-	unpack.Sonarr[0].lastQueued = 12
-	unpack.Sonarr[0].lastRetrieved = 8
-	unpack.Sonarr[0].lastPollErr = "timeout"
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}})
+	unpack.Sonarr["0"].Name = "Sportarr"
+	unpack.Sonarr["0"].URL = "http://127.0.0.1:8989"
+	unpack.Sonarr["0"].lastQueued = 12
+	unpack.Sonarr["0"].lastRetrieved = 8
+	unpack.Sonarr["0"].lastPollErr = "timeout"
 
 	stats := &Stats{}
 	unpack.fillQueueStats(stats)

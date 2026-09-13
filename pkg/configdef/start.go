@@ -19,6 +19,7 @@ import (
 
 const (
 	list           = "list"
+	named          = "named"
 	tables         = "tables"
 	dirMode        = 0o755
 	fileMode       = 0o644
@@ -54,7 +55,7 @@ type Header struct {
 	Notes    string   `yaml:"notes"`
 	Prefix   string   `yaml:"envvar_prefix"`
 	Params   []*Param `yaml:"params"`
-	Kind     string   `yaml:"kind"`      // "", list
+	Kind     string   `yaml:"kind"`      // "", list, named
 	NoHeader bool     `yaml:"no_header"` // Do not print [section] header.
 }
 

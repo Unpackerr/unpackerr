@@ -98,7 +98,7 @@ dir_mode = "0755"
 ## passwords = [ "filepath:/path/to/passwords.txt" ]
 passwords = []
 
-[webserver]
+#[webserver]
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
 ## this only controls the /metrics route. Scrapes must send an API key with
 ## system:metrics:read via Authorization: Bearer or X-Api-Key.
@@ -150,7 +150,7 @@ passwords = []
 ## permissions = ["system:stats:read"]
 
 ## Global Folder configuration that affects all watched folders.
-[folders]
+#[folders]
 ## How often poller checks for new folders.
 ## The default of `0s` will disable the poller on all systems except Docker.
 ## Set this value to `1ms` to disable it in Docker.
@@ -163,10 +163,13 @@ passwords = []
 ###############################################################################
 ## The following sections can be repeated if you have more than one Sonarr,  ##
 ## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
-## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
-## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
+## Identify each instance with a short key: [sonarr.uhd], [folder.tv].       ##
+## Changed in v1.0.0 (September 2026): map keys, not [[array]] list rows.    ##
+## You MUST uncomment the [header.0], url and api_key for any Starr app.     ##
+## The [sonarr.0] and [radarr.0] headers come uncommented. Uncomment the url ##
 ## and api_key if they are in use. Comment them with a hash if they are not. ##
-## Uncomment the [[lidarr]] and/or [[readarr]] headers and values if in use. ##
+## Uncomment the [lidarr.0] and/or [readarr.0] headers and values if in use. ##
+## Do not set a bare UN_SONARR / UN_FOLDER / UN_WEBHOOK / UN_CMDHOOK.        ##
 ###############################################################################
 ###############################################################################
 ##           ALL LINES BEGINNING WITH A HASH # ARE IGNORED COMMENTS          ##
@@ -174,9 +177,9 @@ passwords = []
 ###############################################################################
 ###############################################################################
 
-## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
+## Leaving the [sonarr.0] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
-[[sonarr]]
+[sonarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
@@ -221,9 +224,9 @@ passwords = []
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
-## Leaving the [[radarr]] header uncommented (no leading hash #) without also
+## Leaving the [radarr.0] header uncommented (no leading hash #) without also
 ## uncommenting the api_key (remove the hash #) will produce a startup warning.
-[[radarr]]
+[radarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
@@ -268,7 +271,7 @@ passwords = []
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
-#[[lidarr]]
+#[lidarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
@@ -316,7 +319,7 @@ passwords = []
 ## individual track files.
 # split_flac = false
 
-#[[readarr]]
+#[readarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
@@ -372,7 +375,7 @@ passwords = []
 ## subfolder into a watched folder (defined below) any extractable items in the ##
 ## folder will be decompressed. This has nothing to do with Starr applications. ##
 ##################################################################################
-#[[folder]]
+#[folder.0]
 # path = '/downloads/auto_extract'
 ## Paths to ignore while watching this folder. Excluded paths and their
 ## children are not tracked or extracted.
@@ -417,8 +420,8 @@ passwords = []
 # Created to integrate with notifiarr.com.
 # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
 # Can possibly be used with other services by providing a custom template_path.
-###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
-#[[webhook]]
+###### Don't forget to uncomment [webhook.0] and url at a minimum !!!!
+#[webhook.0]
 # url = "https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com"
 ## Provide an optional name to hide the URL in logs.
 ## If a name is not provided then the URL is used.
@@ -453,8 +456,8 @@ passwords = []
 #####################
 # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
 # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
-###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
-#[[cmdhook]]
+###### Don't forget to uncomment [cmdhook.0] at a minimum !!!!
+#[cmdhook.0]
 # command = '/downloads/scripts/command.sh'
 ## Provide an optional name to hide the URL in logs.
 ## If a name is not provided the first word in the command is used.
@@ -472,4 +475,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 11 SEP 2026 06:50 UTC
+## => Content Auto Generated, 13 SEP 2026 07:48 UTC

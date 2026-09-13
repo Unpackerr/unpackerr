@@ -223,7 +223,7 @@ func TestForgottenStarrTitle(t *testing.T) {
 	t.Parallel()
 
 	unpack := testAuthUnpackerr(t)
-	unpack.Radarr = []*RadarrConfig{{
+	unpack.Radarr = instanceMap([]*RadarrConfig{{
 		Protocols: defaultProtocol,
 		Queue: &radarr.Queue{Records: []*radarr.QueueRecord{{
 			Title:      "Movie",
@@ -231,7 +231,7 @@ func TestForgottenStarrTitle(t *testing.T) {
 			Protocol:   starr.Protocol("torrent"),
 			OutputPath: "/dl/Movie",
 		}}},
-	}}
+	}})
 	unpack.Map["Movie"] = &Extract{App: starr.Radarr, Path: "/dl/Movie", Status: EXTRACTFAILED, NoRetry: true}
 
 	withKey := func(req *http.Request) {
@@ -249,10 +249,10 @@ func TestForgottenStarrTitle(t *testing.T) {
 		t.Fatal("forgotten title recreated from Starr queue")
 	}
 
-	unpack.Radarr[0].Queue.Records = nil
+	unpack.Radarr["0"].Queue.Records = nil
 	unpack.sweepForgotten()
 
-	unpack.Radarr[0].Queue.Records = []*radarr.QueueRecord{{
+	unpack.Radarr["0"].Queue.Records = []*radarr.QueueRecord{{
 		Title:      "Movie",
 		Status:     "completed",
 		Protocol:   starr.Protocol("torrent"),

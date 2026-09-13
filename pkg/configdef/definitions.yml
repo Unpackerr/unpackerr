@@ -149,7 +149,7 @@ defs:
       title: Sonarr Settings
       prefix: SONARR_
       text: |
-        ## Leaving the [[sonarr]] header uncommented (no leading hash #) without also
+        ## Leaving the [sonarr.0] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
       docker_example:
         url: http://sonarr:8989
@@ -159,7 +159,7 @@ defs:
       title: Radarr Settings
       prefix: RADARR_
       text: |
-        ## Leaving the [[radarr]] header uncommented (no leading hash #) without also
+        ## Leaving the [radarr.0] header uncommented (no leading hash #) without also
         ## uncommenting the api_key (remove the hash #) will produce a startup warning.
       docker_example:
         url: http://radarr:7878
@@ -555,10 +555,13 @@ sections:
       ###############################################################################
       ## The following sections can be repeated if you have more than one Sonarr,  ##
       ## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
-      ## You MUST uncomment the [[header]], url and api_key at for any Starr app.  ##
-      ## The [[sonarr]] and [[radarr]] headers come uncommented. Uncomment the url ##
+      ## Identify each instance with a short key: [sonarr.uhd], [folder.tv].       ##
+      ## Changed in v1.0.0 (September 2026): map keys, not [[array]] list rows.    ##
+      ## You MUST uncomment the [header.0], url and api_key for any Starr app.     ##
+      ## The [sonarr.0] and [radarr.0] headers come uncommented. Uncomment the url ##
       ## and api_key if they are in use. Comment them with a hash if they are not. ##
-      ## Uncomment the [[lidarr]] and/or [[readarr]] headers and values if in use. ##
+      ## Uncomment the [lidarr.0] and/or [readarr.0] headers and values if in use. ##
+      ## Do not set a bare UN_SONARR / UN_FOLDER / UN_WEBHOOK / UN_CMDHOOK.        ##
       ###############################################################################
       ###############################################################################
       ##           ALL LINES BEGINNING WITH A HASH # ARE IGNORED COMMENTS          ##
@@ -567,7 +570,7 @@ sections:
       ###############################################################################
 
   starr:
-    kind: list
+    kind: named
     params:
       - name: name
         envvar: NAME
@@ -752,8 +755,9 @@ sections:
     docs: |
       Folders are a way to watch a folder for things to extract. You can use this to
       monitor your download client's "move to" path if you're not using it with a Starr app.
+      Use `[folder.software]` (env `UN_FOLDER_software_PATH`). Do not set a bare `UN_FOLDER`.
     envvar_prefix: FOLDER_
-    kind: list
+    kind: named
     params:
       - name: path
         envvar: PATH
@@ -914,7 +918,7 @@ sections:
       # Created to integrate with notifiarr.com.
       # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
       # Can possibly be used with other services by providing a custom template_path.
-      ###### Don't forget to uncomment [[webhook]] and url at a minimum !!!!
+      ###### Don't forget to uncomment [webhook.0] and url at a minimum !!!!
     docs: |
       This application can send a `POST` webhook to a URL when an extraction begins, and again
       when it finishes. Configure 1 or more webhook URLs with the parameters below.
@@ -927,7 +931,7 @@ sections:
       - _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
       - Built-In Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`.
     envvar_prefix: WEBHOOK_
-    kind: list
+    kind: named
     params:
       - name: url
         envvar: URL
@@ -1079,9 +1083,9 @@ sections:
       #####################
       # Executes a script or command when an extraction queues, starts, finishes, and/or is deleted.
       # All data is passed in as environment variables. Try /usr/bin/env to see what variables are available.
-      ###### Don't forget to uncomment [[cmdhook]] at a minimum !!!!
+      ###### Don't forget to uncomment [cmdhook.0] at a minimum !!!!
     envvar_prefix: CMDHOOK_
-    kind: list
+    kind: named
     params:
       - name: command
         envvar: COMMAND

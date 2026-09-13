@@ -14,10 +14,10 @@ func TestConfigGetSection(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.Config.Debug = true
 	unpack.KeepHistory = 200
-	unpack.Sonarr = []*SonarrConfig{{}}
-	unpack.Sonarr[0].Path = "/downloads"
-	unpack.Sonarr[0].URL = "http://127.0.0.1:8989"
-	unpack.Sonarr[0].APIKey = strings.Repeat("k", apiKeyMinLength)
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{}})
+	unpack.Sonarr["0"].Path = "/downloads"
+	unpack.Sonarr["0"].URL = "http://127.0.0.1:8989"
+	unpack.Sonarr["0"].APIKey = strings.Repeat("k", apiKeyMinLength)
 	unpack.snapshotFileConfig()
 
 	withKey := func(req *http.Request) {

@@ -84,25 +84,25 @@ func (u *Unpackerr) replaceConfigSection(section ConfigSection, raw json.RawMess
 	case SectionWebserver:
 		return u.putWebserver(raw)
 	case SectionSonarr:
-		return false, putStarrList(u, raw, starr.Sonarr, SectionSonarr,
-			func(c *Config) *[]*SonarrConfig { return &c.Sonarr })
+		return false, putStarrList[SonarrConfig, *SonarrConfig](u, raw, starr.Sonarr, SectionSonarr,
+			func(c *Config) *InstanceMap[SonarrConfig] { return &c.Sonarr })
 	case SectionRadarr:
-		return false, putStarrList(u, raw, starr.Radarr, SectionRadarr,
-			func(c *Config) *[]*RadarrConfig { return &c.Radarr })
+		return false, putStarrList[RadarrConfig, *RadarrConfig](u, raw, starr.Radarr, SectionRadarr,
+			func(c *Config) *InstanceMap[RadarrConfig] { return &c.Radarr })
 	case SectionLidarr:
-		return false, putStarrList(u, raw, starr.Lidarr, SectionLidarr,
-			func(c *Config) *[]*LidarrConfig { return &c.Lidarr })
+		return false, putStarrList[LidarrConfig, *LidarrConfig](u, raw, starr.Lidarr, SectionLidarr,
+			func(c *Config) *InstanceMap[LidarrConfig] { return &c.Lidarr })
 	case SectionReadarr:
-		return false, putStarrList(u, raw, starr.Readarr, SectionReadarr,
-			func(c *Config) *[]*ReadarrConfig { return &c.Readarr })
+		return false, putStarrList[ReadarrConfig, *ReadarrConfig](u, raw, starr.Readarr, SectionReadarr,
+			func(c *Config) *InstanceMap[ReadarrConfig] { return &c.Readarr })
 	case SectionFolders:
 		return u.putFolders(raw)
 	case SectionWebhooks:
 		return false, u.putHooks(raw, u.validateWebhookList, SectionWebhooks,
-			func(c *Config) *[]*WebhookConfig { return &c.Webhook })
+			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Webhook })
 	case SectionCmdhooks:
 		return false, u.putHooks(raw, u.validateCmdhookList, SectionCmdhooks,
-			func(c *Config) *[]*WebhookConfig { return &c.Cmdhook })
+			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Cmdhook })
 	default:
 		return false, fmt.Errorf("%w: %s", errUnknownSection, section)
 	}
@@ -350,10 +350,16 @@ func (u *Unpackerr) overlayEnv(cfg *Config) error {
 		return nil
 	}
 
+	// ParseENV replaces map values instead of overlaying fields. Snapshot first
+	// so PUT-only data (name, paths, flags) survives UN_* URL/key/path fills.
+	before := cloneConfig(cfg)
+
 	_, err := cnfg.ParseENV(cfg, u.EnvPrefix)
 	if err != nil {
 		return fmt.Errorf("environment variables: %w", err)
 	}
+
+	u.keepPutInstanceFields(before, cfg)
 
 	return nil
 }
@@ -675,14 +681,14 @@ func normalizeStoredPassword(pass *CryptPass, fallback string, allowPlain bool) 
 	return pass.Set(user, secret)
 }
 
-// putStarrList replaces one Starr app list. The file copy keeps filepath:
-// values; the live copy is expanded, validated, and given clients. Queues
-// carry over by url+apikey so an unchanged app keeps polling state.
+// putStarrList replaces one Starr app map. The file copy keeps filepath:
+// values (minus env-owned fields); the live copy is expanded, validated, and
+// given clients. Queues carry over by url+apikey so an unchanged app keeps polling.
 func putStarrList[T any, P starrApp[T]](
-	unpackerr *Unpackerr, raw json.RawMessage, app starr.App, section ConfigSection, field func(*Config) *[]P,
+	unpackerr *Unpackerr, raw json.RawMessage, app starr.App, section ConfigSection, field func(*Config) *InstanceMap[T],
 ) error {
-	var list []P
-	if err := unmarshalList(raw, &list); err != nil {
+	var list InstanceMap[T]
+	if err := unmarshalInstances(raw, &list); err != nil {
 		return err
 	}
 
@@ -690,10 +696,10 @@ func putStarrList[T any, P starrApp[T]](
 		return err
 	}
 
-	fileList := cloneStarrList(list)
+	fileList := unpackerr.stripEnvFromStarr[T, P](section, cloneStarrMap[T, P](list))
 
 	preview, err := unpackerr.applyEnvOverlay(func(cfg *Config) {
-		*field(cfg) = cloneStarrList(list)
+		*field(cfg) = cloneStarrMap[T, P](list)
 	})
 	if err != nil {
 		return err
@@ -704,21 +710,26 @@ func putStarrList[T any, P starrApp[T]](
 		return err
 	}
 
-	for _, item := range liveList {
+	for key, item := range liveList {
+		if err := validateInstanceSlug(key); err != nil {
+			return err
+		}
+
 		if item == nil {
 			return errNilConfigEntry
 		}
 
-		if err := unpackerr.validateApp(item.conf(), app); err != nil {
+		server := asStarr[T, P](item)
+		if err := unpackerr.validateApp(server.conf(), app); err != nil {
 			return err
 		}
 
-		item.connect()
+		server.connect()
 	}
 
 	return unpackerr.commitConfig(func(cfg *Config) { *field(cfg) = fileList }, func() {
 		live := field(unpackerr.Config)
-		carryQueues(*live, liveList)
+		carryQueues[T, P](*live, liveList)
 		*live = liveList
 
 		unpackerr.ensureWorkThreads(unpackerr.starrAppCount())
@@ -729,15 +740,25 @@ func starrIdentity(conf *StarrConfig) string {
 	return conf.URL + "\x00" + conf.APIKey
 }
 
-func carryQueues[T any, P starrApp[T]](prev, next []P) {
+func carryQueues[T any, P starrApp[T]](prev, next InstanceMap[T]) {
 	seen := make(map[string]P, len(prev))
 	for _, app := range prev {
-		seen[starrIdentity(app.conf())] = app
+		if app == nil {
+			continue
+		}
+
+		server := asStarr[T, P](app)
+		seen[starrIdentity(server.conf())] = server
 	}
 
 	for _, app := range next {
-		if old, ok := seen[starrIdentity(app.conf())]; ok {
-			app.takeQueue(old)
+		if app == nil {
+			continue
+		}
+
+		server := asStarr[T, P](app)
+		if old, ok := seen[starrIdentity(server.conf())]; ok {
+			server.takeQueue(old)
 		}
 	}
 }
@@ -748,7 +769,11 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	for _, folder := range next.Folder {
+	for key, folder := range next.Folder {
+		if err := validateInstanceSlug(key); err != nil {
+			return false, err
+		}
+
 		if folder == nil {
 			return false, errNilConfigEntry
 		}
@@ -758,12 +783,12 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	fileList := cloneFolderList(next.Folder)
+	fileList := u.stripEnvFromFolders(cloneFolderMap(next.Folder))
 
 	preview, err := u.applyEnvOverlay(func(cfg *Config) {
 		cfg.Folder.Interval = next.Interval
 		cfg.Folder.Buffer = next.Buffer
-		cfg.Folders = cloneFolderList(next.Folder)
+		cfg.Folders = cloneFolderMap(next.Folder)
 	})
 	if err != nil {
 		return false, err
@@ -791,12 +816,12 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 
 func (u *Unpackerr) putHooks(
 	raw json.RawMessage,
-	validate func([]*WebhookConfig) error,
+	validate func(InstanceMap[WebhookConfig]) error,
 	section ConfigSection,
-	field func(*Config) *[]*WebhookConfig,
+	field func(*Config) *InstanceMap[WebhookConfig],
 ) error {
-	var list []*WebhookConfig
-	if err := unmarshalList(raw, &list); err != nil {
+	var list InstanceMap[WebhookConfig]
+	if err := unmarshalInstances(raw, &list); err != nil {
 		return err
 	}
 
@@ -804,10 +829,10 @@ func (u *Unpackerr) putHooks(
 		return err
 	}
 
-	fileList := cloneHookList(list)
+	fileList := u.stripEnvFromHooks(section, cloneHookMap(list), section == SectionCmdhooks)
 
 	preview, err := u.applyEnvOverlay(func(cfg *Config) {
-		*field(cfg) = cloneHookList(list)
+		*field(cfg) = cloneHookMap(list)
 	})
 	if err != nil {
 		return err

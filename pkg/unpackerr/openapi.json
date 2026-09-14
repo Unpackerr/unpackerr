@@ -159,6 +159,76 @@
           "text": {"type": "string"}
         }
       },
+      "WebStatusSnapshot": {
+        "type": "object",
+        "description": "Dashboard payload from GET /api/status when ui = true. Stats uses lowercase JSON keys (extracting, queued, waiting, failed, extracted, imported, deleted).",
+        "properties": {
+          "generatedAt": {"type": "string", "format": "date-time"},
+          "uptime": {"type": "string"},
+          "stats": {"$ref": "#/components/schemas/Stats"},
+          "buffers": {
+            "type": "object",
+            "properties": {
+              "deletes": {"type": "integer"},
+              "folderEvents": {"type": "integer"},
+              "folderUpdates": {"type": "integer"},
+              "hooks": {"type": "integer"},
+              "xtractUpdates": {"type": "integer"}
+            }
+          },
+          "counters": {
+            "type": "object",
+            "properties": {
+              "cmdFail": {"type": "integer"},
+              "cmdOK": {"type": "integer"},
+              "finished": {"type": "integer"},
+              "hookFail": {"type": "integer"},
+              "hookOK": {"type": "integer"},
+              "retries": {"type": "integer"}
+            }
+          },
+          "activeCount": {"type": "integer"},
+          "completedCount": {"type": "integer"},
+          "items": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/WebStatusItem"}
+          }
+        }
+      },
+      "WebStatusItem": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "active": {"type": "boolean"},
+          "completed": {"type": "boolean"},
+          "app": {"type": "string"},
+          "currentFile": {"type": "string"},
+          "deleteAt": {"type": "string", "format": "date-time"},
+          "deleteIn": {"type": "string"},
+          "elapsed": {"type": "string"},
+          "error": {"type": "string"},
+          "name": {"type": "string"},
+          "path": {"type": "string"},
+          "reason": {"type": "string"},
+          "status": {"type": "string"},
+          "statusText": {"type": "string"},
+          "updatedAt": {"type": "string", "format": "date-time"},
+          "progress": {
+            "type": "object",
+            "properties": {
+              "archive": {"type": "string"},
+              "archiveCount": {"type": "integer"},
+              "archiveIndex": {"type": "integer"},
+              "eta": {"type": "string"},
+              "percent": {"type": "number"},
+              "speed": {"type": "string"},
+              "summary": {"type": "string"},
+              "totalBytes": {"type": "string"},
+              "writtenBytes": {"type": "string"}
+            }
+          }
+        }
+      },
       "QueueItem": {
         "type": "object",
         "properties": {
@@ -449,6 +519,37 @@
             "description": "Counts",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Stats"}}}
           },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Status UI snapshot (only registered when ui = true)",
+        "description": "Requires system:queue:read. Lock-free copy of the dashboard snapshot: queue items, extraction progress, speed/ETA, and recently completed extracts retained until cleared.",
+        "responses": {
+          "200": {
+            "description": "Status snapshot",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebStatusSnapshot"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/status/clear-completed": {
+      "post": {
+        "tags": ["system"],
+        "summary": "Hide completed items from the status UI (only registered when ui = true)",
+        "description": "Requires system:history:write. Runs on the main loop. Dismisses completed rows from the status snapshot; a later extract of the same path becomes visible again. Does not delete history JSONL or live queue items.",
+        "responses": {
+          "200": {
+            "description": "Updated status snapshot",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WebStatusSnapshot"}}}
+          },
+          "504": {"$ref": "#/components/responses/GatewayTimeout"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

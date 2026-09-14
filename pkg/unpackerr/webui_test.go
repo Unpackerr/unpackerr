@@ -30,9 +30,18 @@ func TestStatusPageIncludesResizableColumns(t *testing.T) {
 		`PBKDF2`,
 		`iterations: 210000`,
 		`response.status === 401`,
+		`Sign in to Unpackerr`,
+		`https://github.com/Unpackerr/unpackerr`,
+		`stats[key]`,
 	} {
 		if !strings.Contains(statusPageHTML, fragment) {
 			t.Errorf("status page does not contain column resizing fragment %q", fragment)
+		}
+	}
+
+	for _, leak := range []string{"UnpackUI", "TheBadFella", "jsdelivr.net"} {
+		if strings.Contains(statusPageHTML, leak) {
+			t.Errorf("status page still contains fork leftover %q", leak)
 		}
 	}
 }
@@ -67,6 +76,10 @@ func TestWebServerUIRoutes(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "status-shell") {
 		t.Fatal("expected web UI HTML to be served at root when UI is enabled")
 	}
+
+	if rec.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("expected X-Frame-Options DENY, got %q", rec.Header().Get("X-Frame-Options"))
+	}
 }
 
 func TestWebServerRootDefaultWithoutUI(t *testing.T) {
@@ -89,8 +102,15 @@ func TestWebServerRootDefaultWithoutUI(t *testing.T) {
 	if strings.TrimSpace(rec.Body.String()) != "Welcome!" {
 		t.Fatalf("expected Welcome!, got %q", rec.Body.String())
 	}
-}
 
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/status", nil)
+	rec = httptest.NewRecorder()
+	unpackerr.Webserver.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for /api/status when ui=false, got %d %q", rec.Code, rec.Body.String())
+	}
+}
 
 func TestBuildWebStateIncludesProgress(t *testing.T) {
 	t.Parallel()
@@ -338,6 +358,24 @@ func TestWebStatusAPI(t *testing.T) {
 	if snapshot.Stats == nil {
 		t.Fatal("expected stats in payload")
 	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("raw decode: %v", err)
+	}
+
+	var stats map[string]json.RawMessage
+	if err := json.Unmarshal(raw["stats"], &stats); err != nil {
+		t.Fatalf("stats decode: %v", err)
+	}
+
+	if _, ok := stats["extracting"]; !ok {
+		t.Fatalf("expected lowercase extracting key, got %v", stats)
+	}
+
+	if _, ok := stats["Extracting"]; ok {
+		t.Fatal("did not expect PascalCase Extracting key")
+	}
 }
 
 func TestBuildWebStateKeepsCompletedItemsAfterRemoval(t *testing.T) {
@@ -386,14 +424,43 @@ func TestWebClearCompletedAPI(t *testing.T) {
 	delete(unpackerr.Map, "Example.Release")
 	unpackerr.refreshWebState(now.Add(time.Minute))
 
+	snapshot := unpackerr.clearCompletedWebItems(now.Add(2 * time.Minute))
+
+	if snapshot.CompletedCount != 0 {
+		t.Fatalf("expected completed items to be cleared, got %d", snapshot.CompletedCount)
+	}
+
+	if len(snapshot.Items) != 0 {
+		t.Fatalf("expected no items after clear, got %d", len(snapshot.Items))
+	}
+}
+
+func TestWebClearCompletedAPIHandlerUsesMainLoop(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 4, 12, 12, 0, 0, 0, time.UTC)
+	unpackerr := New()
+	go unpackerr.runMainTasks(t.Context())
+
+	unpackerr.Map["Example.Release"] = &Extract{
+		App:     FolderString,
+		Path:    "/downloads/Example.Release",
+		Status:  DELETED,
+		Updated: now,
+		IDs:     map[string]any{"title": "Example Release"},
+	}
+	unpackerr.refreshWebState(now)
+	delete(unpackerr.Map, "Example.Release")
+	unpackerr.refreshWebState(now.Add(time.Minute))
+
 	req := httptest.NewRequestWithContext(
-		context.Background(), http.MethodPost, "/api/status/clear-completed", nil,
+		t.Context(), http.MethodPost, "/api/status/clear-completed", nil,
 	)
 	rec := httptest.NewRecorder()
 	unpackerr.webClearCompletedAPI(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rec.Code)
+		t.Fatalf("expected 200, got %d %q", rec.Code, rec.Body.String())
 	}
 
 	var snapshot webStatusAPITestResponse
@@ -404,8 +471,127 @@ func TestWebClearCompletedAPI(t *testing.T) {
 	if snapshot.CompletedCount != 0 {
 		t.Fatalf("expected completed items to be cleared, got %d", snapshot.CompletedCount)
 	}
+}
 
-	if len(snapshot.Items) != 0 {
-		t.Fatalf("expected no items after clear, got %d", len(snapshot.Items))
+func TestBuildWebStateShowsNewCompletionAfterClear(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 4, 12, 12, 0, 0, 0, time.UTC)
+	unpackerr := New()
+	unpackerr.Map["Example.Release"] = &Extract{
+		App:     FolderString,
+		Path:    "/downloads/Example.Release",
+		Status:  DELETED,
+		Updated: now,
+		IDs:     map[string]any{"title": "Example Release"},
+	}
+	unpackerr.refreshWebState(now)
+	unpackerr.clearCompletedWebItems(now.Add(time.Minute))
+
+	unpackerr.Map["Example.Release"].Status = EXTRACTING
+	unpackerr.Map["Example.Release"].Updated = now.Add(2 * time.Minute)
+	unpackerr.refreshWebState(now.Add(2 * time.Minute))
+
+	unpackerr.Map["Example.Release"].Status = EXTRACTED
+	unpackerr.Map["Example.Release"].Updated = now.Add(3 * time.Minute)
+	snapshot := unpackerr.buildWebState(now.Add(3 * time.Minute))
+
+	if snapshot.CompletedCount != 1 {
+		t.Fatalf("expected the new completion to show after clear, got completed=%d items=%d",
+			snapshot.CompletedCount, len(snapshot.Items))
+	}
+}
+
+func TestWebStatusRoutesRequireAuth(t *testing.T) {
+	t.Parallel()
+
+	unpackerr := New()
+	unpackerr.Webserver.UI = true
+	unpackerr.Webserver.URLBase = "/"
+	unpackerr.Webserver.router = http.NewServeMux()
+	unpackerr.webRoutes()
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/status", nil)
+	rec := httptest.NewRecorder()
+	unpackerr.Webserver.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /api/status without auth: %d %q", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/status/clear-completed", nil)
+	rec = httptest.NewRecorder()
+	unpackerr.Webserver.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("POST /api/status/clear-completed without auth: %d %q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSkipWebAccessLogOnlyStatusWhenUIEnabled(t *testing.T) {
+	t.Parallel()
+
+	unpackerr := New()
+	unpackerr.Webserver.UI = true
+	unpackerr.Webserver.URLBase = "/"
+
+	var withLog, withoutLog int
+	handler := unpackerr.skipWebAccessLog(
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) { withLog++ }),
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) { withoutLog++ }),
+	)
+
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/status", nil))
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/stats", nil))
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+
+	if withoutLog != 1 {
+		t.Fatalf("expected only GET /api/status to skip the access log, got %d", withoutLog)
+	}
+
+	if withLog != 2 {
+		t.Fatalf("expected /api/stats and / to be logged, got %d", withLog)
+	}
+}
+
+func TestSkipWebAccessLogDisabledWhenUIOff(t *testing.T) {
+	t.Parallel()
+
+	unpackerr := New()
+	unpackerr.Webserver.UI = false
+	unpackerr.Webserver.URLBase = "/"
+
+	var withLog, withoutLog int
+	handler := unpackerr.skipWebAccessLog(
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) { withLog++ }),
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) { withoutLog++ }),
+	)
+
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/status", nil))
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/stats", nil))
+
+	if withoutLog != 0 || withLog != 2 {
+		t.Fatalf("ui=false must not skip access logs: with=%d without=%d", withLog, withoutLog)
+	}
+}
+
+func TestWebserverRestartRequiredIncludesUI(t *testing.T) {
+	t.Parallel()
+
+	cur := &WebServer{ListenAddr: "127.0.0.1:5656"}
+	next := cloneWebserver(cur)
+	next.UI = true
+
+	if !webserverRestartRequired(cur, next) {
+		t.Fatal("changing ui must require a restart")
+	}
+
+	if webserverRestartRequired(cur, cloneWebserver(cur)) {
+		t.Fatal("unchanged webserver must not require a restart")
 	}
 }

@@ -367,6 +367,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 - **URLBase** `{`/`}` rejected at load, start, and PUT so ServeMux does not treat urlbase as a wildcard (or panic on `/foo/{/`).
 - **Index pattern** `…/{$}` is required with stdlib mux.
 - **OpenAPI** is committed JSON, not swag-generated, so the binary cannot accidentally embed secrets.
+- **Status UI** (`webserver.ui`): routes `/`, `/api/status`, and `/api/status/clear-completed` register only when `ui = true`. HTTP reads `webState` via `atomic.Pointer`; `refreshWebState` and clear-completed run on the main loop (`onMainLoop`). Do not `Store` the snapshot from an HTTP goroutine. Access-log skip is only `GET /api/status` while the UI is on.
 - **configdef** is the source of example conf, compose env names, and the TOML writer. PUT persist goes through it so comments/defaults stay consistent.
 - **`--reset`:** new UI password, write file, print, exit. Not an HTTP route.
 - **Websockets** were anticipated (`{urlbase}ws` on a mux that skips apache log). No WS API in this stack yet; do not rip that mux split out casually.
@@ -378,7 +379,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 | Section | Live apply | Restart |
 | --- | --- | --- |
 | general | Yes; `resetTickers`; expand passwords | Logger / parallel / file+dir mode / timeout / delete_delay |
-| webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, HTTP log |
+| webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, **ui**, HTTP log |
 | sonarr…readarr | Rebuild clients, carry queues, grow workers | No |
 | folders | Live map updated | **Always** (watcher) |
 | webhooks / cmdhooks | Replace maps, ensure worker | No |
@@ -397,6 +398,8 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 | `pkg/unpackerr/auth.go` | login + authenticate order |
 | `pkg/unpackerr/permissions.go` | perm strings |
 | `pkg/unpackerr/webserver.go` | mux, urlbase, listen |
+| `pkg/unpackerr/webui.go` | status snapshot + `/api/status` |
+| `pkg/unpackerr/webui.html` | embedded status SPA |
 | `pkg/unpackerr/restart.go` | idle re-exec |
 | `pkg/unpackerr/queue_actions.go` | retry/forget |
 | `pkg/unpackerr/historyfile.go` | JSONL |

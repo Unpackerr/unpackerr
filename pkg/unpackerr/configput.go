@@ -546,6 +546,7 @@ func webserverRestartRequired(cur, next *WebServer) bool {
 		curCopy.SSLKeyFile != nextCopy.SSLKeyFile ||
 		curCopy.Metrics != nextCopy.Metrics ||
 		curCopy.Pprof != nextCopy.Pprof ||
+		curCopy.UI != nextCopy.UI ||
 		curCopy.LogFile != nextCopy.LogFile ||
 		curCopy.LogFiles != nextCopy.LogFiles ||
 		curCopy.LogFileMb != nextCopy.LogFileMb

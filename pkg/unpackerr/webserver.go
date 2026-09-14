@@ -214,11 +214,14 @@ func Index(w http.ResponseWriter, _ *http.Request) {
 
 // skipWebAccessLog suppresses noisy UI polling from the access log while still serving the route.
 func (u *Unpackerr) skipWebAccessLog(withAccessLog, withoutAccessLog http.Handler) http.Handler {
+	if !u.Webserver.UI {
+		return withAccessLog
+	}
+
 	statusPath := path.Join(u.Webserver.URLBase, "/api/status")
-	statsPath := path.Join(u.Webserver.URLBase, "/api/stats")
 
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method == http.MethodGet && (request.URL.Path == statusPath || request.URL.Path == statsPath) {
+		if request.Method == http.MethodGet && request.URL.Path == statusPath {
 			withoutAccessLog.ServeHTTP(writer, request)
 			return
 		}

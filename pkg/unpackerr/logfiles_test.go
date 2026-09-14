@@ -178,6 +178,14 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" {
 		t.Fatalf("%+v", got)
 	}
+
+	item.Path = `C:\dl\show`
+	item.XProg.Progress.XFile.FilePath = `C:\dl\show\a.rar`
+
+	got = queueFromExtract("Show.Name", item)
+	if got.Archive != "a.rar" {
+		t.Fatalf("backslash archive %q", got.Archive)
+	}
 }
 
 func TestLiveHubDropsUnknownTopic(t *testing.T) {

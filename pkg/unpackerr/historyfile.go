@@ -435,7 +435,8 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 			queue.Extracted = item.XProg.Extracted
 
 			if prog.XFile != nil {
-				queue.Archive = strings.TrimLeft(strings.TrimPrefix(prog.XFile.FilePath, item.Path), string(filepath.Separator))
+				rel := strings.TrimPrefix(prog.XFile.FilePath, item.Path)
+				queue.Archive = strings.TrimLeft(filepath.ToSlash(rel), `/\`)
 			}
 		}
 	}

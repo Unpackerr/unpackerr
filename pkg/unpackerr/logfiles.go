@@ -121,8 +121,10 @@ func (u *Unpackerr) logFileInfos() *LogFileInfos {
 	paths := u.activeLogPaths()
 	infos := GetFilePaths(paths...)
 
-	if len(infos.List) == 0 {
-		infos.List = []*LogFileInfo{liveLogInfo()}
+	// App stdout (id live) is independent of HTTP/file logs; keep it even when
+	// those files exist, and as a fallback when a configured file is missing.
+	if u.LogFile == "" || len(infos.List) == 0 {
+		infos.List = append([]*LogFileInfo{liveLogInfo()}, infos.List...)
 	}
 
 	infos.List = append([]*LogFileInfo{u.recentErrorsInfo()}, infos.List...)

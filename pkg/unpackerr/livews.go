@@ -54,6 +54,7 @@ func (u *Unpackerr) liveWSHandler(response http.ResponseWriter, request *http.Re
 }
 
 // liveWSWrite is the only writer to conn. It also pings so proxies keep the socket.
+// CloseNow on write/ping failure unblocks liveWSRead so the handler unregisters.
 func (u *Unpackerr) liveWSWrite(ctx context.Context, conn *websocket.Conn, client *liveClient) {
 	ticker := time.NewTicker(wsPingInterval)
 	defer ticker.Stop()
@@ -69,6 +70,7 @@ func (u *Unpackerr) liveWSWrite(ctx context.Context, conn *websocket.Conn, clien
 			cancel()
 
 			if err != nil {
+				_ = conn.CloseNow()
 				return
 			}
 		case <-ticker.C:
@@ -78,6 +80,7 @@ func (u *Unpackerr) liveWSWrite(ctx context.Context, conn *websocket.Conn, clien
 			cancel()
 
 			if err != nil {
+				_ = conn.CloseNow()
 				return
 			}
 		}

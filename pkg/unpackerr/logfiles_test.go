@@ -124,6 +124,29 @@ func TestRecentErrorsLog(t *testing.T) {
 	}
 }
 
+func TestLogFileInfosKeepsLiveWithHTTPLog(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	httpLog := filepath.Join(dir, "http.log")
+	if err := os.WriteFile(httpLog, []byte("req\n"), defaultFileMode); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+	unpack.Webserver.LogFile = httpLog
+
+	infos := unpack.logFileInfos()
+	if len(infos.List) < 3 || infos.List[0].ID != errorLogID || infos.List[1].ID != liveLogID {
+		t.Fatalf("live hidden %+v", infos.List)
+	}
+
+	if unpack.findLogFile(liveLogID) == nil {
+		t.Fatal("live id missing")
+	}
+}
+
 func TestLogFollowSnapshotUnknownID(t *testing.T) {
 	t.Parallel()
 

@@ -180,7 +180,7 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 	}
 
 	item.Path = `C:\dl\show`
-	item.XProg.Progress.XFile.FilePath = `C:\dl\show\a.rar`
+	item.XProg.XFile.FilePath = `C:\dl\show\a.rar`
 
 	got = queueFromExtract("Show.Name", item)
 	if got.Archive != "a.rar" {

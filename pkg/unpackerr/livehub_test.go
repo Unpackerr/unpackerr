@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestStatsUnchangedWithStarrQueues(t *testing.T) {
@@ -148,5 +149,26 @@ func TestWSOriginPatternsEmptyIsSameOrigin(t *testing.T) {
 	got := unpack.wsOriginPatterns()
 	if len(got) != 1 || got[0] != "localhost:5173" {
 		t.Fatalf("trimmed origins %q", got)
+	}
+}
+
+func TestLiveHubRunStops(t *testing.T) {
+	t.Parallel()
+
+	hub := newLiveHub()
+	done := make(chan struct{})
+
+	go func() {
+		hub.run()
+		close(done)
+	}()
+
+	hub.shutdown()
+	hub.shutdown()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("run did not stop")
 	}
 }

@@ -533,7 +533,7 @@ sections:
           Empty keeps the library same-origin check (the embedded UI). Add hosts
           when a browser on another origin should open GET /ws, for example
           localhost:5173 or https://ui.example.com. Patterns use path.Match;
-          a URI scheme is matched as scheme://host. Do not set `*` unless you
+          a URI scheme is matched as scheme://host. Do not set * unless you
           intend to allow every origin.
           example: ws_origins = [ "localhost:5173" ]
       - name: api_keys

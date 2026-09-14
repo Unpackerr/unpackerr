@@ -107,11 +107,13 @@ type liveHub struct {
 	pendingQ   *queueFrame // latest queue snapshot this tick; overwritten, never queued
 	lastStats  Stats
 	haveStats  bool
-	statsFn    func() *Stats // Unpackerr.stats; set in Start so tests can stub it
+	statsFn    func() *Stats // Unpackerr.stats; set in New so tests can stub it
 	appLogID   string
 	httpLogID  string
 	errMu      sync.Mutex
 	errors     []errorFrame // ring of recent Errorf lines for GET /api/logs/errors
+	stop       chan struct{}
+	stopOnce   sync.Once
 }
 
 func newLiveHub() *liveHub {
@@ -123,6 +125,7 @@ func newLiveHub() *liveHub {
 		clients:    make(map[*liveClient]struct{}),
 		pending:    make(map[string]QueueItem),
 		appLogID:   liveLogID,
+		stop:       make(chan struct{}),
 	}
 }
 
@@ -133,6 +136,8 @@ func (h *liveHub) run() {
 
 	for {
 		select {
+		case <-h.stop:
+			return
 		case client := <-h.register:
 			h.clients[client] = struct{}{}
 		case client := <-h.unregister:
@@ -147,6 +152,14 @@ func (h *liveHub) run() {
 			h.flushStats()
 		}
 	}
+}
+
+func (h *liveHub) shutdown() {
+	if h == nil {
+		return
+	}
+
+	h.stopOnce.Do(func() { close(h.stop) })
 }
 
 // flushProgress sends at most one progress frame per item ID per tick.

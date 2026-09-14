@@ -177,8 +177,6 @@ func New() *Unpackerr {
 	}
 
 	unpackerr.hub.statsFn = unpackerr.stats
-	go unpackerr.hub.run()
-
 	unpackerr.onError = unpackerr.hub.notifyError
 
 	return unpackerr
@@ -255,6 +253,7 @@ func Start() error {
 	unpackerr.ensureHookWorker()
 
 	go unpackerr.watchDeleteChannel()
+	go unpackerr.hub.run()
 
 	unpackerr.startWebServer()
 	unpackerr.watchWorkThread()

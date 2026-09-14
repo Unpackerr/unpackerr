@@ -156,6 +156,8 @@ func (u *Unpackerr) waitForExit() {
 
 		u.Printf("[unpackerr] Need help? %s\n=====> Exiting! Caught Signal: %v", helpLink, sig)
 
+		u.hub.shutdown()
+
 		return
 	}
 }

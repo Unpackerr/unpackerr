@@ -134,3 +134,18 @@ func decodeQueue(t *testing.T, raw []byte) queueFrame {
 
 	return got
 }
+
+func TestWSOriginPatternsEmptyIsSameOrigin(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	if unpack.wsOriginPatterns() != nil {
+		t.Fatal("empty origins must keep the library same-origin default")
+	}
+
+	unpack.Webserver.WSOrigins = StringSlice{"", " localhost:5173 "}
+	got := unpack.wsOriginPatterns()
+	if len(got) != 1 || got[0] != "localhost:5173" {
+		t.Fatalf("trimmed origins %q", got)
+	}
+}

@@ -602,6 +602,7 @@ func (u *Unpackerr) applyLiveWebserverAuth(next *WebServer) {
 	u.Webserver.Roles = cloneRoles(next.Roles)
 	u.Webserver.UIPassword = next.UIPassword
 	u.Webserver.Upstreams = append(StringSlice(nil), next.Upstreams...)
+	u.Webserver.WSOrigins = append(StringSlice(nil), next.WSOrigins...)
 	u.Webserver.allow = next.allow
 	u.Webserver.keyPerms = next.keyPerms
 }

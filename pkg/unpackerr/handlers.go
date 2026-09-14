@@ -13,7 +13,10 @@ import (
 	"golift.io/xtractr"
 )
 
-const noteNoExtractable = "no extractable files"
+const (
+	noteNoExtractable    = "no extractable files"
+	noteWaitingSyncthing = "waiting for syncthing"
+)
 
 // StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
@@ -162,6 +165,8 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	if item.Syncthing {
 		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
 			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, tmpFile)
+			u.setItemNote(name, item, noteWaitingSyncthing)
+
 			return
 		}
 	}

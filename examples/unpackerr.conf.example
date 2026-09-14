@@ -137,6 +137,13 @@ passwords = []
 ## In the future it may control auth proxy trust. Must be a list of strings.
 ## example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
  upstreams = []
+## Empty keeps the library same-origin check (the embedded UI). Add hosts
+## when a browser on another origin should open GET /ws, for example
+## localhost:5173 or https://ui.example.com. Patterns use path.Match;
+## a URI scheme is matched as scheme://host. Do not set * unless you
+## intend to allow every origin.
+## example: ws_origins = [ "localhost:5173" ]
+ ws_origins = []
 ## Nested [[webserver.api_keys]] tables, not an inline array. Each key is 60–150 ASCII
 ## characters. Names and key values must be unique. Built-in role `admin` grants every
 ## permission. Custom roles are listed under [webserver.roles].
@@ -478,4 +485,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 13 SEP 2026 08:49 UTC
+## => Content Auto Generated, 13 SEP 2026 23:07 UTC

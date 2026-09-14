@@ -628,24 +628,6 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }
-      },
-      "delete": {
-        "tags": ["logs"],
-        "summary": "Delete a rotated log file that is not in use",
-        "description": "Requires system:logs:write. In-use files return 409.",
-        "parameters": [
-          {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted",
-            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
-          },
-          "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
-          "409": {"description": "File is in use", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "403": {"$ref": "#/components/responses/Forbidden"}
-        }
       }
     },
     "/api/logs/{id}/download": {

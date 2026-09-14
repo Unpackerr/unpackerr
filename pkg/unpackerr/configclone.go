@@ -80,6 +80,7 @@ func cloneWebserver(src *WebServer) *WebServer {
 
 	dst := *src
 	dst.Upstreams = append(StringSlice(nil), src.Upstreams...)
+	dst.WSOrigins = append(StringSlice(nil), src.WSOrigins...)
 	dst.APIKeys = cloneAPIKeys(src.APIKeys)
 	dst.Roles = cloneRoles(src.Roles)
 	dst.router = nil

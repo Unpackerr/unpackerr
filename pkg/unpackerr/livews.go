@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -22,7 +23,7 @@ func (u *Unpackerr) liveWSHandler(response http.ResponseWriter, request *http.Re
 	info, _ := request.Context().Value(authCtxKey).(authInfo)
 
 	conn, err := websocket.Accept(response, request, &websocket.AcceptOptions{
-		OriginPatterns: []string{"*"},
+		OriginPatterns: u.wsOriginPatterns(),
 	})
 	if err != nil {
 		return
@@ -170,4 +171,30 @@ func enqueueFrame(client *liveClient, frame wsFrame) {
 	}
 
 	client.enqueue(body)
+}
+
+// wsOriginPatterns is the Trust-page allowlist. Empty keeps the library
+// same-origin default so the embedded UI works without extra config.
+func (u *Unpackerr) wsOriginPatterns() []string {
+	if u.Webserver == nil {
+		return nil
+	}
+
+	u.uiPassMu.RLock()
+	defer u.uiPassMu.RUnlock()
+
+	out := make([]string, 0, len(u.Webserver.WSOrigins))
+
+	for _, origin := range u.Webserver.WSOrigins {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			out = append(out, origin)
+		}
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
 }

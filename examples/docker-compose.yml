@@ -54,6 +54,7 @@ services:
     - UN_WEBSERVER_SSL_KEY_FILE=
     - UN_WEBSERVER_URLBASE=/
     - UN_WEBSERVER_UPSTREAMS=
+    - UN_WEBSERVER_WS_ORIGINS=
     ## Folder Settings
     - UN_FOLDERS_INTERVAL=1s
     - UN_FOLDERS_BUFFER=20000
@@ -167,4 +168,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 13 SEP 2026 07:48 UTC
+## => Content Auto Generated, 13 SEP 2026 23:07 UTC

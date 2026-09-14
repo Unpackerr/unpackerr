@@ -120,26 +120,33 @@ func (u *Unpackerr) logFollowSnapshot(fileID string, count int) []string {
 		return splitLogLines(formatErrorLines(u.hub.errorSnapshot(), count, 0))
 	}
 
-	info := u.findLogFile(fileID)
-	if info != nil && info.Path != "" && !isSyntheticLog(info) {
-		raw, err := getLinesFromFile(info.Path, count, 0)
-		if err == nil && len(raw) > 0 {
-			return splitLogLines(string(raw))
-		}
-	}
-
-	switch fileID {
-	case u.hub.httpLogID:
-		if u.httpLogTee != nil {
-			return lastN(u.httpLogTee.ring.snapshot(), count)
-		}
-	default:
+	if fileID == liveLogID {
 		if u.appLogTee != nil {
 			return lastN(u.appLogTee.ring.snapshot(), count)
 		}
+
+		return nil
 	}
 
-	return nil
+	if u.hub != nil && fileID == u.hub.httpLogID {
+		if u.httpLogTee != nil {
+			return lastN(u.httpLogTee.ring.snapshot(), count)
+		}
+
+		return nil
+	}
+
+	info := u.findLogFile(fileID)
+	if info == nil || info.Path == "" || isSyntheticLog(info) {
+		return nil
+	}
+
+	raw, err := getLinesFromFile(info.Path, count, 0)
+	if err != nil {
+		return nil
+	}
+
+	return splitLogLines(string(raw))
 }
 
 func lastN(lines []string, count int) []string {

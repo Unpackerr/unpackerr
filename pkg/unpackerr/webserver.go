@@ -29,6 +29,7 @@ type WebServer struct {
 	SSLKeyFile string          `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
 	URLBase    string          `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
 	Upstreams  StringSlice     `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	WSOrigins  StringSlice     `json:"wsOrigins"   toml:"ws_origins"    xml:"ws_origins"    yaml:"wsOrigins"`
 	UIPassword CryptPass       `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
 	APIKeys    []APIKey        `json:"apiKeys"     toml:"api_keys"      xml:"api_keys"      yaml:"apiKeys"`
 	Roles      map[string]Role `json:"roles"       toml:"roles"         xml:"roles"         yaml:"roles"`
@@ -141,10 +142,6 @@ func (w *WebServer) handlePost(route string, handler http.HandlerFunc) {
 
 func (w *WebServer) handlePut(route string, handler http.HandlerFunc) {
 	w.handle(http.MethodPut, route, handler)
-}
-
-func (w *WebServer) handleDelete(route string, handler http.HandlerFunc) {
-	w.handle(http.MethodDelete, route, handler)
 }
 
 func (u *Unpackerr) webRoutes() {

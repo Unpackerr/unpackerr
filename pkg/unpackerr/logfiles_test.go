@@ -124,27 +124,15 @@ func TestRecentErrorsLog(t *testing.T) {
 	}
 }
 
-func TestDeleteInUseLogRejected(t *testing.T) {
+func TestLogFollowSnapshotUnknownID(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
+	unpack := New()
+	unpack.appLogTee = newLogTee(unpack.hub, liveLogID)
+	unpack.appLogTee.ring.add("app-line")
 
-	current := filepath.Join(dir, "unpackerr.log")
-	if err := os.WriteFile(current, []byte("line\n"), defaultFileMode); err != nil {
-		t.Fatal(err)
-	}
-
-	unpack := testAuthUnpackerr(t)
-	unpack.LogFile = current
-	withKey := func(req *http.Request) {
-		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
-	}
-
-	id := encodeLogFileID(current)
-
-	rec := doAuth(t, unpack, http.MethodDelete, "/api/logs/"+id, "", withKey)
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("delete used %d %s", rec.Code, rec.Body.String())
+	if got := unpack.logFollowSnapshot("not-a-real-id", 50); got != nil {
+		t.Fatalf("unknown id leaked tee %q", got)
 	}
 }
 

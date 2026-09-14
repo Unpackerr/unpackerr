@@ -21,8 +21,7 @@ import (
 
 var (
 	errLogNotFound = errors.New("log file not found")
-	errLogInUse    = errors.New("log file is in use")
-	errLogLive     = errors.New("live logs cannot be downloaded or deleted")
+	errLogLive     = errors.New("live logs cannot be downloaded")
 )
 
 // LogFileInfos holds metadata about files in the log directories.
@@ -55,7 +54,6 @@ func (u *Unpackerr) registerLogRoutes() {
 	u.Webserver.handleGet(join("logs"), u.requirePerm(PermReadSystemLogs, u.logsListHandler))
 	u.Webserver.handleGet(join("logs/{id}/download"), u.requirePerm(PermReadSystemLogs, u.logsDownloadHandler))
 	u.Webserver.handleGet(join("logs/{id}"), u.requirePerm(PermReadSystemLogs, u.logsGetHandler))
-	u.Webserver.handleDelete(join("logs/{id}"), u.requirePerm(PermWriteSystemLogs, u.logsDeleteHandler))
 }
 
 func (u *Unpackerr) logsListHandler(response http.ResponseWriter, _ *http.Request) {
@@ -117,27 +115,6 @@ func (u *Unpackerr) logsDownloadHandler(response http.ResponseWriter, request *h
 	}
 
 	_, _ = io.Copy(entry, file)
-}
-
-func (u *Unpackerr) logsDeleteHandler(response http.ResponseWriter, request *http.Request) {
-	info := u.findLogFile(request.PathValue("id"))
-	if info == nil {
-		writeJSON(response, http.StatusNotFound, map[string]string{"error": errLogNotFound.Error()})
-		return
-	}
-
-	if info.Used || isSyntheticLog(info) {
-		writeJSON(response, http.StatusConflict, map[string]string{"error": errLogInUse.Error()})
-		return
-	}
-
-	if err := os.Remove(info.Path); err != nil {
-		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-
-	u.Printf("[user requested] Deleted log file: %s", info.Path)
-	writeJSON(response, http.StatusOK, map[string]string{"status": "ok", "id": info.ID})
 }
 
 func (u *Unpackerr) logFileInfos() *LogFileInfos {

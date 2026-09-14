@@ -44,6 +44,7 @@ services:
     - UN_FILE_MODE=0644
     - UN_DIR_MODE=0755
     ## Web Server
+    - UN_WEBSERVER_UI=false
     - UN_WEBSERVER_METRICS=false
     - UN_WEBSERVER_PPROF=false
     - UN_WEBSERVER_LISTEN_ADDR=0.0.0.0:5656
@@ -167,4 +168,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 13 SEP 2026 07:48 UTC
+## => Content Auto Generated, 14 SEP 2026 20:42 UTC

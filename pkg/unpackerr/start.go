@@ -102,6 +102,7 @@ type Unpackerr struct {
 	histMu           sync.Mutex // records and the JSONL file; HTTP reads, main loop appends.
 	histLines        int        // lines in the file since the last compaction.
 	records          []HistoryRecord
+	webState         atomic.Pointer[webStatusSnapshot]
 }
 
 type fileDeleteReq struct {
@@ -244,6 +245,7 @@ func Start() error {
 
 	go unpackerr.watchDeleteChannel()
 
+	unpackerr.refreshWebState(version.Started)
 	unpackerr.startWebServer()
 	unpackerr.watchWorkThread()
 	unpackerr.startTray() // runs tray or waits for exit depending on hasGUI.
@@ -448,6 +450,7 @@ func (u *Unpackerr) Run() {
 	u.PollFolders()          // This initializes channel(s) used below.
 	u.retrieveAppQueues(now) // Get in-app queues on startup.
 	u.checkQueueChanges(now) // Same pairing as the poller tick; restored IMPORTED may still be queued.
+	u.refreshWebState(now)
 
 	// This is the "main go routine" in start.go.
 	for {
@@ -457,23 +460,29 @@ func (u *Unpackerr) Run() {
 			u.retrieveAppQueues(now)
 			// check for state changes in the qpp queues.
 			u.checkQueueChanges(now)
+			u.refreshWebState(now)
 		case now = <-u.tickers.xtractr.C:
 			// Check if any completed items have elapsed their start delay.
 			u.extractCompletedDownloads(now)
+			u.refreshWebState(now)
 		case now = <-cleaner.C:
 			// Check for extraction state changes and act on them.
 			u.checkExtractDone(now)
 			u.checkFolderStats(now)
+			u.refreshWebState(now)
 			u.maybeRestart()
 		case resp := <-u.updates:
 			// xtractr callback for starr download extraction.
 			u.handleXtractrCallback(resp)
+			u.refreshWebState(resp.Started.Add(resp.Elapsed))
 		case resp := <-u.folders.Updates:
 			// xtractr callback for a watched folder extraction.
 			u.folderXtractrCallback(resp)
+			u.refreshWebState(resp.Started.Add(resp.Elapsed))
 		case event := <-u.folders.Events:
 			// file system event for watched folder.
 			u.processEvent(event, now)
+			u.refreshWebState(now)
 		case task := <-u.taskChan:
 			// HTTP config PUT and queue retry/forget mutate live state on this goroutine.
 			task.result <- task.fn()
@@ -485,9 +494,11 @@ func (u *Unpackerr) Run() {
 		case prog := <-u.progChan:
 			// Update progress for in-process extractions.
 			u.handleProgress(prog)
+			u.refreshWebState(time.Now())
 		case now = <-u.tickers.progress.C:
 			// Print the collected progress info.
 			u.printProgress(now)
+			u.refreshWebState(now)
 		}
 	}
 }

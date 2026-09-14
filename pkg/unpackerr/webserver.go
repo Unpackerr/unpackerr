@@ -18,6 +18,7 @@ import (
 var errURLBaseBraces = errors.New("urlbase must not contain { or }")
 
 type WebServer struct {
+	UI         bool            `json:"ui"          toml:"ui"            xml:"ui,omitempty"           yaml:"ui"`
 	Metrics    bool            `json:"metrics"     toml:"metrics"       xml:"metrics"       yaml:"metrics"`
 	Pprof      bool            `json:"pprof"       toml:"pprof"         xml:"pprof"         yaml:"pprof"`
 	LogFiles   int             `json:"logFiles"    toml:"log_files"     xml:"log_files"     yaml:"logFiles"`
@@ -109,8 +110,10 @@ func (u *Unpackerr) startWebServer() {
 	// Make a multiplexer because websockets can't use apache log.
 	// Login deadline must wrap apachelog: its ResponseWriter does not Unwrap.
 	smx := http.NewServeMux()
-	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), u.fixForwardedFor(u.Webserver.router))
-	smx.Handle("/", u.fixForwardedFor(u.withLoginReadDeadline(apache.Wrap(u.Webserver.router, u.HTTP.Writer()))))
+	wsHandler := u.fixForwardedFor(u.withLoginReadDeadline(u.Webserver.router))
+	accessLogHandler := u.fixForwardedFor(u.withLoginReadDeadline(apache.Wrap(u.Webserver.router, u.HTTP.Writer())))
+	smx.Handle(path.Join(u.Webserver.URLBase, "ws"), wsHandler)
+	smx.Handle("/", u.skipWebAccessLog(accessLogHandler, wsHandler))
 	u.webRoutes()
 
 	u.Webserver.server = &http.Server{
@@ -143,9 +146,18 @@ func (w *WebServer) handlePut(route string, handler http.HandlerFunc) {
 }
 
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", Index)
-	u.registerOpenAPIRoute()
+	if u.Webserver.UI {
+		u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", u.webIndex)
+		u.Webserver.handleGet(path.Join(u.Webserver.URLBase, "/api/status"),
+			u.requirePerm(PermReadSystemQueue, u.webStatusAPI))
+		u.Webserver.handlePost(path.Join(u.Webserver.URLBase, "/api/status/clear-completed"),
+			u.requirePerm(PermWriteSystemHistory, u.webClearCompletedAPI))
+	} else {
+		u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", Index)
+	}
+
 	u.registerAuthRoutes()
+	u.registerOpenAPIRoute()
 	u.registerAPIRoutes()
 
 	if u.Webserver.Pprof {
@@ -198,6 +210,21 @@ func (u *Unpackerr) runWebServer() {
 
 func Index(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "Welcome!\n")
+}
+
+// skipWebAccessLog suppresses noisy UI polling from the access log while still serving the route.
+func (u *Unpackerr) skipWebAccessLog(withAccessLog, withoutAccessLog http.Handler) http.Handler {
+	statusPath := path.Join(u.Webserver.URLBase, "/api/status")
+	statsPath := path.Join(u.Webserver.URLBase, "/api/stats")
+
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet && (request.URL.Path == statusPath || request.URL.Path == statsPath) {
+			withoutAccessLog.ServeHTTP(writer, request)
+			return
+		}
+
+		withAccessLog.ServeHTTP(writer, request)
+	})
 }
 
 // fixForwardedFor sets the X-Forwarded-For header to the client IP

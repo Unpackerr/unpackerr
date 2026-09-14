@@ -102,6 +102,9 @@ dir_mode = "0755"
 passwords = []
 
 [webserver]
+## Enable the built-in status UI at the web server root path.
+## This shows queue state, extraction progress, and recent extraction results.
+ ui = false
 ## Expose Prometheus metrics at /metrics. The HTTP server starts whenever listen_addr is set;
 ## this only controls the /metrics route. Scrapes must send an API key with
 ## system:metrics:read via Authorization: Bearer or X-Api-Key.
@@ -478,4 +481,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 13 SEP 2026 08:49 UTC
+## => Content Auto Generated, 14 SEP 2026 20:42 UTC

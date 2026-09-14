@@ -9,6 +9,7 @@ import (
 const (
 	minimumProgressInterval = time.Second
 	defaultProgressInterval = 15 * time.Second
+	noProgressText          = "no progress yet"
 )
 
 func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress) {
@@ -21,18 +22,25 @@ func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress)
 // exp.Progress = also what just came in, must set it here.
 // exp.XProg = what is saved in the map, update this one.
 func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
-	if exp == nil || exp.XProg == nil {
+	if exp == nil || exp.Extract == nil || exp.XProg == nil || exp.Progress == nil {
 		return
 	}
 
 	u.lockHistory()
 	defer u.unlockHistory()
 
-	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
-		exp.XProg.Extracted++
+	xprog := exp.XProg
+	now := time.Now()
+
+	if xprog.Progress != nil && xprog.XFile != exp.XFile {
+		xprog.Extracted++
+		xprog.StartedAt = now
+	} else if xprog.StartedAt.IsZero() {
+		xprog.StartedAt = exp.ProgressStartedAt(now)
 	}
 
-	exp.XProg.Progress = exp.Progress
+	xprog.Progress = exp.Progress
+	xprog.UpdatedAt = now
 }
 
 func (u *Unpackerr) printProgress(now time.Time) {

@@ -444,6 +444,14 @@ sections:
       :::
     envvar_prefix: WEBSERVER_
     params:
+      - name: ui
+        envvar: UI
+        default: false
+        recommend: *BOOLEAN
+        short: Enable the lightweight status page.
+        desc: |
+          Enable the built-in status UI at the web server root path.
+          This shows queue state, extraction progress, and recent extraction results.
       - name: metrics
         envvar: METRICS
         default: false

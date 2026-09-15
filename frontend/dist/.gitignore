@@ -1,0 +1,2 @@
+# Placeholder so //go:embed all:dist compiles before npm run build.
+*

@@ -92,7 +92,7 @@ type Unpackerr struct {
 	inFlight         atomic.Int64 // queued-or-running delete and hook work.
 	workThreads      int
 	hookOnce         sync.Once
-	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, allow
+	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, WSOrigins, allow
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error
@@ -102,6 +102,9 @@ type Unpackerr struct {
 	histMu           sync.Mutex // records and the JSONL file; HTTP reads, main loop appends.
 	histLines        int        // lines in the file since the last compaction.
 	records          []HistoryRecord
+	hub              *liveHub
+	appLogTee        *logTee
+	httpLogTee       *logTee
 }
 
 type fileDeleteReq struct {
@@ -114,10 +117,11 @@ type fileDeleteReq struct {
 
 // Logger provides a struct we can pass into other packages.
 type Logger struct {
-	HTTP  *log.Logger
-	Info  *log.Logger
-	Error *log.Logger
-	Debug *log.Logger
+	HTTP    *log.Logger
+	Info    *log.Logger
+	Error   *log.Logger
+	Debug   *log.Logger
+	onError func(string)
 }
 
 // Flags are our CLI input flags.
@@ -132,7 +136,7 @@ type Flags struct {
 // New returns an UnpackerPoller struct full of defaults.
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
-	return &Unpackerr{
+	unpackerr := &Unpackerr{
 		Flags:      &Flags{EnvPrefix: "UN"},
 		hookWorker: hooks.NewWorker(updateChanBuf),
 		delChan:    make(chan *fileDeleteReq, updateChanBuf),
@@ -144,6 +148,7 @@ func New() *Unpackerr {
 		updates:    make(chan *xtractr.Response, updateChanBuf),
 		progChan:   make(chan *ExtractProgress),
 		menu:       make(map[string]ui.MenuItem),
+		hub:        newLiveHub(),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -170,6 +175,11 @@ func New() *Unpackerr {
 			Debug: log.New(io.Discard, "[DEBUG] ", log.Lshortfile|log.Lmicroseconds|log.Ldate),
 		},
 	}
+
+	unpackerr.hub.statsFn = unpackerr.stats
+	unpackerr.onError = unpackerr.hub.notifyError
+
+	return unpackerr
 }
 
 // Start runs the app.
@@ -243,6 +253,7 @@ func Start() error {
 	unpackerr.ensureHookWorker()
 
 	go unpackerr.watchDeleteChannel()
+	go unpackerr.hub.run()
 
 	unpackerr.startWebServer()
 	unpackerr.watchWorkThread()

@@ -143,6 +143,8 @@ func (u *Unpackerr) retryQueueID(itemID string) error {
 	item.Status = WAITING
 	item.Updated = now
 
+	u.notifyQueueLocked()
+
 	return nil
 }
 
@@ -159,6 +161,8 @@ func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Tim
 	item.NoRetry = false
 	item.Status = WAITING
 	item.Updated = now
+
+	u.notifyQueueLocked()
 
 	return nil
 }
@@ -200,6 +204,7 @@ func (u *Unpackerr) forgetQueueID(itemID string) error {
 	}
 
 	u.markHistoryForgotten(itemID)
+	u.notifyQueueLocked()
 
 	return nil
 }

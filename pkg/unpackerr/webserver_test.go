@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -88,7 +89,7 @@ func TestWebRoutesIndexHonorsURLBase(t *testing.T) {
 	rec := httptest.NewRecorder()
 	unpack.Webserver.router.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/unpackerr/", nil))
 
-	if rec.Code != http.StatusOK || rec.Body.String() != "Welcome!\n" {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Unpackerr") {
 		t.Fatalf("urlbase index %d %q", rec.Code, rec.Body.String())
 	}
 

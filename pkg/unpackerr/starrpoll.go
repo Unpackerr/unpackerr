@@ -135,6 +135,8 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 	unpack.lockHistory()
 	defer unpack.unlockHistory()
 
+	changed := false
+
 	for _, item := range instanceValues(list) {
 		server := asStarr[T, P](item)
 		cfg := server.conf()
@@ -165,6 +167,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 				waiting.XProg = &ExtractProgress{Extract: waiting}
 				server.tweakExtract(waiting, rec)
 				unpack.Map[rec.Title] = waiting
+				changed = true
 
 				fallthrough
 			default:
@@ -173,6 +176,10 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 					percent(rec.Sizeleft, rec.Size), rec.Title, rec.DebugExtra)
 			}
 		}
+	}
+
+	if changed {
+		unpack.notifyQueueLocked()
 	}
 }
 

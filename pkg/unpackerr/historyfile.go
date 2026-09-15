@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -72,6 +73,16 @@ type QueueItem struct {
 	Updated    time.Time     `json:"updated"`
 	Progress   string        `json:"progress,omitempty"`
 	Error      string        `json:"error,omitempty"`
+	Percent    float64       `json:"percent,omitempty"`
+	Wrote      uint64        `json:"wrote,omitempty"`
+	Total      uint64        `json:"total,omitempty"`
+	Read       uint64        `json:"read,omitempty"`
+	Compressed uint64        `json:"compressed,omitempty"`
+	Files      int           `json:"files,omitempty"`
+	Count      int           `json:"count,omitempty"`
+	Archives   int           `json:"archives,omitempty"`
+	Extracted  int           `json:"extracted,omitempty"`
+	Archive    string        `json:"archive,omitempty"`
 }
 
 func isDurableHistory(status ExtractStatus) bool {
@@ -295,6 +306,16 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	defer u.histMu.Unlock()
 
 	u.records = u.capHistoryLocked(mergeHistory(u.records, rec))
+	if len(u.records) == 0 {
+		return
+	}
+
+	saved := u.records[len(u.records)-1]
+
+	if u.hub != nil {
+		row := saved
+		u.hub.notify(topicHistory, historyFrame{Op: "upsert", Row: &row})
+	}
 
 	if u.histPath == "" {
 		return
@@ -374,13 +395,7 @@ func (u *Unpackerr) queueSnapshot() []QueueItem {
 	u.rLockHistory()
 	defer u.rUnlockHistory()
 
-	out := make([]QueueItem, 0, len(u.Map))
-
-	for name, item := range u.Map {
-		out = append(out, queueFromExtract(name, item))
-	}
-
-	return out
+	return u.queueSnapshotLocked()
 }
 
 func queueFromExtract(id string, item *Extract) QueueItem {
@@ -399,9 +414,30 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 		queue.Progress = "last write"
 	}
 
+	if item.Note != "" && queue.Progress == "" {
+		queue.Progress = item.Note
+	}
+
 	if item.XProg != nil {
 		if prog := item.XProg.String(); prog != "no progress yet" {
 			queue.Progress = prog
+		}
+
+		if prog := item.XProg.Progress; prog != nil {
+			queue.Percent = prog.Percent()
+			queue.Wrote = prog.Wrote
+			queue.Total = prog.Total
+			queue.Read = prog.Read
+			queue.Compressed = prog.Compressed
+			queue.Files = prog.Files
+			queue.Count = prog.Count
+			queue.Archives = item.XProg.Archives
+			queue.Extracted = item.XProg.Extracted
+
+			if prog.XFile != nil {
+				rel := strings.TrimPrefix(prog.XFile.FilePath, item.Path)
+				queue.Archive = strings.TrimLeft(filepath.ToSlash(rel), `/\`)
+			}
 		}
 	}
 
@@ -422,6 +458,10 @@ func (u *Unpackerr) deleteHistoryID(itemID string) error {
 	}
 
 	u.records = slices.Delete(u.records, idx, idx+1)
+
+	if u.hub != nil {
+		u.hub.notify(topicHistory, historyFrame{Op: "delete", ID: itemID})
+	}
 
 	return u.compactHistoryLocked()
 }
@@ -453,6 +493,10 @@ func (u *Unpackerr) clearHistory() error {
 	defer u.histMu.Unlock()
 
 	u.records = nil
+
+	if u.hub != nil {
+		u.hub.notify(topicHistory, historyFrame{Op: "clear"})
+	}
 
 	return u.compactHistoryLocked()
 }

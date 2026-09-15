@@ -45,7 +45,10 @@ func TestQueueSnapshotConcurrentWithProgress(t *testing.T) {
 	unpack := New()
 	item := &Extract{Path: "/dl/a", Status: EXTRACTING}
 	item.XProg = &ExtractProgress{Extract: item, Archives: 1}
+
+	unpack.lockHistory()
 	unpack.Map["a"] = item
+	unpack.unlockHistory()
 
 	done := make(chan struct{})
 

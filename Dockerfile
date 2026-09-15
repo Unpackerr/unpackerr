@@ -13,6 +13,7 @@ COPY main.go ./
 COPY pkg pkg
 COPY examples examples
 COPY init/config init/config
+COPY frontend frontend
 RUN go generate ./...
 
 ARG TARGETOS

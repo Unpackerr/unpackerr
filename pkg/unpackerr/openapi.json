@@ -17,6 +17,7 @@
     {"name": "queue"},
     {"name": "history"},
     {"name": "files"},
+    {"name": "logs"},
     {"name": "config"}
   ],
   "security": [
@@ -171,7 +172,17 @@
           "retries": {"type": "integer"},
           "updated": {"type": "string", "format": "date-time"},
           "progress": {"type": "string"},
-          "error": {"type": "string"}
+          "error": {"type": "string"},
+          "percent": {"type": "number", "description": "Extraction percent from xtractr.Progress (wrote/total or read/compressed)"},
+          "wrote": {"type": "integer"},
+          "total": {"type": "integer"},
+          "read": {"type": "integer"},
+          "compressed": {"type": "integer"},
+          "files": {"type": "integer"},
+          "count": {"type": "integer"},
+          "archives": {"type": "integer"},
+          "extracted": {"type": "integer"},
+          "archive": {"type": "string", "description": "Current archive path relative to the item path"}
         }
       },
       "HistoryRecord": {
@@ -218,6 +229,33 @@
         "properties": {
           "status": {"type": "string"},
           "id": {"type": "string"}
+        }
+      },
+      "LogFileInfo": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "path": {"type": "string"},
+          "size": {"type": "integer"},
+          "time": {"type": "string", "format": "date-time"},
+          "mode": {"type": "string"},
+          "used": {"type": "boolean"},
+          "user": {"type": "string"}
+        }
+      },
+      "LogFileInfos": {
+        "type": "object",
+        "properties": {
+          "dirs": {"type": "array", "items": {"type": "string"}},
+          "size": {"type": "integer"},
+          "list": {"type": "array", "items": {"$ref": "#/components/schemas/LogFileInfo"}}
+        }
+      },
+      "LogLines": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string"}
         }
       },
       "ConfigWriteReply": {
@@ -540,6 +578,73 @@
             "description": "Prometheus text",
             "content": {"text/plain": {"schema": {"type": "string"}}}
           },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Authenticated websocket for live updates",
+        "description": "Requires a session cookie (or API key). Client sends {op:sub|unsub, topics, file}. Server sends hello, queue, progress, history, log, error, and denied frames. Topics: queue (system:queue:read), history (system:history:read), logs (system:logs:read), errors (any authenticated session).",
+        "responses": {
+          "101": {"description": "Switching Protocols"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "tags": ["logs"],
+        "summary": "List current and rotated log files",
+        "description": "Requires system:logs:read. The list always includes a synthetic id \"errors\" (last 10 Errorf messages). When log_file is unset, a synthetic id \"live\" is the in-memory app log.",
+        "responses": {
+          "200": {
+            "description": "Log file list",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LogFileInfos"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/logs/{id}": {
+      "get": {
+        "tags": ["logs"],
+        "summary": "Read the last N lines of a log file",
+        "description": "Requires system:logs:read. lines defaults to 500 (max 10000). skip skips that many trailing lines. Synthetic ids: live (in-memory app log), errors (last 10 Errorf messages).",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "lines", "in": "query", "schema": {"type": "integer"}},
+          {"name": "skip", "in": "query", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Log text",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LogLines"}}}
+          },
+          "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/logs/{id}/download": {
+      "get": {
+        "tags": ["logs"],
+        "summary": "Download a log file as a zip",
+        "description": "Requires system:logs:read. Synthetic ids live and errors cannot be downloaded.",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Zip archive",
+            "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}}
+          },
+          "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

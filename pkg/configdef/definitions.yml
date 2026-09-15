@@ -524,6 +524,18 @@ sections:
           Setting this correctly allows X-Forwarded-For to be used in logs.
           In the future it may control auth proxy trust. Must be a list of strings.
           example: upstreams = [ "127.0.0.1/32", "10.1.2.0/24" ]
+      - name: ws_origins
+        envvar: WS_ORIGINS
+        default: []
+        kind: conlist
+        short: Extra WebSocket Origin hosts allowed besides same-origin.
+        desc: |
+          Empty keeps the library same-origin check (the embedded UI). Add hosts
+          when a browser on another origin should open GET /ws, for example
+          localhost:5173 or https://ui.example.com. Patterns use path.Match;
+          a URI scheme is matched as scheme://host. Do not set * unless you
+          intend to allow every origin.
+          example: ws_origins = [ "localhost:5173" ]
       - name: api_keys
         envvar: API_KEYS_
         default: []

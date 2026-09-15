@@ -1,0 +1,86 @@
+### Unpackerr nginx reverse-proxy example
+### Copy a server or location block into your site config, then reload nginx.
+### Backend default: UN_WEBSERVER_LISTEN_ADDR = 0.0.0.0:5656
+###
+### Set webserver.urlbase to match the public path ("/" for the subdomain
+### example, "/unpackerr/" for the subfolder example). Add this nginx host
+### (or its Docker gateway) to webserver.upstreams so X-Forwarded-For and
+### X-Forwarded-Proto are trusted (Secure cookies, logs, proxy-header auth).
+##################################################################
+
+# Subdomain: https://unpackerr.example.com/  (urlbase = "/")
+# Live UI websocket: wss://unpackerr.example.com/ws
+upstream unpackerr {
+    server 127.0.0.1:5656;
+    keepalive 8;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name unpackerr.example.com;
+
+    # ssl_certificate     /path/to/fullchain.pem;
+    # ssl_certificate_key /path/to/privkey.pem;
+
+    location / {
+        proxy_pass http://unpackerr;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Needed for GET /ws (queue, progress, history, log follow).
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_buffering off;
+        # Optional: Authelia / Authentik / nginx basic auth user for webauth.
+        # proxy_set_header X-Webauth-User $remote_user;
+    }
+
+    location /ws {
+        proxy_pass http://unpackerr/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_buffering off;
+    }
+}
+
+# Subfolder: https://example.com/unpackerr/  (urlbase = "/unpackerr/")
+# Live UI websocket: wss://example.com/unpackerr/ws
+#
+# location /unpackerr/ {
+#     proxy_pass http://127.0.0.1:5656/unpackerr/;
+#     proxy_http_version 1.1;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_set_header Upgrade $http_upgrade;
+#     proxy_set_header Connection $http_connection;
+#     proxy_read_timeout 7d;
+#     proxy_send_timeout 7d;
+#     proxy_buffering off;
+# }
+#
+# location /unpackerr/ws {
+#     proxy_pass http://127.0.0.1:5656/unpackerr/ws;
+#     proxy_http_version 1.1;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_set_header Upgrade $http_upgrade;
+#     proxy_set_header Connection "upgrade";
+#     proxy_read_timeout 7d;
+#     proxy_send_timeout 7d;
+#     proxy_buffering off;
+# }

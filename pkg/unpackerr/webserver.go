@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/frontend"
 	"github.com/gorilla/securecookie"
 	apachelog "github.com/lestrrat-go/apache-logformat/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -28,6 +29,7 @@ type WebServer struct {
 	SSLKeyFile string          `json:"sslKeyFile"  toml:"ssl_key_file"  xml:"ssl_key_file"  yaml:"sslKeyFile"`
 	URLBase    string          `json:"urlbase"     toml:"urlbase"       xml:"urlbase"       yaml:"urlbase"`
 	Upstreams  StringSlice     `json:"upstreams"   toml:"upstreams"     xml:"upstreams"     yaml:"upstreams"`
+	WSOrigins  StringSlice     `json:"wsOrigins"   toml:"ws_origins"    xml:"ws_origins"    yaml:"wsOrigins"`
 	UIPassword CryptPass       `json:"uiPassword"  toml:"ui_password"   xml:"ui_password"   yaml:"uiPassword"`
 	APIKeys    []APIKey        `json:"apiKeys"     toml:"api_keys"      xml:"api_keys"      yaml:"apiKeys"`
 	Roles      map[string]Role `json:"roles"       toml:"roles"         xml:"roles"         yaml:"roles"`
@@ -143,10 +145,20 @@ func (w *WebServer) handlePut(route string, handler http.HandlerFunc) {
 }
 
 func (u *Unpackerr) webRoutes() {
-	u.Webserver.handleGet(strings.TrimSuffix(u.Webserver.URLBase, "/")+"/{$}", Index)
+	base := strings.TrimSuffix(u.Webserver.URLBase, "/")
+	u.Webserver.handleGet(base+"/{$}", u.serveUI)
+
+	if base == "" {
+		u.Webserver.handleGet("/{path...}", u.serveUI)
+	} else {
+		u.Webserver.handleGet(base+"/{path...}", u.serveUI)
+	}
+
 	u.registerOpenAPIRoute()
 	u.registerAuthRoutes()
 	u.registerAPIRoutes()
+	u.registerLiveWS()
+	u.registerLogRoutes()
 
 	if u.Webserver.Pprof {
 		u.registerPprof()
@@ -196,8 +208,21 @@ func (u *Unpackerr) runWebServer() {
 	}
 }
 
-func Index(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprint(w, "Welcome!\n")
+func (u *Unpackerr) serveUI(resp http.ResponseWriter, req *http.Request) {
+	base := strings.TrimSuffix(u.Webserver.URLBase, "/")
+	if base != "" {
+		cloned := req.Clone(req.Context())
+
+		path := strings.TrimPrefix(req.URL.Path, base)
+		if path == "" {
+			path = "/"
+		}
+
+		cloned.URL.Path = path
+		req = cloned
+	}
+
+	frontend.IndexHandler(resp, req)
 }
 
 // fixForwardedFor sets the X-Forwarded-For header to the client IP

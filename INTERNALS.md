@@ -165,7 +165,7 @@ Empty / missing secret file is an error on PUT (400) when the `filepath:` was al
 
 ### Env (`UN_*`)
 
-Env overlays **live only**. They are not merged into `fileConfig`. Starr / folder / hook PUTs write the request body as the file snapshot, then overlay live with `ParseENV` (cnfg now overlays existing map entries instead of replacing them). Env-only slugs keep polling. They land in `fileConfig` only if the PUT body included them. PUT `{}` (or a legacy `[]`) clears file instances; live still has `UN_SONARR_uhd_*` / `UN_READARR_0_*`. Env-only extra keys/roles exist at runtime until restart unless you add them in the PUT body. General scalars (`UN_INTERVAL`, `UN_PASSWORDS`, …) still overlay only at startup. The official UI must GET the file section (not `/live`) so it does not persist overlay values.
+Env overlays **live only**. They are not merged into `fileConfig`. Starr / folder / hook / general PUTs write the request body as the file snapshot, then overlay live with `ParseENV` (cnfg now overlays existing map entries instead of replacing them). Env-only slugs keep polling. They land in `fileConfig` only if the PUT body included them. PUT `{}` (or a legacy `[]`) clears file instances; live still has `UN_SONARR_uhd_*` / `UN_READARR_0_*`. Env-only extra keys/roles exist at runtime until restart unless you add them in the PUT body. General scalars (`UN_INTERVAL`, `UN_PASSWORDS`, …) follow the same overlay: a save that omits them keeps the env value on live. The official UI must GET the file section (not `/live`) so it does not persist overlay values.
 
 `UN_WEBSERVER_UI_PASSWORD`:
 
@@ -287,7 +287,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/browse` | yes | `system:browse:read` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
 | POST | `{urlbase}api/browse` | yes | `system:browse:write` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
 | GET | `{urlbase}api/config/help` | yes | any auth | English field help from definitions.yml |
-| GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*` |
+| GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*`; `WEBSERVER_UI_PASSWORD` always blank (key kept so the UI can lock the field) |
 | GET | `{urlbase}api/config/{section}` | yes | `config:{section}:read` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `config:{section}:read` | Running copy |
 | PUT | `{urlbase}api/config/{section}` | yes | `config:{section}:write` | Replace section |

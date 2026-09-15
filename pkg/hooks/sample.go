@@ -47,9 +47,9 @@ func PrepareSample(payload *Payload, e extract.Status) error {
 
 	switch e {
 	default:
-		return ErrInvalidStatus
+		return fmt.Errorf("%w: %s", ErrUnknownEvent, e)
 	case extract.WAITING:
-		return ErrInvalidStatus
+		payload.Data = nil
 	case extract.QUEUED:
 		payload.App = "Folder"
 		payload.Data = nil
@@ -73,6 +73,11 @@ func PrepareSample(payload *Payload, e extract.Status) error {
 	case extract.DELETEFAILED:
 		payload.Data.Elapsed.Duration = 0
 		payload.Data.Error = "unable to delete files"
+	case extract.EXTRACTEDNOTHING:
+		payload.Data.Files = nil
+		payload.Data.Archives = nil
+		payload.Data.Bytes = 0
+		payload.Data.Error = ""
 	}
 
 	return nil

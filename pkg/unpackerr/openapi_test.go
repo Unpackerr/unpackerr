@@ -28,8 +28,8 @@ func TestOpenAPIUnauthenticated(t *testing.T) {
 
 	paths, _ := doc["paths"].(map[string]any)
 	for _, route := range []string{
-		"/api/stats", "/api/config/{section}/live", "/api/config/help",
-		"/api/config/env", "/api/system/export", "/api/browse",
+		"/api/stats", "/api/config/{section}/live", "/api/config/{section}/test",
+		"/api/config/help", "/api/config/env", "/api/system/export", "/api/browse",
 		"/api/logs", "/ws",
 	} {
 		if _, ok := paths[route]; !ok {

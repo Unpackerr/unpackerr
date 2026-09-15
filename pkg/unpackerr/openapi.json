@@ -729,8 +729,8 @@
     "/api/history/delete": {
       "post": {
         "tags": ["history"],
-        "summary": "Delete one history row",
-        "description": "Requires system:history:write",
+        "summary": "Delete one finished history row",
+        "description": "Requires system:history:write. In-progress extracts (queued, extracting, extracted, deleting) are resume checkpoints and cannot be deleted.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IDRequest"}}}
@@ -741,6 +741,7 @@
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusReply"}}}
           },
           "404": {"description": "Unknown id", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "409": {"description": "Id is still in progress", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "400": {"$ref": "#/components/responses/BadRequest"},
           "500": {"$ref": "#/components/responses/PersistError"},
           "401": {"$ref": "#/components/responses/Unauthorized"},
@@ -751,8 +752,8 @@
     "/api/history/clear": {
       "post": {
         "tags": ["history"],
-        "summary": "Clear all history rows",
-        "description": "Requires system:history:write",
+        "summary": "Clear finished history rows",
+        "description": "Requires system:history:write. Does not drop in-progress extracts kept for restart resume.",
         "responses": {
           "200": {
             "description": "Cleared",

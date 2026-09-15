@@ -27,6 +27,7 @@ const (
 
 var (
 	errHistoryNotFound    = errors.New("not found")
+	errHistoryInFlight    = errors.New("item is still in progress")
 	errInterruptedRestart = errors.New("interrupted by restart")
 )
 
@@ -213,11 +214,28 @@ func mergeHistory(list []HistoryRecord, recs ...HistoryRecord) []HistoryRecord {
 }
 
 func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
-	if limit := int(u.KeepHistory); limit > 0 && len(list) > limit {
-		return list[len(list)-limit:]
+	limit := int(u.KeepHistory)
+	if limit <= 0 || len(list) <= limit {
+		return list
 	}
 
-	return list
+	drop := len(list) - limit
+	out := make([]HistoryRecord, 0, limit)
+
+	for _, rec := range list {
+		if drop > 0 && isDurableHistory(rec.Status) {
+			drop--
+			continue
+		}
+
+		out = append(out, rec)
+	}
+
+	if len(out) > limit {
+		return out[len(out)-limit:]
+	}
+
+	return out
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
@@ -299,7 +317,7 @@ func fillHistoryStats(rec *HistoryRecord, item *Extract) {
 	}
 }
 
-// upsertHistory records one durable transition: update memory, append one
+// upsertHistory records one persisted transition: update memory, append one
 // line. The file is compacted only when appends outgrow the cap.
 func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	u.histMu.Lock()
@@ -311,11 +329,7 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	}
 
 	saved := u.records[len(u.records)-1]
-
-	if u.hub != nil {
-		row := saved
-		u.hub.notify(topicHistory, historyFrame{Op: "upsert", Row: &row})
-	}
+	u.notifyHistoryLocked(saved)
 
 	if u.histPath == "" {
 		return
@@ -348,6 +362,25 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	}
 
 	u.histLines++
+}
+
+// notifyHistoryLocked pushes UI history. In-flight JSONL rows (extracting,
+// extracted, and similar) stay on disk for restart resume but are not history rows.
+func (u *Unpackerr) notifyHistoryLocked(rec HistoryRecord) {
+	if u.hub == nil {
+		return
+	}
+
+	if isDurableHistory(rec.Status) {
+		row := rec
+		u.hub.notify(topicHistory, historyFrame{Op: "upsert", Row: &row})
+
+		return
+	}
+
+	if rec.ID != "" {
+		u.hub.notify(topicHistory, historyFrame{Op: "delete", ID: rec.ID})
+	}
 }
 
 // compactHistoryLocked rewrites the file from memory: one line per record.
@@ -457,6 +490,10 @@ func (u *Unpackerr) deleteHistoryID(itemID string) error {
 		return errHistoryNotFound
 	}
 
+	if !isDurableHistory(u.records[idx].Status) {
+		return errHistoryInFlight
+	}
+
 	u.records = slices.Delete(u.records, idx, idx+1)
 
 	if u.hub != nil {
@@ -492,7 +529,9 @@ func (u *Unpackerr) clearHistory() error {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
-	u.records = nil
+	u.records = slices.DeleteFunc(u.records, func(rec HistoryRecord) bool {
+		return isDurableHistory(rec.Status)
+	})
 
 	if u.hub != nil {
 		u.hub.notify(topicHistory, historyFrame{Op: "clear"})

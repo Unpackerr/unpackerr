@@ -159,3 +159,37 @@ func TestLoadHistoryRewritesFileCap(t *testing.T) {
 		t.Fatalf("file %s", body)
 	}
 }
+
+func TestCapHistoryKeepsExtracted(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 2
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+
+	unpack.upsertHistory(HistoryRecord{ID: "show", Path: "/dl/show", Status: EXTRACTED, Updated: time.Now()})
+	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
+	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: IMPORTED, Updated: time.Now()})
+
+	if len(unpack.records) != 2 {
+		t.Fatalf("cap %+v", unpack.records)
+	}
+
+	got := unpack.historySnapshot()
+	if len(got) != 1 || got[0].ID != "b" {
+		t.Fatalf("history %+v", got)
+	}
+
+	ids := map[string]ExtractStatus{}
+	for _, rec := range unpack.records {
+		ids[rec.ID] = rec.Status
+	}
+
+	if ids["show"] != EXTRACTED || ids["b"] != IMPORTED {
+		t.Fatalf("kept %+v", unpack.records)
+	}
+
+	if _, ok := ids["a"]; ok {
+		t.Fatalf("capped imported still present %+v", unpack.records)
+	}
+}

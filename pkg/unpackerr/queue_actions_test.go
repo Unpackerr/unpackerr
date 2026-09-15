@@ -297,6 +297,7 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
 	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
 	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: DELETED, Updated: time.Now()})
+	unpack.upsertHistory(HistoryRecord{ID: "show", Path: "/dl/show", Status: EXTRACTED, Updated: time.Now()})
 
 	withKey := func(req *http.Request) {
 		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
@@ -312,6 +313,11 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 		t.Fatalf("after delete %+v", left)
 	}
 
+	blocked := doAuth(t, unpack, http.MethodPost, "/api/history/delete", `{"id":"show"}`, withKey)
+	if blocked.Code != http.StatusConflict {
+		t.Fatalf("delete extracted %d %s", blocked.Code, blocked.Body.String())
+	}
+
 	cleared := doAuth(t, unpack, http.MethodPost, "/api/history/clear", "", withKey)
 	if cleared.Code != http.StatusOK {
 		t.Fatalf("clear %d", cleared.Code)
@@ -319,6 +325,10 @@ func TestHistoryDeleteAndClear(t *testing.T) {
 
 	if len(unpack.historySnapshot()) != 0 {
 		t.Fatal("history not cleared")
+	}
+
+	if len(unpack.records) != 1 || unpack.records[0].ID != "show" || unpack.records[0].Status != EXTRACTED {
+		t.Fatalf("clear dropped extracted resume row %+v", unpack.records)
 	}
 }
 

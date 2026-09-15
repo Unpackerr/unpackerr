@@ -1,0 +1,877 @@
+<script lang="ts">
+  import { onMount } from 'svelte'
+  import {
+    Button,
+    Card,
+    CardBody,
+    CardHeader,
+    Col,
+    FormCheck,
+    FormGroup,
+    FormText,
+    Label,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader,
+    Row,
+    Spinner,
+  } from '@sveltestrap/sveltestrap'
+  import Input from '../../components/Input.svelte'
+  import SaveBar from '../../components/SaveBar.svelte'
+  import { _ } from '../../lib/i18n/Translate.svelte'
+  import {
+    loadSection,
+    loadSectionLive,
+    saveSection,
+    testSection,
+  } from '../../lib/config'
+  import { has } from '../../lib/auth.svelte'
+  import { configPerm } from '../../lib/perms'
+  import {
+    EXTRACT_STATUSES,
+    type ConfigSection,
+    type HookTestResult,
+    type StarrConfig,
+    type WebhookConfig,
+  } from '../../lib/types'
+  import { deepCopy, deepEqual, explicitTimeout } from '../../lib/util'
+  import { trackDirty } from '../../lib/dirty.svelte'
+  import {
+    httpURLError,
+    requiredCommandError,
+    slugDuplicateError,
+    slugError,
+  } from '../../lib/validate'
+  import { failure } from '../../lib/toast'
+  import { envHas } from '../../lib/env.svelte'
+  import {
+    envField,
+    HOOK_ENV_FIELDS,
+    instanceMap,
+    mergeEnvOnlyRows,
+    newRow,
+    omitEnvFields,
+    rowsFromMap,
+    slugify,
+    uniqueSlug,
+    type InstanceRow,
+  } from '../../lib/slug'
+
+  let { section }: { section: ConfigSection } = $props()
+
+  const isCmd = $derived(section === 'cmdhooks')
+  let rows = $state<InstanceRow<WebhookConfig>[]>([])
+  let orig = $state<Record<string, WebhookConfig>>({})
+  let loading = $state(true)
+  let saving = $state(false)
+  let error = $state('')
+  let testRow = $state<InstanceRow<WebhookConfig> | null>(null)
+  let testEvent = $state('extracted')
+  let testApp = $state('sonarr')
+  let testBusy = $state(false)
+  let testError = $state('')
+  let testElapsed = $state('')
+  let testResult = $state<HookTestResult | null>(null)
+
+  const canWrite = $derived(has(configPerm(section, 'write')))
+  const envPrefix = $derived(isCmd ? 'CMDHOOK' : 'WEBHOOK')
+  const idField = $derived(isCmd ? 'COMMAND' : 'URL')
+  const invalid = $derived(
+    rows.some((row) => {
+      if (row.envOnly) return false
+      const others = rows
+        .filter((r) => r.id !== row.id)
+        .map((r) => r.slug)
+        .filter(Boolean)
+      if (slugError(row.slug) || slugDuplicateError(row.slug, others))
+        return true
+      if (envHas(envField(envPrefix, row.slug, idField))) return false
+      return isCmd
+        ? !!requiredCommandError(row.value.command)
+        : !!httpURLError(row.value.url)
+    }),
+  )
+
+  const statusKeys = [
+    'Waiting',
+    'Queued',
+    'Extracting',
+    'ExtractFailed',
+    'Extracted',
+    'Imported',
+    'Deleting',
+    'DeleteFailed',
+    'Deleted',
+    'ExtractedNothing',
+  ]
+
+  const hookApps = [
+    { value: 'sonarr', name: 'Sonarr' },
+    { value: 'radarr', name: 'Radarr' },
+    { value: 'lidarr', name: 'Lidarr' },
+    { value: 'readarr', name: 'Readarr' },
+    { value: 'folder', name: 'Folder' },
+  ]
+
+  type NamedByApp = {
+    sonarr: string[]
+    radarr: string[]
+    lidarr: string[]
+    readarr: string[]
+  }
+
+  function emptyNamed(): NamedByApp {
+    return {
+      sonarr: [],
+      radarr: [],
+      lidarr: [],
+      readarr: [],
+    }
+  }
+
+  let namedByApp = $state<NamedByApp>(emptyNamed())
+
+  function namesFor(dialect: string): string[] {
+    return namedByApp[dialect as keyof NamedByApp] ?? []
+  }
+
+  const hookAppChoices = $derived.by(() => {
+    const extra: { value: string; name: string }[] = []
+    const taken = hookApps.map((a) => a.value.toLowerCase())
+    for (const dialect of ['sonarr', 'radarr', 'lidarr', 'readarr'] as const) {
+      for (const name of namedByApp[dialect]) {
+        const key = name.toLowerCase()
+        if (
+          taken.includes(key) ||
+          extra.some((item) => item.value.toLowerCase() === key)
+        ) {
+          continue
+        }
+        extra.push({ value: name, name: `${name} (${dialect})` })
+      }
+    }
+    return [...hookApps, ...extra]
+  })
+
+  const templateChoices = $derived([
+    { value: '', name: $_('config.hooks.template.auto') },
+    { value: 'notifiarr', name: 'notifiarr' },
+    { value: 'discord', name: 'discord' },
+    { value: 'gotify', name: 'gotify' },
+    { value: 'pushover', name: 'pushover' },
+    { value: 'slack', name: 'slack' },
+    { value: 'telegram', name: 'telegram' },
+  ])
+
+  function blank(): WebhookConfig {
+    return {
+      name: '',
+      url: '',
+      command: '',
+      contentType: 'application/json',
+      templatePath: '',
+      template: '',
+      timeout: '10s',
+      shell: false,
+      ignoreSsl: false,
+      silent: false,
+      events: [],
+      exclude: [],
+      nickname: '',
+      token: '',
+      channel: '',
+    }
+  }
+
+  function normalizeHook(
+    h: Partial<WebhookConfig> | null | undefined,
+  ): WebhookConfig {
+    return {
+      ...blank(),
+      ...h,
+      timeout: explicitTimeout(h?.timeout),
+      events: Array.isArray(h?.events) ? [...h.events] : [],
+      exclude: Array.isArray(h?.exclude) ? [...h.exclude] : [],
+    }
+  }
+
+  function taken(row: InstanceRow<WebhookConfig>): string[] {
+    return rows.filter((r) => r.id !== row.id).map((r) => r.slug).filter(Boolean)
+  }
+
+  function setName(row: InstanceRow<WebhookConfig>, name: string) {
+    row.value.name = name
+    if (row.locked || !row.autoSlug) return
+    const s = slugify(name)
+    row.slug = s ? uniqueSlug(s, taken(row)) : row.slug
+  }
+
+  function setSlug(row: InstanceRow<WebhookConfig>, slug: string) {
+    row.slug = slug
+    row.autoSlug = false
+  }
+
+  function currentMap(): Record<string, WebhookConfig> {
+    const out: Record<string, WebhookConfig> = {}
+    for (const row of rows) {
+      if (row.envOnly) continue
+      out[row.slug || row.id] = row.value
+    }
+    return out
+  }
+
+  function savePayload(): Record<string, WebhookConfig> {
+    const out: Record<string, WebhookConfig> = {}
+    for (const row of rows) {
+      if (row.envOnly || !row.slug) continue
+      out[row.slug] = omitEnvFields(
+        envPrefix,
+        row.slug,
+        row.value,
+        HOOK_ENV_FIELDS,
+      )
+    }
+    return out
+  }
+
+  function eventOn(
+    hook: WebhookConfig,
+    st: (typeof EXTRACT_STATUSES)[number],
+  ): boolean {
+    const ev = hook.events ?? []
+    return ev.some(
+      (e) =>
+        e === st.value ||
+        e === st.id ||
+        String(e).toLowerCase() === st.id ||
+        String(e) === String(st.value),
+    )
+  }
+
+  async function loadNamedInstances() {
+    const next = emptyNamed()
+    await Promise.all(
+      (Object.keys(next) as (keyof NamedByApp)[]).map(async (sec) => {
+        if (!has(configPerm(sec, 'read'))) return
+        const { data } = await loadSectionLive<unknown>(sec)
+        const names = Object.values(instanceMap<StarrConfig>(data))
+          .map((a) => (a.name ?? '').trim())
+          .filter((n) => n !== '')
+        next[sec] = [...new Set(names)]
+      }),
+    )
+    namedByApp = next
+  }
+
+  onMount(async () => {
+    const named = loadNamedInstances()
+    try {
+      const { data, error: err } = await loadSection<unknown>(section)
+      if (err) error = err
+      else {
+        const map = instanceMap<WebhookConfig>(data)
+        const normalized: Record<string, WebhookConfig> = {}
+        for (const [slug, h] of Object.entries(map)) {
+          normalized[slug] = normalizeHook(h)
+        }
+        orig = deepCopy(normalized)
+        let next = rowsFromMap(normalized)
+        const live = await loadSectionLive<unknown>(section)
+        if (live.data != null) {
+          next = mergeEnvOnlyRows(
+            next,
+            Object.keys(instanceMap(live.data)),
+            blank,
+          )
+        }
+        rows = next
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e)
+    } finally {
+      await named.catch(() => undefined)
+      loading = false
+    }
+  })
+
+  trackDirty(() => !loading && !deepEqual(currentMap(), orig))
+
+  function add() {
+    rows = [...rows, newRow(blank())]
+  }
+  function remove(id: string) {
+    rows = rows.filter((r) => r.id !== id)
+  }
+  function toggleEvent(
+    hook: WebhookConfig,
+    st: (typeof EXTRACT_STATUSES)[number],
+    on: boolean,
+  ) {
+    const ev = hook.events ?? []
+    const without = ev.filter(
+      (e) =>
+        e !== st.value &&
+        e !== st.id &&
+        String(e).toLowerCase() !== st.id &&
+        String(e) !== String(st.value),
+    )
+    hook.events = on ? [...without, st.id] : without
+  }
+  function excludeHas(hook: WebhookConfig, token: string): boolean {
+    return (hook.exclude ?? []).some(
+      (e) => e.toLowerCase() === token.toLowerCase(),
+    )
+  }
+  function dialectOn(hook: WebhookConfig, dialect: string): boolean {
+    return excludeHas(hook, dialect)
+  }
+  function nameOn(
+    hook: WebhookConfig,
+    dialect: string,
+    name: string,
+  ): boolean {
+    return dialectOn(hook, dialect) || excludeHas(hook, name)
+  }
+  function setExclude(hook: WebhookConfig, remove: string[], add: string[]) {
+    const rm = new Set(remove.map((s) => s.toLowerCase()))
+    const without = (hook.exclude ?? []).filter((e) => !rm.has(e.toLowerCase()))
+    hook.exclude = [...without, ...add]
+  }
+  function toggleDialect(
+    hook: WebhookConfig,
+    dialect: string,
+    names: string[],
+    on: boolean,
+  ) {
+    if (on) {
+      setExclude(hook, [dialect, ...names], [dialect])
+      return
+    }
+    setExclude(hook, [dialect], [])
+  }
+  function toggleName(
+    hook: WebhookConfig,
+    dialect: string,
+    names: string[],
+    name: string,
+    on: boolean,
+  ) {
+    if (dialectOn(hook, dialect) && !on) {
+      const keep = names.filter((n) => n.toLowerCase() !== name.toLowerCase())
+      setExclude(hook, [dialect, ...names], keep)
+      return
+    }
+    if (on) {
+      setExclude(hook, [name], [name])
+      return
+    }
+    setExclude(hook, [name], [])
+  }
+  async function save() {
+    if (invalid) {
+      failure($_('phrases.FixInvalidFields'))
+      return
+    }
+    saving = true
+    const ok = await saveSection(section, savePayload())
+    if (ok) {
+      for (const row of rows) {
+        if (row.slug) {
+          row.locked = true
+          row.autoSlug = false
+        }
+      }
+      orig = deepCopy(currentMap())
+    }
+    saving = false
+  }
+
+  function hookLabel(row: InstanceRow<WebhookConfig>): string {
+    return (
+      (row.value.name ?? '').trim() ||
+      row.slug ||
+      (isCmd
+        ? $_('pages.settings.AddCmdhook')
+        : $_('pages.settings.AddWebhook'))
+    )
+  }
+
+  const testOpen = $derived(testRow !== null)
+  const testName = $derived(testRow ? hookLabel(testRow) : '')
+
+  function closeHookTest() {
+    testRow = null
+    testBusy = false
+    testError = ''
+    testElapsed = ''
+    testResult = null
+  }
+
+  function openHookTest(row: InstanceRow<WebhookConfig>) {
+    testRow = row
+    testEvent = 'extracted'
+    testApp = 'sonarr'
+    testBusy = false
+    testError = ''
+    testElapsed = ''
+    testResult = null
+  }
+
+  async function runHookTest() {
+    if (!testRow) return
+    const row = testRow
+    const hook = row.value
+    testBusy = true
+    testError = ''
+    testElapsed = ''
+    testResult = null
+    const res = await testSection<HookTestResult>(section, {
+      slug: row.slug,
+      url: hook.url,
+      command: hook.command,
+      token: hook.token,
+      contentType: hook.contentType,
+      template: hook.template,
+      templatePath: hook.templatePath,
+      timeout: hook.timeout,
+      shell: hook.shell,
+      ignoreSsl: hook.ignoreSsl,
+      nickname: hook.nickname,
+      channel: hook.channel,
+      name: hook.name,
+      event: testEvent,
+      app: testApp,
+    })
+    if (testRow !== row) return
+    testBusy = false
+    testElapsed = (res.body as { elapsed?: string })?.elapsed ?? ''
+    if (!res.ok) {
+      testError = (res.body as { error?: string })?.error ?? 'test failed'
+      return
+    }
+    testResult = res.body
+  }
+</script>
+
+{#if loading}
+  <Spinner color="primary" />
+{:else if error}
+  <p class="text-danger">{error}</p>
+{:else}
+  {#if rows.length === 0}
+    <p class="text-muted">
+      {isCmd ? $_('phrases.NoCmdhooks') : $_('phrases.NoWebhooks')}
+    </p>
+  {/if}
+
+  {#each rows as row (row.id)}
+    {@const hook = row.value}
+    {@const slug = row.slug}
+    {@const prev = orig[slug]}
+    {@const envOnly = row.envOnly}
+    <Card class="mb-3">
+      <CardHeader>
+        <Row class="align-items-center">
+          <Col>
+            <span class="fw-semibold">
+              {(hook.name ?? '').trim() ||
+                slug ||
+                (isCmd
+                  ? $_('pages.settings.AddCmdhook')
+                  : $_('pages.settings.AddWebhook'))}
+            </span>
+          </Col>
+          {#if canWrite && !envOnly}
+            <Col xs="auto">
+              <Button
+                size="sm"
+                color="danger"
+                outline
+                on:click={() => remove(row.id)}>{$_('buttons.Remove')}</Button
+              >
+            </Col>
+          {/if}
+        </Row>
+      </CardHeader>
+      <CardBody>
+        <Row class="g-2">
+          <Col md="4">
+            <Input
+              id={`${section}-${row.id}-slug`}
+              label={$_('pages.settings.Key')}
+              description={$_('pages.settings.KeyLocked')}
+              tooltip={$_('pages.settings.KeyTooltip')}
+              bind:value={() => row.slug, (v) => setSlug(row, v)}
+              original={row.locked ? slug : ''}
+              disabled={!canWrite || row.locked}
+              validate={(_id, v) =>
+                slugError(v) || slugDuplicateError(String(v), taken(row))}
+            />
+          </Col>
+          {#if isCmd}
+            <Col md="8">
+              <Input
+                id={`${section}-${row.id}-name`}
+                helpKey="config.hooks.name"
+                label={$_('config.hooks.name.label')}
+                bind:value={() => hook.name, (v) => setName(row, v)}
+                original={prev?.name}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'NAME')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-timeout`}
+                helpKey="config.hooks.timeout"
+                type="timeout"
+                label={$_('config.hooks.timeout.label')}
+                bind:value={hook.timeout}
+                original={prev?.timeout}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TIMEOUT')}
+              />
+            </Col>
+            <Col md="12">
+              <Input
+                id={`${section}-${row.id}-command`}
+                helpKey="config.hooks.command"
+                label={$_('config.hooks.command.label')}
+                bind:value={hook.command}
+                original={prev?.command}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'COMMAND')}
+                browse="file"
+                disableMkdir
+                validate={(_id, v) => requiredCommandError(v)}
+              >
+                {#snippet post()}
+                  {#if canWrite}
+                    <Button
+                      type="button"
+                      color="success"
+                      outline
+                      title={$_('buttons.Test')}
+                      on:click={() => openHookTest(row)}
+                      >{$_('buttons.Test')}</Button
+                    >
+                  {/if}
+                {/snippet}
+              </Input>
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-shell`}
+                helpKey="config.hooks.shell"
+                type="select"
+                label={$_('config.hooks.shell.label')}
+                bind:value={hook.shell}
+                original={prev?.shell}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'SHELL')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-silent`}
+                helpKey="config.hooks.silent"
+                type="select"
+                label={$_('config.hooks.silent.label')}
+                bind:value={hook.silent}
+                original={prev?.silent}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'SILENT')}
+              />
+            </Col>
+          {:else}
+            <Col md="8">
+              <Input
+                id={`${section}-${row.id}-name`}
+                helpKey="config.hooks.name"
+                label={$_('config.hooks.name.label')}
+                bind:value={() => hook.name, (v) => setName(row, v)}
+                original={prev?.name}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'NAME')}
+              />
+            </Col>
+            <Col md="12">
+              <Input
+                id={`${section}-${row.id}-url`}
+                helpKey="config.hooks.url"
+                label={$_('config.hooks.url.label')}
+                bind:value={hook.url}
+                original={prev?.url}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'URL')}
+                validate={(_id, v) => httpURLError(v)}
+              >
+                {#snippet post()}
+                  {#if canWrite}
+                    <Button
+                      type="button"
+                      color="success"
+                      outline
+                      title={$_('buttons.Test')}
+                      on:click={() => openHookTest(row)}
+                      >{$_('buttons.Test')}</Button
+                    >
+                  {/if}
+                {/snippet}
+              </Input>
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-ctype`}
+                helpKey="config.hooks.contentType"
+                label={$_('config.hooks.contentType.label')}
+                bind:value={hook.contentType}
+                original={prev?.contentType}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'CONTENT_TYPE')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-timeout`}
+                helpKey="config.hooks.timeout"
+                type="timeout"
+                label={$_('config.hooks.timeout.label')}
+                bind:value={hook.timeout}
+                original={prev?.timeout}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TIMEOUT')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-ssl`}
+                helpKey="config.hooks.ignoreSsl"
+                type="select"
+                label={$_('config.hooks.ignoreSsl.label')}
+                bind:value={hook.ignoreSsl}
+                original={prev?.ignoreSsl}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'IGNORE_SSL')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-silent`}
+                helpKey="config.hooks.silent"
+                type="select"
+                label={$_('config.hooks.silent.label')}
+                bind:value={hook.silent}
+                original={prev?.silent}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'SILENT')}
+              />
+            </Col>
+          {/if}
+          <Col md="12">
+            <FormGroup>
+              <Label>{$_('config.hooks.events.label')}</Label>
+              <FormText class="d-block mb-2"
+                >{$_('config.hooks.events.description')}</FormText
+              >
+              {#each EXTRACT_STATUSES as st, si (st.value)}
+                <FormCheck
+                  inline
+                  id={`${section}-${row.id}-ev-${st.value}`}
+                  label={$_('status.' + (statusKeys[si] ?? st.label))}
+                  checked={eventOn(hook, st)}
+                  disabled={!canWrite ||
+                    row.envOnly ||
+                    envHas(envField(envPrefix, slug, 'EVENTS'))}
+                  on:change={(e) =>
+                    toggleEvent(
+                      hook,
+                      st,
+                      (e.currentTarget as HTMLInputElement).checked,
+                    )}
+                />
+              {/each}
+            </FormGroup>
+          </Col>
+          {#if !isCmd}
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-template`}
+                helpKey="config.hooks.template"
+                type="select"
+                label={$_('config.hooks.template.label')}
+                bind:value={hook.template}
+                original={prev?.template}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TEMPLATE')}
+                options={templateChoices}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-tmplpath`}
+                helpKey="config.hooks.templatePath"
+                label={$_('config.hooks.templatePath.label')}
+                bind:value={hook.templatePath}
+                original={prev?.templatePath}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TEMPLATE_PATH')}
+                browse="file"
+                disableMkdir
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-nick`}
+                helpKey="config.hooks.nickname"
+                label={$_('config.hooks.nickname.label')}
+                bind:value={hook.nickname}
+                original={prev?.nickname}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'NICKNAME')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-channel`}
+                helpKey="config.hooks.channel"
+                label={$_('config.hooks.channel.label')}
+                bind:value={hook.channel}
+                original={prev?.channel}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'CHANNEL')}
+              />
+            </Col>
+            <Col md="12">
+              <Input
+                id={`${section}-${row.id}-token`}
+                helpKey="config.hooks.token"
+                type="password"
+                label={$_('config.hooks.token.label')}
+                bind:value={hook.token}
+                original={prev?.token}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TOKEN')}
+              />
+            </Col>
+          {/if}
+          <Col md="12">
+            <FormGroup>
+              <Label>{$_('config.hooks.exclude.label')}</Label>
+              <FormText class="d-block mb-2"
+                >{$_('config.hooks.exclude.description')}</FormText
+              >
+              {#each hookApps as app (app.value)}
+                {@const names = namesFor(app.value)}
+                <FormCheck
+                  inline
+                  id={`${section}-${row.id}-ex-${app.value}`}
+                  label={app.name}
+                  checked={dialectOn(hook, app.value)}
+                  disabled={!canWrite ||
+                    row.envOnly ||
+                    envHas(envField(envPrefix, slug, 'EXCLUDE'))}
+                  on:change={(e) =>
+                    toggleDialect(
+                      hook,
+                      app.value,
+                      names,
+                      (e.currentTarget as HTMLInputElement).checked,
+                    )}
+                />
+                {#each names as inst (inst)}
+                  <FormCheck
+                    inline
+                    id={`${section}-${row.id}-ex-${app.value}-${inst}`}
+                    label={inst}
+                    checked={nameOn(hook, app.value, inst)}
+                    disabled={!canWrite ||
+                      row.envOnly ||
+                      envHas(envField(envPrefix, slug, 'EXCLUDE'))}
+                    on:change={(e) =>
+                      toggleName(
+                        hook,
+                        app.value,
+                        names,
+                        inst,
+                        (e.currentTarget as HTMLInputElement).checked,
+                      )}
+                  />
+                {/each}
+              {/each}
+            </FormGroup>
+          </Col>
+        </Row>
+      </CardBody>
+    </Card>
+  {/each}
+
+  {#if canWrite}
+    <SaveBar>
+      <Button color="primary" disabled={saving || invalid} on:click={save}>
+        {#if saving}<Spinner size="sm" />{/if}
+        <span class="ms-1">{$_('buttons.Save')}</span>
+      </Button>
+      <Button color="secondary" outline on:click={add}>
+        {isCmd
+          ? $_('pages.settings.AddCmdhook')
+          : $_('pages.settings.AddWebhook')}
+      </Button>
+    </SaveBar>
+  {/if}
+{/if}
+
+<Modal isOpen={testOpen} toggle={closeHookTest}>
+  <ModalHeader toggle={closeHookTest}
+    >{$_('phrases.TestTitle', { values: { name: testName } })}</ModalHeader
+  >
+  <ModalBody>
+    <FormGroup>
+      <Label for="hook-test-event">{$_('phrases.TestEvent')}</Label>
+      <select id="hook-test-event" class="form-select" bind:value={testEvent}>
+        {#each EXTRACT_STATUSES as st, si (st.value)}
+          <option value={st.id}
+            >{$_('status.' + (statusKeys[si] ?? st.label))}</option
+          >
+        {/each}
+      </select>
+    </FormGroup>
+    <FormGroup>
+      <Label for="hook-test-app">{$_('phrases.TestApp')}</Label>
+      <select id="hook-test-app" class="form-select" bind:value={testApp}>
+        {#each hookAppChoices as choice (choice.value)}
+          <option value={choice.value}>{choice.name}</option>
+        {/each}
+      </select>
+    </FormGroup>
+    {#if testBusy}
+      <Spinner color="primary" size="sm" />
+    {:else if testError}
+      <p class="text-danger mb-0">{testError}</p>
+      {#if testElapsed}
+        <p class="text-muted mb-0 mt-2"
+          >{$_('phrases.TestDuration')}: {testElapsed}</p
+        >
+      {/if}
+    {:else if testResult}
+      {#if testElapsed}
+        <p class="mb-1">{$_('phrases.TestDuration')}: {testElapsed}</p>
+      {/if}
+      {#if testResult.reply}
+        <p class="mb-1">{$_('phrases.TestReply')}</p>
+        <pre class="mb-0 small text-break">{testResult.reply}</pre>
+      {:else}
+        <p class="text-success mb-0">{testResult.status}</p>
+      {/if}
+    {/if}
+  </ModalBody>
+  <ModalFooter>
+    <Button color="warning" on:click={closeHookTest}
+      >{$_('buttons.Close')}</Button
+    >
+    <Button color="success" disabled={testBusy} on:click={runHookTest}
+      >{$_('buttons.Test')}</Button
+    >
+  </ModalFooter>
+</Modal>

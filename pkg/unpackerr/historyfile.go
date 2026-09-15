@@ -213,14 +213,29 @@ func mergeHistory(list []HistoryRecord, recs ...HistoryRecord) []HistoryRecord {
 	return list
 }
 
+// capHistoryLocked trims completed/failed rows to keep_history. In-flight
+// checkpoints sit on top of that cap until they finish, so a small
+// keep_history cannot drop EXTRACTED work a restart would resume.
 func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 	limit := int(u.KeepHistory)
-	if limit <= 0 || len(list) <= limit {
+	if limit <= 0 {
 		return list
 	}
 
-	drop := len(list) - limit
-	out := make([]HistoryRecord, 0, limit)
+	durable := 0
+
+	for _, rec := range list {
+		if isDurableHistory(rec.Status) {
+			durable++
+		}
+	}
+
+	if durable <= limit {
+		return list
+	}
+
+	drop := durable - limit
+	out := make([]HistoryRecord, 0, len(list)-drop)
 
 	for _, rec := range list {
 		if drop > 0 && isDurableHistory(rec.Status) {
@@ -229,10 +244,6 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 		}
 
 		out = append(out, rec)
-	}
-
-	if len(out) > limit {
-		return out[len(out)-limit:]
 	}
 
 	return out

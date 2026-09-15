@@ -307,9 +307,10 @@ sections:
           How many completed or failed items to keep in unpackerr.history.jsonl
           (next to the log file, or the config file if logs go to stdout).
           In-flight Starr items are also written so a restart can put EXTRACTED
-          and IMPORTED work back on the live queue for 72 hours. The history API
-          still lists only completed or failed rows. The tray menu still shows
-          only the last 10 names. `0` disables history and restart resume.
+          and IMPORTED work back on the live queue for 72 hours; they do not
+          count against this number. The history API still lists only completed
+          or failed rows. The tray menu still shows only the last 10 names.
+          `0` disables history and restart resume.
       - name: interval
         envvar: INTERVAL
         default: 2m

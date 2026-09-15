@@ -97,6 +97,8 @@ func (u *Unpackerr) historyDeleteHandler(response http.ResponseWriter, request *
 	switch err := u.deleteHistoryID(itemID); {
 	case errors.Is(err, errHistoryNotFound):
 		writeJSON(response, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, errHistoryInFlight):
+		writeJSON(response, http.StatusConflict, map[string]string{"error": err.Error()})
 	case err != nil:
 		writeJSON(response, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	default:

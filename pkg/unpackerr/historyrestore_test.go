@@ -213,6 +213,43 @@ func TestMaybeRecordHistoryWritesExtracted(t *testing.T) {
 	}
 }
 
+func TestClearHistoryKeepsExtracted(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	now := time.Now()
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), App: "Sportarr", URL: "http://sonarr:8989",
+		Path: "/dl/show", Status: EXTRACTED, Updated: now, NewFiles: []string{"/dl/show/ep.mkv"},
+	})
+	unpack.upsertHistory(HistoryRecord{
+		ID: "movie", Kind: string(starr.Radarr), Path: "/dl/movie", Status: IMPORTED, Updated: now,
+	})
+
+	if err := unpack.clearHistory(); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(unpack.historySnapshot()) != 0 {
+		t.Fatalf("finished rows after clear %+v", unpack.historySnapshot())
+	}
+
+	if len(unpack.records) != 1 || unpack.records[0].ID != "show" {
+		t.Fatalf("resume row %+v", unpack.records)
+	}
+
+	unpack.restoreQueueFromHistory()
+
+	show := unpack.Map["show"]
+	if show == nil || show.Status != EXTRACTED {
+		t.Fatalf("extracted after clear %+v", show)
+	}
+
+	if unpack.Map["movie"] != nil {
+		t.Fatal("cleared imported row restored")
+	}
+}
+
 func TestRestoreQueueSkipsForgotten(t *testing.T) {
 	t.Parallel()
 

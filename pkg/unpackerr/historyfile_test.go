@@ -159,3 +159,74 @@ func TestLoadHistoryRewritesFileCap(t *testing.T) {
 		t.Fatalf("file %s", body)
 	}
 }
+
+func TestCapHistoryKeepsExtracted(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 2
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+
+	unpack.upsertHistory(HistoryRecord{ID: "show", Path: "/dl/show", Status: EXTRACTED, Updated: time.Now()})
+	unpack.upsertHistory(HistoryRecord{ID: "a", Path: "a", Status: IMPORTED, Updated: time.Now()})
+	unpack.upsertHistory(HistoryRecord{ID: "b", Path: "b", Status: IMPORTED, Updated: time.Now()})
+
+	if len(unpack.records) != 3 {
+		t.Fatalf("cap %+v", unpack.records)
+	}
+
+	got := unpack.historySnapshot()
+	if len(got) != 2 || got[0].ID != "b" || got[1].ID != "a" {
+		t.Fatalf("history %+v", got)
+	}
+
+	ids := map[string]ExtractStatus{}
+	for _, rec := range unpack.records {
+		ids[rec.ID] = rec.Status
+	}
+
+	if ids["show"] != EXTRACTED || ids["a"] != IMPORTED || ids["b"] != IMPORTED {
+		t.Fatalf("kept %+v", unpack.records)
+	}
+}
+
+func TestCapHistoryIgnoresInFlightCount(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 2
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+
+	now := time.Now()
+	for _, id := range []string{"q1", "q2", "q3"} {
+		unpack.upsertHistory(HistoryRecord{ID: id, Path: "/" + id, Status: EXTRACTED, Updated: now})
+	}
+
+	unpack.upsertHistory(HistoryRecord{ID: "old", Path: "/old", Status: IMPORTED, Updated: now})
+	unpack.upsertHistory(HistoryRecord{ID: "new", Path: "/new", Status: IMPORTED, Updated: now})
+	unpack.upsertHistory(HistoryRecord{ID: "newer", Path: "/newer", Status: IMPORTED, Updated: now})
+
+	ids := map[string]ExtractStatus{}
+	for _, rec := range unpack.records {
+		ids[rec.ID] = rec.Status
+	}
+
+	if len(unpack.records) != 5 {
+		t.Fatalf("records %+v", unpack.records)
+	}
+
+	for _, id := range []string{"q1", "q2", "q3"} {
+		if ids[id] != EXTRACTED {
+			t.Fatalf("checkpoint %s missing %+v", id, unpack.records)
+		}
+	}
+
+	if _, ok := ids["old"]; ok {
+		t.Fatalf("oldest durable still present %+v", unpack.records)
+	}
+
+	got := unpack.historySnapshot()
+	if len(got) != 2 || got[0].ID != "newer" || got[1].ID != "new" {
+		t.Fatalf("history %+v", got)
+	}
+}

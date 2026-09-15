@@ -1,5 +1,7 @@
 package frontend
 
+//go:generate sh generate.sh
+
 import (
 	"embed"
 	"io/fs"
@@ -12,7 +14,7 @@ const unbuiltIndex = `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Unpackerr</title></head>
 <body>
-<p>Unpackerr UI is not included in this build.</p>
+<p>Unpackerr UI is not built. Run <code>go generate ./frontend</code> or <code>npm run build</code> in frontend/.</p>
 </body>
 </html>
 `

@@ -267,7 +267,7 @@
       },
       "ConfigTestRequest": {
         "type": "object",
-        "description": "POST /api/config/{section}/test. Starr uses url/apiKey/valid_ssl/timeout (blank url/apiKey filled from the live instance matching slug). Hooks overlay form fields onto the live hook and fire one sample payload.",
+        "description": "POST /api/config/{section}/test. Starr uses url/apiKey/valid_ssl/timeout (blank url/apiKey filled from the live instance matching slug). Hooks overlay non-empty form fields onto the live hook; omitted shell/ignoreSsl keep live values, present true or false override. Fires one sample payload.",
         "properties": {
           "slug": {"type": "string"},
           "url": {"type": "string"},
@@ -279,10 +279,10 @@
           "command": {"type": "string"},
           "token": {"type": "string"},
           "contentType": {"type": "string"},
-          "template": {"type": "string"},
-          "templatePath": {"type": "string"},
-          "shell": {"type": "boolean"},
-          "ignoreSsl": {"type": "boolean"},
+          "template": {"type": "string", "description": "When non-empty, overrides the live hook template name"},
+          "templatePath": {"type": "string", "description": "When non-empty, overrides the live hook template path"},
+          "shell": {"type": "boolean", "description": "When present, overrides the live hook; omitted keeps live"},
+          "ignoreSsl": {"type": "boolean", "description": "When present, overrides the live hook; omitted keeps live"},
           "nickname": {"type": "string"},
           "channel": {"type": "string"},
           "name": {"type": "string"}
@@ -942,7 +942,7 @@
       "post": {
         "tags": ["config"],
         "summary": "Probe a Starr instance or fire one sample hook",
-        "description": "Requires config:{section}:write (same as PUT). Does not persist. Sonarr/Radarr/Lidarr/Readarr GET the activity queue on a throwaway client and return torrent vs usenet counts; blank url/apiKey are filled from the live instance matching slug. Webhooks and cmdhooks overlay the posted fields onto a clone of the live hook (or a new hook) and Fire one sample payload. general, webserver, and folders return 400. Remote Starr/hook failures are 424.",
+        "description": "Requires config:{section}:write (same as PUT). Does not persist. Sonarr/Radarr/Lidarr/Readarr GET the activity queue on a throwaway client and return torrent vs usenet counts; blank url/apiKey are filled from the live instance matching slug. Webhooks and cmdhooks overlay non-empty posted fields onto a clone of the live hook (or a new hook); omitted shell/ignoreSsl keep live values. Fire one sample payload. general, webserver, and folders return 400. Remote Starr/hook failures are 424.",
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ConfigTestRequest"}}}

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Unpackerr/unpackerr/pkg/extract"
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/starr"
 )
 
@@ -231,6 +232,59 @@ func TestConfigTestWebhook(t *testing.T) {
 	}
 }
 
+func TestOverlayHookKeepsLiveUnlessPosted(t *testing.T) {
+	t.Parallel()
+
+	live := &hooks.Config{
+		URL:       "http://live.example/hook",
+		TempName:  "discord",
+		TmplPath:  "/tmp/hook.tmpl",
+		Shell:     true,
+		IgnoreSSL: true,
+		Name:      "discord",
+		Nickname:  "Unpackerr",
+	}
+
+	keep := hooks.CloneList([]*hooks.Config{live})[0]
+	overlayHook(keep, configTestRequest{})
+
+	if keep.URL != live.URL || keep.TempName != live.TempName || keep.TmplPath != live.TmplPath ||
+		keep.Shell != live.Shell || keep.IgnoreSSL != live.IgnoreSSL || keep.Name != live.Name {
+		t.Fatalf("empty overlay template=%q path=%q shell=%v ssl=%v",
+			keep.TempName, keep.TmplPath, keep.Shell, keep.IgnoreSSL)
+	}
+
+	var omitted configTestRequest
+	if err := json.Unmarshal([]byte(`{"url":"http://posted.example/hook"}`), &omitted); err != nil {
+		t.Fatal(err)
+	}
+
+	posted := hooks.CloneList([]*hooks.Config{live})[0]
+	overlayHook(posted, omitted)
+
+	if posted.URL != "http://posted.example/hook" || posted.TempName != "discord" ||
+		posted.TmplPath != "/tmp/hook.tmpl" || !posted.Shell || !posted.IgnoreSSL {
+		t.Fatalf("omitted fields template=%q shell=%v ssl=%v url=%q",
+			posted.TempName, posted.Shell, posted.IgnoreSSL, posted.URL)
+	}
+
+	var off configTestRequest
+	if err := json.Unmarshal([]byte(
+		`{"template":"gotify","templatePath":"/tmp/other.tmpl","shell":false,"ignoreSsl":false}`,
+	), &off); err != nil {
+		t.Fatal(err)
+	}
+
+	forced := hooks.CloneList([]*hooks.Config{live})[0]
+	overlayHook(forced, off)
+
+	if forced.TempName != "gotify" || forced.TmplPath != "/tmp/other.tmpl" ||
+		forced.Shell || forced.IgnoreSSL || forced.URL != live.URL {
+		t.Fatalf("posted override template=%q path=%q shell=%v ssl=%v",
+			forced.TempName, forced.TmplPath, forced.Shell, forced.IgnoreSSL)
+	}
+}
+
 func TestConfigTestWebhookFillsFromLive(t *testing.T) {
 	t.Parallel()
 
@@ -257,6 +311,41 @@ func TestConfigTestWebhookFillsFromLive(t *testing.T) {
 
 	if got.Reply != "pong" {
 		t.Fatalf("reply %+v", got)
+	}
+
+	requireTestElapsed(t, rec.Body.Bytes())
+}
+
+func TestConfigTestWebhookKeepsLiveTemplate(t *testing.T) {
+	t.Parallel()
+
+	var gotBody string
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		body, _ := io.ReadAll(request.Body)
+		gotBody = string(body)
+
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webhook = InstanceMap[WebhookConfig]{
+		"discord": {Name: "discord", URL: server.URL, TempName: "discord"},
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/webhooks/test",
+		`{"slug":"discord","event":"queued"}`, putKey(unpack))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("live template %d %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(gotBody, `"embeds"`) {
+		t.Fatalf("expected discord template, got %s", gotBody)
+	}
+
+	if strings.Contains(gotBody, "unpackerr_eventtype") {
+		t.Fatalf("default notifiarr template leaked: %s", gotBody)
 	}
 
 	requireTestElapsed(t, rec.Body.Bytes())

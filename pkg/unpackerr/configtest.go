@@ -25,6 +25,7 @@ var errSectionNotTestable = errors.New("this section cannot be tested")
 
 // configTestRequest is POST /api/config/{section}/test.
 // Starr uses url/apiKey/valid_ssl/timeout. Hooks use event/app and hook fields.
+// Hook shell/ignoreSsl are pointers so omitted JSON keeps the live values.
 type configTestRequest struct {
 	Slug         string        `json:"slug"`
 	URL          string        `json:"url"`
@@ -38,8 +39,8 @@ type configTestRequest struct {
 	ContentType  string        `json:"contentType"`
 	Template     string        `json:"template"`
 	TemplatePath string        `json:"templatePath"`
-	Shell        bool          `json:"shell"`
-	IgnoreSSL    bool          `json:"ignoreSsl"`
+	Shell        *bool         `json:"shell"`
+	IgnoreSSL    *bool         `json:"ignoreSsl"`
 	Nickname     string        `json:"nickname"`
 	Channel      string        `json:"channel"`
 	Name         string        `json:"name"`
@@ -122,10 +123,10 @@ func (u *Unpackerr) starrTestConfig(section ConfigSection, body configTestReques
 		return "", StarrConfig{}, errSectionNotTestable
 	}
 
-	probe := u.liveStarrProbe(section, strings.TrimSpace(body.Slug))
+	probe, global := u.liveStarrProbe(section, strings.TrimSpace(body.Slug))
 	url := firstNonEmpty(strings.TrimSpace(body.URL), probe.URL)
 	key := firstNonEmpty(strings.TrimSpace(body.APIKey), probe.APIKey)
-	timeout := clampTestTimeout(body.Timeout.Duration, probe.Timeout, u.Timeout.Duration)
+	timeout := clampTestTimeout(body.Timeout.Duration, probe.Timeout, global)
 
 	cfg := StarrConfig{
 		URL:      url,
@@ -162,13 +163,14 @@ func requireStarrTestAccess(cfg StarrConfig) error {
 	return nil
 }
 
-func (u *Unpackerr) liveStarrProbe(section ConfigSection, slug string) starrProbe {
-	if slug == "" {
-		return starrProbe{}
-	}
-
+func (u *Unpackerr) liveStarrProbe(section ConfigSection, slug string) (starrProbe, time.Duration) {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
+
+	global := u.Timeout.Duration
+	if slug == "" {
+		return starrProbe{}, global
+	}
 
 	var cfg *StarrConfig
 
@@ -192,7 +194,7 @@ func (u *Unpackerr) liveStarrProbe(section ConfigSection, slug string) starrProb
 	}
 
 	if cfg == nil {
-		return starrProbe{}
+		return starrProbe{}, global
 	}
 
 	return starrProbe{
@@ -203,7 +205,7 @@ func (u *Unpackerr) liveStarrProbe(section ConfigSection, slug string) starrProb
 		Username: cfg.Username,
 		Password: cfg.Password,
 		Timeout:  cfg.Timeout.Duration,
-	}
+	}, global
 }
 
 func probeStarrQueue(app starr.App, cfg StarrConfig) (starrTestResult, error) {
@@ -289,14 +291,14 @@ func (u *Unpackerr) testHookSection(
 func (u *Unpackerr) hookTestConfig(
 	section ConfigSection, body configTestRequest,
 ) (*hooks.Config, extract.Status, starr.App, error) {
-	hook := u.liveHookClone(section, strings.TrimSpace(body.Slug))
+	hook, global := u.liveHookClone(section, strings.TrimSpace(body.Slug))
 	if hook == nil {
 		hook = &hooks.Config{}
 	}
 
 	overlayHook(hook, body)
 
-	timeout := clampTestTimeout(body.Timeout.Duration, hook.Timeout.Duration, u.Timeout.Duration)
+	timeout := clampTestTimeout(body.Timeout.Duration, hook.Timeout.Duration, global)
 	hook.Timeout.Duration = timeout
 
 	if section == SectionCmdhooks {
@@ -346,8 +348,13 @@ func overlayHook(hook *hooks.Config, body configTestRequest) {
 		hook.CType = v
 	}
 
-	hook.TempName = strings.TrimSpace(body.Template)
-	hook.TmplPath = strings.TrimSpace(body.TemplatePath)
+	if v := strings.TrimSpace(body.Template); v != "" {
+		hook.TempName = v
+	}
+
+	if v := strings.TrimSpace(body.TemplatePath); v != "" {
+		hook.TmplPath = v
+	}
 
 	if v := strings.TrimSpace(body.Nickname); v != "" {
 		hook.Nickname = v
@@ -361,17 +368,23 @@ func overlayHook(hook *hooks.Config, body configTestRequest) {
 		hook.Name = v
 	}
 
-	hook.Shell = body.Shell
-	hook.IgnoreSSL = body.IgnoreSSL
-}
-
-func (u *Unpackerr) liveHookClone(section ConfigSection, slug string) *hooks.Config {
-	if slug == "" {
-		return nil
+	if body.Shell != nil {
+		hook.Shell = *body.Shell
 	}
 
+	if body.IgnoreSSL != nil {
+		hook.IgnoreSSL = *body.IgnoreSSL
+	}
+}
+
+func (u *Unpackerr) liveHookClone(section ConfigSection, slug string) (*hooks.Config, time.Duration) {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
+
+	global := u.Timeout.Duration
+	if slug == "" {
+		return nil, global
+	}
 
 	var src *hooks.Config
 
@@ -383,10 +396,10 @@ func (u *Unpackerr) liveHookClone(section ConfigSection, slug string) *hooks.Con
 	}
 
 	if src == nil {
-		return nil
+		return nil, global
 	}
 
-	return hooks.CloneList([]*hooks.Config{src})[0]
+	return hooks.CloneList([]*hooks.Config{src})[0], global
 }
 
 func parseTestEvent(raw string) (extract.Status, error) {

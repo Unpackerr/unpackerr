@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1443,6 +1444,158 @@ func TestConfigPutGeneralNoChangeNeedsNoRestart(t *testing.T) {
 	if unpack.FileMode == "" || unpack.DirMode == "" || unpack.LogFileMode == "" {
 		t.Fatalf("clamp did not refill modes: %q %q %q", unpack.FileMode, unpack.DirMode, unpack.LogFileMode)
 	}
+}
+
+// make dev sets UN_DEBUG; the general form PUTs the file document (debug false).
+// That must keep the env overlay and must not re-exec.
+func TestConfigPutGeneralEnvDebugNeedsNoRestart(t *testing.T) {
+	t.Setenv("UN_DEBUG", "true")
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	used, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(used.Used, unpack.EnvPrefix)
+	if !unpack.Config.Debug {
+		t.Fatal("expected UN_DEBUG overlay")
+	}
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	if general.Debug {
+		t.Fatal("GET must return the file debug flag")
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/general", got.Body.String(), withKey)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if reply.RestartRequired || unpack.pendingRestart {
+		t.Fatal("saving the file document must not restart when only UN_DEBUG differs")
+	}
+
+	if !unpack.Config.Debug {
+		t.Fatal("live debug must stay the env overlay")
+	}
+}
+
+// The general form fills omitted logFileMb/parallel/modes before PUT. That is
+// the same as clampConfig, so it must not look like a logger change.
+func TestConfigPutGeneralUIDefaultsNeedNoRestart(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/general", "", withKey)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	var general generalConfig
+	if err := json.Unmarshal(got.Body.Bytes(), &general); err != nil {
+		t.Fatal(err)
+	}
+
+	if general.Parallel < 1 {
+		general.Parallel = 1
+	}
+
+	if general.LogFileMb == 0 {
+		general.LogFileMb = defaultLogFileMb
+	}
+
+	// GeneralForm.defaultMode padStarts to four octal digits even when GET
+	// already has the clamped "644"/"755" strings from a previous snapshot.
+	general.FileMode = unixModeLikeUI(general.FileMode, "0644")
+	general.DirMode = unixModeLikeUI(general.DirMode, "0755")
+
+	body, err := json.Marshal(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(body), withKey)
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	var reply configWriteReply
+	if err := json.Unmarshal(put.Body.Bytes(), &reply); err != nil {
+		t.Fatal(err)
+	}
+
+	if reply.RestartRequired || unpack.pendingRestart {
+		t.Fatal("UI default fills must not restart")
+	}
+
+	if unpack.FileMode != "644" || unpack.DirMode != "755" {
+		t.Fatalf("live modes %q %q, want 644 755", unpack.FileMode, unpack.DirMode)
+	}
+}
+
+// GeneralForm padStarts octal modes; clampConfig stores them without the leading zero.
+func TestGeneralRestartRequiredIgnoresModePadding(t *testing.T) {
+	t.Parallel()
+
+	cur := New().Config
+	clampConfig(cur)
+
+	next := cloneConfig(cur)
+	next.FileMode = "0" + cur.FileMode
+	next.DirMode = "0" + cur.DirMode
+	next.LogFileMode = "0" + cur.LogFileMode
+
+	if generalRestartRequired(cur, next) {
+		t.Fatal("0644 and 644 are the same bits and must not restart")
+	}
+
+	next.FileMode = "0640"
+	if !generalRestartRequired(cur, next) {
+		t.Fatal("a real mode change must still restart")
+	}
+}
+
+func unixModeLikeUI(raw, fallback string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		s = fallback
+	}
+
+	n, err := strconv.ParseUint(s, 8, 32)
+	if err != nil {
+		return fallback
+	}
+
+	return fmt.Sprintf("%04o", n&0o777)
 }
 
 // blockedPath returns a path whose parent is a regular file, so creating it

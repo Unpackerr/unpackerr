@@ -712,6 +712,18 @@ func TestEnvSuffixesAndSecrets(t *testing.T) {
 			t.Fatalf("unexpected secret %s", name)
 		}
 	}
+
+	if !envAlwaysRedact("WEBSERVER_UI_PASSWORD") {
+		t.Fatal("expected ui password always redacted")
+	}
+
+	if envAlwaysRedact("WEBSERVER_ROLES_ui_password_PERMISSIONS_0") {
+		t.Fatal("role names that contain ui_password must not always-redact")
+	}
+
+	if envAlwaysRedact("SONARR_0_API_KEY") {
+		t.Fatal("starr keys stay visible to * via env GET")
+	}
 }
 
 func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
@@ -840,5 +852,23 @@ func TestValidateStarrListRejectsBadName(t *testing.T) {
 
 	if len(unpack.Sonarr) != 1 {
 		t.Fatalf("bad name must not skip the instance, got %d", len(unpack.Sonarr))
+	}
+}
+
+func TestClampConfigCanonicalizesUnixModes(t *testing.T) {
+	t.Parallel()
+
+	cfg := New().Config
+	cfg.FileMode = "0644"
+	cfg.DirMode = "0755"
+	cfg.LogFileMode = "0600"
+
+	fileMode, dirMode := clampConfig(cfg)
+	if cfg.FileMode != "644" || cfg.DirMode != "755" || cfg.LogFileMode != "600" {
+		t.Fatalf("canonical modes %q %q %q", cfg.FileMode, cfg.DirMode, cfg.LogFileMode)
+	}
+
+	if fileMode != defaultFileMode || dirMode != defaultDirMode {
+		t.Fatalf("parsed %d %d", fileMode, dirMode)
 	}
 }

@@ -114,7 +114,8 @@ func (u *Unpackerr) envPairsPublic(info authInfo) map[string]string {
 	star := info.allows(PermAll)
 
 	for key, val := range used {
-		if !star && envValueSecret(key) {
+		// Login secret stays blank even for *. Other secrets are visible to *.
+		if envAlwaysRedact(key) || (!star && envValueSecret(key)) {
 			out[key] = ""
 			continue
 		}

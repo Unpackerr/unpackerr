@@ -768,7 +768,7 @@
       "get": {
         "tags": ["config"],
         "summary": "Environment variables that overlaid config at startup",
-        "description": "Requires authentication. Keys are UN_* suffixes with the same case as the TOML map key (DEBUG, SONARR_0_URL, SONARR_uhd_URL, WEBSERVER_ROLES_stats_PERMISSIONS_0). Values are the env strings cnfg wrote into fields. Password, API key, webhook token, and webserver api key values are blank unless the caller has *.",
+        "description": "Requires authentication. Keys are UN_* suffixes with the same case as the TOML map key (DEBUG, SONARR_0_URL, SONARR_uhd_URL, WEBSERVER_ROLES_stats_PERMISSIONS_0). Values are the env strings cnfg wrote into fields. Password, API key, webhook token, and webserver api key values are blank unless the caller has *. WEBSERVER_UI_PASSWORD is always blank (the key stays so the UI can lock the field).",
         "responses": {
           "200": {
             "description": "Map of env suffix to value",

@@ -334,7 +334,12 @@ func (u *Unpackerr) commitConfig(mutateFile func(*Config), applyLive func()) err
 	return nil
 }
 
+// cloneFileConfig copies the on-disk config under configMu so PUT preview
+// cannot race another PUT or the tray persist path.
 func (u *Unpackerr) cloneFileConfig() *Config {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
 	if u.fileConfig == nil {
 		return &Config{}
 	}

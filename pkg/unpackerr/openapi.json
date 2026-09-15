@@ -767,7 +767,7 @@
       "get": {
         "tags": ["history"],
         "summary": "Completed and failed items (newest first)",
-        "description": "Requires system:history:read. Capped by keep_history.",
+        "description": "Requires system:history:read. Completed and failed rows are capped by keep_history. In-flight checkpoints are not listed and do not count against that cap.",
         "responses": {
           "200": {
             "description": "History",

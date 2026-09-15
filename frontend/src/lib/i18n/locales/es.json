@@ -1,0 +1,829 @@
+{
+  "words": {
+    "select-option": {
+      "Off": "Apagado",
+      "Enabled": "Activado",
+      "Disabled": "Desactivado",
+      "Unset": "Sin definir",
+      "minute": "minuto",
+      "minutes": "minutos",
+      "hour": "hora",
+      "hours": "horas",
+      "second": "segundo",
+      "seconds": "segundos",
+      "custom": "personalizado",
+      "InstanceDisabled": "Desactivado",
+      "NoTimeout": "Sin tiempo de espera",
+      "ChecksDisabled": "Desactivado",
+      "Unlimited": "Ilimitado",
+      "NoRotation": "(sin rotación)"
+    }
+  },
+  "buttons": {
+    "Login": "Iniciar sesión",
+    "Save": "Guardar",
+    "Add": "Añadir",
+    "Remove": "Quitar",
+    "Retry": "Reintentar",
+    "Forget": "Olvidar",
+    "Refresh": "Actualizar",
+    "Delete": "Eliminar",
+    "ClearAll": "Borrar todo",
+    "Generate": "Generar",
+    "Logout": "Cerrar sesión",
+    "AddKey": "Añadir clave",
+    "AddRole": "Añadir rol",
+    "RemoveKey": "Quitar clave",
+    "RemoveRole": "Quitar rol",
+    "Stay": "Quedarse",
+    "Leave": "Salir",
+    "LiveExport": "Exportación en vivo",
+    "Copy": "Copiar",
+    "AddThisIP": "Añadir esta IP",
+    "Go": "Ir",
+    "CreateFolder": "Crear carpeta",
+    "Create": "Crear",
+    "Download": "Descargar",
+    "Cancel": "Cancelar",
+    "Close": "Cerrar",
+    "Test": "Probar"
+  },
+  "phrases": {
+    "EnvironmentVariable": "Variable de entorno: <code>{variableName}</code>",
+    "EnvironmentVariables": "Variables de entorno: <code>{variableName}</code>",
+    "VariableDescription": "<span class=\"text-warning\">Aviso:</span> Este valor proviene de una variable de entorno, así que el campo está desactivado. Guardar no cambia el valor en ejecución. Cambia o quita la variable para editarlo aquí.",
+    "VariableDescriptionPlural": "<span class=\"text-warning\">Aviso:</span> Estos valores provienen de variables de entorno, así que los campos están desactivados. Guardar no cambia los valores en ejecución. Cambia o quita las variables para editarlos aquí.",
+    "LiveValue": "Valor en vivo: <code>{value}</code>",
+    "ShowMore": "Mostrar más información",
+    "ShowPassword": "Mostrar contraseña",
+    "HidePassword": "Ocultar contraseña",
+    "SessionEnded": "Sesión terminada. Vuelve a iniciar sesión.",
+    "Saved": "Guardado.",
+    "SavedRestart": "Guardado. Hace falta un reinicio para aplicarlo por completo.",
+    "RestartPending": "Un cambio guardado necesita un reinicio para aplicarse por completo. Unpackerr se relanza solo cuando no hay nada en cola, extrayéndose o a la espera de borrar.",
+    "RestartPendingTitle": "Reinicio pendiente.",
+    "NothingQueued": "No hay nada en la cola ahora mismo.",
+    "NoHistory": "Aún no hay historial.",
+    "NoInstances": "No hay instancias de {section} configuradas.",
+    "NoFolders": "No hay carpetas configuradas.",
+    "NoWebhooks": "No hay webhooks configurados.",
+    "NoCmdhooks": "No hay ganchos de comando configurados.",
+    "NoApiKeys": "No hay claves API.",
+    "ClearHistoryTitle": "¿Borrar historial?",
+    "ClearHistoryConfirm": "Esto quita las filas terminadas del historial. Los elementos que aún se extraen o esperan importación se quedan en la cola. Esto no se puede deshacer.",
+    "ForgetImportedTitle": "¿Omitir la limpieza de archivos?",
+    "ForgetImportedConfirm": "Este elemento aún espera la limpieza de archivos. Si lo olvidas, los archivos extraídos se quedan en el disco.",
+    "YouDoNotHavePermission": "No tienes permiso para ver esta sección.",
+    "NotFound": "No encontrado: {path}",
+    "EnterPassword": "Introduce tu contraseña.",
+    "LoadingApi": "Cargando el explorador de la API…",
+    "AdminAll": "admin (todo)",
+    "AdminBuiltin": "El rol admin integrado lo concede todo y no se puede editar.",
+    "NoPermissionsSelected": "Ninguno seleccionado",
+    "UiPasswordHelp": "El navegador calcula el hash de la nueva contraseña igual que en el inicio de sesión y solo envía el resumen. La contraseña actual es necesaria para cambiar la autenticación mientras la contraseña local está activa.",
+    "UiPasswordEmpty": "(vacío — definido por el entorno)",
+    "UiPasswordFilepath": "Esta contraseña es una referencia filepath:. Guardar una contraseña o un tipo de autenticación nuevos escribe el valor en el archivo de configuración.",
+    "ReservedUsername": "Los nombres de usuario webauth, noauth y filepath están reservados, y un nombre de usuario no puede contener dos puntos.",
+    "FilterPlaceholder": "Filtrar…",
+    "Empty": "—",
+    "URLMustBeginWithHttp": "La URL debe empezar por http:// o https://",
+    "URLInvalid": "Esa no es una URL válida.",
+    "APIKeyMustBeCountCharactersOrLonger": "La clave API debe tener al menos {count} caracteres.",
+    "PathMustNotBeEmpty": "La ruta no puede estar vacía.",
+    "CommandMustNotBeEmpty": "El comando no puede estar vacío.",
+    "FixInvalidFields": "Corrige los campos no válidos antes de guardar.",
+    "UnsavedChanges": "Cambios sin guardar",
+    "LeavePage": "¿Salir de esta página? Se perderán los cambios sin guardar.",
+    "Copied": "Copiado.",
+    "ValidSSL": "SSL válido",
+    "ConfigFile": "Archivo de configuración",
+    "ConfigDuration": "Esto es una duración de Go en el archivo de configuración o el entorno, como <code>2m</code> o <code>15s</code>.",
+    "ConfigDurationOff": "Esto es una duración de Go en el archivo de configuración o el entorno. Apagado es <code>0s</code>.",
+    "ConfigDurationUnset": "Esto es una duración de Go en el archivo de configuración o el entorno. Sin definir omite el valor (o lo deja vacío).",
+    "ConfigDurationDisabled": "Esto es una duración de Go en el archivo de configuración o el entorno. Desactivado es <code>-1s</code>.",
+    "ConfigDurationFolderPoll": "Esto es una duración de Go en el archivo de configuración o el entorno. Desactivado es <code>0s</code>, que aún sondea dentro de Docker; usa <code>1ms</code> ahí para apagar el sondeo.",
+    "ConfigSize": "Esto es una cadena de tamaño en el archivo de configuración o el entorno, como <code>20GB</code>. Ilimitado es <code>0</code>.",
+    "BrowseFiles": "Explorar archivos",
+    "TestTitle": "Probar {name}",
+    "TestEvent": "Evento",
+    "TestApp": "Aplicación",
+    "TestQueued": "En cola",
+    "TestRetrieved": "Recuperados",
+    "TestTorrents": "Torrents",
+    "TestNzbs": "NZBs",
+    "TestOther": "Otros",
+    "TestReply": "Respuesta",
+    "TestDuration": "Duración"
+  },
+  "nav": {
+    "Dashboard": "Panel",
+    "History": "Historial",
+    "Application": "Aplicación",
+    "Settings": "Configuración",
+    "System": "Sistema",
+    "LogFiles": "Registros",
+    "API": "API",
+    "Theme": "Tema",
+    "ThemeLight": "Claro",
+    "ThemeDark": "Oscuro",
+    "Language": "Idioma"
+  },
+  "pages": {
+    "login": {
+      "Username": "Usuario",
+      "Password": "Contraseña"
+    },
+    "dashboard": {
+      "Title": "Resumen",
+      "intro": "Cola en vivo, recuentos de extracción e historial terminado de este Unpackerr.",
+      "ActiveQueue": "Actividad",
+      "Live": "En vivo",
+      "Starrs": "Apps Starr",
+      "StarrsHint": "Instancias de Sonarr, Radarr, Lidarr y Readarr en la configuración.",
+      "StarrQueues": "Colas Starr",
+      "StarrQueuesHint": "Último sondeo de la cola de actividad de cada app Starr. Los recuentos son de los registros recuperados.",
+      "StarrQueueTotal": "Total",
+      "StarrQueueTotalHint": "Tamaño de la cola Starr. Recuperados se muestra si difiere del total.",
+      "StarrQueueComplete": "Listos",
+      "StarrQueueCompleteHint": "Elementos con estado completed, cualquier protocolo.",
+      "StarrQueueMatch": "Match",
+      "StarrQueueMatchHint": "Elementos completed cuyo protocolo está en la lista de esta app. Unpackerr hace seguimiento de estos.",
+      "StarrQueueIssues": "Issues",
+      "StarrQueueIssuesHint": "Elementos fallidos o con aviso, incluidos errores y avisos de descarga rastreada. Un recuento por elemento.",
+      "StarrQueueDownloading": "DL",
+      "StarrQueueDownloadingHint": "Elementos que aún se están descargando.",
+      "Folders": "Carpetas vigiladas",
+      "FoldersHint": "Rutas de carpetas vigiladas en la configuración.",
+      "Waiting": "En espera",
+      "WaitingHint": "Elementos a la espera del retraso inicial, y carpetas que aún no se han estabilizado.",
+      "Queued": "En cola",
+      "QueuedHint": "Elementos en cola para extraer.",
+      "Extracting": "Extrayendo",
+      "ExtractingHint": "Elementos que se están extrayendo ahora.",
+      "Extracted": "Extraído",
+      "ExtractedHint": "Extraídos y a la espera de que la app Starr los importe.",
+      "Imported": "Importado",
+      "ImportedHint": "Importados por la app Starr; a la espera del retraso de borrado.",
+      "Failed": "Fallido",
+      "FailedHint": "Extracciones fallidas.",
+      "Deleted": "Eliminado",
+      "DeletedHint": "Elementos importados cuyos archivos se han borrado.",
+      "Finished": "Terminado",
+      "FinishedHint": "Elementos completados desde que se inició Unpackerr. Este total no se reinicia.",
+      "Webhooks": "Webhooks",
+      "WebhooksHint": "Webhooks HTTP desde el inicio: totales / fallidos.",
+      "Cmdhooks": "Ganchos de comando",
+      "CmdhooksHint": "Ganchos de comando desde el inicio: totales / fallidos.",
+      "StackFS": "Eventos FS",
+      "StackFSHint": "Eventos del sistema de archivos de las carpetas vigiladas pendientes en el bucle principal. Ocupado / capacidad.",
+      "StackXtractr": "Extracciones Starr",
+      "StackXtractrHint": "Devoluciones de extracción de Starr pendientes. Ocupado / capacidad.",
+      "StackFolder": "Extracciones de carpeta",
+      "StackFolderHint": "Devoluciones de extracción de carpetas vigiladas pendientes. Ocupado / capacidad.",
+      "StackHook": "Cola de ganchos",
+      "StackHookHint": "Webhooks y ganchos de comando pendientes de ejecutar. Ocupado / capacidad.",
+      "StackDel": "Cola de borrados",
+      "StackDelHint": "Borrados de archivos pendientes de ejecutar. Ocupado / capacidad.",
+      "StackTask": "Cola de tareas",
+      "StackTaskHint": "Cambios de configuración y acciones de cola pendientes en el bucle principal. Ocupado / capacidad.",
+      "App": "App",
+      "Status": "Estado",
+      "Item": "Elemento",
+      "Progress": "Progreso",
+      "Retries": "Reintentos",
+      "Updated": "Actualizado",
+      "Actions": "Acciones",
+      "Refresh": "Actualizar",
+      "UpdatedAgo": "Actualizado hace {age}",
+      "LastWrite": "Última escritura"
+    },
+    "history": {
+      "Title": "Historial",
+      "intro": "Extracciones terminadas, incluidos reintentos y elementos ya borrados del disco.",
+      "App": "App",
+      "Status": "Estado",
+      "Item": "Elemento",
+      "Files": "Archivos",
+      "Size": "Tamaño",
+      "Retries": "Reintentos",
+      "Finished": "Terminado",
+      "DeletedRow": "Fila de historial eliminada",
+      "Cleared": "Historial borrado"
+    },
+    "settings": {
+      "Title": "Configuración",
+      "Heading": "{settings} — {page}",
+      "general": {
+        "label": "General",
+        "intro": "Ajustes de extracción, reintento, registro y contraseñas de archivo que aplican en todas partes.",
+        "Logging": "Registro",
+        "Extraction": "Extracción"
+      },
+      "starrs": {
+        "label": "Starrs",
+        "intro": "Instancias de Sonarr, Radarr, Lidarr y Readarr que Unpackerr sondea."
+      },
+      "hooks": {
+        "label": "Ganchos",
+        "intro": "Devoluciones HTTP y comandos locales cuando una extracción cambia de estado."
+      },
+      "webserver": {
+        "label": "Servidor web",
+        "intro": "Dirección de escucha, TLS y registros HTTP. La dirección de escucha y la base de URL necesitan un reinicio."
+      },
+      "sonarr": {
+        "label": "Sonarr",
+        "intro": "Instancias de Sonarr que Unpackerr sondea en busca de descargas completadas."
+      },
+      "radarr": {
+        "label": "Radarr",
+        "intro": "Instancias de Radarr que Unpackerr sondea en busca de descargas completadas."
+      },
+      "lidarr": {
+        "label": "Lidarr",
+        "intro": "Instancias de Lidarr que Unpackerr sondea en busca de descargas completadas."
+      },
+      "readarr": {
+        "label": "Readarr",
+        "intro": "Instancias de Readarr que Unpackerr sondea en busca de descargas completadas."
+      },
+      "folders": {
+        "label": "Carpetas",
+        "intro": "Carpetas vigiladas que no son una ruta de descarga de Starr. Los cambios de carpetas siempre necesitan un reinicio.",
+        "AfterExtract": "Tras extraer",
+        "Extraction": "Extracción",
+        "Protection": "Protección"
+      },
+      "webhooks": {
+        "label": "Webhooks",
+        "intro": "Devoluciones HTTP cuando una extracción cambia de estado. Apúntalos a Discord, Slack, Notifiarr o cualquier URL que acepte un POST."
+      },
+      "cmdhooks": {
+        "label": "Ganchos de comando",
+        "intro": "Comandos locales que se ejecutan cuando una extracción cambia de estado. Los mismos eventos que los webhooks, en este equipo."
+      },
+      "Instance": "{section} #{n}",
+      "FolderN": "Carpeta #{n}",
+      "WebhookN": "Webhook #{n}",
+      "CmdhookN": "Gancho de comando #{n}",
+      "Server": "Servidor",
+      "ApiKeys": "Claves API",
+      "CustomRoles": "Roles personalizados",
+      "AddSection": "Añadir {section}",
+      "AddFolder": "Añadir carpeta",
+      "AddWebhook": "Añadir webhook",
+      "AddCmdhook": "Añadir gancho de comando"
+    },
+    "trust": {
+      "Title": "Confianza",
+      "Authorization": "Autorización",
+      "intro": "Inicio de sesión de la UI, claves API y roles personalizados. Tu IP debe estar en Upstreams antes de pasar a autenticación por cabecera o sin autenticación, o puedes bloquearte."
+    },
+    "system": {
+      "Title": "Sistema",
+      "intro": "Este proceso, la ruta del archivo de configuración y un volcado en vivo de los valores en ejecución (secretos omitidos).",
+      "Instance": "Instancia",
+      "You": "Tú",
+      "Links": "Enlaces",
+      "Website": "Sitio y documentación",
+      "GitHub": "GitHub",
+      "Discord": "Discord",
+      "Notifiarr": "Notifiarr",
+      "Xt": "xTractor Tool",
+      "Version": "Versión",
+      "Revision": "Revisión",
+      "Started": "Inicio",
+      "Uptime": "Tiempo activo",
+      "Listen": "Escucha",
+      "URLBase": "Base de URL",
+      "Auth": "Auth",
+      "Metrics": "Métricas",
+      "Username": "Usuario",
+      "Via": "Vía",
+      "Permissions": "Permisos",
+      "enabled": "activado",
+      "disabled": "desactivado",
+      "ConfigFile": "Archivo de configuración"
+    },
+    "logs": {
+      "Title": "Registros",
+      "intro": "Ver, seguir y descargar los archivos de registro de Unpackerr.",
+      "RecentErrors": "errores recientes",
+      "LiveStdout": "live",
+      "ViewRecent": "Ver",
+      "FileList": "Lista de archivos",
+      "Details": "Detalles",
+      "FollowTooltip": "Actualiza la lista. El botón de viñetas sigue un archivo mientras Unpackerr escribe en él.",
+      "Name": "Nombre",
+      "Age": "Antigüedad",
+      "FilesInDirs": "{fileCount} archivos en {dirCount} carpetas",
+      "Path": "Ruta",
+      "Mode": "Modo",
+      "Owner": "Propietario",
+      "Bytes": "Bytes",
+      "Date": "Fecha",
+      "InUse": "En uso",
+      "FollowingFile": "Siguiendo el archivo",
+      "FileContent": "Contenido del archivo",
+      "NoFileSelected": "Ningún archivo seleccionado.",
+      "SelectFile": "Seleccione un archivo para ver su contenido.",
+      "TailFile": "Seguir {fileName}",
+      "ToggleLinesOrder": "Cambiar el orden de las líneas",
+      "ToggleColors": "Activar o desactivar colores de resaltado",
+      "LineCount": "Número de líneas",
+      "Tailing": "Siguiendo",
+      "AddMore": "Añadir más",
+      "Highlight": "Resaltar",
+      "ToggleLineWrap": "Activar o desactivar ajuste de línea",
+      "Error": "Error al cargar el archivo de registro"
+    },
+    "docs": {
+      "Title": "Documentación de la API",
+      "intro": "Explorador OpenAPI interactivo de la API HTTP de Unpackerr."
+    }
+  },
+  "status": {
+    "Waiting": "En espera",
+    "Queued": "En cola",
+    "Extracting": "Extrayendo",
+    "ExtractFailed": "Extracción fallida",
+    "Extracted": "Extraído",
+    "Imported": "Importado",
+    "Deleting": "Eliminando",
+    "DeleteFailed": "Eliminación fallida",
+    "Deleted": "Eliminado",
+    "ExtractedNothing": "Nada extraído"
+  },
+  "config": {
+    "general": {
+      "debug": {
+        "label": "Registro de depuración",
+        "description": "Líneas de registro extra mientras configuras las cosas.",
+        "tooltip": "Actívalo al añadir apps o carpetas para ver la cola y la actividad de extracción. Se puede dejar encendido."
+      },
+      "quiet": {
+        "label": "Silencioso",
+        "description": "Ocultar la salida del registro excepto errores.",
+        "tooltip": "Usa un archivo de registro si activas esto, o casi no verás nada. Típico cuando Unpackerr arranca desde systemd."
+      },
+      "activity": {
+        "label": "Registrar actividad",
+        "description": "Imprimir recuentos de cola solo cuando ocurre algo.",
+        "tooltip": "Oculta las líneas de cola en cero para que el registro se lea mejor. Combínalo con un intervalo de colas más lento si aún quieres recuentos periódicos."
+      },
+      "errorStderr": {
+        "label": "Errores a stderr",
+        "description": "Enviar las líneas ERROR a stderr en lugar de stdout.",
+        "tooltip": "Déjalo apagado salvo que separes los registros así. El modo silencioso lo ignora."
+      },
+      "parallel": {
+        "label": "Extracciones simultáneas",
+        "description": "Cuántos archivos se extraen a la vez.",
+        "tooltip": "Uno a la vez es el valor correcto. Súbelo solo si los discos y la CPU aguantan la carga extra."
+      },
+      "maxRetries": {
+        "label": "Reintentos máximos",
+        "description": "Intentos extra tras una extracción fallida.",
+        "tooltip": "El primer intento no cuenta aquí. En el archivo de configuración, 0 significa usar el valor predeterminado de 2."
+      },
+      "interval": {
+        "label": "Intervalo de sondeo",
+        "description": "Con qué frecuencia sondear todas las apps Starr.",
+        "tooltip": "Unpackerr pregunta a cada app Starr por su cola en este intervalo. Guardarlo reinicia los sondeos al momento. Un minuto o dos es lo habitual; la opción más corta es 15 segundos."
+      },
+      "startDelay": {
+        "label": "Retraso de inicio",
+        "description": "Esperar tras terminar una descarga antes de extraer.",
+        "tooltip": "Empieza cuando la cola de Starr marca la descarga como completa. Súbelo si el cliente aún mueve o finaliza archivos cuando empiezan las extracciones."
+      },
+      "retryDelay": {
+        "label": "Retraso de reintento",
+        "description": "Pausa entre reintentos de extracción.",
+        "tooltip": "Tras un fallo, Unpackerr espera este tiempo antes de tratar el elemento como nuevo e intentarlo otra vez."
+      },
+      "deleteDelay": {
+        "label": "Retraso de borrado",
+        "description": "Cuánto tiempo conservar los archivos extraídos tras la importación.",
+        "tooltip": "Aplica a las apps Starr. Las apps que ya están en marcha lo toman tras un reinicio. La opción más corta es 1 segundo."
+      },
+      "progress": {
+        "label": "Intervalo de progreso",
+        "description": "Con qué frecuencia imprimir el estado de una extracción en curso.",
+        "tooltip": "Estas líneas solo aparecen mientras corre una extracción. Un valor 0s en el archivo de configuración se convierte en 15 segundos."
+      },
+      "logQueues": {
+        "label": "Intervalo de colas en el registro",
+        "description": "Con qué frecuencia imprimir los recuentos de cola de Starr.",
+        "tooltip": "Apagado detiene esas líneas. El modo actividad sigue ocultando los recuentos en cero si dejas esto encendido."
+      },
+      "keepHistory": {
+        "label": "Conservar historial",
+        "description": "Elementos terminados que se guardan en el archivo de historial.",
+        "tooltip": "Esto es unpackerr.history.jsonl, junto al registro (o al archivo de configuración si los registros van a stdout). 0 desactiva el historial. El menú de la bandeja sigue mostrando solo los últimos 10 nombres.",
+        "options": {
+          "0": "(sin historial)"
+        }
+      },
+      "remnantAction": {
+        "label": "Acción con restos",
+        "description": "Qué hacer cuando un archivo sobrante bloquea una extracción.",
+        "tooltip": "Renombrar aparta el resto y reintenta. Eliminar lo borra y reintenta. Apagado lo deja y falla. Aplica a apps Starr y a carpetas con Mover de vuelta activado.",
+        "rename": "renombrar",
+        "delete": "eliminar",
+        "off": "apagado"
+      },
+      "fileMode": {
+        "label": "Modo de archivo",
+        "description": "Permisos para archivos extraídos nuevos.",
+        "tooltip": "Solo Unix. Se ignora en Windows."
+      },
+      "dirMode": {
+        "label": "Modo de carpeta",
+        "description": "Permisos para carpetas extraídas nuevas.",
+        "tooltip": "Solo Unix. Se ignora en Windows."
+      },
+      "logFile": {
+        "label": "Archivo de registro",
+        "description": "Archivo donde escribir los registros. Vacío imprime en stdout.",
+        "tooltip": "Los mismos mensajes que irían a la terminal. macOS y Windows rellenan una ruta predeterminada si esto está vacío. Pon los archivos de registro a conservar en 0 si logrotate debe encargarse del archivo."
+      },
+      "logFiles": {
+        "label": "Archivos de registro a conservar",
+        "description": "Cuántos registros rotados conservar.",
+        "tooltip": "0 apaga la rotación automática para que logrotate posea el archivo. Tras logrotate renombrar el archivo en vivo, envía SIGHUP (systemctl reload unpackerr) para reabrirlo."
+      },
+      "logFileMb": {
+        "label": "Tamaño del registro (MB)",
+        "description": "Rotar cuando el archivo de registro alcance este tamaño.",
+        "tooltip": "Solo se usa con la rotación activada. 0 en el archivo de configuración se convierte en 10 MB."
+      },
+      "passwords": {
+        "label": "Contraseñas RAR/7z",
+        "description": "Contraseñas a probar en archivos cifrados, una por línea.",
+        "tooltip": "Se prueban en orden hasta que una funciona. Una línea filepath:/ruta/a/passwords.txt lee más contraseñas de ese archivo."
+      }
+    },
+    "webserver": {
+      "listenAddr": {
+        "label": "Dirección de escucha",
+        "description": "Dirección y puerto de esta UI y API.",
+        "tooltip": "0.0.0.0 enlaza todas las interfaces. Vacío apaga el servidor HTTP. Necesita un reinicio."
+      },
+      "urlbase": {
+        "label": "Base de URL",
+        "description": "Prefijo de ruta cuando Unpackerr está detrás de un proxy inverso.",
+        "tooltip": "No debe contener llaves. Necesita un reinicio."
+      },
+      "metrics": {
+        "label": "Métricas Prometheus",
+        "description": "Exponer /metrics para Prometheus.",
+        "tooltip": "Las recopilaciones necesitan una clave API con system:metrics:read. Necesita un reinicio."
+      },
+      "pprof": {
+        "label": "Depuración pprof",
+        "description": "Exponer Go pprof en /debug/pprof/.",
+        "tooltip": "Déjalo apagado salvo que estés depurando este proceso. Necesita un reinicio."
+      },
+      "sslCertFile": {
+        "label": "Archivo de certificado SSL",
+        "description": "Archivo de certificado para HTTPS.",
+        "tooltip": "Define el certificado y la clave para servir TLS. Necesita un reinicio."
+      },
+      "sslKeyFile": {
+        "label": "Archivo de clave SSL",
+        "description": "Archivo de clave privada para HTTPS.",
+        "tooltip": "Define el certificado y la clave para servir TLS. Necesita un reinicio."
+      },
+      "logFile": {
+        "label": "Archivo de registro HTTP",
+        "description": "Archivo para registros de peticiones HTTP. Vacío usa el registro principal.",
+        "tooltip": "Mantiene los registros de acceso fuera del registro de extracción. La rotación coincide con los ajustes de abajo."
+      },
+      "logFiles": {
+        "label": "Archivos de registro a conservar",
+        "description": "Cuántos registros HTTP rotados conservar.",
+        "tooltip": "0 apaga la rotación automática. SIGHUP también reabre este archivo."
+      },
+      "logFileMb": {
+        "label": "Tamaño del registro (MB)",
+        "description": "Rotar cuando el registro HTTP alcance este tamaño.",
+        "tooltip": "Solo se usa con la rotación activada."
+      },
+      "upstreams": {
+        "label": "Upstreams",
+        "description": "IP o CIDR de proxies inversos de confianza, una por línea.",
+        "tooltip": "Permite confiar en X-Forwarded-For en los registros HTTP. Ejemplo: 127.0.0.1/32 o 10.1.2.0/24."
+      },
+      "wsOrigins": {
+        "label": "WebSocket origins",
+        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
+        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+      },
+      "keyName": {
+        "label": "Nombre",
+        "description": "Etiqueta de esta clave en la UI y los registros.",
+        "tooltip": "Los nombres deben ser únicos. Solo sirve para identificar la clave."
+      },
+      "key": {
+        "label": "Clave",
+        "description": "Secreto que el cliente envía como clave API.",
+        "tooltip": "60–150 caracteres. Déjalo en blanco al guardar para conservar la clave existente de este nombre. Generar crea una nueva."
+      },
+      "keyRoles": {
+        "label": "Roles"
+      },
+      "roleName": {
+        "label": "Nombre del rol",
+        "description": "Letras, dígitos, guion bajo o guion.",
+        "tooltip": "El rol admin integrado no se puede redefinir. Los nombres distinguen mayúsculas."
+      },
+      "permissions": {
+        "label": "Permisos"
+      },
+      "authType": {
+        "label": "Autenticación",
+        "description": "Cómo te identifica la UI web.",
+        "tooltip": "La contraseña local guarda un usuario y una contraseña en este equipo. Cabecera y sin autenticación solo funcionan cuando la petición viene de una dirección en Upstreams.",
+        "options": {
+          "password": "Contraseña local",
+          "header": "Cabecera de proxy",
+          "noauth": "Sin autenticación"
+        }
+      },
+      "username": {
+        "label": "Usuario",
+        "description": "Nombre de inicio de sesión de la UI.",
+        "tooltip": "Se usa como sal PBKDF2 con la contraseña. webauth, noauth y filepath están reservados. Cambiar el usuario exige una contraseña nueva."
+      },
+      "newPassword": {
+        "label": "Nueva contraseña",
+        "description": "Déjalo en blanco para conservar la contraseña actual.",
+        "tooltip": "Se calcula el hash en el navegador (PBKDF2) antes de enviarla. Al menos 8 caracteres. Obligatorio al pasar a contraseña local o cambiar el usuario."
+      },
+      "currentPassword": {
+        "label": "Contraseña actual",
+        "description": "Necesaria para cambiar la autenticación mientras la contraseña local está activa.",
+        "tooltip": "Se calcula el hash en el navegador igual que en el inicio de sesión. El servidor la comprueba con el hash guardado antes de aplicar una contraseña o un tipo de autenticación nuevos."
+      },
+      "header": {
+        "label": "Cabecera de autenticación",
+        "description": "Cabecera de petición que el proxy inverso pone al nombre de usuario. Abra la IU a través del proxy para ver las cabeceras de esta petición.",
+        "tooltip": "Solo para autenticación por cabecera de proxy. La lista es esta petición menos cabeceras que no son de autenticación. Sin autenticación puede omitir cabecera; un valor aquí se guarda como noauth:Header y se usa como nombre si el proxy lo envía. Predeterminado X-Webauth-User."
+      },
+      "roleHeader": {
+        "label": "Cabecera de rol",
+        "description": "Cabecera opcional cuyo valor es un rol de Unpackerr. Se muestra con autenticación por cabecera de proxy. Vacío deja a esos usuarios como admin. Si está seleccionada y falta, se deniega.",
+        "tooltip": "El proxy debe enviar admin o un rol personalizado de la lista. Varios nombres pueden ir separados por comas. Un rol ausente o desconocido es denegación, no admin. Nombre sugerido: X-Webauth-Role.",
+        "options": {
+          "none": "Siempre admin"
+        }
+      }
+    },
+    "starr": {
+      "url": {
+        "label": "URL",
+        "placeholder": "http://127.0.0.1:8989",
+        "description": "URL base de esta app Starr.",
+        "tooltip": "Incluye el esquema, por ejemplo http://127.0.0.1:8989. En HTTPS, el botón del candado exige un certificado válido."
+      },
+      "apiKey": {
+        "label": "Clave API",
+        "description": "Clave API de Ajustes → General en la app Starr.",
+        "tooltip": "32 caracteres o más. También se acepta un valor filepath:/ruta. Deja el campo igual para conservar la clave actual."
+      },
+      "path": {
+        "label": "Ruta",
+        "description": "Carpeta de la que Unpackerr lee las descargas de esta app.",
+        "tooltip": "Reserva si la ruta que informa Starr falta o Unpackerr no la ve.",
+        "config": "En el archivo de configuración esto es una lista llamada paths."
+      },
+      "protocols": {
+        "label": "Protocolos",
+        "description": "Qué protocolos de cola extraer.",
+        "tooltip": "Las apps Starr más nuevas informan nombres de clase en lugar de torrent o usenet. Las opciones de aquí escriben ambas formas para que coincida cualquier versión.",
+        "torrent": "Torrent",
+        "usenet": "Usenet",
+        "both": "Torrent y Usenet"
+      },
+      "timeout": {
+        "label": "Tiempo de espera",
+        "description": "Cuánto esperar a que esta app responda.",
+        "tooltip": "Súbelo si la API de Starr es lenta o remota. Un valor 0s en el archivo de configuración usa el tiempo de espera global."
+      },
+      "delete_delay": {
+        "label": "Retraso de borrado",
+        "description": "Cuánto conservar las extracciones tras importarlas esta app.",
+        "tooltip": "Anula el retraso de borrado general de esta instancia."
+      },
+      "maxBytes": {
+        "label": "Bytes máximos",
+        "description": "Detener una extracción si el tamaño descomprimido supera esto.",
+        "tooltip": "Ilimitado apaga el tope de esta instancia. Cada app tiene su propio valor predeterminado si el archivo de configuración lo deja vacío."
+      },
+      "delete_orig": {
+        "label": "Eliminar originales",
+        "description": "Eliminar la carpeta de descarga original tras importar.",
+        "tooltip": "Útil para Usenet. Déjalo apagado en torrents para que el seeding siga."
+      },
+      "syncthing": {
+        "label": "Syncthing",
+        "description": "Esperar a que Syncthing termine antes de extraer.",
+        "tooltip": "Actívalo si las descargas llegan por Syncthing y las extracciones empiezan demasiado pronto."
+      },
+      "valid_ssl": {
+        "label": "Solo SSL válido"
+      },
+      "split_flac": {
+        "label": "Dividir hojas CUE de FLAC",
+        "description": "Dividir FLAC+CUE en pistas individuales.",
+        "tooltip": "Solo Lidarr. Si está activado, los FLAC con una hoja CUE incrustada pasan a un archivo por pista."
+      }
+    },
+    "folders": {
+      "interval": {
+        "label": "Intervalo de sondeo",
+        "description": "Con qué frecuencia explorar las carpetas vigiladas en busca de archivos nuevos.",
+        "tooltip": "Desactivado usa eventos del sistema de archivos (inotify y similares). Docker casi nunca tiene esos eventos, así que elige un intervalo real ahí."
+      },
+      "buffer": {
+        "label": "Búfer de eventos",
+        "description": "Cuántos eventos de carpeta pueden ponerse en cola a la vez.",
+        "tooltip": "Déjalo salvo que veas eventos perdidos en el registro."
+      },
+      "path": {
+        "label": "Ruta vigilada",
+        "description": "Carpeta a vigilar en busca de archivos.",
+        "tooltip": "No es una ruta de descarga de Starr. Úsala para la carpeta «mover a» de un cliente o cualquier otra carpeta de llegada."
+      },
+      "extract_path": {
+        "label": "Ruta de extracción",
+        "description": "Dónde escribir los archivos extraídos. Vacío extrae en el mismo sitio.",
+        "tooltip": "Si está vacío, los archivos van a la ruta vigilada (o a una carpeta _unpackerred salvo que Mover de vuelta esté activado)."
+      },
+      "delete_after": {
+        "label": "Eliminar después",
+        "description": "Cuánto conservar los archivos tras extraer.",
+        "tooltip": "Sin definir los deja. Los borrados también necesitan Eliminar archivo original y/o Eliminar todos los archivos."
+      },
+      "delete_original": {
+        "label": "Eliminar archivo original",
+        "description": "Eliminar el archivo original tras extraer.",
+        "tooltip": "Requiere un retraso de Eliminar después. No elimina los archivos extraídos."
+      },
+      "delete_files": {
+        "label": "Eliminar todos los archivos",
+        "description": "Eliminar los archivos extraídos tras el retraso.",
+        "tooltip": "Requiere un retraso de Eliminar después. Úsalo cuando la carpeta vigilada no deba conservar la salida."
+      },
+      "move_back": {
+        "label": "Mover de vuelta",
+        "description": "Mover los archivos extraídos de vuelta a la carpeta vigilada.",
+        "tooltip": "Apagado los deja en una carpeta _unpackerred junto al archivo. Activado también clasifica restos con Acción con restos."
+      },
+      "extract_isos": {
+        "label": "Extraer ISO",
+        "description": "Tratar los archivos .iso como archivos comprimidos.",
+        "tooltip": "Apagado ignora las imágenes ISO. Actívalo solo si de verdad quieres desempaquetarlas."
+      },
+      "disableRecursion": {
+        "label": "Recursión",
+        "description": "Extraer archivos encontrados dentro de otros archivos.",
+        "tooltip": "Activado es lo habitual. Apagado extrae solo el archivo exterior."
+      },
+      "allowSymlinks": {
+        "label": "Permitir enlaces simbólicos",
+        "description": "Incluir archivos con nombre de enlace simbólico en el primer análisis.",
+        "tooltip": "El pase extra nunca sigue miembros zip que sean enlaces. Esto solo afecta a la búsqueda inicial."
+      },
+      "maxNested": {
+        "label": "Anidado máximo",
+        "description": "Tope de archivos anidados de esta carpeta.",
+        "tooltip": "0 es ilimitado. Cuenta archivos hallados en la salida extraída de esta carpeta (un pase extra)."
+      },
+      "extrasMaxDepth": {
+        "label": "Profundidad extra máxima",
+        "description": "Hasta dónde bajar en la salida extraída en busca de más archivos.",
+        "tooltip": "0 es ilimitado. Limita hasta dónde desciende el pase extra."
+      },
+      "maxBytes": {
+        "label": "Bytes máximos",
+        "description": "Detener una extracción si el tamaño descomprimido supera esto.",
+        "tooltip": "Ilimitado apaga el tope de esta carpeta. El valor predeterminado de las carpetas es ilimitado."
+      },
+      "maxFiles": {
+        "label": "Archivos máximos",
+        "description": "Detener tras este número de archivos, carpetas y enlaces simbólicos.",
+        "tooltip": "0 es ilimitado. Protege contra bombas de archivo."
+      },
+      "maxRatio": {
+        "label": "Ratio máximo",
+        "description": "Detener cuando los bytes escritos superen esto por el tamaño del archivo.",
+        "tooltip": "0 es ilimitado. Otro resguardo contra bombas de archivo (bytes escritos / tamaño del archivo)."
+      },
+      "exclude_paths": {
+        "label": "Rutas excluidas",
+        "description": "Rutas a ignorar bajo esta carpeta, una por línea.",
+        "tooltip": "Las rutas excluidas y sus hijos no se vigilan ni extraen. Absolutas, o relativas a la ruta vigilada."
+      }
+    },
+    "hooks": {
+      "name": {
+        "label": "Nombre",
+        "description": "Etiqueta usada en los registros. Opcional.",
+        "tooltip": "Si está vacío, los webhooks registran la URL y los ganchos de comando la primera palabra del comando."
+      },
+      "url": {
+        "label": "URL",
+        "description": "URL a la que hacer POST cuando una extracción cambia de estado.",
+        "tooltip": "Funciona con Notifiarr, Discord, Slack, Telegram y cualquier URL que acepte el payload. Las plantillas integradas se eligen a partir de la URL salvo que fuerces una en el archivo de configuración."
+      },
+      "command": {
+        "label": "Comando",
+        "description": "Comando o script a ejecutar.",
+        "tooltip": "Los datos de la extracción se pasan como variables de entorno. Prueba /usr/bin/env (o un script que imprima el entorno) para ver los nombres."
+      },
+      "shell": {
+        "label": "Ejecutar en el shell",
+        "description": "Ejecutar el comando dentro de un shell.",
+        "tooltip": "Usa /bin/sh -c en Unix y cmd.exe /c en Windows. Hace falta si el comando es una tubería o usa sintaxis de shell."
+      },
+      "contentType": {
+        "label": "Tipo de contenido",
+        "description": "Cabecera Content-Type enviada con el webhook.",
+        "tooltip": "Deja application/json salvo que una plantilla personalizada necesite otro tipo MIME."
+      },
+      "ignoreSsl": {
+        "label": "Ignorar SSL",
+        "description": "Omitir las comprobaciones de certificado TLS de esta URL.",
+        "tooltip": "Solo para ganchos en equipos con un certificado malo o privado."
+      },
+      "timeout": {
+        "label": "Tiempo de espera",
+        "description": "Cuánto esperar a que el gancho termine.",
+        "tooltip": "Aplica a la petición HTTP o al comando, según el tipo de gancho."
+      },
+      "silent": {
+        "label": "Silencioso",
+        "description": "Ocultar las ejecuciones correctas de los registros.",
+        "tooltip": "Los fallos siguen registrándose. Úsalo para recortar ruido de un gancho de Discord o Slack parlanchín."
+      },
+      "events": {
+        "label": "Eventos",
+        "description": "Vacío significa todos los eventos."
+      },
+      "nickname": {
+        "label": "Apodo",
+        "description": "Nombre del bot para Discord y Slack. ID de chat para Telegram.",
+        "tooltip": "Se pasa a las plantillas integradas. Telegram necesita el chat_id aquí."
+      },
+      "channel": {
+        "label": "Canal",
+        "description": "Canal de destino para webhooks de Slack.",
+        "tooltip": "Lo ignoran Discord y Telegram. Las plantillas personalizadas aún pueden usarlo."
+      },
+      "token": {
+        "label": "Token",
+        "description": "Token de bot para Discord, Telegram, Slack y plantillas similares.",
+        "tooltip": "Se pasa a las plantillas del webhook. Déjalo vacío salvo que la plantilla lo necesite."
+      },
+      "exclude": {
+        "label": "Excluir apps",
+        "description": "No disparar este gancho para estas apps.",
+        "tooltip": "Ninguna excluida por defecto. Carpeta significa extracciones de carpeta vigilada, no una app Starr."
+      },
+      "template": {
+        "label": "Plantilla",
+        "description": "Plantilla integrada. Vacío elige una a partir de la URL.",
+        "tooltip": "Fuerza notifiarr, discord, telegram, gotify, pushover o slack. Deja automático salvo que la URL no se reconozca.",
+        "auto": "Automático (desde la URL)"
+      },
+      "templatePath": {
+        "label": "Archivo de plantilla",
+        "description": "Archivo de plantilla Go personalizado en lugar de una integrada.",
+        "tooltip": "Anula la detección automática y el ajuste Plantilla. Elige un archivo existente."
+      }
+    }
+  },
+  "FileBrowser": {
+    "Title": "Explorador de archivos",
+    "Path": "Ruta",
+    "intro": "Elige una ruta en esta máquina.",
+    "introFolderFile": "Elige una carpeta. El archivo se llamará <code>{file}</code>, pero puedes cambiar el nombre después de elegir.",
+    "tooltip": {
+      "Go": "<code>cd {path}</code><br />Cambiar el directorio a la ruta del recuadro.",
+      "SelectPath": "Seleccionar ruta: <code>{path}</code>",
+      "Up": "<code>cd ..</code><br />Cambiar al directorio padre."
+    },
+    "FilterFiles": "Filtrar archivos",
+    "CreateFolderIn": "La carpeta se creará en: <code>{path}</code>",
+    "Files": "Archivos: {count}",
+    "Folders": "Carpetas: {count}",
+    "FilesFiltered": "Archivos: {count}, filtrados: {filtered}",
+    "FoldersFiltered": "Carpetas: {count}, filtradas: {filtered}",
+    "Selected": "Seleccionado: <code>{path}</code>",
+    "Created": "Creado: {path}",
+    "Creating": "Creando…",
+    "InvalidPath": "Nombre no válido. No incluyas barras (<code>/</code> o <code>\\</code>).",
+    "FilterFilesDesc": "Filtra la lista de archivos mostrados. Los selectores de carpeta pueden crear una carpeta nueva. Para elegir una ruta que aún no existe, escríbela en <code>Ruta</code> y pulsa el visto verde."
+  }
+}

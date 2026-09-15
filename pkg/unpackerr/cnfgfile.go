@@ -358,7 +358,7 @@ func envSuffixes(used cnfg.Pairs, prefix string) map[string]string {
 // envAlwaysRedact is the login secret. GET /api/config/env never returns it,
 // including to callers with *. The UI locks the field from the key being present.
 func envAlwaysRedact(suffix string) bool {
-	return strings.Contains(strings.ToUpper(suffix), "UI_PASSWORD")
+	return strings.EqualFold(suffix, "WEBSERVER_UI_PASSWORD")
 }
 
 func envValueSecret(suffix string) bool {

@@ -225,12 +225,8 @@ func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
 
 	// Proxy/noauth is per-request. A leftover password session must not
 	// become admin when the proxy username or role header is missing.
-	if u.uiPassword().Webauth() {
-		return authInfo{}, false
-	}
-
 	if user, ok := u.sessionUser(request); ok {
-		return u.sessionAuth(user), true
+		return u.sessionAuth(user)
 	}
 
 	return authInfo{}, false
@@ -359,25 +355,24 @@ func proxyRolePerms(
 	return perms, key, true
 }
 
-func (u *Unpackerr) sessionAuth(user string) authInfo {
+func (u *Unpackerr) sessionAuth(user string) (authInfo, bool) {
 	u.uiPassMu.RLock()
 	pass := u.Webserver.UIPassword
 	admin := u.Webserver.adminAPIKey()
 	u.uiPassMu.RUnlock()
 
-	info := authInfo{
+	if pass.Webauth() {
+		return authInfo{}, false
+	}
+
+	return authInfo{
 		Username:    user,
 		APIKey:      admin,
 		Auth:        pass.Type().String(),
 		Via:         "session",
 		GOOS:        runtime.GOOS,
 		Permissions: AllPermissions(),
-	}
-	if pass.Webauth() {
-		info.Via = pass.Type().String()
-	}
-
-	return info
+	}, true
 }
 
 func (w *WebServer) keyName(key string) string {
@@ -522,7 +517,8 @@ func (u *Unpackerr) handleLogin(response http.ResponseWriter, request *http.Requ
 		return false
 	}
 
-	writeJSON(response, http.StatusOK, u.withRequestAuth(u.sessionAuth(name), request))
+	info, _ := u.sessionAuth(name)
+	writeJSON(response, http.StatusOK, u.withRequestAuth(info, request))
 
 	return true
 }

@@ -717,6 +717,10 @@ func TestEnvSuffixesAndSecrets(t *testing.T) {
 		t.Fatal("expected ui password always redacted")
 	}
 
+	if envAlwaysRedact("WEBSERVER_ROLES_ui_password_PERMISSIONS_0") {
+		t.Fatal("role names that contain ui_password must not always-redact")
+	}
+
 	if envAlwaysRedact("SONARR_0_API_KEY") {
 		t.Fatal("starr keys stay visible to * via env GET")
 	}

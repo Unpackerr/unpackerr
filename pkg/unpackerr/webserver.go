@@ -223,6 +223,15 @@ func (u *Unpackerr) serveUI(resp http.ResponseWriter, req *http.Request) {
 		req = cloned
 	}
 
+	// The SPA reads this to prefix /api and /ws (see frontend/src/lib/api.ts).
+	http.SetCookie(resp, &http.Cookie{ //nolint:gosec // Not a secret; the SPA must read the prefix.
+		Name:     "urlbase",
+		Value:    u.Webserver.URLBase,
+		Path:     u.Webserver.URLBase,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   u.cookieSecure(req),
+	})
+
 	frontend.IndexHandler(resp, req)
 }
 

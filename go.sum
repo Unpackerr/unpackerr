@@ -1,5 +1,7 @@
 code.cloudfoundry.org/bytefmt v0.88.0 h1:k5qUFMj+0czUuCYDZec0nQYsyIwagu5GG7cGHiqavmI=
 code.cloudfoundry.org/bytefmt v0.88.0/go.mod h1:g/qa021OT1IAapKk2a9cwxMxlLBCeJoRY8779LXFieU=
+code.cloudfoundry.org/bytefmt v0.89.0 h1:fpOfnaW7dWi4paT2YaCzd93yKeeSUAJ3Z2k/u5JwHTs=
+code.cloudfoundry.org/bytefmt v0.89.0/go.mod h1:OrLCJkmZW91B5G9Ndvyz9FdF2H73cD+lZOF4lR9L3Fs=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
@@ -172,6 +174,8 @@ golift.io/rotatorr v0.0.0-20260901062538-fc9f05905af3 h1:Hx5CAKKNwjQ6w6syMCPyQWh
 golift.io/rotatorr v0.0.0-20260901062538-fc9f05905af3/go.mod h1:4KG63rTdnxi59XRrI67U8TLbBrm3JlilXV1K65kmRMM=
 golift.io/starr v1.3.1 h1:+Hv4abYcrom+7OZS96OV0r9HJrgdIcqYy/lMsXmUbLQ=
 golift.io/starr v1.3.1/go.mod h1:ZmfSxCqxOR2Uh+jbyde3jSPIfHgmFB/B0GmlbBZU74w=
+golift.io/starr v1.4.0 h1:0R+sW9/wgO1lHh65qINLrkK2jLtcV+s07l+8Py6YmJ8=
+golift.io/starr v1.4.0/go.mod h1:Oz8bBp9Rg697u5oxSbF4LmFn9iV3nHx/cF3DH/fyhdY=
 golift.io/udf v0.0.1 h1:kEcJVzqqR+IEWGMuPjuVPT9DzXRDukEgsizKAKn1LF8=
 golift.io/udf v0.0.1/go.mod h1:ndK7AlWOh+u+nW9tNsQR95dfHsfASG5Y3dMyzVqmPjw=
 golift.io/version v0.0.2 h1:i0gXRuSDHKs4O0sVDUg4+vNIuOxYoXhaxspftu2FRTE=

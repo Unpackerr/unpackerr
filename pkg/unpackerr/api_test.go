@@ -368,3 +368,32 @@ func TestConfigEnv(t *testing.T) {
 		t.Fatalf("limited env %v", limited)
 	}
 }
+
+func TestConfigEnvUIPasswordAlwaysRedacted(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.envUsed = map[string]string{
+		"WEBSERVER_UI_PASSWORD": "admin:supersecret123",
+	}
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("env %d %s", rec.Code, rec.Body.String())
+	}
+
+	var admin map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &admin); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := admin["WEBSERVER_UI_PASSWORD"]; !ok {
+		t.Fatal("ui password env key must remain so the UI can lock the field")
+	}
+
+	if admin["WEBSERVER_UI_PASSWORD"] != "" {
+		t.Fatalf("ui password env must stay redacted: %v", admin)
+	}
+}

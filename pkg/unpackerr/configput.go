@@ -384,28 +384,33 @@ func (u *Unpackerr) putGeneral(raw json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	expanded, err := expandPasswords(next.Passwords)
+	preview, err := u.applyEnvOverlay(func(cfg *Config) {
+		applyGeneral(cfg, next)
+	})
 	if err != nil {
 		return false, err
 	}
 
-	// Decide the restart from a clamped copy. Comparing raw input against the
-	// live config would ask for a restart whenever a value was omitted, since
-	// clampConfig is about to fill it with the same default.
-	staged := *u.Config
-	applyGeneral(&staged, next)
-	clampConfig(&staged)
+	clampConfig(preview)
 
-	restart := generalRestartRequired(u.Config, &staged)
+	expanded, err := expandPasswords(preview.Passwords)
+	if err != nil {
+		return false, err
+	}
+
+	// Compare the live-shaped result (PUT body + UN_* + clamp) to the running
+	// config. Applying the file document onto a copy of live makes UN_DEBUG
+	// (make dev) and omitted defaults look like changes and re-exec for nothing.
+	restart := generalRestartRequired(u.Config, preview)
 	historyWasOff := u.KeepHistory == 0
 
 	if err := u.commitConfig(func(cfg *Config) {
 		applyGeneral(cfg, next)
 	}, func() {
-		applyGeneral(u.Config, next)
-		u.livePasswords = append(StringSlice(nil), next.Passwords...)
+		applyGeneral(u.Config, generalConfigFrom(preview))
+		u.livePasswords = append(StringSlice(nil), preview.Passwords...)
 		u.Passwords = expanded
-		u.RemnantAction = remnantAction(next.RemnantAction)
+		u.RemnantAction = remnantAction(preview.RemnantAction)
 		clampConfig(u.Config)
 		u.ensureTrayRing()
 		u.resetTickers()
@@ -432,10 +437,10 @@ func generalRestartRequired(cur, next *Config) bool {
 		next.LogFile != cur.LogFile ||
 		next.LogFiles != cur.LogFiles ||
 		next.LogFileMb != cur.LogFileMb ||
-		next.LogFileMode != cur.LogFileMode ||
+		!sameUnixMode(cur.LogFileMode, next.LogFileMode, defaultLogFileMode) ||
 		next.ErrorStdErr != cur.ErrorStdErr ||
-		next.FileMode != cur.FileMode ||
-		next.DirMode != cur.DirMode ||
+		!sameUnixMode(cur.FileMode, next.FileMode, defaultFileMode) ||
+		!sameUnixMode(cur.DirMode, next.DirMode, defaultDirMode) ||
 		// Both only seed per-app values in validateApp and validate*HookList,
 		// so running clients keep the old value until they are rebuilt.
 		next.Timeout != cur.Timeout ||

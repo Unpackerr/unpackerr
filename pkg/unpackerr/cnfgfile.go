@@ -172,24 +172,20 @@ func clampConfig(cfg *Config) (uint64, uint64) { //nolint:cyclop
 		cfg.DeleteDelay.Duration = minimumDeleteDelay
 	}
 
-	if _, err := strconv.ParseUint(cfg.LogFileMode, bits8, base32); err != nil || cfg.LogFileMode == "" {
-		cfg.LogFileMode = strconv.FormatUint(defaultLogFileMode, bits8)
-	}
-
-	fileMode, err := strconv.ParseUint(cfg.FileMode, bits8, base32)
-	if err != nil || cfg.FileMode == "" {
-		fileMode = defaultFileMode
-		cfg.FileMode = strconv.FormatUint(fileMode, bits8)
-	}
-
-	dirMode, err := strconv.ParseUint(cfg.DirMode, bits8, base32)
-	if err != nil || cfg.DirMode == "" {
-		dirMode = defaultDirMode
-		cfg.DirMode = strconv.FormatUint(dirMode, bits8)
-	}
+	// Always rewrite so "0644" and "644" compare equal after clamp. The general
+	// form padStarts to four octal digits; FormatUint does not.
+	cfg.LogFileMode = clampUnixMode(cfg.LogFileMode, defaultLogFileMode)
+	fileMode := parseUnixMode(cfg.FileMode, defaultFileMode)
+	cfg.FileMode = strconv.FormatUint(fileMode, bits8)
+	dirMode := parseUnixMode(cfg.DirMode, defaultDirMode)
+	cfg.DirMode = strconv.FormatUint(dirMode, bits8)
 
 	if cfg.Parallel == 0 {
 		cfg.Parallel++
+	}
+
+	if cfg.LogFileMb == 0 {
+		cfg.LogFileMb = defaultLogFileMb
 	}
 
 	if cfg.Progress.Duration == 0 {
@@ -225,6 +221,28 @@ func clampConfig(cfg *Config) (uint64, uint64) { //nolint:cyclop
 	}
 
 	return fileMode, dirMode
+}
+
+func parseUnixMode(raw string, fallback uint64) uint64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fallback
+	}
+
+	mode, err := strconv.ParseUint(raw, bits8, base32)
+	if err != nil {
+		return fallback
+	}
+
+	return mode
+}
+
+func clampUnixMode(raw string, fallback uint64) string {
+	return strconv.FormatUint(parseUnixMode(raw, fallback), bits8)
+}
+
+func sameUnixMode(cur, next string, fallback uint64) bool {
+	return parseUnixMode(cur, fallback) == parseUnixMode(next, fallback)
 }
 
 // createConfigFile attempts to avoid creating a config file on linux or freebsd.
@@ -335,6 +353,12 @@ func envSuffixes(used cnfg.Pairs, prefix string) map[string]string {
 	}
 
 	return out
+}
+
+// envAlwaysRedact is the login secret. GET /api/config/env never returns it,
+// including to callers with *. The UI locks the field from the key being present.
+func envAlwaysRedact(suffix string) bool {
+	return strings.Contains(strings.ToUpper(suffix), "UI_PASSWORD")
 }
 
 func envValueSecret(suffix string) bool {

@@ -237,6 +237,16 @@ Reply:
 
 `pendingRestart` is sticky OR: one folders PUT then a general PUT that does not need restart still restarts when idle.
 
+### POST `/api/config/{section}/test`
+
+Permission: `config:{section}:write` (same as PUT). Does not persist.
+
+**Starr** (`sonarr` / `radarr` / `lidarr` / `readarr`): POST the current form `url`, `apiKey`, `valid_ssl`, `timeout`, and `slug`. Blank URL/API key are filled from the **live** instance matching `slug` (env-only / redacted GET). A new Starr client is built; live `Queue` is not mutated. Reply is `{queued, retrieved, torrents, nzbs, other?, elapsed}` (`elapsed` is a Go duration, rounded to 1ms). Bad URL/key is **400**. Remote GetQueue errors are **424** `{error, elapsed}`.
+
+**Hooks** (`webhooks` / `cmdhooks`): overlay posted fields onto a clone of the live hook (or a new hook). Non-empty strings replace live values; omitted strings keep them. `shell` and `ignoreSsl` override when present (including `false`); omitted keep live. `event` defaults to `extracted`; `app` defaults to Sonarr (`sonarr` / `radarr` / `lidarr` / `readarr` / `folder` or a named instance). `hooks.Fire` runs on the HTTP goroutine (not the hook worker). Reply is `{status, reply, elapsed}` with `reply` clipped to 2048 runes. Missing URL/command is **400**. Delivery failure is **424** `{error, elapsed}`.
+
+**general**, **webserver**, **folders**: **400** `this section cannot be tested`.
+
 ---
 
 ## Idle restart
@@ -281,6 +291,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/config/{section}` | yes | `config:{section}:read` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `config:{section}:read` | Running copy |
 | PUT | `{urlbase}api/config/{section}` | yes | `config:{section}:write` | Replace section |
+| POST | `{urlbase}api/config/{section}/test` | yes | `config:{section}:write` | Starr queue probe or one-shot hook Fire. Does not persist. general/webserver/folders → 400. Remote failure → 424 |
 | GET | `/metrics` (+ urlbase) | **API key / Bearer only** | `system:metrics:read` | No session cookie, no webauth/noauth |
 | GET | `/debug/pprof/…` | none extra | — | Only if `pprof = true`. Treat as a loaded gun. |
 

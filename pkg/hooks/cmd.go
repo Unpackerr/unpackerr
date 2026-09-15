@@ -14,7 +14,7 @@ import (
 )
 
 func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) {
-	out, err := runCmd(hook, payload)
+	out, err := runCmd(context.Background(), hook, payload)
 
 	hook.Lock() // we only lock for the integer increments.
 	defer hook.Unlock()
@@ -32,7 +32,7 @@ func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) {
 	}
 }
 
-func runCmd(hook *Config, payload *Payload) (*bytes.Buffer, error) {
+func runCmd(ctx context.Context, hook *Config, payload *Payload) (*bytes.Buffer, error) {
 	if hook.Command == "" {
 		return nil, ErrCmdhookNoCmd
 	}
@@ -44,7 +44,7 @@ func runCmd(hook *Config, payload *Payload) (*bytes.Buffer, error) {
 		return nil, fmt.Errorf("creating environment: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), hook.Timeout.Duration)
+	cmdCtx, cancel := context.WithTimeout(ctx, hook.Timeout.Duration)
 	defer cancel()
 
 	var cmd *exec.Cmd
@@ -70,9 +70,9 @@ func runCmd(hook *Config, payload *Payload) (*bytes.Buffer, error) {
 	case 0:
 		return nil, ErrCmdhookNoCmd
 	case 1:
-		cmd = exec.CommandContext(ctx, args[0]) //nolint:gosec
+		cmd = exec.CommandContext(cmdCtx, args[0]) //nolint:gosec
 	default:
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
+		cmd = exec.CommandContext(cmdCtx, args[0], args[1:]...) //nolint:gosec
 	}
 
 	var out bytes.Buffer

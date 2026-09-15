@@ -43,6 +43,7 @@ func (u *Unpackerr) registerAPIRoutes() {
 	u.Webserver.handleGet(basePath("config/{section}/live"), u.requireConfigPerm(false, u.configGetLiveHandler))
 	u.Webserver.handleGet(basePath("config/{section}"), u.requireConfigPerm(false, u.configGetHandler))
 	u.Webserver.handlePut(basePath("config/{section}"), u.requireConfigPerm(true, u.configPutHandler))
+	u.Webserver.handlePost(basePath("config/{section}/test"), u.requireConfigPerm(true, u.configTestHandler))
 }
 
 func (u *Unpackerr) statsHandler(response http.ResponseWriter, _ *http.Request) {

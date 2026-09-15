@@ -19,6 +19,7 @@ import (
 // Errors produced by this package.
 var (
 	ErrInvalidStatus = errors.New("invalid HTTP status reply")
+	ErrUnknownEvent  = errors.New("unknown extract event")
 	ErrWebhookNoURL  = errors.New("webhook without a URL configured; fix it")
 	ErrCmdhookNoCmd  = errors.New("cmdhook without a command configured; fix it")
 	ErrNilConfig     = errors.New("nil config entry")

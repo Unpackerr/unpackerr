@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -222,6 +223,12 @@ func (u *Unpackerr) authenticate(request *http.Request) (authInfo, bool) {
 		return info, true
 	}
 
+	// Proxy/noauth is per-request. A leftover password session must not
+	// become admin when the proxy username or role header is missing.
+	if u.uiPassword().Webauth() {
+		return authInfo{}, false
+	}
+
 	if user, ok := u.sessionUser(request); ok {
 		return u.sessionAuth(user), true
 	}
@@ -250,23 +257,106 @@ func (u *Unpackerr) proxyAuth(request *http.Request) (authInfo, bool) {
 	u.uiPassMu.RLock()
 	pass := u.Webserver.UIPassword
 	allowed := u.Webserver.allow.Contains(request.RemoteAddr)
+	roleHeader := strings.TrimSpace(u.Webserver.UIRoleHeader)
+	roles := u.Webserver.Roles
+	adminKey := u.Webserver.adminAPIKey()
 	u.uiPassMu.RUnlock()
 
 	if !pass.Webauth() || !allowed {
 		return authInfo{}, false
 	}
 
-	user := defaultUIUser
+	user, haveUser := proxyUsername(pass, request)
+	if !haveUser {
+		return authInfo{}, false
+	}
 
-	if pass.Type() == AuthHeader {
-		if header := strings.TrimSpace(request.Header.Get(pass.Header())); header != "" {
-			user = header
-		} else {
+	perms, apiKey := AllPermissions(), adminKey
+
+	if !pass.Noauth() {
+		var haveRoles bool
+
+		perms, apiKey, haveRoles = proxyRolePerms(roleHeader, request, roles, adminKey)
+		if !haveRoles {
 			return authInfo{}, false
 		}
 	}
 
-	return u.sessionAuth(user), true
+	return authInfo{
+		Username:    user,
+		APIKey:      apiKey,
+		Auth:        pass.Type().String(),
+		Via:         pass.Type().String(),
+		GOOS:        runtime.GOOS,
+		Permissions: perms,
+	}, true
+}
+
+func proxyUsername(pass CryptPass, request *http.Request) (string, bool) {
+	if hdr := pass.requiredHeader(); hdr != "" {
+		user := strings.TrimSpace(request.Header.Get(hdr))
+
+		return user, user != ""
+	}
+
+	if pass.Type() == AuthHeader {
+		return "", false
+	}
+
+	if !pass.Noauth() {
+		return defaultUIUser, true
+	}
+
+	hdr := strings.TrimSpace(pass.Header())
+	if hdr == "" {
+		return defaultUIUser, true
+	}
+
+	if got := strings.TrimSpace(request.Header.Get(hdr)); got != "" {
+		return got, true
+	}
+
+	return defaultUIUser, true
+}
+
+// proxyRolePerms maps a proxy role header onto configured roles. An empty
+// configured name (Trust "Always admin") keeps every trusted proxy user as
+// admin. Once a header name is selected, a missing, empty, or unknown value
+// rejects the request; it does not fall through to admin.
+func proxyRolePerms(
+	headerName string, request *http.Request, roles map[string]Role, adminKey string,
+) ([]string, string, bool) {
+	headerName = strings.TrimSpace(headerName)
+	if headerName == "" {
+		return AllPermissions(), adminKey, true
+	}
+
+	names := parseRoleHeader(request.Header.Get(headerName))
+	if len(names) == 0 {
+		return nil, "", false
+	}
+
+	for _, name := range names {
+		if name == RoleAdmin {
+			continue
+		}
+
+		if _, exists := roles[name]; !exists {
+			return nil, "", false
+		}
+	}
+
+	perms := (&WebServer{Roles: roles}).permissionsForRoles(names)
+	if len(perms) == 0 {
+		return nil, "", false
+	}
+
+	key := ""
+	if slices.Contains(names, RoleAdmin) {
+		key = adminKey
+	}
+
+	return perms, key, true
 }
 
 func (u *Unpackerr) sessionAuth(user string) authInfo {

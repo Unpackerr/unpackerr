@@ -146,6 +146,16 @@ func (p CryptPass) Header() string {
 	return defaultAuthHeader
 }
 
+// requiredHeader is the proxy username header webauth must receive.
+// noauth may store a header for identity, but a missing value is not a denial.
+func (p CryptPass) requiredHeader() string {
+	if p.Type() != AuthHeader {
+		return ""
+	}
+
+	return strings.TrimSpace(p.Header())
+}
+
 func (p CryptPass) Username() string {
 	if p.IsCrypted() {
 		rest := strings.TrimPrefix(p.Val(), authPassword)

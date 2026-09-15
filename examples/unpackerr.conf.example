@@ -121,6 +121,14 @@ passwords = []
 ## Reset with --reset. Do not set an empty
 ## UN_WEBSERVER_UI_PASSWORD; a present empty env value wipes a stored hash.
  ui_password = ""
+## Used with webauth (proxy header auth). Empty keeps those proxy users
+## as admin. Ignored for noauth and local password login. Set this to a
+## header the reverse proxy fills, for example X-Webauth-Role. The value
+## must be a built-in admin or a custom [webserver.roles] name. Comma,
+## semicolon, pipe, or space separated lists are unioned. A selected
+## header that is missing, empty, or unknown is access denied, not admin.
+## example: ui_role_header = "X-Webauth-Role"
+ ui_role_header = ""
 ## Recommend setting a log file for HTTP requests. Otherwise, they go with other logs.
  log_file = ''
 ## This app automatically rotates logs. Set these to the size and number to keep.
@@ -485,4 +493,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 13 SEP 2026 23:07 UTC
+## => Content Auto Generated, 15 SEP 2026 05:59 UTC

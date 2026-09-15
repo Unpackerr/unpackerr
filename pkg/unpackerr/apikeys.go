@@ -188,6 +188,34 @@ func validRoleName(name string) bool {
 	return true
 }
 
+func parseRoleHeader(raw string) []string {
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		switch r {
+		case ',', ';', '|':
+			return true
+		default:
+			return unicode.IsSpace(r)
+		}
+	})
+	seen := make(map[string]struct{}, len(parts))
+	out := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		if _, dup := seen[part]; dup {
+			continue
+		}
+
+		seen[part] = struct{}{}
+		out = append(out, part)
+	}
+
+	return out
+}
+
 func (w *WebServer) permissionsForRoles(roles []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)

@@ -210,6 +210,33 @@ func TestConfigPutWebserverSwitchToNoauth(t *testing.T) {
 	}
 }
 
+func TestConfigPutWebserverRoleHeader(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	web := getWebserverPUT(t, unpack)
+	web.UIPassword = "webauth:X-Remote-User"
+	web.UIRoleHeader = " X-Role "
+	web.Upstreams = StringSlice{"192.0.2.1/32"}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver",
+		mustWebPUT(t, web, DeriveKDF(defaultUIUser, "correct-horse")), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("role header put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.Webserver.UIRoleHeader != "X-Role" {
+		t.Fatalf("live role header %q", unpack.Webserver.UIRoleHeader)
+	}
+
+	if unpack.fileConfig.Webserver.UIRoleHeader != "X-Role" {
+		t.Fatalf("file role header %q", unpack.fileConfig.Webserver.UIRoleHeader)
+	}
+}
+
 func TestConfigPutWebserverEnvPasswordRoundTripKeepsLive(t *testing.T) {
 	t.Parallel()
 

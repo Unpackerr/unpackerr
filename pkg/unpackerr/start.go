@@ -92,7 +92,7 @@ type Unpackerr struct {
 	inFlight         atomic.Int64 // queued-or-running delete and hook work.
 	workThreads      int
 	hookOnce         sync.Once
-	uiPassMu         sync.RWMutex // live webserver auth: UIPassword, APIKeys, Roles, keyPerms, Upstreams, WSOrigins, allow
+	uiPassMu         sync.RWMutex // live UIPassword, UIRoleHeader, APIKeys, Roles, keyPerms, Upstreams, WSOrigins, allow
 	uiPasswordNotice string
 	uiPasswordGenErr error
 	configWriteErr   error

@@ -65,7 +65,7 @@
           "auth": {"type": "string"},
           "via": {"type": "string"},
           "goos": {"type": "string"},
-          "header": {"type": "string", "description": "Configured proxy auth header name (default X-Webauth-User)"},
+          "header": {"type": "string", "description": "Configured proxy username header name (default X-Webauth-User). Role mapping uses webserver.uiRoleHeader, not this field."},
           "headers": {
             "type": "object",
             "additionalProperties": {"type": "array", "items": {"type": "string"}},

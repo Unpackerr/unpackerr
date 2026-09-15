@@ -506,6 +506,208 @@ func TestNoauthMeFromUpstream(t *testing.T) {
 	}
 }
 
+func TestProxyAuthRoleHeader(t *testing.T) {
+	t.Parallel()
+
+	unpack := proxyRoleUnpackerr(t)
+
+	upstream := func(role string) func(*http.Request) {
+		return func(req *http.Request) {
+			req.RemoteAddr = "192.0.2.1:9999"
+			req.Header.Set("X-User", "dave")
+
+			if role != "" {
+				req.Header.Set("X-Role", role)
+			}
+		}
+	}
+
+	missing := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", upstream(""))
+	if missing.Code != http.StatusUnauthorized {
+		t.Fatalf("missing role %d %s", missing.Code, missing.Body.String())
+	}
+
+	unknown := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", upstream("nope"))
+	if unknown.Code != http.StatusUnauthorized {
+		t.Fatalf("unknown role %d %s", unknown.Code, unknown.Body.String())
+	}
+
+	stats := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", upstream("stats"))
+	if stats.Code != http.StatusOK {
+		t.Fatalf("stats role %d %s", stats.Code, stats.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(stats.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Username != "dave" || info.APIKey != "" {
+		t.Fatalf("stats identity %+v", info)
+	}
+
+	if !info.allows(PermReadSystemStats) || info.allows(PermAll) || info.allows(PermWriteSystemQueue) {
+		t.Fatalf("stats perms %+v", info.Permissions)
+	}
+
+	admin := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", upstream("admin,stats"))
+	if admin.Code != http.StatusOK {
+		t.Fatalf("admin role %d %s", admin.Code, admin.Body.String())
+	}
+
+	if err := json.Unmarshal(admin.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.APIKey != unpack.Webserver.adminAPIKey() || !info.allows(PermAll) {
+		t.Fatalf("admin identity %+v", info)
+	}
+}
+
+func proxyRoleUnpackerr(t *testing.T) *Unpackerr {
+	t.Helper()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = "webauth:X-User"
+	unpack.Webserver.UIRoleHeader = "X-Role"
+	unpack.Webserver.Roles = map[string]Role{
+		"stats": {Permissions: []string{PermReadSystemStats}},
+	}
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	return unpack
+}
+
+func TestMissingRoleHeaderDoesNotUseSession(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	payload := `{"name":"admin","kdf":"` + DeriveKDF(defaultUIUser, "correct-horse") + `"}`
+
+	logged := doAuth(t, unpack, http.MethodPost, "/api/auth/login", payload, nil)
+	if logged.Code != http.StatusOK {
+		t.Fatalf("login %d %s", logged.Code, logged.Body.String())
+	}
+
+	res := logged.Result()
+	_ = res.Body.Close()
+
+	unpack.Webserver.UIPassword = "webauth:X-User"
+	unpack.Webserver.UIRoleHeader = "X-Role"
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+		req.Header.Set("X-User", "dave")
+
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+		}
+	})
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing role must not fail open via session %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestNoauthUsernameHeaderIsOptional(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = "noauth:X-User"
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	missing := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+	})
+	if missing.Code != http.StatusOK {
+		t.Fatalf("noauth without user header %d %s", missing.Code, missing.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(missing.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Username != defaultUIUser {
+		t.Fatalf("default user %q", info.Username)
+	}
+
+	named := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+		req.Header.Set("X-User", "dave")
+	})
+	if named.Code != http.StatusOK {
+		t.Fatalf("noauth with user header %d %s", named.Code, named.Body.String())
+	}
+
+	if err := json.Unmarshal(named.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Username != "dave" {
+		t.Fatalf("header user %q", info.Username)
+	}
+}
+
+func TestNoauthIgnoresRoleHeader(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = authNone
+	unpack.Webserver.UIRoleHeader = "X-Role"
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("noauth must ignore role header %d %s", rec.Code, rec.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if !info.allows(PermAll) {
+		t.Fatalf("noauth perms %+v", info.Permissions)
+	}
+}
+
+func TestProxyAuthEmptyRoleHeader(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = "webauth:X-User"
+	unpack.Webserver.allow = MakeIPs([]string{"192.0.2.1/32"})
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", func(req *http.Request) {
+		req.RemoteAddr = "192.0.2.1:9999"
+		req.Header.Set("X-User", "dave")
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("empty role header %d %s", rec.Code, rec.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if !info.allows(PermAll) || info.APIKey != unpack.Webserver.adminAPIKey() {
+		t.Fatalf("always-admin %+v", info)
+	}
+}
+
+func TestParseRoleHeader(t *testing.T) {
+	t.Parallel()
+
+	got := parseRoleHeader(" admin, stats;read_only |admin ")
+	if len(got) != 3 || got[0] != "admin" || got[1] != "stats" || got[2] != "read_only" {
+		t.Fatalf("%q", got)
+	}
+}
+
 func TestUnrecognizedBearerFallsThroughToProxy(t *testing.T) {
 	t.Parallel()
 

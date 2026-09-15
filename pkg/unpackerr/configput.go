@@ -455,6 +455,7 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 	}
 
 	next.normalizeURLBase()
+	next.UIRoleHeader = strings.TrimSpace(next.UIRoleHeader)
 
 	if err := next.validateURLBase(); err != nil {
 		return false, err
@@ -601,6 +602,7 @@ func (u *Unpackerr) applyLiveWebserverAuth(next *WebServer) {
 	u.Webserver.APIKeys = cloneAPIKeys(next.APIKeys)
 	u.Webserver.Roles = cloneRoles(next.Roles)
 	u.Webserver.UIPassword = next.UIPassword
+	u.Webserver.UIRoleHeader = strings.TrimSpace(next.UIRoleHeader)
 	u.Webserver.Upstreams = append(StringSlice(nil), next.Upstreams...)
 	u.Webserver.WSOrigins = append(StringSlice(nil), next.WSOrigins...)
 	u.Webserver.allow = next.allow

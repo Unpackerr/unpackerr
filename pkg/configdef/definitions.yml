@@ -482,6 +482,18 @@ sections:
           config. Empty generates a temporary password when the HTTP server is enabled.
           Reset with --reset. Do not set an empty
           UN_WEBSERVER_UI_PASSWORD; a present empty env value wipes a stored hash.
+      - name: ui_role_header
+        envvar: UI_ROLE_HEADER
+        default: ''
+        short: Optional proxy header whose value is an Unpackerr role name.
+        desc: |
+          Used with webauth (proxy header auth). Empty keeps those proxy users
+          as admin. Ignored for noauth and local password login. Set this to a
+          header the reverse proxy fills, for example X-Webauth-Role. The value
+          must be a built-in admin or a custom [webserver.roles] name. Comma,
+          semicolon, pipe, or space separated lists are unioned. A selected
+          header that is missing, empty, or unknown is access denied, not admin.
+          example: ui_role_header = "X-Webauth-Role"
       - name: log_file
         envvar: LOG_FILE
         default: ''

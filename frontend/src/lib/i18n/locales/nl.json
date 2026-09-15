@@ -1,0 +1,829 @@
+{
+  "words": {
+    "select-option": {
+      "Off": "Uit",
+      "Enabled": "Ingeschakeld",
+      "Disabled": "Uitgeschakeld",
+      "Unset": "Niet ingesteld",
+      "minute": "minuut",
+      "minutes": "minuten",
+      "hour": "uur",
+      "hours": "uur",
+      "second": "seconde",
+      "seconds": "seconden",
+      "custom": "aangepast",
+      "InstanceDisabled": "Uitgeschakeld",
+      "NoTimeout": "Geen time-out",
+      "ChecksDisabled": "Uitgeschakeld",
+      "Unlimited": "Onbeperkt",
+      "NoRotation": "(geen rotatie)"
+    }
+  },
+  "buttons": {
+    "Login": "Inloggen",
+    "Save": "Opslaan",
+    "Add": "Toevoegen",
+    "Remove": "Verwijderen",
+    "Retry": "Opnieuw",
+    "Forget": "Vergeten",
+    "Refresh": "Vernieuwen",
+    "Delete": "Verwijderen",
+    "ClearAll": "Alles wissen",
+    "Generate": "Genereren",
+    "Logout": "Uitloggen",
+    "AddKey": "Sleutel toevoegen",
+    "AddRole": "Rol toevoegen",
+    "RemoveKey": "Sleutel verwijderen",
+    "RemoveRole": "Rol verwijderen",
+    "Stay": "Blijven",
+    "Leave": "Verlaten",
+    "LiveExport": "Live-export",
+    "Copy": "Kopiëren",
+    "AddThisIP": "Dit IP toevoegen",
+    "Go": "Ga",
+    "CreateFolder": "Map maken",
+    "Create": "Maken",
+    "Download": "Downloaden",
+    "Cancel": "Annuleren",
+    "Close": "Sluiten",
+    "Test": "Testen"
+  },
+  "phrases": {
+    "EnvironmentVariable": "Omgevingsvariabele: <code>{variableName}</code>",
+    "EnvironmentVariables": "Omgevingsvariabelen: <code>{variableName}</code>",
+    "VariableDescription": "<span class=\"text-warning\">Let op:</span> Deze waarde komt uit een omgevingsvariabele, dus het veld is uitgeschakeld. Opslaan wijzigt de actieve waarde niet. Wijzig of verwijder de variabele om het hier te bewerken.",
+    "VariableDescriptionPlural": "<span class=\"text-warning\">Let op:</span> Deze waarden komen uit omgevingsvariabelen, dus de velden zijn uitgeschakeld. Opslaan wijzigt de actieve waarden niet. Wijzig of verwijder de variabelen om ze hier te bewerken.",
+    "LiveValue": "Actieve waarde: <code>{value}</code>",
+    "ShowMore": "Meer informatie tonen",
+    "ShowPassword": "Wachtwoord tonen",
+    "HidePassword": "Wachtwoord verbergen",
+    "SessionEnded": "Sessie beëindigd. Log opnieuw in.",
+    "Saved": "Opgeslagen.",
+    "SavedRestart": "Opgeslagen. Een herstart is nodig om het volledig toe te passen.",
+    "RestartPending": "Een opgeslagen wijziging heeft een herstart nodig om volledig te gelden. Unpackerr start zichzelf opnieuw als er niets in de wachtrij staat, wordt uitgepakt of op verwijderen wacht.",
+    "RestartPendingTitle": "Herstart in afwachting.",
+    "NothingQueued": "Er staat nu niets in de wachtrij.",
+    "NoHistory": "Nog geen geschiedenis.",
+    "NoInstances": "Geen {section}-instanties geconfigureerd.",
+    "NoFolders": "Geen mappen geconfigureerd.",
+    "NoWebhooks": "Geen webhooks geconfigureerd.",
+    "NoCmdhooks": "Geen opdracht-hooks geconfigureerd.",
+    "NoApiKeys": "Geen API-sleutels.",
+    "ClearHistoryTitle": "Geschiedenis wissen?",
+    "ClearHistoryConfirm": "Dit verwijdert voltooide rijen uit de geschiedenis. Items die nog uitpakken of op import wachten blijven in de wachtrij. Dit kan niet ongedaan worden gemaakt.",
+    "ForgetImportedTitle": "Opruimen overslaan?",
+    "ForgetImportedConfirm": "Dit item wacht nog op opruimen. Vergeten laat de uitgepakte bestanden op schijf staan.",
+    "YouDoNotHavePermission": "Je hebt geen toestemming om dit onderdeel te bekijken.",
+    "NotFound": "Niet gevonden: {path}",
+    "EnterPassword": "Voer je wachtwoord in.",
+    "LoadingApi": "API-verkenner laden…",
+    "AdminAll": "admin (alles)",
+    "AdminBuiltin": "De ingebouwde admin-rol geeft alles en kan niet worden bewerkt.",
+    "NoPermissionsSelected": "Geen geselecteerd",
+    "UiPasswordHelp": "De browser hasht het nieuwe wachtwoord hetzelfde als bij inloggen en stuurt alleen de digest. Het huidige wachtwoord is nodig om authenticatie te wijzigen zolang lokaal wachtwoord aan staat.",
+    "UiPasswordEmpty": "(leeg — ingesteld via de omgeving)",
+    "UiPasswordFilepath": "Dit wachtwoord is een filepath:-verwijzing. Een nieuw wachtwoord of authenticatietype opslaan schrijft de waarde naar het configuratiebestand.",
+    "ReservedUsername": "De gebruikersnamen webauth, noauth en filepath zijn gereserveerd, en een gebruikersnaam mag geen dubbele punt bevatten.",
+    "FilterPlaceholder": "Filteren…",
+    "Empty": "—",
+    "URLMustBeginWithHttp": "URL moet beginnen met http:// of https://",
+    "URLInvalid": "Dat is geen geldige URL.",
+    "APIKeyMustBeCountCharactersOrLonger": "API-sleutel moet minstens {count} tekens zijn.",
+    "PathMustNotBeEmpty": "Pad mag niet leeg zijn.",
+    "CommandMustNotBeEmpty": "Opdracht mag niet leeg zijn.",
+    "FixInvalidFields": "Herstel de ongeldige velden voor je opslaat.",
+    "UnsavedChanges": "Niet-opgeslagen wijzigingen",
+    "LeavePage": "Deze pagina verlaten? Niet-opgeslagen wijzigingen gaan verloren.",
+    "Copied": "Gekopieerd.",
+    "ValidSSL": "Geldige SSL",
+    "ConfigFile": "Configuratiebestand",
+    "ConfigDuration": "Dit is een Go-duur in het configuratiebestand of de omgeving, zoals <code>2m</code> of <code>15s</code>.",
+    "ConfigDurationOff": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uit is <code>0s</code>.",
+    "ConfigDurationUnset": "Dit is een Go-duur in het configuratiebestand of de omgeving. Niet ingesteld laat de waarde weg (of leeg).",
+    "ConfigDurationDisabled": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uitgeschakeld is <code>-1s</code>.",
+    "ConfigDurationFolderPoll": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uitgeschakeld is <code>0s</code>, wat in Docker nog steeds polst; gebruik daar <code>1ms</code> om het pollen uit te zetten.",
+    "ConfigSize": "Dit is een groottetekst in het configuratiebestand of de omgeving, zoals <code>20GB</code>. Onbeperkt is <code>0</code>.",
+    "BrowseFiles": "Bestanden bladeren",
+    "TestTitle": "{name} testen",
+    "TestEvent": "Gebeurtenis",
+    "TestApp": "App",
+    "TestQueued": "In wachtrij",
+    "TestRetrieved": "Opgehaald",
+    "TestTorrents": "Torrents",
+    "TestNzbs": "NZBs",
+    "TestOther": "Overig",
+    "TestReply": "Antwoord",
+    "TestDuration": "Duur"
+  },
+  "nav": {
+    "Dashboard": "Dashboard",
+    "History": "Geschiedenis",
+    "Application": "Applicatie",
+    "Settings": "Configuratie",
+    "System": "Systeem",
+    "LogFiles": "Logs",
+    "API": "API",
+    "Theme": "Thema",
+    "ThemeLight": "Licht",
+    "ThemeDark": "Donker",
+    "Language": "Taal"
+  },
+  "pages": {
+    "login": {
+      "Username": "Gebruikersnaam",
+      "Password": "Wachtwoord"
+    },
+    "dashboard": {
+      "Title": "Overzicht",
+      "intro": "Live wachtrij, uitpaktellingen en voltooide geschiedenis voor deze Unpackerr.",
+      "ActiveQueue": "Activiteit",
+      "Live": "Live",
+      "Starrs": "Starr-apps",
+      "StarrsHint": "Sonarr-, Radarr-, Lidarr- en Readarr-instanties in de configuratie.",
+      "StarrQueues": "Starr-wachtrijen",
+      "StarrQueuesHint": "Laatste activiteitswachtrij-poll per Starr-app. Aantallen komen uit opgehaalde records.",
+      "StarrQueueTotal": "Totaal",
+      "StarrQueueTotalHint": "Starr-wachtrijgrootte. Opgehaald wordt getoond als dat afwijkt van het totaal.",
+      "StarrQueueComplete": "Klaar",
+      "StarrQueueCompleteHint": "Items met status completed, elk protocol.",
+      "StarrQueueMatch": "Match",
+      "StarrQueueMatchHint": "Voltooide items waarvan het protocol in de lijst van deze app staat. Deze volgt Unpackerr.",
+      "StarrQueueIssues": "Issues",
+      "StarrQueueIssuesHint": "Mislukte of waarschuwende items, inclusief tracked-downloadfouten en -waarschuwingen. Eén telling per item.",
+      "StarrQueueDownloading": "DL",
+      "StarrQueueDownloadingHint": "Items die nog downloaden.",
+      "Folders": "Bewaakte mappen",
+      "FoldersHint": "Bewaakte mappaden in de configuratie.",
+      "Waiting": "Wachten",
+      "WaitingHint": "Items die wachten op de startdelay, plus mapbewakingen die nog niet tot rust zijn gekomen.",
+      "Queued": "In wachtrij",
+      "QueuedHint": "Items in de wachtrij voor uitpakken.",
+      "Extracting": "Uitpakken",
+      "ExtractingHint": "Items die nu worden uitgepakt.",
+      "Extracted": "Uitgepakt",
+      "ExtractedHint": "Uitgepakt en wachtend tot de Starr-app importeert.",
+      "Imported": "Geïmporteerd",
+      "ImportedHint": "Geïmporteerd door de Starr-app; wachtend op de verwijderdelay.",
+      "Failed": "Mislukt",
+      "FailedHint": "Mislukte uitpakkingen.",
+      "Deleted": "Verwijderd",
+      "DeletedHint": "Geïmporteerde items waarvan de bestanden zijn verwijderd.",
+      "Finished": "Klaar",
+      "FinishedHint": "Voltooide items sinds Unpackerr is gestart. Dit totaal wordt niet gereset.",
+      "Webhooks": "Webhooks",
+      "WebhooksHint": "HTTP-webhooks sinds de start: totaal / mislukt.",
+      "Cmdhooks": "Opdracht-hooks",
+      "CmdhooksHint": "Opdracht-hooks sinds de start: totaal / mislukt.",
+      "StackFS": "FS-gebeurtenissen",
+      "StackFSHint": "Bestandssysteemgebeurtenissen van mapbewaking die op de hoofdloop wachten. Bezet / capaciteit.",
+      "StackXtractr": "Starr-extracties",
+      "StackXtractrHint": "Starr-extractiecallbacks die nog verwerkt moeten worden. Bezet / capaciteit.",
+      "StackFolder": "Mapextracties",
+      "StackFolderHint": "Extractiecallbacks van mapbewaking die nog verwerkt moeten worden. Bezet / capaciteit.",
+      "StackHook": "Hookwachtrij",
+      "StackHookHint": "Webhooks en opdracht-hooks die nog moeten draaien. Bezet / capaciteit.",
+      "StackDel": "Verwijderwachtrij",
+      "StackDelHint": "Bestandsverwijderingen die nog moeten draaien. Bezet / capaciteit.",
+      "StackTask": "Taakwachtrij",
+      "StackTaskHint": "Configuratiewijzigingen en wachtrijacties die op de hoofdloop wachten. Bezet / capaciteit.",
+      "App": "App",
+      "Status": "Status",
+      "Item": "Item",
+      "Progress": "Voortgang",
+      "Retries": "Pogingen",
+      "Updated": "Bijgewerkt",
+      "Actions": "Acties",
+      "Refresh": "Vernieuwen",
+      "UpdatedAgo": "{age} geleden bijgewerkt",
+      "LastWrite": "Laatste schrijf"
+    },
+    "history": {
+      "Title": "Geschiedenis",
+      "intro": "Voltooide uitpakkingen, inclusief nieuwe pogingen en items die al van schijf zijn verwijderd.",
+      "App": "App",
+      "Status": "Status",
+      "Item": "Item",
+      "Files": "Bestanden",
+      "Size": "Grootte",
+      "Retries": "Pogingen",
+      "Finished": "Klaar",
+      "DeletedRow": "Geschiedenisrij verwijderd",
+      "Cleared": "Geschiedenis gewist"
+    },
+    "settings": {
+      "Title": "Configuratie",
+      "Heading": "{settings} — {page}",
+      "general": {
+        "label": "Algemeen",
+        "intro": "Uitpak-, herhaal-, log- en archiefwachtwoordinstellingen die overal gelden.",
+        "Logging": "Loggen",
+        "Extraction": "Uitpakken"
+      },
+      "starrs": {
+        "label": "Starrs",
+        "intro": "Sonarr-, Radarr-, Lidarr- en Readarr-instanties die Unpackerr polst."
+      },
+      "hooks": {
+        "label": "Hooks",
+        "intro": "HTTP-callbacks en lokale opdrachten wanneer een uitpakstatus verandert."
+      },
+      "webserver": {
+        "label": "Webserver",
+        "intro": "Luisteradres, TLS en HTTP-logs. Luisteradres en URL-basis hebben een herstart nodig."
+      },
+      "sonarr": {
+        "label": "Sonarr",
+        "intro": "Sonarr-instanties die Unpackerr polst op voltooide downloads."
+      },
+      "radarr": {
+        "label": "Radarr",
+        "intro": "Radarr-instanties die Unpackerr polst op voltooide downloads."
+      },
+      "lidarr": {
+        "label": "Lidarr",
+        "intro": "Lidarr-instanties die Unpackerr polst op voltooide downloads."
+      },
+      "readarr": {
+        "label": "Readarr",
+        "intro": "Readarr-instanties die Unpackerr polst op voltooide downloads."
+      },
+      "folders": {
+        "label": "Mappen",
+        "intro": "Bewaakte mappen die geen Starr-downloadpad zijn. Mapwijzigingen hebben altijd een herstart nodig.",
+        "AfterExtract": "Na uitpakken",
+        "Extraction": "Uitpakken",
+        "Protection": "Bescherming"
+      },
+      "webhooks": {
+        "label": "Webhooks",
+        "intro": "HTTP-callbacks wanneer een uitpakstatus verandert. Richt ze op Discord, Slack, Notifiarr of elke URL die een POST accepteert."
+      },
+      "cmdhooks": {
+        "label": "Opdracht-hooks",
+        "intro": "Lokale opdrachten die draaien wanneer een uitpakstatus verandert. Dezelfde gebeurtenissen als webhooks, op deze host."
+      },
+      "Instance": "{section} #{n}",
+      "FolderN": "Map #{n}",
+      "WebhookN": "Webhook #{n}",
+      "CmdhookN": "Opdracht-hook #{n}",
+      "Server": "Server",
+      "ApiKeys": "API-sleutels",
+      "CustomRoles": "Aangepaste rollen",
+      "AddSection": "{section} toevoegen",
+      "AddFolder": "Map toevoegen",
+      "AddWebhook": "Webhook toevoegen",
+      "AddCmdhook": "Opdracht-hook toevoegen"
+    },
+    "trust": {
+      "Title": "Vertrouwen",
+      "Authorization": "Autorisatie",
+      "intro": "UI-login, API-sleutels en aangepaste rollen. Je IP moet in Upstreams staan voordat je overschakelt naar header- of geen authenticatie, anders sluit je jezelf buiten."
+    },
+    "system": {
+      "Title": "Systeem",
+      "intro": "Dit proces, het pad van het configuratiebestand en een live dump van actieve waarden (geheimen weggelaten).",
+      "Instance": "Instantie",
+      "You": "Jij",
+      "Links": "Links",
+      "Website": "Website en docs",
+      "GitHub": "GitHub",
+      "Discord": "Discord",
+      "Notifiarr": "Notifiarr",
+      "Xt": "xTractor Tool",
+      "Version": "Versie",
+      "Revision": "Revisie",
+      "Started": "Gestart",
+      "Uptime": "Uptime",
+      "Listen": "Luisteren",
+      "URLBase": "URL-basis",
+      "Auth": "Auth",
+      "Metrics": "Metrics",
+      "Username": "Gebruikersnaam",
+      "Via": "Via",
+      "Permissions": "Rechten",
+      "enabled": "ingeschakeld",
+      "disabled": "uitgeschakeld",
+      "ConfigFile": "Configuratiebestand"
+    },
+    "logs": {
+      "Title": "Logs",
+      "intro": "Bekijk, volg en download Unpackerr-logbestanden.",
+      "RecentErrors": "recente fouten",
+      "LiveStdout": "live",
+      "ViewRecent": "Bekijken",
+      "FileList": "Bestandslijst",
+      "Details": "Details",
+      "FollowTooltip": "Vernieuw de lijst. De knop met opsommingstekens volgt een bestand terwijl Unpackerr ernaar schrijft.",
+      "Name": "Naam",
+      "Age": "Leeftijd",
+      "FilesInDirs": "{fileCount} bestanden in {dirCount} mappen",
+      "Path": "Pad",
+      "Mode": "Modus",
+      "Owner": "Eigenaar",
+      "Bytes": "Bytes",
+      "Date": "Datum",
+      "InUse": "In gebruik",
+      "FollowingFile": "Bestand volgen",
+      "FileContent": "Bestandsinhoud",
+      "NoFileSelected": "Geen bestand geselecteerd.",
+      "SelectFile": "Selecteer een bestand om te zien wat erin staat.",
+      "TailFile": "Volg {fileName}",
+      "ToggleLinesOrder": "Volgorde van regels wijzigen",
+      "ToggleColors": "Markeerkleuren in- of uitschakelen",
+      "LineCount": "Aantal regels",
+      "Tailing": "Volgen",
+      "AddMore": "Meer toevoegen",
+      "Highlight": "Markeren",
+      "ToggleLineWrap": "Regelafbreking in- of uitschakelen",
+      "Error": "Fout bij het laden van het logbestand"
+    },
+    "docs": {
+      "Title": "API-documentatie",
+      "intro": "Interactieve OpenAPI-verkenner voor de Unpackerr HTTP-API."
+    }
+  },
+  "status": {
+    "Waiting": "Wachten",
+    "Queued": "In wachtrij",
+    "Extracting": "Uitpakken",
+    "ExtractFailed": "Uitpakken mislukt",
+    "Extracted": "Uitgepakt",
+    "Imported": "Geïmporteerd",
+    "Deleting": "Verwijderen",
+    "DeleteFailed": "Verwijderen mislukt",
+    "Deleted": "Verwijderd",
+    "ExtractedNothing": "Niets uitgepakt"
+  },
+  "config": {
+    "general": {
+      "debug": {
+        "label": "Debugloggen",
+        "description": "Extra logregels terwijl je dingen instelt.",
+        "tooltip": "Zet dit aan als je apps of mappen toevoegt, zodat je wachtrij- en uitpakactiviteit ziet. Mag gerust aan blijven."
+      },
+      "quiet": {
+        "label": "Stil",
+        "description": "Loguitvoer verbergen behalve fouten.",
+        "tooltip": "Gebruik een logbestand als je dit aanzet, anders zie je bijna niets. Typisch als Unpackerr vanuit systemd start."
+      },
+      "activity": {
+        "label": "Activiteit loggen",
+        "description": "Wachtrijtellingen alleen afdrukken als er iets gebeurt.",
+        "tooltip": "Verbergt de wachtrijregels die allemaal nul zijn zodat het log leesbaar blijft. Combineer met een langzamer log-queues-interval als je nog periodieke telling wilt."
+      },
+      "errorStderr": {
+        "label": "Fouten naar stderr",
+        "description": "ERROR-regels naar stderr sturen in plaats van stdout.",
+        "tooltip": "Laat dit uit tenzij je logs zo splitst. Stille modus negeert het."
+      },
+      "parallel": {
+        "label": "Gelijktijdige uitpakkingen",
+        "description": "Hoeveel archieven tegelijk uitpakken.",
+        "tooltip": "Eén tegelijk is de juiste standaard. Verhoog alleen als schijven en CPU de extra last aankunnen."
+      },
+      "maxRetries": {
+        "label": "Max. pogingen",
+        "description": "Extra pogingen na een mislukte uitpak.",
+        "tooltip": "De eerste poging telt hier niet. In het configuratiebestand betekent 0 de standaard van 2."
+      },
+      "interval": {
+        "label": "Poll-interval",
+        "description": "Hoe vaak alle Starr-apps worden gepolst.",
+        "tooltip": "Unpackerr vraagt elke Starr-app op dit interval om zijn wachtrij. Opslaan herstart de pollers meteen. Een minuut of twee is gebruikelijk; de kortste keuze is 15 seconden."
+      },
+      "startDelay": {
+        "label": "Startvertraging",
+        "description": "Wachten nadat een download klaar is voordat er wordt uitgepakt.",
+        "tooltip": "Begint zodra de Starr-wachtrij de download als voltooid toont. Verhoog dit als de client nog bestanden verplaatst of afrondt wanneer het uitpakken begint."
+      },
+      "retryDelay": {
+        "label": "Herhaalvertraging",
+        "description": "Pauze tussen uitpakpogingen.",
+        "tooltip": "Na een mislukking wacht Unpackerr dit lang voordat het item als nieuw wordt behandeld en opnieuw wordt geprobeerd."
+      },
+      "deleteDelay": {
+        "label": "Verwijdervertraging",
+        "description": "Hoe lang uitgepakte bestanden na import bewaard blijven.",
+        "tooltip": "Geldt voor Starr-apps. Al draaiende apps nemen dit over na een herstart. De kortste keuze is 1 seconde."
+      },
+      "progress": {
+        "label": "Voortgangsinterval",
+        "description": "Hoe vaak de status van een lopende uitpak wordt afgedrukt.",
+        "tooltip": "Deze regels verschijnen alleen tijdens een uitpak. Een waarde 0s in het configuratiebestand wordt 15 seconden."
+      },
+      "logQueues": {
+        "label": "Interval wachtrijlog",
+        "description": "Hoe vaak Starr-wachtrijtellingen worden afgedrukt.",
+        "tooltip": "Uit stopt die regels. Activiteitsmodus verbergt nog steeds nultellingen als je dit aan laat."
+      },
+      "keepHistory": {
+        "label": "Geschiedenis bewaren",
+        "description": "Voltooide items in het geschiedenisbestand.",
+        "tooltip": "Dit is unpackerr.history.jsonl, naast het log (of het configuratiebestand als logs naar stdout gaan). 0 zet geschiedenis uit. Het tray-menu toont nog steeds alleen de laatste 10 namen.",
+        "options": {
+          "0": "(geen geschiedenis)"
+        }
+      },
+      "remnantAction": {
+        "label": "Restactie",
+        "description": "Wat te doen als een achtergebleven bestand een uitpak blokkeert.",
+        "tooltip": "Hernoemen zet het restant opzij en probeert opnieuw. Verwijderen wist het en probeert opnieuw. Uit laat het staan en faalt. Geldt voor Starr-apps en voor mappen met Terugzetten aan.",
+        "rename": "hernoemen",
+        "delete": "verwijderen",
+        "off": "uit"
+      },
+      "fileMode": {
+        "label": "Bestandsmodus",
+        "description": "Rechten voor nieuw uitgepakte bestanden.",
+        "tooltip": "Alleen Unix. Wordt op Windows genegeerd."
+      },
+      "dirMode": {
+        "label": "Mapmodus",
+        "description": "Rechten voor nieuw uitgepakte mappen.",
+        "tooltip": "Alleen Unix. Wordt op Windows genegeerd."
+      },
+      "logFile": {
+        "label": "Logbestand",
+        "description": "Bestand om logs naar te schrijven. Leeg drukt naar stdout.",
+        "tooltip": "Dezelfde berichten die normaal naar de terminal gaan. macOS en Windows vullen een standaardpad in als dit leeg is. Zet te bewaren logbestanden op 0 als logrotate het bestand moet beheren."
+      },
+      "logFiles": {
+        "label": "Te bewaren logbestanden",
+        "description": "Hoeveel geroteerde logs te bewaren.",
+        "tooltip": "0 zet automatische rotatie uit zodat logrotate het bestand beheert. Nadat logrotate het actieve bestand hernoemt, stuur SIGHUP (systemctl reload unpackerr) om het opnieuw te openen."
+      },
+      "logFileMb": {
+        "label": "Logbestandgrootte (MB)",
+        "description": "Roteren wanneer het logbestand deze grootte bereikt.",
+        "tooltip": "Alleen gebruikt zolang rotatie aan staat. 0 in het configuratiebestand wordt 10 MB."
+      },
+      "passwords": {
+        "label": "RAR/7z-wachtwoorden",
+        "description": "Wachtwoorden om te proberen op versleutelde archieven, één per regel.",
+        "tooltip": "Worden op volgorde geprobeerd tot er één werkt. Een regel filepath:/pad/naar/passwords.txt leest meer wachtwoorden uit dat bestand."
+      }
+    },
+    "webserver": {
+      "listenAddr": {
+        "label": "Luisteradres",
+        "description": "Adres en poort voor deze UI en API.",
+        "tooltip": "0.0.0.0 bindt elke interface. Leeg zet de HTTP-server uit. Heeft een herstart nodig."
+      },
+      "urlbase": {
+        "label": "URL-basis",
+        "description": "Padvoorvoegsel wanneer Unpackerr achter een reverse proxy zit.",
+        "tooltip": "Mag geen accolades bevatten. Heeft een herstart nodig."
+      },
+      "metrics": {
+        "label": "Prometheus-metrics",
+        "description": "/metrics beschikbaar maken voor Prometheus.",
+        "tooltip": "Scrapes hebben een API-sleutel met system:metrics:read nodig. Heeft een herstart nodig."
+      },
+      "pprof": {
+        "label": "pprof-debug",
+        "description": "Go pprof beschikbaar maken op /debug/pprof/.",
+        "tooltip": "Laat dit uit tenzij je dit proces debugt. Heeft een herstart nodig."
+      },
+      "sslCertFile": {
+        "label": "SSL-certificaatbestand",
+        "description": "Certificaatbestand voor HTTPS.",
+        "tooltip": "Stel zowel het certificaat als de sleutel in om TLS te serveren. Heeft een herstart nodig."
+      },
+      "sslKeyFile": {
+        "label": "SSL-sleutelbestand",
+        "description": "Privésleutelbestand voor HTTPS.",
+        "tooltip": "Stel zowel het certificaat als de sleutel in om TLS te serveren. Heeft een herstart nodig."
+      },
+      "logFile": {
+        "label": "HTTP-logbestand",
+        "description": "Bestand voor HTTP-verzoeklogs. Leeg gebruikt het hoofdlog.",
+        "tooltip": "Houdt toegangslogs uit het uitpaklog. Rotatie volgt de instellingen hieronder."
+      },
+      "logFiles": {
+        "label": "Te bewaren logbestanden",
+        "description": "Hoeveel geroteerde HTTP-logs te bewaren.",
+        "tooltip": "0 zet automatische rotatie uit. SIGHUP opent dit bestand ook opnieuw."
+      },
+      "logFileMb": {
+        "label": "Logbestandgrootte (MB)",
+        "description": "Roteren wanneer het HTTP-log deze grootte bereikt.",
+        "tooltip": "Alleen gebruikt zolang rotatie aan staat."
+      },
+      "upstreams": {
+        "label": "Upstreams",
+        "description": "Vertrouwde reverse-proxy-IP’s of CIDR’s, één per regel.",
+        "tooltip": "Laat X-Forwarded-For in HTTP-logs vertrouwen. Voorbeeld: 127.0.0.1/32 of 10.1.2.0/24."
+      },
+      "wsOrigins": {
+        "label": "WebSocket origins",
+        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
+        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+      },
+      "keyName": {
+        "label": "Naam",
+        "description": "Label voor deze sleutel in de UI en logs.",
+        "tooltip": "Namen moeten uniek zijn. Alleen om de sleutel te herkennen."
+      },
+      "key": {
+        "label": "Sleutel",
+        "description": "Geheim dat de client als API-sleutel stuurt.",
+        "tooltip": "60–150 tekens. Laat leeg bij opslaan om de bestaande sleutel van deze naam te houden. Genereren maakt een nieuwe."
+      },
+      "keyRoles": {
+        "label": "Rollen"
+      },
+      "roleName": {
+        "label": "Rolnaam",
+        "description": "Letters, cijfers, underscore of koppelteken.",
+        "tooltip": "De ingebouwde admin-rol kan niet opnieuw worden gedefinieerd. Namen zijn hoofdlettergevoelig."
+      },
+      "permissions": {
+        "label": "Rechten"
+      },
+      "authType": {
+        "label": "Authenticatie",
+        "description": "Hoe de web-UI je identificeert.",
+        "tooltip": "Lokaal wachtwoord bewaart een gebruikersnaam en wachtwoord op deze host. Header en geen authenticatie slagen alleen als het verzoek van een adres in Upstreams komt.",
+        "options": {
+          "password": "Lokaal wachtwoord",
+          "header": "Proxy-header",
+          "noauth": "Geen authenticatie"
+        }
+      },
+      "username": {
+        "label": "Gebruikersnaam",
+        "description": "UI-inlognaam.",
+        "tooltip": "Gebruikt als PBKDF2-zout met het wachtwoord. webauth, noauth en filepath zijn gereserveerd. De gebruikersnaam wijzigen vereist een nieuw wachtwoord."
+      },
+      "newPassword": {
+        "label": "Nieuw wachtwoord",
+        "description": "Laat leeg om het huidige wachtwoord te houden.",
+        "tooltip": "Gehasht in de browser (PBKDF2) voordat het wordt verstuurd. Minstens 8 tekens. Verplicht bij overschakelen naar lokaal wachtwoord of wijzigen van de gebruikersnaam."
+      },
+      "currentPassword": {
+        "label": "Huidig wachtwoord",
+        "description": "Vereist om authenticatie te wijzigen zolang lokaal wachtwoord aan staat.",
+        "tooltip": "Gehasht in de browser hetzelfde als bij inloggen. De server controleert het met de opgeslagen hash voordat een nieuw wachtwoord of authenticatietype wordt toegepast."
+      },
+      "header": {
+        "label": "Auth-header",
+        "description": "Verzoekheader die de reverse proxy op de gebruikersnaam zet. Open de UI via de proxy om de headers van dit verzoek te zien.",
+        "tooltip": "Alleen voor proxy-headerauthenticatie. De lijst is dit verzoek minus gewone niet-auth-headers. Geen authenticatie kan een header weglaten; een waarde hier wordt opgeslagen als noauth:Header en gebruikt als gebruikersnaam als de proxy die stuurt. Standaard X-Webauth-User."
+      },
+      "roleHeader": {
+        "label": "Rol-header",
+        "description": "Optionele verzoekheader waarvan de waarde een Unpackerr-rol is. Alleen bij proxy-headerauthenticatie. Leeg houdt die gebruikers als admin. Een gekozen header die ontbreekt weigert het verzoek.",
+        "tooltip": "De proxy moet admin of een aangepaste rolnaam uit de lijst sturen. Meerdere namen mogen komma-gescheiden. Een ontbrekende of onbekende rol is weigering, geen admin. Voorgestelde naam: X-Webauth-Role.",
+        "options": {
+          "none": "Altijd admin"
+        }
+      }
+    },
+    "starr": {
+      "url": {
+        "label": "URL",
+        "placeholder": "http://127.0.0.1:8989",
+        "description": "Basis-URL van deze Starr-app.",
+        "tooltip": "Neem het schema mee, bijvoorbeeld http://127.0.0.1:8989. Bij HTTPS vereist de slotknop een geldig certificaat."
+      },
+      "apiKey": {
+        "label": "API-sleutel",
+        "description": "API-sleutel uit Instellingen → Algemeen in de Starr-app.",
+        "tooltip": "32 of meer tekens. Een filepath:/pad-waarde wordt ook geaccepteerd. Laat het veld ongewijzigd om de huidige sleutel te houden."
+      },
+      "path": {
+        "label": "Pad",
+        "description": "Map waaruit Unpackerr de downloads van deze app leest.",
+        "tooltip": "Terugval als het pad dat Starr meldt ontbreekt of voor Unpackerr niet zichtbaar is.",
+        "config": "In het configuratiebestand is dit een lijst genaamd paths."
+      },
+      "protocols": {
+        "label": "Protocollen",
+        "description": "Welke wachtrijprotocollen uit te pakken.",
+        "tooltip": "Nieuwere Starr-apps melden klassennamen in plaats van torrent of usenet. De keuzes hier schrijven beide vormen zodat elke appversie matcht.",
+        "torrent": "Torrent",
+        "usenet": "Usenet",
+        "both": "Torrent en Usenet"
+      },
+      "timeout": {
+        "label": "Time-out",
+        "description": "Hoe lang te wachten tot deze app antwoordt.",
+        "tooltip": "Verhoog dit als de Starr-API traag of remote is. Een waarde 0s in het configuratiebestand gebruikt de globale time-out."
+      },
+      "delete_delay": {
+        "label": "Verwijdervertraging",
+        "description": "Hoe lang uitpakkingen bewaren nadat deze app ze importeert.",
+        "tooltip": "Overschrijft de algemene verwijdervertraging voor deze instantie."
+      },
+      "maxBytes": {
+        "label": "Max. bytes",
+        "description": "Een uitpak stoppen als de uitgepakte grootte dit overschrijdt.",
+        "tooltip": "Onbeperkt zet de limiet voor deze instantie uit. Elke app heeft een eigen standaard als het configuratiebestand dit leeg laat."
+      },
+      "delete_orig": {
+        "label": "Originelen verwijderen",
+        "description": "De oorspronkelijke downloadmap na import verwijderen.",
+        "tooltip": "Handig voor Usenet. Laat dit uit voor torrents zodat seeden blijft werken."
+      },
+      "syncthing": {
+        "label": "Syncthing",
+        "description": "Wachten tot Syncthing klaar is voordat er wordt uitgepakt.",
+        "tooltip": "Zet dit aan als downloads via Syncthing binnenkomen en uitpakken te vroeg start."
+      },
+      "valid_ssl": {
+        "label": "Alleen geldige SSL"
+      },
+      "split_flac": {
+        "label": "FLAC-cuesheets splitsen",
+        "description": "FLAC+CUE in afzonderlijke tracks splitsen.",
+        "tooltip": "Alleen Lidarr. Als dit aan staat, worden FLAC-bestanden met een ingebed CUE-sheet één bestand per track."
+      }
+    },
+    "folders": {
+      "interval": {
+        "label": "Poll-interval",
+        "description": "Hoe vaak bewaakte mappen op nieuwe archieven worden gescand.",
+        "tooltip": "Uitgeschakeld gebruikt bestandssysteemgebeurtenissen (inotify en vrienden). Docker heeft die gebeurtenissen meestal niet, dus kies daar een echt interval."
+      },
+      "buffer": {
+        "label": "Gebeurtenisbuffer",
+        "description": "Hoeveel mapgebeurtenissen tegelijk in de wachtrij mogen.",
+        "tooltip": "Laat dit tenzij je gedropte gebeurtenissen in het log ziet."
+      },
+      "path": {
+        "label": "Bewaakt pad",
+        "description": "Map om te bewaken op archieven.",
+        "tooltip": "Dit is geen Starr-downloadpad. Gebruik het voor de «verplaats naar»-map van een client of een andere dropmap."
+      },
+      "extract_path": {
+        "label": "Uitpakpad",
+        "description": "Waar uitgepakte bestanden naartoe gaan. Leeg pakt ter plaatse uit.",
+        "tooltip": "Als dit leeg is, gaan bestanden naar het bewaakte pad (of een _unpackerred-map tenzij Terugzetten aan staat)."
+      },
+      "delete_after": {
+        "label": "Verwijderen na",
+        "description": "Hoe lang bestanden na uitpakken bewaren.",
+        "tooltip": "Niet ingesteld laat ze staan. Verwijderen heeft ook Origineel archief verwijderen en/of Alle bestanden verwijderen nodig."
+      },
+      "delete_original": {
+        "label": "Origineel archief verwijderen",
+        "description": "Het oorspronkelijke archief na uitpakken verwijderen.",
+        "tooltip": "Vereist een Verwijderen na-vertraging. Verwijdert de uitgepakte bestanden niet."
+      },
+      "delete_files": {
+        "label": "Alle bestanden verwijderen",
+        "description": "Uitgepakte bestanden na de vertraging verwijderen.",
+        "tooltip": "Vereist een Verwijderen na-vertraging. Gebruik dit als de bewaakte map de uitvoer niet mag houden."
+      },
+      "move_back": {
+        "label": "Terugzetten",
+        "description": "Uitgepakte bestanden terugzetten naar de bewaakte map.",
+        "tooltip": "Uit laat ze in een _unpackerred-map naast het archief. Aan classificeert restanten ook met Restactie."
+      },
+      "extract_isos": {
+        "label": "ISO’s uitpakken",
+        "description": ".iso-bestanden als archieven behandelen.",
+        "tooltip": "Uit negeert ISO-images. Zet dit alleen aan als je ze echt wilt uitpakken."
+      },
+      "disableRecursion": {
+        "label": "Recursie",
+        "description": "Archieven in andere archieven uitpakken.",
+        "tooltip": "Aan is de gebruikelijke instelling. Uit pakt alleen het buitenste archief uit."
+      },
+      "allowSymlinks": {
+        "label": "Symlinks toestaan",
+        "description": "Archieven met symlinknamen in de eerste scan meenemen.",
+        "tooltip": "De extra’s-pass volgt nooit zip-leden die links zijn. Dit raakt alleen de eerste zoektocht."
+      },
+      "maxNested": {
+        "label": "Max. genest",
+        "description": "Limiet op geneste archieven uit deze map.",
+        "tooltip": "0 is onbeperkt. Telt archieven in de uitpakuitvoer van deze map (één extra’s-pass)."
+      },
+      "extrasMaxDepth": {
+        "label": "Extra’s max. diepte",
+        "description": "Hoe diep de uitpakuitvoer te lopen voor meer archieven.",
+        "tooltip": "0 is onbeperkt. Beperkt hoe ver de extra’s-pass afdaalt."
+      },
+      "maxBytes": {
+        "label": "Max. bytes",
+        "description": "Een uitpak stoppen als de uitgepakte grootte dit overschrijdt.",
+        "tooltip": "Onbeperkt zet de limiet voor deze map uit. Standaard voor mappen is onbeperkt."
+      },
+      "maxFiles": {
+        "label": "Max. bestanden",
+        "description": "Stoppen na dit aantal bestanden, mappen en symlinks.",
+        "tooltip": "0 is onbeperkt. Beschermt tegen archiefbommen."
+      },
+      "maxRatio": {
+        "label": "Max. ratio",
+        "description": "Stoppen wanneer geschreven bytes dit maal de archiefgrootte overschrijden.",
+        "tooltip": "0 is onbeperkt. Nog een bescherming tegen archiefbommen (geschreven bytes / archiefgrootte)."
+      },
+      "exclude_paths": {
+        "label": "Uitgesloten paden",
+        "description": "Paden om onder deze map te negeren, één per regel.",
+        "tooltip": "Uitgesloten paden en hun kinderen worden niet bewaakt of uitgepakt. Absoluut, of relatief aan het bewaakte pad."
+      }
+    },
+    "hooks": {
+      "name": {
+        "label": "Naam",
+        "description": "Label in de logs. Optioneel.",
+        "tooltip": "Als dit leeg is, loggen webhooks de URL en opdracht-hooks het eerste woord van de opdracht."
+      },
+      "url": {
+        "label": "URL",
+        "description": "URL om naar te POSTen wanneer een uitpakstatus verandert.",
+        "tooltip": "Werkt met Notifiarr, Discord, Slack, Telegram en elke URL die de payload accepteert. Ingebouwde sjablonen worden uit de URL gekozen tenzij je er een in het configuratiebestand afdwingt."
+      },
+      "command": {
+        "label": "Opdracht",
+        "description": "Opdracht of script om uit te voeren.",
+        "tooltip": "Uitpakgegevens gaan mee als omgevingsvariabelen. Probeer /usr/bin/env (of een script dat de omgeving afdrukt) om de namen te zien."
+      },
+      "shell": {
+        "label": "In shell uitvoeren",
+        "description": "De opdracht in een shell uitvoeren.",
+        "tooltip": "Gebruikt /bin/sh -c op Unix en cmd.exe /c op Windows. Nodig als de opdracht een pijplijn is of shellsyntax gebruikt."
+      },
+      "contentType": {
+        "label": "Contenttype",
+        "description": "Content-Type-header die met de webhook meegaat.",
+        "tooltip": "Laat application/json tenzij een aangepast sjabloon een ander MIME-type nodig heeft."
+      },
+      "ignoreSsl": {
+        "label": "SSL negeren",
+        "description": "TLS-certificaatcontroles voor deze URL overslaan.",
+        "tooltip": "Alleen voor hooks op hosts met een slecht of privécertificaat."
+      },
+      "timeout": {
+        "label": "Time-out",
+        "description": "Hoe lang te wachten tot de hook klaar is.",
+        "tooltip": "Geldt voor het HTTP-verzoek of de opdracht, afhankelijk van het hooktype."
+      },
+      "silent": {
+        "label": "Stil",
+        "description": "Geslaagde runs uit de logs verbergen.",
+        "tooltip": "Mislukkingen worden nog steeds gelogd. Gebruik dit om ruis van een praatgrage Discord- of Slack-hook te minderen."
+      },
+      "events": {
+        "label": "Gebeurtenissen",
+        "description": "Leeg betekent alle gebeurtenissen."
+      },
+      "nickname": {
+        "label": "Bijnaam",
+        "description": "Botnaam voor Discord en Slack. Chat-ID voor Telegram.",
+        "tooltip": "Gaat mee in de ingebouwde sjablonen. Telegram heeft hier de chat_id nodig."
+      },
+      "channel": {
+        "label": "Kanaal",
+        "description": "Bestemmingskanaal voor Slack-webhooks.",
+        "tooltip": "Wordt genegeerd door Discord en Telegram. Aangepaste sjablonen kunnen het nog gebruiken."
+      },
+      "token": {
+        "label": "Token",
+        "description": "Bot-token voor Discord, Telegram, Slack en vergelijkbare sjablonen.",
+        "tooltip": "Gaat mee in webhook-sjablonen. Laat leeg tenzij het sjabloon het nodig heeft."
+      },
+      "exclude": {
+        "label": "Apps uitsluiten",
+        "description": "Deze hook niet afvuren voor deze apps.",
+        "tooltip": "Standaard niets uitgesloten. Map betekent uitpakkingen van een bewaakte map, geen Starr-app."
+      },
+      "template": {
+        "label": "Sjabloon",
+        "description": "Ingebouwd sjabloon. Leeg kiest er een uit de URL.",
+        "tooltip": "Dwing notifiarr, discord, telegram, gotify, pushover of slack af. Laat automatisch tenzij de URL niet herkend wordt.",
+        "auto": "Automatisch (uit de URL)"
+      },
+      "templatePath": {
+        "label": "Sjabloonbestand",
+        "description": "Aangepast Go-sjabloonbestand in plaats van een ingebouwd sjabloon.",
+        "tooltip": "Overschrijft automatische herkenning en de Sjabloon-instelling. Kies een bestaand bestand."
+      }
+    }
+  },
+  "FileBrowser": {
+    "Title": "Bestandsbrowser",
+    "Path": "Pad",
+    "intro": "Kies een pad op deze machine.",
+    "introFolderFile": "Kies een map. Het bestand heet <code>{file}</code>, maar je kunt de naam na het kiezen nog wijzigen.",
+    "tooltip": {
+      "Go": "<code>cd {path}</code><br />Wijzig de map naar het pad in het vak.",
+      "SelectPath": "Pad selecteren: <code>{path}</code>",
+      "Up": "<code>cd ..</code><br />Wijzig naar de bovenliggende map."
+    },
+    "FilterFiles": "Bestanden filteren",
+    "CreateFolderIn": "De map wordt gemaakt in: <code>{path}</code>",
+    "Files": "Bestanden: {count}",
+    "Folders": "Mappen: {count}",
+    "FilesFiltered": "Bestanden: {count}, gefilterd: {filtered}",
+    "FoldersFiltered": "Mappen: {count}, gefilterd: {filtered}",
+    "Selected": "Geselecteerd: <code>{path}</code>",
+    "Created": "Gemaakt: {path}",
+    "Creating": "Bezig met maken…",
+    "InvalidPath": "Ongeldige naam. Geen schuine strepen (<code>/</code> of <code>\\</code>).",
+    "FilterFilesDesc": "Filter de lijst met getoonde bestanden. Mapkiezers kunnen een nieuwe map maken. Om een pad te kiezen dat nog niet bestaat, typ het in <code>Pad</code> en klik op het groene vinkje."
+  }
+}

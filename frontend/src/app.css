@@ -1,1 +1,313 @@
-/* Shared styles land with the login shell. */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Unpackerr brand palette: blue box, green + yellow accents from the icon. */
+:root {
+  --un-blue: #0f7bc4;
+  --un-blue-dark: #0a5c96;
+  --un-green: #37b24d;
+  --un-yellow: #f5b301;
+
+  --bs-primary: var(--un-blue);
+  --bs-primary-rgb: 15, 123, 196;
+  --bs-link-color: var(--un-blue);
+  --bs-link-color-rgb: 15, 123, 196;
+  --bs-link-hover-color: var(--un-blue-dark);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background-color: #f4f6f8;
+  overflow: hidden;
+}
+
+#app {
+  overflow: auto;
+}
+
+[data-bs-theme='dark'] body {
+  background-color: #12161c;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--un-blue);
+  --bs-btn-border-color: var(--un-blue);
+  --bs-btn-hover-bg: var(--un-blue-dark);
+  --bs-btn-hover-border-color: var(--un-blue-dark);
+  --bs-btn-active-bg: var(--un-blue-dark);
+  --bs-btn-active-border-color: var(--un-blue-dark);
+}
+
+.navbar-unpackerr {
+  background: linear-gradient(90deg, var(--un-blue-dark), var(--un-blue));
+}
+
+.brand-logo {
+  height: 28px;
+  width: 28px;
+  object-fit: contain;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card .stat-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card {
+  cursor: help;
+}
+
+.stat-side-table {
+  font-size: 0.8125rem;
+}
+
+.stat-side-table > :not(caption) > * > * {
+  padding: 0.1rem 0.5rem;
+  line-height: 1.2;
+}
+
+.stat-side-table th {
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  cursor: help;
+}
+
+.stat-side-table td {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Bootstrap text-dark stays #212529 in dark theme — unreadable on the card. */
+[data-bs-theme='dark'] .stat-card .text-dark {
+  color: #dee2e6 !important;
+}
+
+.table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color);
+}
+
+code.wrap {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  white-space: normal;
+}
+
+.table-hover > tbody.stack-item:hover > tr > * {
+  --bs-table-bg-state: var(--bs-table-hover-bg);
+  --bs-table-color-state: var(--bs-table-hover-color);
+}
+
+.stack-item > tr > * {
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
+.stack-item > tr:first-child > * {
+  border-bottom-width: 0;
+  padding-bottom: 0.05rem;
+}
+
+.stack-item-path > * {
+  border-top-width: 0;
+  padding-top: 0;
+  padding-bottom: 0.2rem;
+  line-height: 1.2;
+}
+
+.stack-item-path code.wrap {
+  display: block;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.stack-item .badge {
+  padding: 0.12em 0.4em;
+  font-size: 0.7rem;
+  line-height: 1.15;
+}
+
+.queue-progress {
+  width: 12rem;
+  max-width: 12rem;
+}
+
+.queue-progress-inner {
+  width: 12rem;
+  max-width: 12rem;
+}
+
+.queue-progress .progress {
+  height: 0.45rem;
+}
+
+.queue-progress .progress-bar {
+  transition: none;
+}
+
+.queue-progress-caption {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-nav.nav-tabs {
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.settings-nav.nav-tabs .nav-link {
+  color: var(--bs-secondary-color);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  padding: 0.5rem 1rem;
+}
+
+.settings-nav.nav-tabs .nav-link:hover {
+  color: var(--un-blue);
+  isolation: isolate;
+}
+
+.settings-nav.nav-tabs .nav-link.active {
+  color: var(--un-blue);
+  background: transparent;
+  border-bottom-color: var(--un-blue);
+  font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+  .navbar-unpackerr .navbar-collapse {
+    padding-bottom: 1rem;
+    max-height: calc(100dvh - 3.5rem);
+    overflow-y: auto;
+  }
+}
+
+.page-wrap {
+  max-width: 1400px;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-shell .navbar {
+  flex-shrink: 0;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.save-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1020;
+  background-color: #f4f6f8;
+  border-top: 1px solid var(--bs-border-color);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  padding: 0.25rem 0;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+}
+
+[data-bs-theme='dark'] .save-bar {
+  background-color: #12161c;
+}
+
+.save-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.save-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.save-bar-brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.save-bar-brand img {
+  height: 52px;
+  width: auto;
+}
+
+.save-bar-spacer {
+  height: 4.5rem;
+}
+
+/* svelte-sonner: Unpackerr blue/yellow, not the default green. */
+html [data-sonner-toaster] {
+  --border-radius: 12px;
+}
+
+html [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+  border-width: 2px;
+  box-shadow: 0 8px 28px rgba(15, 123, 196, 0.18);
+}
+
+html
+  [data-sonner-toaster]
+  [data-sonner-toast][data-styled='true']
+  [data-close-button] {
+  opacity: 1;
+  color: inherit;
+  border-color: currentColor;
+  background: var(--normal-bg);
+}
+
+html [data-sonner-toaster][data-sonner-theme='light'] {
+  --success-bg: #e8f4fc;
+  --success-border: var(--un-blue);
+  --success-text: var(--un-blue-dark);
+  --info-bg: #fff8e4;
+  --info-border: var(--un-yellow);
+  --info-text: #6b4a00;
+  --error-bg: #fdecea;
+  --error-border: #c0392b;
+  --error-text: #7a1515;
+}
+
+html [data-sonner-toaster][data-sonner-theme='dark'] {
+  --success-bg: #0c2f47;
+  --success-border: #5bb3e8;
+  --success-text: #d4eefb;
+  --info-bg: #3a2e08;
+  --info-border: var(--un-yellow);
+  --info-text: #ffe9a0;
+  --error-bg: #3a1212;
+  --error-border: #f07167;
+  --error-text: #ffc9c0;
+}

@@ -1,5 +1,6 @@
 import { get } from 'svelte/store'
 import { _ } from 'svelte-i18n'
+import { RoleAdmin } from './perms'
 import { validSlug } from './slug'
 
 export const STARR_API_KEY_MIN = 32
@@ -78,6 +79,26 @@ export function slugError(value: unknown): string {
 export function slugDuplicateError(slug: string, others: Iterable<string>): string {
   for (const other of others) {
     if (other === slug) return t('phrases.SlugDuplicate')
+  }
+  return ''
+}
+
+/** Custom webserver role name: same charset as slugs; `admin` is reserved. Empty is ok (dropped on save). */
+export function roleNameError(value: unknown): string {
+  const v = typeof value === 'string' ? value.trim() : ''
+  if (!v) return ''
+  if (v === RoleAdmin) return t('phrases.RoleNameReserved')
+  return slugError(v)
+}
+
+export function roleNameDuplicateError(
+  name: string,
+  others: Iterable<string>,
+): string {
+  const n = name.trim()
+  if (!n) return ''
+  for (const other of others) {
+    if (other.trim() === n) return t('phrases.RoleNameDuplicate')
   }
   return ''
 }

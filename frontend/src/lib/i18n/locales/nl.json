@@ -197,7 +197,9 @@
       "Actions": "Acties",
       "Refresh": "Vernieuwen",
       "UpdatedAgo": "{age} geleden bijgewerkt",
-      "LastWrite": "Laatste schrijf"
+      "LastWrite": "Laatste schrijf",
+      "Retrying": "{id} opnieuw proberen",
+      "Forgotten": "{id} vergeten"
     },
     "history": {
       "Title": "Geschiedenis",

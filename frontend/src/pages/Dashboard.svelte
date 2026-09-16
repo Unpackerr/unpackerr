@@ -253,7 +253,7 @@
     busy[item.id] = true
     const res = await api.post('queue/retry', { id: item.id })
     busy[item.id] = false
-    if (res.ok) success(`Retrying ${item.id}`)
+    if (res.ok) success($_('pages.dashboard.Retrying', { values: { id: item.id } }))
     else failure(res.body?.error ?? 'retry failed')
   }
 
@@ -283,7 +283,7 @@
     busy[item.id] = true
     const res = await api.post('queue/forget', { id: item.id })
     busy[item.id] = false
-    if (res.ok) success(`Forgot ${item.id}`)
+    if (res.ok) success($_('pages.dashboard.Forgotten', { values: { id: item.id } }))
     else failure(res.body?.error ?? 'forget failed')
   }
 

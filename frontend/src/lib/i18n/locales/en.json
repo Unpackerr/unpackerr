@@ -94,6 +94,8 @@
     "FixInvalidFields": "Fix the invalid fields before saving.",
     "SlugInvalid": "Key must be letters, digits, underscore, or hyphen.",
     "SlugDuplicate": "That key is already used.",
+    "RoleNameReserved": "The built-in admin role cannot be redefined.",
+    "RoleNameDuplicate": "That role name is already used.",
     "UnsavedChanges": "Unsaved changes",
     "LeavePage": "Leave this page? Unsaved changes will be lost.",
     "Copied": "Copied.",
@@ -115,7 +117,9 @@
     "TestNzbs": "NZBs",
     "TestOther": "Other",
     "TestReply": "Reply",
-    "TestDuration": "Duration"
+    "TestDuration": "Duration",
+    "TestStarrEnvOwned": "Test cannot run when the URL or API key comes from the environment.",
+    "TestHookEnvOwned": "Test cannot run when the URL or command comes from the environment."
   },
   "nav": {
     "Dashboard": "Dashboard",

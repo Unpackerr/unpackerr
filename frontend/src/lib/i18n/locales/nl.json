@@ -94,6 +94,8 @@
     "FixInvalidFields": "Herstel de ongeldige velden voor je opslaat.",
     "SlugInvalid": "Sleutel mag letters, cijfers, underscore of koppelteken zijn.",
     "SlugDuplicate": "Die sleutel is al in gebruik.",
+    "RoleNameReserved": "De ingebouwde admin-rol kan niet opnieuw worden gedefinieerd.",
+    "RoleNameDuplicate": "Die rolnaam is al in gebruik.",
     "UnsavedChanges": "Niet-opgeslagen wijzigingen",
     "LeavePage": "Deze pagina verlaten? Niet-opgeslagen wijzigingen gaan verloren.",
     "Copied": "Gekopieerd.",
@@ -115,7 +117,9 @@
     "TestNzbs": "NZBs",
     "TestOther": "Overig",
     "TestReply": "Antwoord",
-    "TestDuration": "Duur"
+    "TestDuration": "Duur",
+    "TestStarrEnvOwned": "Testen kan niet als de URL of API-sleutel uit de omgeving komt.",
+    "TestHookEnvOwned": "Testen kan niet als de URL of opdracht uit de omgeving komt."
   },
   "nav": {
     "Dashboard": "Dashboard",

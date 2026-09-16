@@ -81,7 +81,9 @@
           </Form>
         </CardBody>
         {#if error}
-          <CardFooter class="text-danger small">{error}</CardFooter>
+          <CardFooter class="text-danger small" role="alert" aria-live="assertive"
+            >{error}</CardFooter
+          >
         {/if}
       </Card>
     </Col>

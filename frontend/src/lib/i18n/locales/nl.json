@@ -92,6 +92,8 @@
     "PathMustNotBeEmpty": "Pad mag niet leeg zijn.",
     "CommandMustNotBeEmpty": "Opdracht mag niet leeg zijn.",
     "FixInvalidFields": "Herstel de ongeldige velden voor je opslaat.",
+    "SlugInvalid": "Sleutel mag letters, cijfers, underscore of koppelteken zijn.",
+    "SlugDuplicate": "Die sleutel is al in gebruik.",
     "UnsavedChanges": "Niet-opgeslagen wijzigingen",
     "LeavePage": "Deze pagina verlaten? Niet-opgeslagen wijzigingen gaan verloren.",
     "Copied": "Gekopieerd.",
@@ -271,6 +273,9 @@
       "CustomRoles": "Aangepaste rollen",
       "AddSection": "{section} toevoegen",
       "AddFolder": "Map toevoegen",
+      "Key": "Sleutel",
+      "KeyLocked": "Naam van deze instantie in het configuratiebestand, zoals [sonarr.uhd] of [folder.tv]. Vast na de eerste keer opslaan.",
+      "KeyTooltip": "Maakt elke instantie uniek. Niet gebruikt in logs of ergens zichtbaar. Ook de env-slug, zoals UN_SONARR_uhd_URL. Sleutels zijn hoofdlettergevoelig.",
       "AddWebhook": "Webhook toevoegen",
       "AddCmdhook": "Opdracht-hook toevoegen"
     },
@@ -580,6 +585,11 @@
       }
     },
     "starr": {
+      "name": {
+        "label": "Naam",
+        "description": "Label in logs, webhooks en het dashboard. Optioneel.",
+        "tooltip": "Leeg gebruikt de appnaam (Sonarr, Radarr, enzovoort). Zet dit voor een compatibele app zoals Sportarr zodat logs en Discord niet de dialectnaam krijgen. Hook-exclude matcht deze naam of het app-dialect."
+      },
       "url": {
         "label": "URL",
         "placeholder": "http://127.0.0.1:8989",

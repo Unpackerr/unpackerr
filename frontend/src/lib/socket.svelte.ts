@@ -42,6 +42,8 @@ class LiveSocket {
   private onLog: ((file: string, line: string) => void) | undefined
   private onErrorLine: ((line: string) => void) | undefined
   private closed = true
+  /** Bumped on live queue/progress/history so in-flight REST snapshots cannot overwrite newer frames. */
+  private liveSeq = 0
 
   connect() {
     g.__unpackerrLiveSession = true
@@ -71,6 +73,7 @@ class LiveSocket {
     this.queue = prev.queue
     this.history = prev.history
     this.fetchedAt = prev.fetchedAt
+    this.liveSeq = prev.liveSeq
   }
 
   subscribe(topics: LiveTopic[], file?: string) {
@@ -149,14 +152,15 @@ class LiveSocket {
       case 'queue':
         if (frame.payload?.stats) this.stats = frame.payload.stats
         if (Array.isArray(frame.payload?.items)) this.queue = frame.payload.items
-        this.fetchedAt = Date.now()
+        this.bumpLive()
         break
       case 'progress':
         this.applyProgress(frame.payload)
-        this.fetchedAt = Date.now()
+        this.bumpLive()
         break
       case 'history':
         this.applyHistory(frame.payload)
+        this.bumpLive()
         break
       case 'log':
         this.onLog?.(frame.file ?? '', frame.line ?? '')
@@ -223,12 +227,19 @@ class LiveSocket {
     }
   }
 
+  private bumpLive() {
+    this.liveSeq++
+    this.fetchedAt = Date.now()
+  }
+
   async restSnapshot() {
+    const seq = this.liveSeq
     const [stats, queue, history] = await Promise.all([
       api.get<Stats>('stats'),
       api.get<QueueItem[]>('queue'),
       api.get<HistoryRecord[]>('history'),
     ])
+    if (seq !== this.liveSeq) return
     if (stats.ok) this.stats = stats.body
     if (queue.ok) this.queue = queue.body ?? []
     if (history.ok) this.history = (history.body ?? []).filter(isFinishedHistory)

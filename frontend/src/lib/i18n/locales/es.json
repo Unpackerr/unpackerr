@@ -92,6 +92,8 @@
     "PathMustNotBeEmpty": "La ruta no puede estar vacía.",
     "CommandMustNotBeEmpty": "El comando no puede estar vacío.",
     "FixInvalidFields": "Corrige los campos no válidos antes de guardar.",
+    "SlugInvalid": "La clave solo puede tener letras, dígitos, guion bajo o guion.",
+    "SlugDuplicate": "Esa clave ya está en uso.",
     "UnsavedChanges": "Cambios sin guardar",
     "LeavePage": "¿Salir de esta página? Se perderán los cambios sin guardar.",
     "Copied": "Copiado.",
@@ -271,6 +273,9 @@
       "CustomRoles": "Roles personalizados",
       "AddSection": "Añadir {section}",
       "AddFolder": "Añadir carpeta",
+      "Key": "Clave",
+      "KeyLocked": "Nombre de esta instancia en el archivo de configuración, como [sonarr.uhd] o [folder.tv]. Se bloquea tras el primer guardado.",
+      "KeyTooltip": "Hace única cada instancia. No se usa en los registros ni en nada visible. También es el slug de entorno, como UN_SONARR_uhd_URL. Las claves distinguen mayúsculas.",
       "AddWebhook": "Añadir webhook",
       "AddCmdhook": "Añadir gancho de comando"
     },
@@ -580,6 +585,11 @@
       }
     },
     "starr": {
+      "name": {
+        "label": "Nombre",
+        "description": "Etiqueta usada en registros, webhooks y el panel. Opcional.",
+        "tooltip": "Vacío usa el nombre de la app (Sonarr, Radarr, etc.). Ponlo para una app compatible como Sportarr para que registros y Discord no lleven el dialecto. El exclude de hooks compara este nombre o el dialecto de la app."
+      },
       "url": {
         "label": "URL",
         "placeholder": "http://127.0.0.1:8989",

@@ -1,0 +1,839 @@
+{
+  "words": {
+    "select-option": {
+      "Off": "Off",
+      "Enabled": "Enabled",
+      "Disabled": "Disabled",
+      "Unset": "Unset",
+      "minute": "minute",
+      "minutes": "minutes",
+      "hour": "hour",
+      "hours": "hours",
+      "second": "second",
+      "seconds": "seconds",
+      "custom": "custom",
+      "InstanceDisabled": "Disabled",
+      "NoTimeout": "No timeout",
+      "ChecksDisabled": "Disabled",
+      "Unlimited": "Unlimited",
+      "NoRotation": "(no rotation)"
+    }
+  },
+  "buttons": {
+    "Login": "Log in",
+    "Save": "Save",
+    "Add": "Add",
+    "Remove": "Remove",
+    "Retry": "Retry",
+    "Forget": "Forget",
+    "Refresh": "Refresh",
+    "Delete": "Delete",
+    "ClearAll": "Clear all",
+    "Generate": "Generate",
+    "Logout": "Log out",
+    "AddKey": "Add key",
+    "AddRole": "Add role",
+    "RemoveKey": "Remove key",
+    "RemoveRole": "Remove role",
+    "Stay": "Stay",
+    "Leave": "Leave",
+    "LiveExport": "Live export",
+    "Copy": "Copy",
+    "AddThisIP": "Add this IP",
+    "Go": "Go",
+    "CreateFolder": "Create folder",
+    "Create": "Create",
+    "Download": "Download",
+    "Cancel": "Cancel",
+    "Close": "Close",
+    "Test": "Test"
+  },
+  "phrases": {
+    "EnvironmentVariable": "Environment variable: <code>{variableName}</code>",
+    "EnvironmentVariables": "Environment variables: <code>{variableName}</code>",
+    "VariableDescription": "<span class=\"text-warning\">Notice:</span> This value comes from an environment variable, so the field is disabled. Saving will not change the running value. Change or remove the variable to edit it here.",
+    "VariableDescriptionPlural": "<span class=\"text-warning\">Notice:</span> These values come from environment variables, so the field is disabled. Saving will not change the running values. Change or remove the variables to edit them here.",
+    "LiveValue": "Live value: <code>{value}</code>",
+    "ShowMore": "Show more information",
+    "ShowPassword": "Show password",
+    "HidePassword": "Hide password",
+    "SessionEnded": "Session ended. Log in again.",
+    "Saved": "Saved.",
+    "SavedRestart": "Saved. A restart is needed to fully apply.",
+    "RestartPending": "A saved change needs a restart to fully apply. Unpackerr re-execs itself automatically once nothing is queued, extracting, or awaiting delete.",
+    "RestartPendingTitle": "Restart pending.",
+    "NothingQueued": "Nothing in the queue right now.",
+    "NoHistory": "No history yet.",
+    "NoInstances": "No {section} instances configured.",
+    "NoFolders": "No folders configured.",
+    "NoWebhooks": "No webhooks configured.",
+    "NoCmdhooks": "No command hooks configured.",
+    "NoApiKeys": "No API keys.",
+    "ClearHistoryTitle": "Clear history?",
+    "ClearHistoryConfirm": "This removes finished rows from the history list. Items still extracting or waiting for import stay in the queue. This cannot be undone.",
+    "ForgetImportedTitle": "Skip file cleanup?",
+    "ForgetImportedConfirm": "This item is still waiting for file cleanup. Forgetting it leaves the extracted files on disk.",
+    "YouDoNotHavePermission": "You do not have permission to view this section.",
+    "NotFound": "Not found: {path}",
+    "EnterPassword": "Enter your password.",
+    "LoadingApi": "Loading API explorer…",
+    "AdminAll": "admin (all)",
+    "AdminBuiltin": "The built-in admin role grants everything and cannot be edited.",
+    "NoPermissionsSelected": "None selected",
+    "UiPasswordHelp": "The browser hashes the new password the same way as login and sends only the digest. The current password is required to change authentication while local password auth is on.",
+    "UiPasswordEmpty": "(empty — set via environment)",
+    "UiPasswordFilepath": "This password is a filepath: reference. Saving a new password or auth type writes the value into the config file instead.",
+    "ReservedUsername": "Usernames webauth, noauth, and filepath are reserved, and a username cannot contain a colon.",
+    "FilterPlaceholder": "Filter…",
+    "Empty": "—",
+    "URLMustBeginWithHttp": "URL must begin with http:// or https://",
+    "URLInvalid": "That is not a valid URL.",
+    "APIKeyMustBeCountCharactersOrLonger": "API key must be at least {count} characters.",
+    "PathMustNotBeEmpty": "Path must not be empty.",
+    "CommandMustNotBeEmpty": "Command must not be empty.",
+    "FixInvalidFields": "Fix the invalid fields before saving.",
+    "SlugInvalid": "Key must be letters, digits, underscore, or hyphen.",
+    "SlugDuplicate": "That key is already used.",
+    "UnsavedChanges": "Unsaved changes",
+    "LeavePage": "Leave this page? Unsaved changes will be lost.",
+    "Copied": "Copied.",
+    "ValidSSL": "Valid SSL",
+    "ConfigFile": "Config file",
+    "ConfigDuration": "This is a Go duration in the config file or environment, such as <code>2m</code> or <code>15s</code>.",
+    "ConfigDurationOff": "This is a Go duration in the config file or environment. Off is <code>0s</code>.",
+    "ConfigDurationUnset": "This is a Go duration in the config file or environment. Unset omits the value (or leaves it empty).",
+    "ConfigDurationDisabled": "This is a Go duration in the config file or environment. Disabled is <code>-1s</code>.",
+    "ConfigDurationFolderPoll": "This is a Go duration in the config file or environment. Disabled is <code>0s</code>, which still polls inside Docker; use <code>1ms</code> there to turn polling off.",
+    "ConfigSize": "This is a size string in the config file or environment, such as <code>20GB</code>. Unlimited is <code>0</code>.",
+    "BrowseFiles": "Browse files",
+    "TestTitle": "Test {name}",
+    "TestEvent": "Event",
+    "TestApp": "App",
+    "TestQueued": "Queued",
+    "TestRetrieved": "Retrieved",
+    "TestTorrents": "Torrents",
+    "TestNzbs": "NZBs",
+    "TestOther": "Other",
+    "TestReply": "Reply",
+    "TestDuration": "Duration"
+  },
+  "nav": {
+    "Dashboard": "Dashboard",
+    "History": "History",
+    "Application": "Application",
+    "Settings": "Configuration",
+    "System": "System",
+    "LogFiles": "Logs",
+    "API": "API",
+    "Theme": "Theme",
+    "ThemeLight": "Light",
+    "ThemeDark": "Dark",
+    "Language": "Language"
+  },
+  "pages": {
+    "login": {
+      "Username": "Username",
+      "Password": "Password"
+    },
+    "dashboard": {
+      "Title": "Overview",
+      "intro": "Live queue, extract counts, and finished history for this Unpackerr.",
+      "ActiveQueue": "Activity",
+      "Live": "Live",
+      "Starrs": "Starr apps",
+      "StarrsHint": "Sonarr, Radarr, Lidarr, and Readarr instances in the config.",
+      "StarrQueues": "Starr queues",
+      "StarrQueuesHint": "Last activity-queue poll per Starr app. Counts below are from retrieved records.",
+      "StarrQueueTotal": "Total",
+      "StarrQueueTotalHint": "Starr queue size. Retrieved is shown when it differs from the reported total.",
+      "StarrQueueComplete": "Done",
+      "StarrQueueCompleteHint": "Items with Status completed, any protocol.",
+      "StarrQueueMatch": "Match",
+      "StarrQueueMatchHint": "Completed items whose protocol is in this app's protocol list. These are what Unpackerr tracks.",
+      "StarrQueueIssues": "Issues",
+      "StarrQueueIssuesHint": "Failed or warning items, including tracked-download errors and warnings. One count per item.",
+      "StarrQueueDownloading": "DL",
+      "StarrQueueDownloadingHint": "Items still downloading.",
+      "Folders": "Watch folders",
+      "FoldersHint": "Folder watch paths in the config.",
+      "Waiting": "Waiting",
+      "WaitingHint": "Items waiting on Start Delay, plus folder watches that have not settled yet.",
+      "Queued": "Queued",
+      "QueuedHint": "Items queued for extraction.",
+      "Extracting": "Extracting",
+      "ExtractingHint": "Items currently extracting.",
+      "Extracted": "Extracted",
+      "ExtractedHint": "Extracted and waiting for the Starr app to import.",
+      "Imported": "Imported",
+      "ImportedHint": "Imported by the Starr app; waiting for Delete Delay.",
+      "Failed": "Failed",
+      "FailedHint": "Failed extractions.",
+      "Deleted": "Deleted",
+      "DeletedHint": "Imported items whose files have been deleted.",
+      "Finished": "Finished",
+      "FinishedHint": "Items completed since Unpackerr started. This total does not reset.",
+      "Webhooks": "Webhooks",
+      "WebhooksHint": "HTTP webhooks since start: total / failed.",
+      "Cmdhooks": "Command hooks",
+      "CmdhooksHint": "Command hooks since start: total / failed.",
+      "StackFS": "FS events",
+      "StackFSHint": "Folder-watch filesystem events waiting on the main loop. Occupied / capacity.",
+      "StackXtractr": "Starr extracts",
+      "StackXtractrHint": "Starr extract callbacks waiting to be processed. Occupied / capacity.",
+      "StackFolder": "Folder extracts",
+      "StackFolderHint": "Folder-watch extract callbacks waiting to be processed. Occupied / capacity.",
+      "StackHook": "Hook queue",
+      "StackHookHint": "Webhooks and command hooks waiting to run. Occupied / capacity.",
+      "StackDel": "Delete queue",
+      "StackDelHint": "File deletions waiting to run. Occupied / capacity.",
+      "StackTask": "Task queue",
+      "StackTaskHint": "Config changes and queue actions waiting on the main loop. Occupied / capacity.",
+      "App": "App",
+      "Status": "Status",
+      "Item": "Item",
+      "Progress": "Progress",
+      "Retries": "Retries",
+      "Updated": "Updated",
+      "Actions": "Actions",
+      "Refresh": "Refresh",
+      "UpdatedAgo": "Updated {age} ago",
+      "LastWrite": "Last write"
+    },
+    "history": {
+      "Title": "History",
+      "intro": "Finished extracts, including retries and items already deleted from disk.",
+      "App": "App",
+      "Status": "Status",
+      "Item": "Item",
+      "Files": "Files",
+      "Size": "Size",
+      "Retries": "Retries",
+      "Finished": "Finished",
+      "DeletedRow": "Deleted history row",
+      "Cleared": "History cleared"
+    },
+    "settings": {
+      "Title": "Configuration",
+      "Heading": "{settings} — {page}",
+      "general": {
+        "label": "General",
+        "intro": "Extract, retry, logging, and archive-password settings that apply everywhere.",
+        "Logging": "Logging",
+        "Extraction": "Extraction"
+      },
+      "starrs": {
+        "label": "Starrs",
+        "intro": "Sonarr, Radarr, Lidarr, and Readarr instances Unpackerr polls."
+      },
+      "hooks": {
+        "label": "Hooks",
+        "intro": "HTTP callbacks and local commands when an extract changes status."
+      },
+      "webserver": {
+        "label": "Web Server",
+        "intro": "Listen address, TLS, and HTTP logs. Listen address and URL base need a restart."
+      },
+      "sonarr": {
+        "label": "Sonarr",
+        "intro": "Sonarr instances Unpackerr polls for completed downloads. Compatible apps such as Sportarr and Fightarr belong here; set a name so logs and hooks are not tagged Sonarr."
+      },
+      "radarr": {
+        "label": "Radarr",
+        "intro": "Radarr instances Unpackerr polls for completed downloads. Whisparr belongs here; set a name so logs and hooks keep that label."
+      },
+      "lidarr": {
+        "label": "Lidarr",
+        "intro": "Lidarr instances Unpackerr polls for completed downloads."
+      },
+      "readarr": {
+        "label": "Readarr",
+        "intro": "Readarr instances Unpackerr polls for completed downloads."
+      },
+      "folders": {
+        "label": "Folders",
+        "intro": "Watch folders that are not a Starr download path. Folder changes always need a restart.",
+        "AfterExtract": "After extract",
+        "Extraction": "Extraction",
+        "Protection": "Protection"
+      },
+      "webhooks": {
+        "label": "Webhooks",
+        "intro": "HTTP callbacks when an extract changes status. Point these at Discord, Slack, Notifiarr, or any URL that accepts a POST."
+      },
+      "cmdhooks": {
+        "label": "Command Hooks",
+        "intro": "Local commands to run when an extract changes status. Same events as webhooks, executed on this host."
+      },
+      "Instance": "{section} #{n}",
+      "FolderN": "Folder #{n}",
+      "WebhookN": "Webhook #{n}",
+      "CmdhookN": "Command hook #{n}",
+      "Server": "Server",
+      "ApiKeys": "API keys",
+      "CustomRoles": "Custom roles",
+      "AddSection": "Add {section}",
+      "AddFolder": "Add folder",
+      "Key": "Key",
+      "KeyLocked": "Name of this instance in the config file, like [sonarr.uhd] or [folder.tv]. Locked after the first save.",
+      "KeyTooltip": "Used to make each instance unique. Not used in logs or anywhere you'll see it. Also the env slug, such as UN_SONARR_uhd_URL. Keys are case-sensitive.",
+      "AddWebhook": "Add webhook",
+      "AddCmdhook": "Add command hook"
+    },
+    "trust": {
+      "Title": "Trust",
+      "Authorization": "Authorization",
+      "intro": "UI login, API keys, and custom roles. Your IP must be in Upstreams before you switch to header or no authentication, or you can lock yourself out."
+    },
+    "system": {
+      "Title": "System",
+      "intro": "This process, the config file path, and a live dump of running values (secrets stripped).",
+      "Instance": "Instance",
+      "You": "You",
+      "Links": "Links",
+      "Website": "Website & docs",
+      "GitHub": "GitHub",
+      "Discord": "Discord",
+      "Notifiarr": "Notifiarr",
+      "Xt": "xTractor Tool",
+      "Version": "Version",
+      "Revision": "Revision",
+      "Started": "Started",
+      "Uptime": "Uptime",
+      "Listen": "Listen",
+      "URLBase": "URL base",
+      "Auth": "Auth",
+      "Metrics": "Metrics",
+      "Username": "Username",
+      "Via": "Via",
+      "Permissions": "Permissions",
+      "enabled": "enabled",
+      "disabled": "disabled",
+      "ConfigFile": "Config file"
+    },
+    "logs": {
+      "Title": "Logs",
+      "intro": "View, follow, and download Unpackerr log files.",
+      "RecentErrors": "recent errors",
+      "LiveStdout": "live",
+      "ViewRecent": "View",
+      "FileList": "File list",
+      "Details": "Details",
+      "FollowTooltip": "Refresh the list. The list-bullets button follows a file while Unpackerr is writing to it.",
+      "Name": "Name",
+      "Age": "Age",
+      "FilesInDirs": "{fileCount} files in {dirCount} dirs",
+      "Path": "Path",
+      "Mode": "Mode",
+      "Owner": "Owner",
+      "Bytes": "Bytes",
+      "Date": "Date",
+      "InUse": "In use",
+      "FollowingFile": "Following file",
+      "FileContent": "File content",
+      "NoFileSelected": "No file selected.",
+      "SelectFile": "Select a file to see what's in it.",
+      "TailFile": "Follow {fileName}",
+      "ToggleLinesOrder": "Toggle line order",
+      "ToggleColors": "Toggle highlight colors",
+      "LineCount": "Line count",
+      "Tailing": "Following",
+      "AddMore": "Add more",
+      "Highlight": "Highlight",
+      "ToggleLineWrap": "Toggle line wrap",
+      "Error": "Error loading log file"
+    },
+    "docs": {
+      "Title": "API documentation",
+      "intro": "Interactive OpenAPI explorer for the Unpackerr HTTP API."
+    }
+  },
+  "status": {
+    "Waiting": "Waiting",
+    "Queued": "Queued",
+    "Extracting": "Extracting",
+    "ExtractFailed": "Extract Failed",
+    "Extracted": "Extracted",
+    "Imported": "Imported",
+    "Deleting": "Deleting",
+    "DeleteFailed": "Delete Failed",
+    "Deleted": "Deleted",
+    "ExtractedNothing": "Nothing Extracted"
+  },
+  "config": {
+    "general": {
+      "debug": {
+        "label": "Debug logging",
+        "description": "Extra log lines while you are setting things up.",
+        "tooltip": "Turn this on when you add apps or folders so you can see queue and extract activity. Safe to leave on."
+      },
+      "quiet": {
+        "label": "Quiet",
+        "description": "Hide log output except errors.",
+        "tooltip": "Use a log file if you enable this, or you will see almost nothing. Typical when Unpackerr starts from systemd."
+      },
+      "activity": {
+        "label": "Log activity",
+        "description": "Print queue counts only when something is happening.",
+        "tooltip": "Hides the all-zero queue lines so the log stays readable. Pair with a slower log-queues interval if you still want periodic counts."
+      },
+      "errorStderr": {
+        "label": "Errors to stderr",
+        "description": "Send ERROR lines to stderr instead of stdout.",
+        "tooltip": "Leave this off unless you split logs that way. Quiet mode ignores it."
+      },
+      "parallel": {
+        "label": "Concurrent extractions",
+        "description": "How many archives to extract at once.",
+        "tooltip": "One at a time is the right default. Raise it only if the disks and CPU can take the extra load."
+      },
+      "maxRetries": {
+        "label": "Max retries",
+        "description": "Extra attempts after a failed extract.",
+        "tooltip": "The first try is not counted here. In the config file, 0 means use the default of 2."
+      },
+      "interval": {
+        "label": "Poll interval",
+        "description": "How often to poll all Starr apps.",
+        "tooltip": "Unpackerr asks every Starr app for its queue on this interval. Saving it restarts the pollers immediately. A minute or two is typical; the shortest choice is 15 seconds."
+      },
+      "startDelay": {
+        "label": "Start delay",
+        "description": "Wait after a download finishes before extracting.",
+        "tooltip": "Starts once the Starr queue shows the download as complete. Raise this if the client is still moving or finalizing files when extracts begin."
+      },
+      "retryDelay": {
+        "label": "Retry delay",
+        "description": "Pause between extraction retries.",
+        "tooltip": "After a failure, Unpackerr waits this long before treating the item as new and trying again."
+      },
+      "deleteDelay": {
+        "label": "Delete delay",
+        "description": "How long to keep extracted files after import.",
+        "tooltip": "Applies to Starr apps. Already-running apps pick this up after a restart. The shortest choice is 1 second."
+      },
+      "progress": {
+        "label": "Progress interval",
+        "description": "How often to print in-progress extract status.",
+        "tooltip": "These lines only appear while an extract is running. A 0s value in the config file becomes 15 seconds."
+      },
+      "logQueues": {
+        "label": "Log queues interval",
+        "description": "How often to print Starr queue counts.",
+        "tooltip": "Off stops those lines. Activity mode still hides all-zero counts when you leave this on."
+      },
+      "keepHistory": {
+        "label": "Keep history",
+        "description": "Finished items kept in the history file.",
+        "tooltip": "This is unpackerr.history.jsonl, next to the log (or the config file if logs go to stdout). 0 turns history off. The tray menu still only shows the last 10 names.",
+        "options": {
+          "0": "(no history)"
+        }
+      },
+      "remnantAction": {
+        "label": "Remnant action",
+        "description": "What to do when a leftover file blocks an extract.",
+        "tooltip": "Rename moves the leftover aside and retries. Delete removes it and retries. Off leaves it and fails. Applies to Starr apps and to folders with Move back enabled.",
+        "rename": "rename",
+        "delete": "delete",
+        "off": "off"
+      },
+      "fileMode": {
+        "label": "File mode",
+        "description": "Permissions for newly extracted files.",
+        "tooltip": "Unix only. Ignored on Windows."
+      },
+      "dirMode": {
+        "label": "Dir mode",
+        "description": "Permissions for newly extracted folders.",
+        "tooltip": "Unix only. Ignored on Windows."
+      },
+      "logFile": {
+        "label": "Log file",
+        "description": "File to write logs to. Empty prints to stdout.",
+        "tooltip": "Same messages that normally go to the terminal. macOS and Windows fill in a default path if this is empty. Set log files to keep to 0 if logrotate should own the file."
+      },
+      "logFiles": {
+        "label": "Log files to keep",
+        "description": "How many rotated logs to keep.",
+        "tooltip": "0 turns auto-rotation off so logrotate can own the file. After logrotate renames the live file, send SIGHUP (systemctl reload unpackerr) to reopen it."
+      },
+      "logFileMb": {
+        "label": "Log file size (MB)",
+        "description": "Rotate when the log file reaches this size.",
+        "tooltip": "Only used while rotation is enabled. 0 in the config file becomes 10 MB."
+      },
+      "passwords": {
+        "label": "RAR/7z passwords",
+        "description": "Passwords to try on encrypted archives, one per line.",
+        "tooltip": "Tried in order until one works. A line filepath:/path/to/passwords.txt reads more passwords from that file."
+      }
+    },
+    "webserver": {
+      "listenAddr": {
+        "label": "Listen address",
+        "description": "Address and port for this UI and API.",
+        "tooltip": "0.0.0.0 binds every interface. Empty turns the HTTP server off. Needs a restart."
+      },
+      "urlbase": {
+        "label": "URL base",
+        "description": "Path prefix when Unpackerr sits behind a reverse proxy.",
+        "tooltip": "Must not contain curly braces. Needs a restart."
+      },
+      "metrics": {
+        "label": "Prometheus metrics",
+        "description": "Expose /metrics for Prometheus.",
+        "tooltip": "Scrapes need an API key with system:metrics:read. Needs a restart."
+      },
+      "pprof": {
+        "label": "pprof debug",
+        "description": "Expose Go pprof at /debug/pprof/.",
+        "tooltip": "Leave this off unless you are debugging this process. Needs a restart."
+      },
+      "sslCertFile": {
+        "label": "SSL cert file",
+        "description": "Certificate file for HTTPS.",
+        "tooltip": "Set both the certificate and the key to serve TLS. Needs a restart."
+      },
+      "sslKeyFile": {
+        "label": "SSL key file",
+        "description": "Private key file for HTTPS.",
+        "tooltip": "Set both the certificate and the key to serve TLS. Needs a restart."
+      },
+      "logFile": {
+        "label": "HTTP log file",
+        "description": "File for HTTP request logs. Empty uses the main log.",
+        "tooltip": "Keeps access logs out of the extract log. Rotation matches the settings below."
+      },
+      "logFiles": {
+        "label": "Log files to keep",
+        "description": "How many rotated HTTP logs to keep.",
+        "tooltip": "0 turns auto-rotation off. SIGHUP reopens this file too."
+      },
+      "logFileMb": {
+        "label": "Log file size (MB)",
+        "description": "Rotate when the HTTP log reaches this size.",
+        "tooltip": "Only used while rotation is enabled."
+      },
+      "upstreams": {
+        "label": "Upstreams",
+        "description": "Trusted reverse-proxy IPs or CIDRs, one per line.",
+        "tooltip": "Lets X-Forwarded-For be trusted in HTTP logs. Example: 127.0.0.1/32 or 10.1.2.0/24."
+      },
+      "wsOrigins": {
+        "label": "WebSocket origins",
+        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
+        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+      },
+      "keyName": {
+        "label": "Name",
+        "description": "Label for this key in the UI and logs.",
+        "tooltip": "Names must be unique. Used only to identify the key."
+      },
+      "key": {
+        "label": "Key",
+        "description": "Secret the client sends as an API key.",
+        "tooltip": "60–150 characters. Leave blank when saving to keep the existing key of this name. Generate makes a new one."
+      },
+      "keyRoles": {
+        "label": "Roles"
+      },
+      "roleName": {
+        "label": "Role name",
+        "description": "Letters, digits, underscore, or hyphen.",
+        "tooltip": "The built-in admin role cannot be redefined. Names are case-sensitive."
+      },
+      "permissions": {
+        "label": "Permissions"
+      },
+      "authType": {
+        "label": "Authentication",
+        "description": "How the web UI identifies you.",
+        "tooltip": "Local password stores a username and password on this host. Header and no authentication only succeed when the request comes from an address in Upstreams.",
+        "options": {
+          "password": "Local password",
+          "header": "Proxy header",
+          "noauth": "No authentication"
+        }
+      },
+      "username": {
+        "label": "Username",
+        "description": "UI login name.",
+        "tooltip": "Used as the PBKDF2 salt with the password. webauth, noauth, and filepath are reserved. Changing the username requires a new password."
+      },
+      "newPassword": {
+        "label": "New password",
+        "description": "Leave blank to keep the current password.",
+        "tooltip": "Hashed in the browser (PBKDF2) before it is sent. At least 8 characters. Required when switching to local password or changing the username."
+      },
+      "currentPassword": {
+        "label": "Current password",
+        "description": "Required to change authentication while local password auth is on.",
+        "tooltip": "Hashed in the browser the same way as login. The server checks it with the stored hash before applying a new password or auth type."
+      },
+      "header": {
+        "label": "Auth header",
+        "description": "Request header the reverse proxy sets to the username. Open the UI through the proxy to see this request's headers.",
+        "tooltip": "Used only for proxy header auth. The list is this request minus common non-auth headers. No-auth can omit a header; a value here is stored as noauth:Header and used as the username when the proxy sends it. Default X-Webauth-User."
+      },
+      "roleHeader": {
+        "label": "Role header",
+        "description": "Optional request header whose value is an Unpackerr role. Shown for proxy header auth. Empty keeps those users as admin. A selected header that is missing denies the request.",
+        "tooltip": "The proxy should send a built-in admin or a custom role name from the list below. Several names can be comma-separated. A missing or unknown role is access denied, not admin. Suggested name: X-Webauth-Role.",
+        "options": {
+          "none": "Always admin"
+        }
+      }
+    },
+    "starr": {
+      "name": {
+        "label": "Name",
+        "description": "Label used in logs, webhooks, and the dashboard. Optional.",
+        "tooltip": "Empty uses the app name (Sonarr, Radarr, and so on). Set this for a compatible app such as Sportarr so logs and Discord are not tagged with the dialect. Hook exclude matches this name or the app dialect."
+      },
+      "url": {
+        "label": "URL",
+        "placeholder": "http://127.0.0.1:8989",
+        "description": "Base URL of this Starr app.",
+        "tooltip": "Include the scheme, for example http://127.0.0.1:8989. On HTTPS, the lock button requires a valid certificate."
+      },
+      "apiKey": {
+        "label": "API key",
+        "description": "API key from Settings → General in the Starr app.",
+        "tooltip": "32 or more characters. A filepath:/path value is also accepted. Leave the field unchanged to keep the current key."
+      },
+      "path": {
+        "label": "Path",
+        "description": "Folder Unpackerr reads this app's downloads from.",
+        "tooltip": "Fallback if the path Starr reports is missing or not visible to Unpackerr.",
+        "config": "In the config file this is a list named paths."
+      },
+      "protocols": {
+        "label": "Protocols",
+        "description": "Which queue protocols to extract.",
+        "tooltip": "Newer Starr apps report class names instead of torrent or usenet. The choices here write both forms so either app version matches.",
+        "torrent": "Torrent",
+        "usenet": "Usenet",
+        "both": "Torrent and Usenet"
+      },
+      "timeout": {
+        "label": "Timeout",
+        "description": "How long to wait for this app to reply.",
+        "tooltip": "Raise this if the Starr API is slow or remote. A 0s value in the config file uses the global timeout."
+      },
+      "delete_delay": {
+        "label": "Delete delay",
+        "description": "How long to keep extracts after this app imports them.",
+        "tooltip": "Overrides the general delete delay for this instance."
+      },
+      "maxBytes": {
+        "label": "Max bytes",
+        "description": "Stop an extract if uncompressed size exceeds this.",
+        "tooltip": "Unlimited turns the cap off for this instance. Each app has its own default when the config file leaves this empty."
+      },
+      "delete_orig": {
+        "label": "Delete originals",
+        "description": "Delete the original download folder after import.",
+        "tooltip": "Useful for Usenet. Leave this off for torrents so seeding keeps working."
+      },
+      "syncthing": {
+        "label": "Syncthing",
+        "description": "Wait until Syncthing finishes before extracting.",
+        "tooltip": "Enable this if downloads land through Syncthing and extracts start too early."
+      },
+      "valid_ssl": {
+        "label": "Valid SSL only"
+      },
+      "split_flac": {
+        "label": "Split FLAC cue sheets",
+        "description": "Split FLAC+CUE into individual tracks.",
+        "tooltip": "Lidarr only. When on, FLAC files with an embedded CUE sheet become one file per track."
+      }
+    },
+    "folders": {
+      "interval": {
+        "label": "Poll interval",
+        "description": "How often to scan watch folders for new archives.",
+        "tooltip": "Disabled uses filesystem events (inotify and friends). Docker usually has no such events, so pick a real interval there."
+      },
+      "buffer": {
+        "label": "Event buffer",
+        "description": "How many folder events can queue at once.",
+        "tooltip": "Leave this unless you see dropped events in the log."
+      },
+      "path": {
+        "label": "Watch path",
+        "description": "Folder to watch for archives.",
+        "tooltip": "This is not a Starr download path. Use it for a client's \"move to\" folder or any other drop directory."
+      },
+      "extract_path": {
+        "label": "Extract path",
+        "description": "Where to write extracted files. Empty extracts in place.",
+        "tooltip": "If this is empty, files go into the watch path (or an _unpackerred folder unless Move back is on)."
+      },
+      "delete_after": {
+        "label": "Delete after",
+        "description": "How long to keep files after extract.",
+        "tooltip": "Unset leaves them. Deletes also need Delete original archive and/or Delete all files."
+      },
+      "delete_original": {
+        "label": "Delete original archive",
+        "description": "Delete the original archive after extract.",
+        "tooltip": "Requires a Delete after delay. Does not delete the extracted files."
+      },
+      "delete_files": {
+        "label": "Delete all files",
+        "description": "Delete extracted files after the delay.",
+        "tooltip": "Requires a Delete after delay. Use this when the watch folder should not keep the output."
+      },
+      "move_back": {
+        "label": "Move back",
+        "description": "Move extracted files back into the watch folder.",
+        "tooltip": "Off leaves them in an _unpackerred folder beside the archive. On also classifies leftover files with Remnant action."
+      },
+      "extract_isos": {
+        "label": "Extract ISOs",
+        "description": "Treat .iso files as archives.",
+        "tooltip": "Off ignores ISO images. Turn this on only if you really want them unpacked."
+      },
+      "disableRecursion": {
+        "label": "Recursion",
+        "description": "Extract archives found inside other archives.",
+        "tooltip": "On is the usual setting. Off extracts only the outer archive."
+      },
+      "allowSymlinks": {
+        "label": "Allow symlinks",
+        "description": "Include symlink-named archives in the first scan.",
+        "tooltip": "The extras pass never follows zip members that are links. This only affects the initial search."
+      },
+      "maxNested": {
+        "label": "Max nested",
+        "description": "Cap on nested archives from this folder.",
+        "tooltip": "0 is unlimited. Counts archives found in this folder's extract output (one extras pass)."
+      },
+      "extrasMaxDepth": {
+        "label": "Extras max depth",
+        "description": "How deep to walk extract output for more archives.",
+        "tooltip": "0 is unlimited. Limits how far the extras pass descends."
+      },
+      "maxBytes": {
+        "label": "Max bytes",
+        "description": "Stop an extract if uncompressed size exceeds this.",
+        "tooltip": "Unlimited turns the cap off for this folder. Default for folders is unlimited."
+      },
+      "maxFiles": {
+        "label": "Max files",
+        "description": "Stop after this many files, folders, and symlinks.",
+        "tooltip": "0 is unlimited. Guards against archive bombs."
+      },
+      "maxRatio": {
+        "label": "Max ratio",
+        "description": "Stop when written bytes exceed this times the archive size.",
+        "tooltip": "0 is unlimited. Another archive-bomb guard (bytes written / archive size)."
+      },
+      "exclude_paths": {
+        "label": "Exclude paths",
+        "description": "Paths to ignore under this folder, one per line.",
+        "tooltip": "Excluded paths and their children are not watched or extracted. Absolute, or relative to the watch path."
+      }
+    },
+    "hooks": {
+      "name": {
+        "label": "Name",
+        "description": "Label used in logs. Optional.",
+        "tooltip": "If this is empty, webhooks log the URL and command hooks log the first word of the command."
+      },
+      "url": {
+        "label": "URL",
+        "description": "URL to POST when an extract changes status.",
+        "tooltip": "Works with Notifiarr, Discord, Slack, Telegram, and any URL that accepts the payload. Built-in templates are picked from the URL unless you force one in the config file."
+      },
+      "command": {
+        "label": "Command",
+        "description": "Command or script to run.",
+        "tooltip": "Extract data is passed as environment variables. Try /usr/bin/env (or a script that prints the environment) to see the names."
+      },
+      "shell": {
+        "label": "Run in shell",
+        "description": "Run the command inside a shell.",
+        "tooltip": "Uses /bin/sh -c on Unix and cmd.exe /c on Windows. Needed if the command is a pipeline or uses shell syntax."
+      },
+      "contentType": {
+        "label": "Content type",
+        "description": "Content-Type header sent with the webhook.",
+        "tooltip": "Leave application/json unless a custom template needs another MIME type."
+      },
+      "ignoreSsl": {
+        "label": "Ignore SSL",
+        "description": "Skip TLS certificate checks for this URL.",
+        "tooltip": "Only for hooks on hosts with a bad or private certificate."
+      },
+      "timeout": {
+        "label": "Timeout",
+        "description": "How long to wait for the hook to finish.",
+        "tooltip": "Applies to the HTTP request or to the command, depending on the hook type."
+      },
+      "silent": {
+        "label": "Silent",
+        "description": "Hide successful runs from the logs.",
+        "tooltip": "Failures still log. Use this to cut noise from a chatty Discord or Slack hook."
+      },
+      "events": {
+        "label": "Events",
+        "description": "Empty means all events."
+      },
+      "nickname": {
+        "label": "Nickname",
+        "description": "Bot name for Discord and Slack. Chat ID for Telegram.",
+        "tooltip": "Passed into the built-in templates. Telegram needs the chat_id here."
+      },
+      "channel": {
+        "label": "Channel",
+        "description": "Destination channel for Slack webhooks.",
+        "tooltip": "Ignored by Discord and Telegram. Custom templates can still use it."
+      },
+      "token": {
+        "label": "Token",
+        "description": "Bot token for Discord, Telegram, Slack, and similar templates.",
+        "tooltip": "Passed into webhook templates. Leave empty unless the template needs it."
+      },
+      "exclude": {
+        "label": "Exclude apps",
+        "description": "Do not fire this hook for these apps or named instances.",
+        "tooltip": "Checking Sonarr skips every Sonarr-style instance, including named ones. Checking only a name skips that instance. Folder means watch-folder extracts."
+      },
+      "template": {
+        "label": "Template",
+        "description": "Built-in template. Empty picks one from the URL.",
+        "tooltip": "Force notifiarr, discord, telegram, gotify, pushover, or slack. Leave automatic unless the URL is not recognized.",
+        "auto": "Automatic (from URL)"
+      },
+      "templatePath": {
+        "label": "Template file",
+        "description": "Custom Go template file instead of a built-in template.",
+        "tooltip": "Overrides automatic template detection and the Template setting. Pick an existing file."
+      }
+    }
+  },
+  "FileBrowser": {
+    "Title": "File browser",
+    "Path": "Path",
+    "intro": "Pick a path on this machine.",
+    "introFolderFile": "Pick a folder. The file will be named <code>{file}</code>, but you can change the name after choosing.",
+    "tooltip": {
+      "Go": "<code>cd {path}</code><br />Change directory to the path in the box.",
+      "SelectPath": "Select path: <code>{path}</code>",
+      "Up": "<code>cd ..</code><br />Change directory to the parent folder."
+    },
+    "FilterFiles": "Filter files",
+    "CreateFolderIn": "The folder will be created in: <code>{path}</code>",
+    "Files": "Files: {count}",
+    "Folders": "Folders: {count}",
+    "FilesFiltered": "Files: {count}, filtered: {filtered}",
+    "FoldersFiltered": "Folders: {count}, filtered: {filtered}",
+    "Selected": "Selected: <code>{path}</code>",
+    "Created": "Created: {path}",
+    "Creating": "Creating…",
+    "InvalidPath": "Invalid name. Do not include slashes (<code>/</code> or <code>\\</code>).",
+    "FilterFilesDesc": "Filter the list of displayed files. Folder pickers can create a new folder. To select a path that does not exist yet, type it into <code>Path</code> and click the green check."
+  }
+}

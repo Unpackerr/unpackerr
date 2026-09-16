@@ -181,10 +181,17 @@
         loginDirty),
   )
 
-  const roleNames = $derived([
-    RoleAdmin,
-    ...roleList.map((r) => r.name).filter(Boolean),
-  ])
+  const roleNames = $derived.by(() => {
+    const names = [RoleAdmin]
+    const seen = new Set([RoleAdmin])
+    for (const r of roleList) {
+      const n = r.name.trim()
+      if (!n || seen.has(n)) continue
+      seen.add(n)
+      names.push(n)
+    }
+    return names
+  })
   const rolesEnv = $derived(envHas('WEBSERVER_ROLES_*'))
   const rolesInvalid = $derived(
     roleList.some(
@@ -642,10 +649,10 @@
                 </Input>
                 <FormGroup>
                   <Label>{$_('config.webserver.keyRoles.label')}</Label>
-                  {#each roleNames as role (role)}
+                  {#each roleNames as role, ri (ri)}
                     <FormCheck
                       inline
-                      id={`key-${i}-role-${role}`}
+                      id={`key-${i}-role-${ri}`}
                       label={role}
                       checked={key.roles.includes(role)}
                       disabled={!canWrite ||
@@ -709,7 +716,7 @@
                   helpKey="config.webserver.roleName"
                   label={$_('config.webserver.roleName.label')}
                   bind:value={role.name}
-                  original={origRoles ? Object.keys(origRoles)[i] : ''}
+                  original={origRoles ? (Object.keys(origRoles)[i] ?? '') : ''}
                   disabled={!canWrite || rolesEnv}
                   envVar="WEBSERVER_ROLES_*"
                   validate={(_id, v) =>
@@ -722,7 +729,7 @@
                     color="link"
                     size="sm"
                     class="px-0 text-decoration-none"
-                    onclick={() => togglePermOpen(i)}
+                    on:click={() => togglePermOpen(i)}
                     aria-expanded={!!permOpen[i]}
                   >
                     {$_('config.webserver.permissions.label')}

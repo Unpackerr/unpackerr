@@ -117,7 +117,9 @@
     "TestNzbs": "NZBs",
     "TestOther": "Otros",
     "TestReply": "Respuesta",
-    "TestDuration": "Duración"
+    "TestDuration": "Duración",
+    "TestStarrEnvOwned": "No se puede probar cuando la URL o la clave API vienen del entorno.",
+    "TestHookEnvOwned": "No se puede probar cuando la URL o el comando vienen del entorno."
   },
   "nav": {
     "Dashboard": "Panel",

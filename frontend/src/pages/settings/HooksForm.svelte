@@ -400,6 +400,11 @@
   const testOpen = $derived(testRow !== null)
   const testName = $derived(testRow ? hookLabel(testRow) : '')
 
+  function testBlocked(row: InstanceRow<WebhookConfig>): boolean {
+    if (row.envOnly) return true
+    return envHas(envField(envPrefix, row.slug, idField))
+  }
+
   function closeHookTest() {
     testRow = null
     testBusy = false
@@ -409,6 +414,7 @@
   }
 
   function openHookTest(row: InstanceRow<WebhookConfig>) {
+    if (testBlocked(row)) return
     testRow = row
     testEvent = 'extracted'
     testApp = 'sonarr'
@@ -419,7 +425,7 @@
   }
 
   async function runHookTest() {
-    if (!testRow) return
+    if (!testRow || testBlocked(testRow)) return
     const row = testRow
     const hook = row.value
     testBusy = true
@@ -552,7 +558,10 @@
                       type="button"
                       color="success"
                       outline
-                      title={$_('buttons.Test')}
+                      disabled={testBlocked(row)}
+                      title={testBlocked(row)
+                        ? $_('phrases.TestHookEnvOwned')
+                        : $_('buttons.Test')}
                       on:click={() => openHookTest(row)}
                       >{$_('buttons.Test')}</Button
                     >
@@ -613,7 +622,10 @@
                       type="button"
                       color="success"
                       outline
-                      title={$_('buttons.Test')}
+                      disabled={testBlocked(row)}
+                      title={testBlocked(row)
+                        ? $_('phrases.TestHookEnvOwned')
+                        : $_('buttons.Test')}
                       on:click={() => openHookTest(row)}
                       >{$_('buttons.Test')}</Button
                     >

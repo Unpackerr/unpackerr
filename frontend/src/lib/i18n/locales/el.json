@@ -117,7 +117,9 @@
     "TestNzbs": "NZB",
     "TestOther": "Άλλα",
     "TestReply": "Απάντηση",
-    "TestDuration": "Διάρκεια"
+    "TestDuration": "Διάρκεια",
+    "TestStarrEnvOwned": "Η δοκιμή δεν γίνεται όταν το URL ή το κλειδί API προέρχονται από το περιβάλλον.",
+    "TestHookEnvOwned": "Η δοκιμή δεν γίνεται όταν το URL ή η εντολή προέρχονται από το περιβάλλον."
   },
   "nav": {
     "Dashboard": "Πίνακας",

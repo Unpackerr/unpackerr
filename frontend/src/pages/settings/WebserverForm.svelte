@@ -21,7 +21,13 @@
   import { _ } from '../../lib/i18n/Translate.svelte'
   import { loadSection, loadSectionLive, saveSection } from '../../lib/config'
   import { has, profile, restore } from '../../lib/auth.svelte'
-  import { ALL_PERMISSIONS, configPerm, newApiKey } from '../../lib/perms'
+  import {
+    ALL_PERMISSIONS,
+    RoleAdmin,
+    configPerm,
+    newApiKey,
+  } from '../../lib/perms'
+  import { roleNameDuplicateError, roleNameError } from '../../lib/validate'
   import { deepCopy, deepEqual } from '../../lib/util'
   import { trackDirty } from '../../lib/dirty.svelte'
   import type { WebServer, APIKey } from '../../lib/types'
@@ -99,7 +105,7 @@
       cfg.uiRoleHeader ??= ''
       orig.uiRoleHeader ??= ''
       applyAuth(cfg.uiPassword, true)
-      await applyEnvAuth()
+      await applyLiveAuth()
     }
 
     loading = false
@@ -118,8 +124,10 @@
     }
   }
 
-  async function applyEnvAuth() {
-    if (!envHas('WEBSERVER_UI_PASSWORD')) return
+  async function applyLiveAuth() {
+    const envPass = envHas('WEBSERVER_UI_PASSWORD')
+    const filePass = orig?.uiPassword?.startsWith('filepath:')
+    if (!envPass && !filePass) return
 
     const { data } = await loadSectionLive<WebServer>('webserver')
     if (data?.uiPassword) applyAuth(data.uiPassword, true)
@@ -174,16 +182,27 @@
   )
 
   const roleNames = $derived([
-    'admin',
+    RoleAdmin,
     ...roleList.map((r) => r.name).filter(Boolean),
   ])
   const rolesEnv = $derived(envHas('WEBSERVER_ROLES_*'))
+  const rolesInvalid = $derived(
+    roleList.some(
+      (r, i) =>
+        !!roleNameError(r.name) ||
+        !!roleNameDuplicateError(r.name, otherRoleNames(i)),
+    ),
+  )
+
+  function otherRoleNames(i: number): string[] {
+    return roleList.filter((_, idx) => idx !== i).map((r) => r.name)
+  }
 
   function addKey() {
     if (cfg)
       cfg.apiKeys = [
         ...cfg.apiKeys,
-        { name: '', key: newApiKey(), roles: ['admin'] },
+        { name: '', key: newApiKey(), roles: [RoleAdmin] },
       ]
   }
 
@@ -250,7 +269,7 @@
   }
 
   async function save() {
-    if (!cfg || authInvalid) return
+    if (!cfg || authInvalid || rolesInvalid) return
 
     saving = true
     cfg.upstreams = upstreamsText
@@ -294,11 +313,11 @@
         cfg.uiRoleHeader ??= ''
         orig.uiRoleHeader ??= ''
         applyAuth(data.uiPassword, true)
-        await applyEnvAuth()
+        await applyLiveAuth()
       } else {
         orig = deepCopy(cfg)
         applyAuth(cfg.uiPassword, true)
-        await applyEnvAuth()
+        await applyLiveAuth()
       }
 
       origUpstreams = upstreamsText
@@ -680,7 +699,7 @@
         <CardBody>
           <p class="text-muted small">
             {$_('phrases.AdminBuiltin')}
-            <Badge color="primary">admin</Badge>
+            <Badge color="primary">{RoleAdmin}</Badge>
           </p>
           {#each roleList as role, i (i)}
             <Card class="mb-2">
@@ -693,6 +712,9 @@
                   original={origRoles ? Object.keys(origRoles)[i] : ''}
                   disabled={!canWrite || rolesEnv}
                   envVar="WEBSERVER_ROLES_*"
+                  validate={(_id, v) =>
+                    roleNameError(v) ||
+                    roleNameDuplicateError(String(v), otherRoleNames(i))}
                 />
                 <FormGroup>
                   <Button
@@ -769,7 +791,11 @@
 
     {#if canWrite}
       <SaveBar>
-        <Button color="primary" type="submit" disabled={saving || authInvalid}>
+        <Button
+          color="primary"
+          type="submit"
+          disabled={saving || authInvalid || rolesInvalid}
+        >
           {#if saving}<Spinner size="sm" />{/if}
           <span class="ms-1">{$_('buttons.Save')}</span>
         </Button>

@@ -94,6 +94,8 @@
     "FixInvalidFields": "Corrige los campos no válidos antes de guardar.",
     "SlugInvalid": "La clave solo puede tener letras, dígitos, guion bajo o guion.",
     "SlugDuplicate": "Esa clave ya está en uso.",
+    "RoleNameReserved": "El rol admin integrado no se puede redefinir.",
+    "RoleNameDuplicate": "Ese nombre de rol ya está en uso.",
     "UnsavedChanges": "Cambios sin guardar",
     "LeavePage": "¿Salir de esta página? Se perderán los cambios sin guardar.",
     "Copied": "Copiado.",

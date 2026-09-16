@@ -14,6 +14,9 @@ const SECTIONS: ConfigSection[] = [
 
 export type PermVerb = 'read' | 'write'
 
+/** Built-in role that grants every permission. Cannot be redefined. */
+export const RoleAdmin = 'admin'
+
 /** systemPerm is area:resource:verb, e.g. system:info:read. */
 export function systemPerm(resource: string, verb: PermVerb): string {
   return `system:${resource}:${verb}`

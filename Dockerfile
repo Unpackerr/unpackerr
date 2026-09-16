@@ -5,9 +5,15 @@
 
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125 AS builder
 
+# Node is required: go generate ./frontend runs npm ci + vite (embedded SPA).
+RUN apk add --no-cache git nodejs npm
+
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN npm ci --prefix frontend
 
 COPY main.go ./
 COPY pkg pkg

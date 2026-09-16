@@ -8,6 +8,8 @@ Three workflows:
 | `build-and-release` | `release.yml` | **`Unpackerr/unpackerr` only** (GoReleaser Pro). |
 | `fork-docker` | `fork.yml` | Forks only (`github.repository != 'Unpackerr/unpackerr'`). |
 
+`test-and-lint` and the `release.yml` split jobs install Node 24 because `go generate ./...` builds the SPA (`frontend/generate.sh`). The ubuntu `gotest` job also runs `npm run check` (svelte-check) after generate; Vite's build does not type-check. Source-build `Dockerfile` installs `nodejs`/`npm` in the builder for the same generate step.
+
 Local builds: `make` / `make build`, `make generate`, `make docker`, `make dev`. See the root `Makefile`. Official images copy a prebuilt binary with `init/docker/Dockerfile.goreleaser`; `Dockerfile` at the repo root compiles from source.
 
 `fork.yml` is `workflow_dispatch` plus `v*` tags. It builds `Dockerfile` and pushes `ghcr.io/<owner>/<repo>` (`linux/amd64`, `linux/arm64`). Dispatch can skip the push. Tagged builds also get `latest` plus semver tags. No Apple/Windows signing, packagecloud, or AUR.
@@ -46,7 +48,7 @@ So:
 
 1. **channel** — compute `CHANNEL`, extra args, and `REVISION` (`git rev-list --count --all`). This is the only place the count is taken; later jobs pass `needs.channel.outputs.revision`.
 2. **require secrets** — fail closed if any signing/upload/push secret needed for that channel is empty. Missing secrets used to skip Docker Hub, Windows Authenticode, or unstable.golift.io and still go green.
-3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, goversioninfo) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`).
+3. **Build: linux / freebsd** (`split` on ubuntu) and **Build: windows** (own job: OIDC + signerd certs stay off the other legs) — `release --clean --split`. Filter with **`GGOOS`**, not `GOOS`. `GOOS` leaks into `go run` before-hooks (man pages, goversioninfo) and they then target the wrong OS. FreeBSD then runs `freebsd_txz.sh` (`fpm -t freebsd`). Each split job installs Node 24 and GoReleaser runs `go generate ./...`, which builds the SPA (`frontend/generate.sh`: `npm ci` + `npm run build`) so `go:embed` has a real UI.
 4. **Build: darwin** (`split-darwin` on macos-latest, skipped on nightly) — import Developer ID + App Store Connect key, same `--split` with `GGOOS=darwin`, staple the DMG.
 5. **release N** — download `dist-*` artifacts, import GPG (checksum signatures are created at merge, not split), `continue --merge`. Display name is `release` plus that `REVISION`. This is the only job that pushes Docker / GitHub / AUR / packagecloud / unstable.golift.io.
 

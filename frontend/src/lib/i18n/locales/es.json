@@ -197,7 +197,9 @@
       "Actions": "Acciones",
       "Refresh": "Actualizar",
       "UpdatedAgo": "Actualizado hace {age}",
-      "LastWrite": "Última escritura"
+      "LastWrite": "Última escritura",
+      "Retrying": "Reintentando {id}",
+      "Forgotten": "Olvidado {id}"
     },
     "history": {
       "Title": "Historial",

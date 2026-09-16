@@ -197,7 +197,9 @@
       "Actions": "Ενέργειες",
       "Refresh": "Ανανέωση",
       "UpdatedAgo": "Ενημερώθηκε πριν από {age}",
-      "LastWrite": "Τελευταία εγγραφή"
+      "LastWrite": "Τελευταία εγγραφή",
+      "Retrying": "Επανάληψη {id}",
+      "Forgotten": "Ξεχάστηκε {id}"
     },
     "history": {
       "Title": "Ιστορικό",

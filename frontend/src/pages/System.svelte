@@ -85,6 +85,15 @@
     exporting = false
   }
 
+  function hostLabel(sys: SystemInfo): string {
+    const name = sys.hostname?.trim()
+    const os = sys.goos?.trim()
+    if (name && os) {
+      return `${name} (${os})`
+    }
+    return name || os || $_('phrases.Empty')
+  }
+
   async function copyExport() {
     try {
       await navigator.clipboard.writeText(exportText)
@@ -130,8 +139,8 @@
                 ></tr
               >
               <tr
-                ><th class="text-muted">{$_('pages.system.Revision')}</th><td
-                  ><code>{info.revision || $_('phrases.Empty')}</code></td
+                ><th class="text-muted">{$_('pages.system.Host')}</th><td
+                  ><code>{hostLabel(info)}</code></td
                 ></tr
               >
               <tr
@@ -149,17 +158,18 @@
                   ><code>{info.listenAddr}</code></td
                 ></tr
               >
-              <tr
-                ><th class="text-muted">{$_('pages.system.URLBase')}</th><td
-                  ><code>{info.urlbase}</code></td
-                ></tr
-              >
               <tr>
                 <th class="text-muted">{$_('pages.system.ConfigFile')}</th>
                 <td class="text-break"
                   ><code class="wrap"
                     >{info.configFile || $_('phrases.Empty')}</code
                   ></td
+                >
+              </tr>
+              <tr>
+                <th class="text-muted">{$_('pages.system.Logs')}</th>
+                <td class="text-break"
+                  ><code class="wrap">{info.logs || $_('phrases.Empty')}</code></td
                 >
               </tr>
               <tr

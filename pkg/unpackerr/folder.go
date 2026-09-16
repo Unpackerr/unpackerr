@@ -105,7 +105,6 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 	u.lockHistory()
 	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].Updated, true)
 	u.unlockHistory()
-	u.updateHistory(FolderString + ": " + name)
 
 	exclude := folderExcludeSuffixes(name, folder.Config)
 

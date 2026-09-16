@@ -69,8 +69,6 @@ func (u *Unpackerr) logCurrentQueue(now time.Time) {
 		stats.StackFolder.Len, stats.StackFolder.Cap, stats.StackHook.Len, stats.StackHook.Cap,
 		stats.StackDel.Len, stats.StackDel.Cap, stats.StackTask.Len, stats.StackTask.Cap,
 		carbon.CreateFromStdTime(version.Started).DiffAbsInString(carbon.CreateFromStdTime(now)))
-
-	u.updateTray(stats, stats.stackTotal())
 }
 
 // setupLogging splits log write into a file and/or stdout.

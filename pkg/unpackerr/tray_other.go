@@ -9,7 +9,3 @@ func (u *Unpackerr) startTray() {
 
 	u.waitForExit()
 }
-
-func (u *Unpackerr) updateTray(_ *Stats, _ uint) {
-	// there is no tray.
-}

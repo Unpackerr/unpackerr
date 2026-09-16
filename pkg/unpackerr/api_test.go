@@ -3,6 +3,7 @@ package unpackerr
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -54,6 +55,15 @@ func TestStatsAndSystemRequireAuth(t *testing.T) {
 
 	if info.ListenAddr != unpack.Webserver.bindAddr() {
 		t.Fatalf("listenAddr %q", info.ListenAddr)
+	}
+
+	host, _ := os.Hostname()
+	if info.Hostname != host {
+		t.Fatalf("hostname %q", info.Hostname)
+	}
+
+	if info.GOOS != runtime.GOOS {
+		t.Fatalf("goos %q", info.GOOS)
 	}
 }
 

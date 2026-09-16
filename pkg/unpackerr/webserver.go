@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -61,6 +62,36 @@ func (w *WebServer) bindAddr() string {
 	}
 
 	return addr
+}
+
+// localURL is a browser-openable address for this process. Wildcard binds
+// (0.0.0.0 / ::) become 127.0.0.1 so the tray/WebUI link works locally.
+func (w *WebServer) localURL() string {
+	if w == nil || !w.Enabled() {
+		return ""
+	}
+
+	scheme := "http"
+	if strings.TrimSpace(w.SSLCrtFile) != "" && strings.TrimSpace(w.SSLKeyFile) != "" {
+		scheme = "https"
+	}
+
+	host, port, err := net.SplitHostPort(w.bindAddr())
+	if err != nil {
+		return ""
+	}
+
+	switch host {
+	case "", "0.0.0.0", "::":
+		host = "127.0.0.1"
+	}
+
+	base := w.URLBase
+	if base == "" {
+		base = "/"
+	}
+
+	return (&url.URL{Scheme: scheme, Host: net.JoinHostPort(host, port), Path: base}).String()
 }
 
 func (w *WebServer) normalizeURLBase() {

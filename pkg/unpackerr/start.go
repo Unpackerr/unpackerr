@@ -46,8 +46,7 @@ const (
 	minimumDeleteDelay     = time.Second
 	defaultDeleteDelay     = 5 * time.Minute
 	staleItemTimeout       = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
-	defaultHistory         = 400            // JSONL cap; tray still shows trayHistory names.
-	trayHistory            = 10             // items kept in the GUI history menu.
+	defaultHistory         = 400            // JSONL cap for unpackerr.history.jsonl and the history API.
 	suffix                 = "_unpackerred" // suffix for unpacked folders.
 	updateChanBuf          = 100            // Size of xtractr callback update channels.
 	signalBuf              = 4              // Hold HUP/TERM until waitForExit starts.

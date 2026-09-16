@@ -47,7 +47,7 @@ log_file_mode = "0600"
 ## In-flight Starr items are also written so a restart can put EXTRACTED
 ## and IMPORTED work back on the live queue for 72 hours; they do not
 ## count against this number. The history API still lists only completed
-## or failed rows. The tray menu still shows only the last 10 names.
+## or failed rows.
 ## `0` disables history and restart resume.
 keep_history = 400
 
@@ -494,4 +494,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 15 SEP 2026 07:09 UTC
+## => Content Auto Generated, 16 SEP 2026 07:45 UTC

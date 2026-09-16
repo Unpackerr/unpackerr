@@ -151,17 +151,7 @@ func configFileLocactions() (string, []string) {
 
 // validateConfig makes sure config file values are ok. Returns file and dir modes.
 func (u *Unpackerr) validateConfig() (uint64, uint64) {
-	u.ensureTrayRing()
-
 	return clampConfig(u.Config)
-}
-
-// ensureTrayRing sizes the GUI history ring. This is tray-only; the API and web
-// UI read /api/history instead, so it goes away with the tray history menu.
-func (u *Unpackerr) ensureTrayRing() {
-	if u.KeepHistory != 0 && len(u.Items) == 0 {
-		u.Items = make([]string, min(u.KeepHistory, trayHistory))
-	}
 }
 
 // clampConfig applies minimums and fills defaults for omitted values. It takes a

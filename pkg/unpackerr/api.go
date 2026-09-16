@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"net/http"
+	"os"
 	"path"
 	"runtime"
 	"time"
@@ -20,7 +21,9 @@ type systemInfo struct {
 	Auth       string    `json:"auth"`
 	Metrics    bool      `json:"metrics"`
 	ConfigFile string    `json:"configFile"`
+	Hostname   string    `json:"hostname"`
 	GOOS       string    `json:"goos"`
+	Logs       string    `json:"logs"`
 }
 
 func (u *Unpackerr) registerAPIRoutes() {
@@ -59,6 +62,8 @@ func (u *Unpackerr) historyHandler(response http.ResponseWriter, _ *http.Request
 }
 
 func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request) {
+	host, _ := os.Hostname()
+
 	writeJSON(response, http.StatusOK, systemInfo{
 		Version:    version.Version,
 		Revision:   version.Revision,
@@ -69,7 +74,9 @@ func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request)
 		Auth:       u.uiPassword().Type().String(),
 		Metrics:    u.Webserver.Metrics,
 		ConfigFile: u.ConfigFile,
+		Hostname:   host,
 		GOOS:       runtime.GOOS,
+		Logs:       u.logFileFolders(),
 	})
 }
 

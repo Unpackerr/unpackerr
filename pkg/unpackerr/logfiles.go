@@ -190,6 +190,27 @@ func (u *Unpackerr) activeLogPaths() []string {
 	return paths
 }
 
+func (u *Unpackerr) logFileFolders() string {
+	dirs := make([]string, 0, 2)
+	seen := make(map[string]struct{}, 2)
+
+	for _, logPath := range u.activeLogPaths() {
+		dir := filepath.Dir(logPath)
+		if dir == "" || dir == "." {
+			continue
+		}
+
+		if _, dup := seen[dir]; dup {
+			continue
+		}
+
+		seen[dir] = struct{}{}
+		dirs = append(dirs, dir)
+	}
+
+	return strings.Join(dirs, ", ")
+}
+
 func (u *Unpackerr) findLogFile(id string) *LogFileInfo {
 	for _, item := range u.logFileInfos().List {
 		if item != nil && item.ID == id {

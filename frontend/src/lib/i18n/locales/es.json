@@ -302,11 +302,10 @@
       "Notifiarr": "Notifiarr",
       "Xt": "xTractor Tool",
       "Version": "Versión",
-      "Revision": "Revisión",
+      "Host": "Host",
       "Started": "Inicio",
       "Uptime": "Tiempo activo",
       "Listen": "Escucha",
-      "URLBase": "Base de URL",
       "Auth": "Auth",
       "Metrics": "Métricas",
       "Username": "Usuario",
@@ -314,7 +313,8 @@
       "Permissions": "Permisos",
       "enabled": "activado",
       "disabled": "desactivado",
-      "ConfigFile": "Archivo de configuración"
+      "ConfigFile": "Archivo de configuración",
+      "Logs": "Registros"
     },
     "logs": {
       "Title": "Registros",
@@ -430,7 +430,7 @@
       "keepHistory": {
         "label": "Conservar historial",
         "description": "Elementos terminados que se guardan en el archivo de historial.",
-        "tooltip": "Esto es unpackerr.history.jsonl, junto al registro (o al archivo de configuración si los registros van a stdout). 0 desactiva el historial. El menú de la bandeja sigue mostrando solo los últimos 10 nombres.",
+        "tooltip": "Esto es unpackerr.history.jsonl, junto al registro (o al archivo de configuración si los registros van a stdout). 0 desactiva el historial.",
         "options": {
           "0": "(sin historial)"
         }

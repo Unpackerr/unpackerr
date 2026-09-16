@@ -21,7 +21,9 @@
     const apply = () => {
       const key = getApiKey()
       if (!key) return
-      const el = node as HTMLElement & { setApiKey?: (id: string, v: string) => void }
+      const el = node as HTMLElement & {
+        setApiKey?: (id: string, v: string) => void
+      }
       el.setApiKey?.('apiKey', key)
     }
     node.addEventListener('spec-loaded', apply)

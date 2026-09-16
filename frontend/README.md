@@ -54,7 +54,8 @@ To try the embedded UI instead of Vite: `go generate ./frontend` (or
 - Settings read the on-disk (`GET /api/config/{section}`) shape and PUT it back.
   They never post `/live`. A paired live GET greys fields that an `UN_*` env var
   currently overlays. Starr and hook instance cards can POST `/api/config/{section}/test`
-  (write perm) to probe a queue or fire one sample payload without saving. The UI does not advertise or add `filepath:` values.
+  (write perm) to probe a queue or fire one sample payload without saving. Starr API keys
+  and other string fields accept `filepath:/path` values; the API expands them on save and on test.
 - Auth type is local password, proxy header, or no auth. Header and no-auth are
   disabled unless `/api/auth/me` reports `upstreamAllowed` (client IP in
   Upstreams), so you cannot lock yourself out from a non-proxy address.

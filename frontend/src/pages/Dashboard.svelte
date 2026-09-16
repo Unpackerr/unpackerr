@@ -145,7 +145,12 @@
     return (buf?.cap ?? 0) > 0 && (buf?.len ?? 0) >= (buf?.cap ?? 0)
   }
 
-  function stackRow(id: string, label: string, hint: string, buf?: BufferStat): SideRow {
+  function stackRow(
+    id: string,
+    label: string,
+    hint: string,
+    buf?: BufferStat,
+  ): SideRow {
     return { id, label, hint, value: stackValue(buf), full: stackFull(buf) }
   }
 
@@ -245,7 +250,13 @@
   function showBar(item: QueueItem): boolean {
     return (
       item.status === 'extracting' &&
-      !!(item.percent || item.total || item.compressed || item.wrote || item.read)
+      !!(
+        item.percent ||
+        item.total ||
+        item.compressed ||
+        item.wrote ||
+        item.read
+      )
     )
   }
 
@@ -253,7 +264,8 @@
     busy[item.id] = true
     const res = await api.post('queue/retry', { id: item.id })
     busy[item.id] = false
-    if (res.ok) success($_('pages.dashboard.Retrying', { values: { id: item.id } }))
+    if (res.ok)
+      success($_('pages.dashboard.Retrying', { values: { id: item.id } }))
     else failure(res.body?.error ?? 'retry failed')
   }
 
@@ -283,7 +295,8 @@
     busy[item.id] = true
     const res = await api.post('queue/forget', { id: item.id })
     busy[item.id] = false
-    if (res.ok) success($_('pages.dashboard.Forgotten', { values: { id: item.id } }))
+    if (res.ok)
+      success($_('pages.dashboard.Forgotten', { values: { id: item.id } }))
     else failure(res.body?.error ?? 'forget failed')
   }
 
@@ -411,9 +424,7 @@
                 <td class="text-end">{row.downloading ?? 0}</td>
               </tr>
               <Tooltip target="{uid}-starrq-{i}" placement="top">
-                {row.error ||
-                  row.url ||
-                  $_('pages.dashboard.StarrQueuesHint')}
+                {row.error || row.url || $_('pages.dashboard.StarrQueuesHint')}
               </Tooltip>
             {/each}
           </tbody>
@@ -512,7 +523,8 @@
                     </div>
                   </td>
                   <td class="text-end">{item.retries}</td>
-                  <td class="small text-nowrap">{relTime(item.updated, now)}</td>
+                  <td class="small text-nowrap">{relTime(item.updated, now)}</td
+                  >
                   <td class="text-end text-nowrap">
                     {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
                       <ButtonGroup size="sm">

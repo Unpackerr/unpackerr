@@ -228,3 +228,31 @@ func TestWSRequiresAuth(t *testing.T) {
 		t.Fatalf("ws %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestLogFileFolders(t *testing.T) {
+	t.Parallel()
+
+	same := t.TempDir()
+	other := t.TempDir()
+	unpack := New()
+	unpack.LogFile = filepath.Join(same, "unpackerr.log")
+	unpack.Webserver.LogFile = filepath.Join(same, "http.log")
+
+	if got := unpack.logFileFolders(); got != same {
+		t.Fatalf("same dir %q, want %q", got, same)
+	}
+
+	unpack.Webserver.LogFile = filepath.Join(other, "http.log")
+
+	want := same + ", " + other
+	if got := unpack.logFileFolders(); got != want {
+		t.Fatalf("diff dirs %q, want %q", got, want)
+	}
+
+	unpack.LogFile = ""
+	unpack.Webserver.LogFile = ""
+
+	if got := unpack.logFileFolders(); got != "" {
+		t.Fatalf("empty %q", got)
+	}
+}

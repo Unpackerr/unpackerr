@@ -302,11 +302,10 @@
       "Notifiarr": "Notifiarr",
       "Xt": "xTractor Tool",
       "Version": "Version",
-      "Revision": "Revision",
+      "Host": "Host",
       "Started": "Started",
       "Uptime": "Uptime",
       "Listen": "Listen",
-      "URLBase": "URL base",
       "Auth": "Auth",
       "Metrics": "Metrics",
       "Username": "Username",
@@ -314,7 +313,8 @@
       "Permissions": "Permissions",
       "enabled": "enabled",
       "disabled": "disabled",
-      "ConfigFile": "Config file"
+      "ConfigFile": "Config file",
+      "Logs": "Logs"
     },
     "logs": {
       "Title": "Logs",
@@ -430,7 +430,7 @@
       "keepHistory": {
         "label": "Keep history",
         "description": "Finished items kept in the history file.",
-        "tooltip": "This is unpackerr.history.jsonl, next to the log (or the config file if logs go to stdout). 0 turns history off. The tray menu still only shows the last 10 names.",
+        "tooltip": "This is unpackerr.history.jsonl, next to the log (or the config file if logs go to stdout). 0 turns history off.",
         "options": {
           "0": "(no history)"
         }

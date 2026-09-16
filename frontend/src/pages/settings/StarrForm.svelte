@@ -304,6 +304,14 @@
   const testOpen = $derived(testRow !== null)
   const testName = $derived(testRow ? instanceLabel(testRow) : '')
 
+  function testBlocked(row: InstanceRow<StarrConfig>): boolean {
+    if (row.envOnly) return true
+    return (
+      envHas(envField(envPrefix, row.slug, 'URL')) ||
+      envHas(envField(envPrefix, row.slug, 'API_KEY'))
+    )
+  }
+
   function closeTest() {
     testRow = null
     testBusy = false
@@ -313,6 +321,7 @@
   }
 
   async function runStarrTest(row: InstanceRow<StarrConfig>) {
+    if (testBlocked(row)) return
     testBusy = true
     testError = ''
     testElapsed = ''
@@ -336,6 +345,7 @@
   }
 
   function openStarrTest(row: InstanceRow<StarrConfig>) {
+    if (testBlocked(row)) return
     testRow = row
     void runStarrTest(row)
   }
@@ -446,7 +456,10 @@
                     type="button"
                     color="success"
                     outline
-                    title={$_('buttons.Test')}
+                    disabled={testBlocked(row)}
+                    title={testBlocked(row)
+                      ? $_('phrases.TestStarrEnvOwned')
+                      : $_('buttons.Test')}
                     on:click={() => openStarrTest(row)}
                     >{$_('buttons.Test')}</Button
                   >

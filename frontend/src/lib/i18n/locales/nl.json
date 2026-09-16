@@ -117,7 +117,9 @@
     "TestNzbs": "NZBs",
     "TestOther": "Overig",
     "TestReply": "Antwoord",
-    "TestDuration": "Duur"
+    "TestDuration": "Duur",
+    "TestStarrEnvOwned": "Testen kan niet als de URL of API-sleutel uit de omgeving komt.",
+    "TestHookEnvOwned": "Testen kan niet als de URL of opdracht uit de omgeving komt."
   },
   "nav": {
     "Dashboard": "Dashboard",

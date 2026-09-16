@@ -24,6 +24,10 @@ jobs:
       - name: go-generate
         shell: bash
         run: go generate ./...
+      - name: npm-check
+        if: matrix.os == 'ubuntu'
+        working-directory: frontend
+        run: npm run check
       - name: go-test
         run: |
           go test ./...

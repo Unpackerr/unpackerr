@@ -8,7 +8,7 @@ Three workflows:
 | `build-and-release` | `release.yml` | **`Unpackerr/unpackerr` only** (GoReleaser Pro). |
 | `fork-docker` | `fork.yml` | Forks only (`github.repository != 'Unpackerr/unpackerr'`). |
 
-`test-and-lint` and the `release.yml` split jobs install Node 24 because `go generate ./...` builds the SPA (`frontend/generate.sh`). Source-build `Dockerfile` installs `nodejs`/`npm` in the builder for the same reason.
+`test-and-lint` and the `release.yml` split jobs install Node 24 because `go generate ./...` builds the SPA (`frontend/generate.sh`). The ubuntu `gotest` job also runs `npm run check` (svelte-check) after generate; Vite's build does not type-check. Source-build `Dockerfile` installs `nodejs`/`npm` in the builder for the same generate step.
 
 Local builds: `make` / `make build`, `make generate`, `make docker`, `make dev`. See the root `Makefile`. Official images copy a prebuilt binary with `init/docker/Dockerfile.goreleaser`; `Dockerfile` at the repo root compiles from source.
 

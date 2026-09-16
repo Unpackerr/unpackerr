@@ -520,9 +520,9 @@
         "tooltip": "Permite confiar en X-Forwarded-For en los registros HTTP. Ejemplo: 127.0.0.1/32 o 10.1.2.0/24."
       },
       "wsOrigins": {
-        "label": "WebSocket origins",
-        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
-        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+        "label": "Orígenes WebSocket",
+        "description": "Hosts Origin extra que pueden abrir el socket de la UI en vivo, uno por línea.",
+        "tooltip": "Vacío mantiene same-origin, que es lo que necesita la UI embebida. Añade un host cuando el navegador está en otro origen, por ejemplo localhost:5173. No uses * salvo que quieras permitir cualquier sitio."
       },
       "keyName": {
         "label": "Nombre",

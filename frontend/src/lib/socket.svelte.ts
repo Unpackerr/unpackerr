@@ -42,7 +42,7 @@ class LiveSocket {
   private onLog: ((file: string, line: string) => void) | undefined
   private onErrorLine: ((line: string) => void) | undefined
   private closed = true
-  /** Bumped on live queue/progress/history so in-flight REST snapshots cannot overwrite newer frames. */
+  /** Bumped on live frames, socket stop, and reconnect so in-flight REST cannot overwrite newer state. */
   private liveSeq = 0
 
   connect() {
@@ -97,6 +97,7 @@ class LiveSocket {
   }
 
   private stopSocket() {
+    this.liveSeq++
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = undefined
@@ -123,6 +124,7 @@ class LiveSocket {
     socket.onclose = () => {
       this.connected = false
       this.ws = null
+      this.liveSeq++
       if (!this.closed) this.timer = setTimeout(() => this.open(), 1500)
     }
   }
@@ -243,7 +245,7 @@ class LiveSocket {
     if (stats.ok) this.stats = stats.body
     if (queue.ok) this.queue = queue.body ?? []
     if (history.ok) this.history = (history.body ?? []).filter(isFinishedHistory)
-    this.fetchedAt = Date.now()
+    if (stats.ok || queue.ok || history.ok) this.fetchedAt = Date.now()
   }
 }
 

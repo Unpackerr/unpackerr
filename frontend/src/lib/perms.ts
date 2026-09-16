@@ -33,6 +33,7 @@ export const ALL_PERMISSIONS: string[] = [
   systemPerm('history', 'read'),
   systemPerm('history', 'write'),
   systemPerm('metrics', 'read'),
+  systemPerm('headers', 'read'),
   systemPerm('browse', 'read'),
   systemPerm('browse', 'write'),
   systemPerm('logs', 'read'),

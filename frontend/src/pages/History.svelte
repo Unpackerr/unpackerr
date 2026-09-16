@@ -55,8 +55,11 @@
   )
 
   async function refresh() {
+    const before = live.history
     const res = await api.get<HistoryRecord[]>('history')
-    if (res.ok) live.history = (res.body ?? []).filter(isFinishedHistory)
+    if (res.ok && live.history === before) {
+      live.history = (res.body ?? []).filter(isFinishedHistory)
+    }
     loaded = true
   }
 

@@ -119,6 +119,8 @@
     ].filter((item) => item.show),
   )
 
+  const passwordAuth = $derived(profile.info?.auth === 'password')
+
   function settingActive(href: string): boolean {
     const path = router.path
     if (
@@ -252,11 +254,13 @@
                 ? $_('nav.ThemeDark')
                 : $_('nav.ThemeLight')}
             </DropdownItem>
-            <DropdownItem divider />
-            <DropdownItem on:click={logout}>
-              <span class="menu-ico"><Icon i={SignOut} /></span>
-              {$_('buttons.Logout')}
-            </DropdownItem>
+            {#if passwordAuth}
+              <DropdownItem divider />
+              <DropdownItem on:click={logout}>
+                <span class="menu-ico"><Icon i={SignOut} /></span>
+                {$_('buttons.Logout')}
+              </DropdownItem>
+            {/if}
           </DropdownMenu>
         </Dropdown>
       </Nav>
@@ -363,14 +367,16 @@
             {theme.mode === 'dark' ? $_('nav.ThemeDark') : $_('nav.ThemeLight')}
           </button>
         </NavItem>
-        <NavItem>
-          <button type="button" class="nav-link" onclick={logout}>
-            <span class="menu-ico"
-              ><Icon i={SignOut} c1="#fff" d1="#fff" /></span
-            >
-            {$_('buttons.Logout')}
-          </button>
-        </NavItem>
+        {#if passwordAuth}
+          <NavItem>
+            <button type="button" class="nav-link" onclick={logout}>
+              <span class="menu-ico"
+                ><Icon i={SignOut} c1="#fff" d1="#fff" /></span
+              >
+              {$_('buttons.Logout')}
+            </button>
+          </NavItem>
+        {/if}
       </Nav>
     {/if}
   </Collapse>

@@ -15,19 +15,26 @@
   onMount(async () => {
     await import('rapidoc')
     ready = true
-    queueMicrotask(() => {
-      const el = document.querySelector('rapi-doc') as any
-      if (el && getApiKey()) el.setApiKeySecurityScheme?.('apiKey', getApiKey())
-    })
   })
+
+  function injectApiKey(node: HTMLElement) {
+    const apply = () => {
+      const key = getApiKey()
+      if (!key) return
+      const el = node as HTMLElement & { setApiKey?: (id: string, v: string) => void }
+      el.setApiKey?.('apiKey', key)
+    }
+    node.addEventListener('spec-loaded', apply)
+    return () => node.removeEventListener('spec-loaded', apply)
+  }
 </script>
 
 <h4 class="mb-2">{$_('pages.docs.Title')}</h4>
 <PageIntro id="pages.docs" />
 
 {#if ready}
-  <!-- svelte-ignore element_invalid_self_closing_tag -->
   <rapi-doc
+    {@attach injectApiKey}
     spec-url={specUrl()}
     render-style="read"
     theme={theme.resolved}

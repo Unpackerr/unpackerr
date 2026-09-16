@@ -33,12 +33,18 @@
   let desc = $state(true)
   let highlight = $state('')
   let colors = $state(true)
-  let wrap = $state(false)
+  let wrap = $state(true)
   let body = $state('')
   let ok = $state(false)
   let adding = $state(false)
   let list = $state<string[]>([])
   let gone = false
+
+  function clampedLines(): number {
+    const n = Math.floor(Number(lineCount))
+    if (!Number.isFinite(n) || n <= 0) return 500
+    return Math.min(10000, n)
+  }
 
   function colorLine(line: string) {
     if (highlight && line.includes(highlight)) return 'bg-success text-white'
@@ -63,9 +69,10 @@
   }
 
   function appendLine(line: string) {
+    const cap = clampedLines()
     list = [...list, line]
-    if (lineCount > 0 && list.length > lineCount) {
-      list = list.slice(list.length - lineCount)
+    if (list.length > cap) {
+      list = list.slice(list.length - cap)
     }
   }
 
@@ -74,17 +81,18 @@
     stopFollow()
     list = []
     body = ''
+    const n = clampedLines()
     if (!tail) {
       const res = await api.get<{ text?: string; error?: string }>(
-        `logs/${file.id}?lines=${lineCount}&skip=0`,
+        `logs/${file.id}?lines=${n}&skip=0`,
       )
       if (gone) return
       ok = res.ok
       body = res.ok ? (res.body?.text ?? '') : String(res.body?.error ?? '')
-      offset = lineCount
+      offset = n
     } else if (isErrors) {
       const res = await api.get<{ text?: string; error?: string }>(
-        `logs/${file.id}?lines=${lineCount}&skip=0`,
+        `logs/${file.id}?lines=${n}&skip=0`,
       )
       if (gone) return
       ok = res.ok
@@ -108,12 +116,16 @@
 
   async function add() {
     adding = true
+    const n = clampedLines()
     const res = await api.get<{ text?: string; error?: string }>(
-      `logs/${file.id}?lines=${lineCount}&skip=${offset}`,
+      `logs/${file.id}?lines=${n}&skip=${offset}`,
     )
     if (res.ok) {
-      offset += lineCount
-      body = (res.body?.text ?? '') + (body ? '\n' + body : '')
+      const text = (res.body?.text ?? '').trimEnd()
+      if (text) {
+        offset += text.split('\n').length
+        body = body ? text + '\n' + body.trimEnd() : text
+      }
     } else {
       failure(res.body?.error ?? $_('pages.logs.Error'))
     }
@@ -201,14 +213,14 @@
   </Row>
 
   <div
-    class={['log-file-content', wrap && 'no-wrap']}
+    class={['log-file-content', !wrap && 'no-wrap']}
     style:--line-number-width="{lineNumberWidth}ch"
   >
     <ListGroup flush numbered class="ps-0">
       {#each lines as line, i (i + line.slice(0, 24))}
         <ListGroupItem class="border-0 lh-1">
           <span class={['log-line', colorLine(line)]}>
-            <pre class={['m-0', 'pre', wrap && 'wrap']}>{line}</pre>
+            <pre class={['m-0', 'pre', !wrap && 'no-wrap']}>{line}</pre>
           </span>
         </ListGroupItem>
       {/each}
@@ -260,7 +272,7 @@
     max-width: 100%;
     overflow: hidden;
   }
-  pre.wrap {
+  pre.no-wrap {
     white-space: pre;
     overflow: visible;
     overflow-wrap: normal;

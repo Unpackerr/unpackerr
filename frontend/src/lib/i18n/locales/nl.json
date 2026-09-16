@@ -8,7 +8,7 @@
       "minute": "minuut",
       "minutes": "minuten",
       "hour": "uur",
-      "hours": "uur",
+      "hours": "uren",
       "second": "seconde",
       "seconds": "seconden",
       "custom": "aangepast",
@@ -520,9 +520,9 @@
         "tooltip": "Laat X-Forwarded-For in HTTP-logs vertrouwen. Voorbeeld: 127.0.0.1/32 of 10.1.2.0/24."
       },
       "wsOrigins": {
-        "label": "WebSocket origins",
-        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
-        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+        "label": "WebSocket-origins",
+        "description": "Extra Origin-hosts die de live UI-socket mogen openen, één per regel.",
+        "tooltip": "Leeg houdt same-origin, wat de ingebedde UI nodig heeft. Voeg een host toe als de browser op een andere origin draait, bijvoorbeeld localhost:5173. Gebruik geen * tenzij je elke site wilt toestaan."
       },
       "keyName": {
         "label": "Naam",

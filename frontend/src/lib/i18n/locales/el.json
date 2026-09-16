@@ -520,9 +520,9 @@
         "tooltip": "Εμπιστεύεται το X-Forwarded-For στα HTTP logs. Παράδειγμα: 127.0.0.1/32 ή 10.1.2.0/24."
       },
       "wsOrigins": {
-        "label": "WebSocket origins",
-        "description": "Extra Origin hosts allowed to open the live UI socket, one per line.",
-        "tooltip": "Empty keeps same-origin, which is what the embedded UI needs. Add a host when the browser is on another origin, for example localhost:5173. Do not use * unless you mean to allow every site."
+        "label": "Προελεύσεις WebSocket",
+        "description": "Επιπλέον Origin hosts που επιτρέπεται να ανοίξουν το live socket της διεπαφής, ένα ανά γραμμή.",
+        "tooltip": "Κενό κρατά same-origin, που χρειάζεται η ενσωματωμένη διεπαφή. Προσθέστε host όταν ο φυλλομετρητής είναι σε άλλη προέλευση, π.χ. localhost:5173. Μην χρησιμοποιείτε * εκτός αν θέλετε να επιτρέψετε κάθε ιστότοπο."
       },
       "keyName": {
         "label": "Όνομα",

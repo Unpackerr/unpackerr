@@ -191,10 +191,11 @@ func (u *Unpackerr) activeLogPaths() []string {
 }
 
 func (u *Unpackerr) logFileFolders() string {
-	dirs := make([]string, 0, 2)
-	seen := make(map[string]struct{}, 2)
+	logPaths := u.activeLogPaths()
+	dirs := make([]string, 0, len(logPaths))
+	seen := make(map[string]struct{}, len(logPaths))
 
-	for _, logPath := range u.activeLogPaths() {
+	for _, logPath := range logPaths {
 		dir := filepath.Dir(logPath)
 		if dir == "" || dir == "." {
 			continue

@@ -63,6 +63,7 @@ func (u *Unpackerr) readyTray() {
 func (u *Unpackerr) makeChannels() {
 	webURL := u.Webserver.localURL()
 	tip := "open the local web UI"
+
 	if webURL != "" {
 		tip = webURL
 	}

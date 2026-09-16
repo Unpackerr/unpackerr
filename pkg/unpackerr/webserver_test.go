@@ -65,7 +65,11 @@ func TestWebServerLocalURL(t *testing.T) {
 		{name: "port only", ws: &WebServer{ListenAddr: "5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
 		{name: "loopback", ws: &WebServer{ListenAddr: "127.0.0.1:5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
 		{name: "lan", ws: &WebServer{ListenAddr: "192.168.1.5:5656", URLBase: "/"}, want: "http://192.168.1.5:5656/"},
-		{name: "urlbase", ws: &WebServer{ListenAddr: "0.0.0.0:5656", URLBase: "/unpackerr/"}, want: "http://127.0.0.1:5656/unpackerr/"},
+		{
+			name: "urlbase",
+			ws:   &WebServer{ListenAddr: "0.0.0.0:5656", URLBase: "/unpackerr/"},
+			want: "http://127.0.0.1:5656/unpackerr/",
+		},
 		{
 			name: "tls",
 			ws:   &WebServer{ListenAddr: "127.0.0.1:5656", URLBase: "/", SSLCrtFile: "c.pem", SSLKeyFile: "k.pem"},

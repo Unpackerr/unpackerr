@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -517,5 +518,27 @@ func TestFolderConfigForPathPrefersLongerWatch(t *testing.T) {
 
 	if got != child {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestFolderConfigForPathRootWatch(t *testing.T) {
+	t.Parallel()
+
+	rootPath := filepath.Clean("/")
+	root := &FolderConfig{Path: rootPath}
+	nested := &FolderConfig{Path: filepath.Join(rootPath, "downloads")}
+	item := filepath.Join(rootPath, "downloads", "movie")
+
+	if got := folderConfigForPath([]*FolderConfig{root}, item); got != root {
+		t.Fatalf("root watch %q missed %q", rootPath, item)
+	}
+
+	if got := folderConfigForPath([]*FolderConfig{root, nested}, item); got != nested {
+		t.Fatalf("nested watch lost to root: %+v", got)
+	}
+
+	slash := &FolderConfig{Path: rootPath + string(os.PathSeparator)}
+	if got := folderConfigForPath([]*FolderConfig{slash}, item); got != slash {
+		t.Fatalf("root+sep watch missed %q", item)
 	}
 }

@@ -306,10 +306,11 @@ sections:
         desc: |
           How many completed or failed items to keep in unpackerr.history.jsonl
           (next to the log file, or the config file if logs go to stdout).
-          In-flight Starr and Folder items are also written so a restart can put
-          EXTRACTED and IMPORTED Starr work, and EXTRACTED / retrying folders,
-          back on the live queue for 72 hours; they do not count against this
-          number. The history API still lists only completed or failed rows.
+          In-progress extracts are also written so a restart can resume them
+          for 72 hours (Starr waiting for import, folders waiting on
+          delete_after). Those in-progress rows do not count against this
+          number. Imported and failed rows do. The history API still lists
+          only completed or failed rows.
           `0` disables history and restart resume.
       - name: interval
         envvar: INTERVAL

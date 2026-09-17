@@ -362,9 +362,8 @@ func folderConfigForPath(configs []*FolderConfig, itemPath string) *FolderConfig
 			continue
 		}
 
-		clean := filepath.Clean(strings.TrimRight(cfg.Path, `/\`))
-		if itemPath != cfg.Path && itemPath != clean &&
-			!strings.HasPrefix(itemPath, clean+string(os.PathSeparator)) {
+		clean := filepath.Clean(cfg.Path)
+		if !folderPathContains(clean, itemPath) {
 			continue
 		}
 
@@ -375,6 +374,19 @@ func folderConfigForPath(configs []*FolderConfig, itemPath string) *FolderConfig
 	}
 
 	return best
+}
+
+func folderPathContains(watch, item string) bool {
+	if item == watch {
+		return true
+	}
+
+	sep := string(os.PathSeparator)
+	if strings.HasSuffix(watch, sep) {
+		return strings.HasPrefix(item, watch)
+	}
+
+	return strings.HasPrefix(item, watch+sep)
 }
 
 func (u *Unpackerr) kindFromURL(url string) starr.App {

@@ -150,6 +150,8 @@ func (u *Unpackerr) retryQueueID(itemID string) error {
 	return nil
 }
 
+// retryFolderLocked restarts a watched-folder extract as a fresh cycle so the
+// queue/history retry count matches folder.Retries (not leftover auto-retries).
 func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Time) error {
 	folder, ok := u.folders.Folders[itemID]
 	if !ok {
@@ -161,6 +163,7 @@ func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Tim
 	folder.Retries = 0
 	folder.Updated = now
 	item.NoRetry = false
+	item.Retries = 0
 	item.Status = WAITING
 	item.Updated = now
 

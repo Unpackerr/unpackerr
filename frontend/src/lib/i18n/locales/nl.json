@@ -138,7 +138,9 @@
   "pages": {
     "login": {
       "Username": "Gebruikersnaam",
-      "Password": "Wachtwoord"
+      "Password": "Wachtwoord",
+      "Disabled": "Aanmeldingen uitgeschakeld",
+      "DisabledHint": "Wachtwoordaanmelding staat uit. Meld u aan via de reverse proxy. Als de proxy u hierheen stuurde, kwam geen van de groepen overeen met admin of een ingestelde rol."
     },
     "dashboard": {
       "Title": "Overzicht",
@@ -585,8 +587,8 @@
       },
       "roleHeader": {
         "label": "Rol-header",
-        "description": "Optionele verzoekheader waarvan de waarde een Unpackerr-rol is. Alleen bij proxy-headerauthenticatie. Leeg houdt die gebruikers als admin. Een gekozen header die ontbreekt weigert het verzoek.",
-        "tooltip": "De proxy moet admin of een aangepaste rolnaam uit de lijst sturen. Meerdere namen mogen komma-gescheiden. Een ontbrekende of onbekende rol is weigering, geen admin. Voorgestelde naam: X-Webauth-Role.",
+        "description": "Optionele verzoekheader waarvan de waarde een Unpackerr-rol is. Alleen bij proxy-headerauthenticatie. Leeg houdt die gebruikers als admin. Een gekozen header die ontbreekt, of geen overeenkomende rol heeft, weigert het verzoek.",
+        "tooltip": "De proxy moet admin of een aangepaste rolnaam uit de lijst sturen. Meerdere namen mogen komma-, puntkomma-, pipe- of spatiegescheiden zijn; extra IdP-groepen worden genegeerd. Een ontbrekende header of geen overeenkomende rol is weigering, geen admin. Voorgestelde naam: X-Webauth-Role.",
         "options": {
           "none": "Altijd admin"
         }

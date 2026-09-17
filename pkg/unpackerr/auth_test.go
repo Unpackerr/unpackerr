@@ -489,6 +489,57 @@ func TestMeUnauthorizedWithoutCreds(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("got %d", rec.Code)
 	}
+
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if body["error"] != "unauthorized" || body["auth"] != "" {
+		t.Fatalf("password 401 %+v", body)
+	}
+}
+
+func TestMeUnauthorizedWebauthIncludesAuth(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = "webauth:X-User"
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if body["error"] != "unauthorized" || body["auth"] != "header" {
+		t.Fatalf("webauth 401 %+v", body)
+	}
+}
+
+func TestMeUnauthorizedNoauthIncludesAuth(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webserver.UIPassword = authNone
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "", nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d %s", rec.Code, rec.Body.String())
+	}
+
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if body["error"] != "unauthorized" || body["auth"] != "noauth" {
+		t.Fatalf("noauth 401 %+v", body)
+	}
 }
 
 func TestNoauthMeFromUpstream(t *testing.T) {
@@ -561,6 +612,48 @@ func TestProxyAuthRoleHeader(t *testing.T) {
 
 	if info.APIKey != unpack.Webserver.adminAPIKey() || !info.allows(PermAll) {
 		t.Fatalf("admin identity %+v", info)
+	}
+}
+
+func TestProxyAuthIgnoresUnknownGroups(t *testing.T) {
+	t.Parallel()
+
+	unpack := proxyRoleUnpackerr(t)
+	upstream := func(role string) func(*http.Request) {
+		return func(req *http.Request) {
+			req.RemoteAddr = "192.0.2.1:9999"
+			req.Header.Set("X-User", "dave")
+			req.Header.Set("X-Role", role)
+		}
+	}
+
+	extra := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "",
+		upstream("lobechat-admins|admin|infra-admin|Notifiarr Webhook Recipient|starr"))
+	if extra.Code != http.StatusOK {
+		t.Fatalf("authentik extras %d %s", extra.Code, extra.Body.String())
+	}
+
+	var info authInfo
+	if err := json.Unmarshal(extra.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.APIKey != unpack.Webserver.adminAPIKey() || !info.allows(PermAll) {
+		t.Fatalf("authentik admin %+v", info)
+	}
+
+	statsExtra := doAuth(t, unpack, http.MethodGet, "/api/auth/me", "",
+		upstream("stats|lobechat-admins|starr"))
+	if statsExtra.Code != http.StatusOK {
+		t.Fatalf("stats extras %d %s", statsExtra.Code, statsExtra.Body.String())
+	}
+
+	if err := json.Unmarshal(statsExtra.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.APIKey != "" || !info.allows(PermReadSystemStats) || info.allows(PermAll) {
+		t.Fatalf("stats extras identity %+v", info)
 	}
 }
 

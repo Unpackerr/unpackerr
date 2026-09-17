@@ -312,9 +312,9 @@ Order in `authenticate`:
 
 `noauth` is a `ui_password` type for the UI, not “skip API auth”.
 
-`webauth` requires the username header. `ui_role_header` empty keeps those proxy users as admin. Once a header name is set, the value must be built-in `admin` or a `[webserver.roles]` name (comma, semicolon, pipe, or space lists are unioned). Missing, empty, or unknown is **401**, not admin. `noauth` ignores `ui_role_header`; its username header is optional identity only.
+`webauth` requires the username header. `ui_role_header` empty keeps those proxy users as admin. Once a header name is set, matching values are built-in `admin` or a `[webserver.roles]` name (comma, semicolon, pipe, or space lists are unioned; extra IdP groups are ignored). Missing, empty, or no match is **401**, not admin. `noauth` ignores `ui_role_header`; its username header is optional identity only.
 
-Login body: PBKDF2-HMAC-SHA-256 of the password, salt `unpackerr:`+username, 210000 iterations, 32-byte hex in `kdf`. Never send plaintext. Default username `admin` if `name` omitted. `webauth` login returns **403**.
+Login body: PBKDF2-HMAC-SHA-256 of the password, salt `unpackerr:`+username, 210000 iterations, 32-byte hex in `kdf`. Never send plaintext. Default username `admin` if `name` omitted. `webauth` login returns **403**. UI `GET /api/auth/me` 401 includes `"auth":"header"` or `"noauth"` when password login is off so the SPA can show Logins Disabled instead of a password form.
 
 Metrics (`requirePermHTTP`) ignore cookies and proxy auth on purpose so a stolen browser session cannot scrape Prometheus.
 

@@ -13,12 +13,18 @@ import { live } from './socket.svelte'
 export const profile = $state({
   loaded: false, // becomes true after the first /api/auth/me attempt
   authed: false,
+  loginDisabled: false,
   info: null as AuthInfo | null,
 })
+
+function loginDisabledAuth(auth: string | undefined): boolean {
+  return auth === 'header' || auth === 'noauth'
+}
 
 function apply(info: AuthInfo) {
   profile.info = info
   profile.authed = true
+  profile.loginDisabled = false
   setApiKey(info.apiKey || '')
   live.connect()
   void loadHelp()
@@ -45,11 +51,18 @@ function sessionEndedMessage(): string {
   return 'Session ended. Log in again.'
 }
 
-setUnauthorizedHandler(() => {
-  if (!profile.authed || bouncing) return
+setUnauthorizedHandler((payload) => {
+  const disabled = loginDisabledAuth(
+    typeof payload?.auth === 'string' ? payload.auth : undefined,
+  )
+  if (!profile.authed || bouncing) {
+    profile.loginDisabled = disabled
+    return
+  }
   bouncing = true
   clear()
-  info(sessionEndedMessage())
+  profile.loginDisabled = disabled
+  if (!disabled) info(sessionEndedMessage())
   bouncing = false
 })
 
@@ -57,7 +70,12 @@ setUnauthorizedHandler(() => {
 export async function restore(): Promise<void> {
   const res = await api.get<AuthInfo>('auth/me')
   if (res.ok && res.body?.permissions) apply(res.body)
-  else clear()
+  else {
+    clear()
+    profile.loginDisabled = loginDisabledAuth(
+      (res.body as { auth?: string } | null)?.auth,
+    )
+  }
   profile.loaded = true
 }
 
@@ -78,6 +96,10 @@ export async function login(
     name: username.trim(),
     kdf,
   })
+  if (res.status === 403) {
+    profile.loginDisabled = true
+    return ''
+  }
   if (!res.ok) return (res.body as { error?: string })?.error || 'login failed'
 
   apply(res.body)

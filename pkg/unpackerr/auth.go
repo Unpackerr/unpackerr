@@ -106,7 +106,7 @@ func (u *Unpackerr) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		info, ok := u.authenticate(request)
 		if !ok {
-			writeJSON(response, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			u.writeUnauthorized(response)
 
 			return
 		}
@@ -317,8 +317,10 @@ func proxyUsername(pass CryptPass, request *http.Request) (string, bool) {
 
 // proxyRolePerms maps a proxy role header onto configured roles. An empty
 // configured name (Trust "Always admin") keeps every trusted proxy user as
-// admin. Once a header name is selected, a missing, empty, or unknown value
-// rejects the request; it does not fall through to admin.
+// admin. Once a header name is selected, a missing or empty value rejects
+// the request; it does not fall through to admin. Extra names that are not
+// Unpackerr roles (IdP groups) are ignored. Access is the union of matching
+// names; no match is 401.
 func proxyRolePerms(
 	headerName string, request *http.Request, roles map[string]Role, adminKey string,
 ) ([]string, string, bool) {
@@ -327,32 +329,40 @@ func proxyRolePerms(
 		return AllPermissions(), adminKey, true
 	}
 
-	names := parseRoleHeader(request.Header.Get(headerName))
-	if len(names) == 0 {
+	matched := matchingProxyRoles(parseRoleHeader(request.Header.Get(headerName)), roles)
+	if len(matched) == 0 {
 		return nil, "", false
 	}
 
-	for _, name := range names {
-		if name == RoleAdmin {
-			continue
-		}
-
-		if _, exists := roles[name]; !exists {
-			return nil, "", false
-		}
-	}
-
-	perms := (&WebServer{Roles: roles}).permissionsForRoles(names)
+	perms := (&WebServer{Roles: roles}).permissionsForRoles(matched)
 	if len(perms) == 0 {
 		return nil, "", false
 	}
 
 	key := ""
-	if slices.Contains(names, RoleAdmin) {
+	if slices.Contains(matched, RoleAdmin) {
 		key = adminKey
 	}
 
 	return perms, key, true
+}
+
+func matchingProxyRoles(names []string, roles map[string]Role) []string {
+	out := make([]string, 0, len(names))
+
+	for _, name := range names {
+		if name == RoleAdmin {
+			out = append(out, name)
+
+			continue
+		}
+
+		if _, exists := roles[name]; exists {
+			out = append(out, name)
+		}
+	}
+
+	return out
 }
 
 func (u *Unpackerr) sessionAuth(user string) (authInfo, bool) {
@@ -654,6 +664,15 @@ func hostFromRemoteAddr(addr string) string {
 	}
 
 	return strings.Trim(addr[:idx], "[]")
+}
+
+func (u *Unpackerr) writeUnauthorized(response http.ResponseWriter) {
+	body := map[string]string{"error": "unauthorized"}
+	if pass := u.uiPassword(); pass.Webauth() {
+		body["auth"] = pass.Type().String()
+	}
+
+	writeJSON(response, http.StatusUnauthorized, body)
 }
 
 func writeJSON(response http.ResponseWriter, code int, msg any) {

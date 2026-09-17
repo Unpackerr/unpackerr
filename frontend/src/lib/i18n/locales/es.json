@@ -138,7 +138,9 @@
   "pages": {
     "login": {
       "Username": "Usuario",
-      "Password": "Contraseña"
+      "Password": "Contraseña",
+      "Disabled": "Inicios de sesión desactivados",
+      "DisabledHint": "El inicio con contraseña está desactivado. Entre por el proxy inverso. Si el proxy le trajo aquí, ninguno de los grupos coincidió con admin ni con un rol configurado."
     },
     "dashboard": {
       "Title": "Resumen",
@@ -585,8 +587,8 @@
       },
       "roleHeader": {
         "label": "Cabecera de rol",
-        "description": "Cabecera opcional cuyo valor es un rol de Unpackerr. Se muestra con autenticación por cabecera de proxy. Vacío deja a esos usuarios como admin. Si está seleccionada y falta, se deniega.",
-        "tooltip": "El proxy debe enviar admin o un rol personalizado de la lista. Varios nombres pueden ir separados por comas. Un rol ausente o desconocido es denegación, no admin. Nombre sugerido: X-Webauth-Role.",
+        "description": "Cabecera opcional cuyo valor es un rol de Unpackerr. Se muestra con autenticación por cabecera de proxy. Vacío deja a esos usuarios como admin. Si está seleccionada y falta, o no hay un rol coincidente, se deniega.",
+        "tooltip": "El proxy debe enviar admin o un rol personalizado de la lista. Varios nombres pueden ir separados por coma, punto y coma, barra vertical o espacio; los grupos extra del IdP se ignoran. Una cabecera ausente o sin rol coincidente es denegación, no admin. Nombre sugerido: X-Webauth-Role.",
         "options": {
           "none": "Siempre admin"
         }

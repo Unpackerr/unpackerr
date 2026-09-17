@@ -14,7 +14,7 @@
     Spinner,
   } from '@sveltestrap/sveltestrap'
   import { _ } from '../lib/i18n/Translate.svelte'
-  import { login } from '../lib/auth.svelte'
+  import { login, profile } from '../lib/auth.svelte'
   import icon from '../assets/icon.png'
 
   let username = $state('admin')
@@ -49,40 +49,51 @@
           </Row>
         </CardHeader>
         <CardBody>
-          <Form on:submit={onsubmit}>
-            <Label for="username" class="form-label mb-1"
-              >{$_('pages.login.Username')}</Label
-            >
-            <Input
-              id="username"
-              type="text"
-              bind:value={username}
-              autocomplete="username"
-            />
-            <Label for="password" class="form-label mb-1 mt-3"
-              >{$_('pages.login.Password')}</Label
-            >
-            <Input
-              id="password"
-              type="password"
-              class="mb-3"
-              bind:value={password}
-              autocomplete="current-password"
-            />
-            <Button
-              type="submit"
-              color="primary"
-              class="w-100"
-              disabled={loading}
-            >
-              {#if loading}<Spinner size="sm" />{/if}
-              <span class="ms-1">{$_('buttons.Login')}</span>
-            </Button>
-          </Form>
+          {#if profile.loginDisabled}
+            <div role="status">
+              <p class="fw-semibold mb-2">{$_('pages.login.Disabled')}</p>
+              <p class="mb-0 text-body-secondary">
+                {$_('pages.login.DisabledHint')}
+              </p>
+            </div>
+          {:else}
+            <Form on:submit={onsubmit}>
+              <Label for="username" class="form-label mb-1"
+                >{$_('pages.login.Username')}</Label
+              >
+              <Input
+                id="username"
+                type="text"
+                bind:value={username}
+                autocomplete="username"
+              />
+              <Label for="password" class="form-label mb-1 mt-3"
+                >{$_('pages.login.Password')}</Label
+              >
+              <Input
+                id="password"
+                type="password"
+                class="mb-3"
+                bind:value={password}
+                autocomplete="current-password"
+              />
+              <Button
+                type="submit"
+                color="primary"
+                class="w-100"
+                disabled={loading}
+              >
+                {#if loading}<Spinner size="sm" />{/if}
+                <span class="ms-1">{$_('buttons.Login')}</span>
+              </Button>
+            </Form>
+          {/if}
         </CardBody>
         {#if error}
-          <CardFooter class="text-danger small" role="alert" aria-live="assertive"
-            >{error}</CardFooter
+          <CardFooter
+            class="text-danger small"
+            role="alert"
+            aria-live="assertive">{error}</CardFooter
           >
         {/if}
       </Card>

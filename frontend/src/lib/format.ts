@@ -64,6 +64,28 @@ export function statusColor(status: string | undefined): string {
   return STATUS_COLORS[status.toLowerCase()] ?? 'secondary'
 }
 
+const STATUS_PHRASE: Record<string, string> = {
+  waiting: 'status.Waiting',
+  queued: 'status.Queued',
+  extracting: 'status.Extracting',
+  extractfailed: 'status.ExtractFailed',
+  'extract failed': 'status.ExtractFailed',
+  extracted: 'status.Extracted',
+  imported: 'status.Imported',
+  deleting: 'status.Deleting',
+  deletefailed: 'status.DeleteFailed',
+  'delete failed': 'status.DeleteFailed',
+  deleted: 'status.Deleted',
+  extractednothing: 'status.ExtractedNothing',
+  'extracted nothing': 'status.ExtractedNothing',
+}
+
+// Map API status ids such as extractednothing to status.* locale keys.
+export function statusPhrase(status: string | undefined): string {
+  if (!status) return 'phrases.Empty'
+  return STATUS_PHRASE[status.toLowerCase()] ?? status
+}
+
 const FINISHED_HISTORY = new Set([
   'extractfailed',
   'extract failed',

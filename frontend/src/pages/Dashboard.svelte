@@ -22,7 +22,12 @@
   import { api } from '../lib/api'
   import { has } from '../lib/auth.svelte'
   import { systemPerm } from '../lib/perms'
-  import { statusColor, relTime, progressCaption } from '../lib/format'
+  import {
+    statusColor,
+    statusPhrase,
+    relTime,
+    progressCaption,
+  } from '../lib/format'
   import { success, failure } from '../lib/toast'
   import { live, type LiveTopic } from '../lib/socket.svelte'
   import type { BufferStat, QueueItem } from '../lib/types'
@@ -489,7 +494,7 @@
                   <td>{item.app}</td>
                   <td
                     ><Badge color={statusColor(item.status)}
-                      >{item.status}</Badge
+                      >{$_(statusPhrase(item.status))}</Badge
                     ></td
                   >
                   <td class="small queue-progress">

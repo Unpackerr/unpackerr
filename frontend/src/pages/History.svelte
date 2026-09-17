@@ -23,6 +23,7 @@
   import { systemPerm } from '../lib/perms'
   import {
     statusColor,
+    statusPhrase,
     bytes,
     dateTime,
     relTime,
@@ -99,8 +100,11 @@
       </Col>
       <Col xs="auto">
         <Input
+          id="history-filter"
+          name="history-filter"
           type="text"
           bsSize="sm"
+          aria-label={$_('phrases.FilterPlaceholder')}
           placeholder={$_('phrases.FilterPlaceholder')}
           bind:value={filter}
           style="width: 12rem"
@@ -133,32 +137,50 @@
       <Table responsive hover size="sm" class="align-middle">
         <thead>
           <tr>
-            <th>{$_('pages.history.App')}</th>
-            <th>{$_('pages.history.Status')}</th>
-            <th class="text-end">{$_('pages.history.Files')}</th>
-            <th class="text-end">{$_('pages.history.Size')}</th>
-            <th class="text-end">{$_('pages.history.Retries')}</th>
-            <th>{$_('pages.history.Finished')}</th>
-            {#if canWrite}<th></th>{/if}
+            <th id="hist-app" scope="col">{$_('pages.history.App')}</th>
+            <th id="hist-status" scope="col">{$_('pages.history.Status')}</th>
+            <th id="hist-files" class="text-end" scope="col"
+              >{$_('pages.history.Files')}</th
+            >
+            <th id="hist-size" class="text-end" scope="col"
+              >{$_('pages.history.Size')}</th
+            >
+            <th id="hist-retries" class="text-end" scope="col"
+              >{$_('pages.history.Retries')}</th
+            >
+            <th id="hist-finished" scope="col">{$_('pages.history.Finished')}</th>
+            {#if canWrite}
+              <th id="hist-actions" class="text-end" scope="col"
+                >{$_('pages.history.Actions')}</th
+              >
+            {/if}
           </tr>
         </thead>
         {#each shown as row (row.id)}
           <tbody class="stack-item">
             <tr>
-              <td>{row.app}</td>
-              <td
-                ><Badge color={statusColor(row.status)}>{row.status}</Badge></td
+              <td headers="hist-app">{row.app}</td>
+              <td headers="hist-status"
+                ><Badge color={statusColor(row.status)}
+                  >{$_(statusPhrase(row.status))}</Badge
+                ></td
               >
-              <td class="text-end">{row.files || 0}</td>
-              <td class="text-end text-nowrap">{bytes(row.bytes)}</td>
-              <td class="text-end">{row.retries}</td>
-              <td class="small text-nowrap" title={dateTime(row.finished)}>
+              <td class="text-end" headers="hist-files">{row.files || 0}</td>
+              <td class="text-end text-nowrap" headers="hist-size"
+                >{bytes(row.bytes)}</td
+              >
+              <td class="text-end" headers="hist-retries">{row.retries}</td>
+              <td
+                class="small text-nowrap"
+                headers="hist-finished"
+                title={dateTime(row.finished)}
+              >
                 {isZeroTime(row.finished)
                   ? $_('phrases.Empty')
                   : relTime(row.finished, now)}
               </td>
               {#if canWrite}
-                <td class="text-end">
+                <td class="text-end" headers="hist-actions">
                   <Button
                     size="sm"
                     color="secondary"
@@ -170,7 +192,7 @@
               {/if}
             </tr>
             <tr class="stack-item-path">
-              <td colspan={canWrite ? 7 : 6}>
+              <td colspan={canWrite ? 7 : 6} headers="hist-app">
                 <code class="wrap small">{row.id}</code>
                 {#if row.error}<div class="text-danger small">
                     {row.error}

@@ -83,7 +83,7 @@
 {:else}
   <div class="app-shell">
     <Nav />
-    <div class="app-main">
+    <main class="app-main">
       <Container xxl class="page-wrap pt-2 pb-3">
         <RestartBanner />
         {#if top === ''}
@@ -102,7 +102,7 @@
           <p>{$_('phrases.NotFound', { values: { path: router.path } })}</p>
         {/if}
       </Container>
-    </div>
+    </main>
   </div>
 {/if}
 

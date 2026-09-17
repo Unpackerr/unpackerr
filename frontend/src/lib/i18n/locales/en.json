@@ -132,7 +132,8 @@
     "Theme": "Theme",
     "ThemeLight": "Light",
     "ThemeDark": "Dark",
-    "Language": "Language"
+    "Language": "Language",
+    "Toggle": "Toggle navigation"
   },
   "pages": {
     "login": {
@@ -215,6 +216,7 @@
       "Size": "Size",
       "Retries": "Retries",
       "Finished": "Finished",
+      "Actions": "Actions",
       "DeletedRow": "Deleted history row",
       "Cleared": "History cleared"
     },

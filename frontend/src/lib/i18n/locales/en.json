@@ -138,7 +138,9 @@
   "pages": {
     "login": {
       "Username": "Username",
-      "Password": "Password"
+      "Password": "Password",
+      "Disabled": "Logins Disabled",
+      "DisabledHint": "Password login is turned off. Sign in through the reverse proxy. If the proxy sent you here, none of the groups matched admin or a configured role."
     },
     "dashboard": {
       "Title": "Overview",
@@ -585,8 +587,8 @@
       },
       "roleHeader": {
         "label": "Role header",
-        "description": "Optional request header whose value is an Unpackerr role. Shown for proxy header auth. Empty keeps those users as admin. A selected header that is missing denies the request.",
-        "tooltip": "The proxy should send a built-in admin or a custom role name from the list below. Several names can be comma-separated. A missing or unknown role is access denied, not admin. Suggested name: X-Webauth-Role.",
+        "description": "Optional request header whose value is an Unpackerr role. Shown for proxy header auth. Empty keeps those users as admin. A selected header that is missing, or has no matching role, denies the request.",
+        "tooltip": "The proxy should send a built-in admin or a custom role name from the list below. Comma, semicolon, pipe, or space separated lists are unioned; extra names (IdP groups) are ignored. A missing header or no matching role is access denied, not admin. Suggested name: X-Webauth-Role.",
         "options": {
           "none": "Always admin"
         }

@@ -46,7 +46,8 @@
       "Error": {
         "type": "object",
         "properties": {
-          "error": {"type": "string"}
+          "error": {"type": "string"},
+          "auth": {"type": "string", "description": "UI auth mode on 401 when password login is disabled: header or noauth"}
         }
       },
       "LoginRequest": {

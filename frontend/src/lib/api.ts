@@ -17,9 +17,13 @@ function readCookie(name: string): string {
 
 let urlbase = readCookie('urlbase') || '/'
 let apiKey = ''
-let onUnauthorized: (() => void) | undefined
+let onUnauthorized:
+  | ((payload?: { error?: string; auth?: string }) => void)
+  | undefined
 
-export function setUnauthorizedHandler(fn: () => void) {
+export function setUnauthorizedHandler(
+  fn: (payload?: { error?: string; auth?: string }) => void,
+) {
   onUnauthorized = fn
 }
 
@@ -109,10 +113,14 @@ async function request<T = any>(
 
     if (response.status === 401) {
       // Failed login is an expected 401; do not bounce the session.
-      if (!uri.includes('auth/login')) onUnauthorized?.()
+      if (!uri.includes('auth/login')) onUnauthorized?.(payload)
       const msg = payload?.error || 'unauthorized'
 
-      return { ok: false, status: 401, body: { error: msg } as T }
+      return {
+        ok: false,
+        status: 401,
+        body: { error: msg, auth: payload?.auth } as T,
+      }
     }
 
     if (!response.ok) {

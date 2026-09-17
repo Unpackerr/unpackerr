@@ -490,10 +490,12 @@ sections:
         desc: |
           Used with webauth (proxy header auth). Empty keeps those proxy users
           as admin. Ignored for noauth and local password login. Set this to a
-          header the reverse proxy fills, for example X-Webauth-Role. The value
-          must be a built-in admin or a custom [webserver.roles] name. Comma,
-          semicolon, pipe, or space separated lists are unioned. A selected
-          header that is missing, empty, or unknown is access denied, not admin.
+          header the reverse proxy fills, for example X-Webauth-Role or
+          X-Authentik-Groups. Matching names are a built-in admin or a custom
+          [webserver.roles] name. Comma, semicolon, pipe, or space separated
+          lists are unioned; extra IdP groups are ignored. A selected header
+          that is missing, empty, or has no matching role is access denied,
+          not admin.
           example: ui_role_header = "X-Webauth-Role"
       - name: log_file
         envvar: LOG_FILE

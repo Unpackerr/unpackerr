@@ -449,10 +449,6 @@ func (u *Unpackerr) queueSnapshot() []QueueItem {
 	return u.queueSnapshotLocked()
 }
 
-func queueFromExtract(itemID string, item *Extract) QueueItem {
-	return (*Unpackerr)(nil).queueFromExtract(itemID, item)
-}
-
 func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 	queue := QueueItem{
 		ID:         itemID,
@@ -524,10 +520,6 @@ const (
 )
 
 func (u *Unpackerr) fillQueueDue(queue *QueueItem, itemID string, item *Extract) {
-	if u == nil || item == nil {
-		return
-	}
-
 	due, kind := u.queueDue(itemID, item)
 	if due.IsZero() || kind == "" {
 		return

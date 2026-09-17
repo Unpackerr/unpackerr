@@ -188,7 +188,9 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 	}
 	item.XProg.Extract = item
 
-	got := queueFromExtract("Show.Name", item)
+	unpack := New()
+
+	got := unpack.queueFromExtract("Show.Name", item)
 	if got.ID != "Show.Name" || got.Percent != 25 || got.Wrote != 25 || got.Total != 100 ||
 		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" ||
 		got.SpeedBps != 42 || got.AvgSpeedBps != 24 || !got.ETA.Equal(eta) {
@@ -198,7 +200,7 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 	item.Path = `C:\dl\show`
 	item.XProg.XFile.FilePath = `C:\dl\show\a.rar`
 
-	got = queueFromExtract("Show.Name", item)
+	got = unpack.queueFromExtract("Show.Name", item)
 	if got.Archive != "a.rar" {
 		t.Fatalf("backslash archive %q", got.Archive)
 	}

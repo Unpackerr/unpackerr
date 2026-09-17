@@ -87,6 +87,33 @@ func TestExampleTOMLContainsWebserver(t *testing.T) {
 	}
 }
 
+func TestExampleTOMLCommentsStarrApps(t *testing.T) {
+	t.Parallel()
+
+	body := MustLoad(t).ExampleTOML()
+	for _, header := range []string{"[sonarr.0]", "[radarr.0]", "[lidarr.0]", "[readarr.0]"} {
+		if strings.Contains(body, "\n"+header+"\n") {
+			t.Fatalf("example must comment %s so first-run does not warn, got:\n%s",
+				header, snippet(body, header))
+		}
+
+		if !strings.Contains(body, "#"+header) {
+			t.Fatalf("example missing commented %s", header)
+		}
+	}
+
+	var parsed map[string]any
+	if _, err := toml.Decode(body, &parsed); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, app := range []string{"sonarr", "radarr", "lidarr", "readarr"} {
+		if _, ok := parsed[app]; ok {
+			t.Fatalf("commented %s header must not decode to a live instance: %#v", app, parsed[app])
+		}
+	}
+}
+
 func TestRenderLiveCommentsDefaults(t *testing.T) {
 	t.Parallel()
 

@@ -187,9 +187,8 @@ passwords = []
 ## Identify each instance with a short key: [sonarr.uhd], [folder.tv].       ##
 ## Changed in v1.0.0 (September 2026): map keys, not [[array]] list rows.    ##
 ## You MUST uncomment the [header.0], url and api_key for any Starr app.     ##
-## The [sonarr.0] and [radarr.0] headers come uncommented. Uncomment the url ##
-## and api_key if they are in use. Comment them with a hash if they are not. ##
-## Uncomment the [lidarr.0] and/or [readarr.0] headers and values if in use. ##
+## Uncomment [sonarr.0], [radarr.0], [lidarr.0], and/or [readarr.0] plus the ##
+## url and api_key if that app is in use.                                    ##
 ## Do not set a bare UN_SONARR / UN_FOLDER / UN_WEBHOOK / UN_CMDHOOK.        ##
 ###############################################################################
 ###############################################################################
@@ -198,9 +197,7 @@ passwords = []
 ###############################################################################
 ###############################################################################
 
-## Leaving the [sonarr.0] header uncommented (no leading hash #) without also
-## uncommenting the api_key (remove the hash #) will produce a startup warning.
-[sonarr.0]
+#[sonarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".
@@ -245,9 +242,7 @@ passwords = []
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
 
-## Leaving the [radarr.0] header uncommented (no leading hash #) without also
-## uncommenting the api_key (remove the hash #) will produce a startup warning.
-[radarr.0]
+#[radarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
 ## Sonarr-compatible app such as Sportarr so logs and Discord are not
 ## tagged Sonarr. Add Whisparr as a Radarr instance with name = "Whisparr".

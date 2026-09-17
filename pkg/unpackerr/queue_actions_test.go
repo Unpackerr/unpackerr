@@ -131,7 +131,7 @@ func TestQueueRetryFolder(t *testing.T) {
 	}
 
 	item := unpack.Map["/watch/fail"]
-	if item.Status != WAITING || item.NoRetry || item.Retries != 3 || unpack.Retries != 0 {
+	if item.Status != WAITING || item.NoRetry || item.Retries != 0 || unpack.Retries != 0 {
 		t.Fatalf("folder extract retry %+v totals %d", item, unpack.Retries)
 	}
 

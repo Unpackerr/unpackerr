@@ -206,6 +206,8 @@
       "UpdatedAgo": "Ενημερώθηκε πριν από {age}",
       "LastWrite": "Τελευταία εγγραφή",
       "ArchiveOf": "Αρχείο {n} από {total}",
+      "SpeedAvg": "{speed}/s μ.ό.",
+      "SpeedNow": "{speed}/s",
       "ETA": "ETA {remain}",
       "DueStart": "Ξεκινά σε {remain}",
       "DueRetry": "Επανάληψη σε {remain}",

@@ -290,7 +290,20 @@
     const max = item.total || item.compressed || 0
     const parts: string[] = []
     if (max || item.percent) parts.push(progressCaption(item))
-    if (item.speedBps) parts.push(`${bytes(item.speedBps)}/s`)
+    if (item.avgSpeedBps) {
+      parts.push(
+        $_('pages.dashboard.SpeedAvg', {
+          values: { speed: bytes(item.avgSpeedBps) },
+        }),
+      )
+    }
+    if (item.speedBps) {
+      parts.push(
+        $_('pages.dashboard.SpeedNow', {
+          values: { speed: bytes(item.speedBps) },
+        }),
+      )
+    }
     if (!isZeroTime(item.eta)) {
       const remain = remainCompact(item.eta, clock)
       parts.push(
@@ -557,7 +570,10 @@
                           ></div>
                         </div>
                         {#if cap}
-                          <div class="queue-progress-caption text-muted">
+                          <div
+                            class="queue-progress-caption text-muted"
+                            title={cap}
+                          >
                             {cap}
                           </div>
                         {/if}

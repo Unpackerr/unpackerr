@@ -206,6 +206,8 @@
       "UpdatedAgo": "Updated {age} ago",
       "LastWrite": "Last write",
       "ArchiveOf": "Archive {n} of {total}",
+      "SpeedAvg": "{speed}/s avg",
+      "SpeedNow": "{speed}/s",
       "ETA": "ETA {remain}",
       "DueStart": "Starts in {remain}",
       "DueRetry": "Retry in {remain}",

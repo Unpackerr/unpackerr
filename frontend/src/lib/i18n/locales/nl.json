@@ -206,6 +206,8 @@
       "UpdatedAgo": "{age} geleden bijgewerkt",
       "LastWrite": "Laatste schrijf",
       "ArchiveOf": "Archief {n} van {total}",
+      "SpeedAvg": "{speed}/s gem.",
+      "SpeedNow": "{speed}/s",
       "ETA": "ETA {remain}",
       "DueStart": "Start over {remain}",
       "DueRetry": "Opnieuw over {remain}",

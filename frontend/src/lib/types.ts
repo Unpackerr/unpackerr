@@ -113,6 +113,7 @@ export interface QueueItem {
   extracted?: number
   archive?: string
   speedBps?: number
+  avgSpeedBps?: number
   eta?: string
   due?: string
   dueKind?: 'start' | 'retry' | 'cleanup' | 'history'

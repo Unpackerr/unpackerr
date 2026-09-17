@@ -30,7 +30,7 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 
 	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
 		exp.XProg.Extracted++
-		exp.XProg.ResetSpeed()
+		exp.XProg.NoteArchiveDone()
 	}
 
 	exp.XProg.Progress = exp.Progress

@@ -65,30 +65,31 @@ type HistoryRecord struct {
 
 // QueueItem is a live in-flight extract for GET /api/queue.
 type QueueItem struct {
-	ID         string        `json:"id"`
-	App        string        `json:"app"`
-	URL        string        `json:"url,omitempty"`
-	Path       string        `json:"path"`
-	OutputPath string        `json:"outputPath,omitempty"`
-	Status     ExtractStatus `json:"status"`
-	Retries    uint          `json:"retries"`
-	Updated    time.Time     `json:"updated"`
-	Progress   string        `json:"progress,omitempty"`
-	Error      string        `json:"error,omitempty"`
-	Percent    float64       `json:"percent,omitempty"`
-	Wrote      uint64        `json:"wrote,omitempty"`
-	Total      uint64        `json:"total,omitempty"`
-	Read       uint64        `json:"read,omitempty"`
-	Compressed uint64        `json:"compressed,omitempty"`
-	Files      int           `json:"files,omitempty"`
-	Count      int           `json:"count,omitempty"`
-	Archives   int           `json:"archives,omitempty"`
-	Extracted  int           `json:"extracted,omitempty"`
-	Archive    string        `json:"archive,omitempty"`
-	SpeedBps   uint64        `json:"speedBps,omitempty"`
-	ETA        time.Time     `json:"eta,omitzero"`
-	Due        time.Time     `json:"due,omitzero"`
-	DueKind    string        `json:"dueKind,omitempty"` // start, retry, cleanup, history
+	ID          string        `json:"id"`
+	App         string        `json:"app"`
+	URL         string        `json:"url,omitempty"`
+	Path        string        `json:"path"`
+	OutputPath  string        `json:"outputPath,omitempty"`
+	Status      ExtractStatus `json:"status"`
+	Retries     uint          `json:"retries"`
+	Updated     time.Time     `json:"updated"`
+	Progress    string        `json:"progress,omitempty"`
+	Error       string        `json:"error,omitempty"`
+	Percent     float64       `json:"percent,omitempty"`
+	Wrote       uint64        `json:"wrote,omitempty"`
+	Total       uint64        `json:"total,omitempty"`
+	Read        uint64        `json:"read,omitempty"`
+	Compressed  uint64        `json:"compressed,omitempty"`
+	Files       int           `json:"files,omitempty"`
+	Count       int           `json:"count,omitempty"`
+	Archives    int           `json:"archives,omitempty"`
+	Extracted   int           `json:"extracted,omitempty"`
+	Archive     string        `json:"archive,omitempty"`
+	SpeedBps    uint64        `json:"speedBps,omitempty"`    // last sample interval
+	AvgSpeedBps uint64        `json:"avgSpeedBps,omitempty"` // bytes so far / extract duration
+	ETA         time.Time     `json:"eta,omitzero"`
+	Due         time.Time     `json:"due,omitzero"`
+	DueKind     string        `json:"dueKind,omitempty"` // start, retry, cleanup, history
 }
 
 func isDurableHistory(status ExtractStatus) bool {
@@ -506,6 +507,7 @@ func fillQueueProgress(queue *QueueItem, item *Extract) {
 	queue.Archives = item.XProg.Archives
 	queue.Extracted = item.XProg.Extracted
 	queue.SpeedBps = item.XProg.SpeedBps
+	queue.AvgSpeedBps = item.XProg.AvgSpeedBps
 	queue.ETA = item.XProg.ETA
 
 	if prog.XFile != nil {

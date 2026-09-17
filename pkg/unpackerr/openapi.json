@@ -186,8 +186,9 @@
           "archives": {"type": "integer"},
           "extracted": {"type": "integer"},
           "archive": {"type": "string", "description": "Current archive path relative to the item path"},
-          "speedBps": {"type": "integer", "description": "Smoothed extraction speed for the current archive, bytes per second"},
-          "eta": {"type": "string", "format": "date-time", "description": "Estimated finish time for the current archive"},
+          "speedBps": {"type": "integer", "description": "Current archive speed over the last sample interval, bytes per second"},
+          "avgSpeedBps": {"type": "integer", "description": "Average extract speed (bytes so far / duration), bytes per second; used for ETA"},
+          "eta": {"type": "string", "format": "date-time", "description": "Estimated finish time for the current archive, from avgSpeedBps"},
           "due": {"type": "string", "format": "date-time", "description": "When the next start, retry, cleanup, or history transition is due"},
           "dueKind": {"type": "string", "enum": ["start", "retry", "cleanup", "history"], "description": "What due counts down toward"}
         }

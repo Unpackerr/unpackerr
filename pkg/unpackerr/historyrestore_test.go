@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -90,7 +91,7 @@ func TestRestoreQueueInterruptedAndQueued(t *testing.T) {
 	}
 }
 
-func TestRestoreQueueSkipsOldDeletedAndFolder(t *testing.T) {
+func TestRestoreQueueSkipsOldAndDeleted(t *testing.T) {
 	t.Parallel()
 
 	unpack := restoreTestUnpackerr(t)
@@ -102,13 +103,9 @@ func TestRestoreQueueSkipsOldDeletedAndFolder(t *testing.T) {
 	unpack.upsertHistory(HistoryRecord{
 		ID: "gone", Kind: string(starr.Sonarr), Path: "/dl/gone", Status: DELETED, Updated: now,
 	})
-	unpack.upsertHistory(HistoryRecord{
-		ID: "/watch/folder", Kind: FolderString, App: FolderString, Path: "/watch/folder",
-		Status: EXTRACTED, Updated: now,
-	})
 	unpack.restoreQueueFromHistory()
 
-	if unpack.Map["old"] != nil || unpack.Map["gone"] != nil || unpack.Map["/watch/folder"] != nil {
+	if unpack.Map["old"] != nil || unpack.Map["gone"] != nil {
 		t.Fatalf("skipped rows present: %+v", unpack.Map)
 	}
 }
@@ -305,5 +302,244 @@ func TestForgetPersistsAndSkipsRestore(t *testing.T) {
 
 	if !unpack.isForgotten("show") {
 		t.Fatal("tombstone missing after restore")
+	}
+}
+
+func TestRestoreQueueFolderExtracted(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	cfg := &FolderConfig{Path: watch}
+	unpack.folders.Config = []*FolderConfig{cfg}
+	name := filepath.Join(watch, "movie")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: EXTRACTED, Updated: time.Now().Add(-time.Minute), Retries: 1,
+		NewFiles:  []string{filepath.Join(name, "ep.mkv")},
+		OrigFiles: []string{filepath.Join(name, "movie.rar")},
+		PreFiles:  []string{filepath.Join(name, "keep.txt")},
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map[name]
+	if item == nil || item.Status != EXTRACTED || item.App != FolderString || item.Retries != 1 {
+		t.Fatalf("map %+v", item)
+	}
+
+	folder := unpack.folders.Folders[name]
+	if folder == nil || folder.Status != EXTRACTED || folder.Retries != 1 || folder.Config != cfg {
+		t.Fatalf("tracker %+v", folder)
+	}
+
+	if len(folder.Files) != 1 || len(folder.Archives.List()) != 1 {
+		t.Fatalf("files %+v archives %+v", folder.Files, folder.Archives)
+	}
+
+	if _, ok := folder.PreFiles[filepath.Join(name, "keep.txt")]; !ok {
+		t.Fatalf("preFiles %+v", folder.PreFiles)
+	}
+}
+
+func TestRestoreQueueFolderInterruptedRetries(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	cfg := &FolderConfig{Path: watch}
+	unpack.folders.Config = []*FolderConfig{cfg}
+	name := filepath.Join(watch, "bad.zip")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: EXTRACTING, Updated: time.Now(), Retries: 1,
+		PreFiles: []string{filepath.Join(name, "keep.txt")},
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map[name]
+	if item == nil || item.Status != EXTRACTFAILED || item.Retries != 1 {
+		t.Fatalf("map %+v", item)
+	}
+
+	folder := unpack.folders.Folders[name]
+	if folder == nil || folder.Status != EXTRACTFAILED || folder.Retries != 1 {
+		t.Fatalf("tracker %+v", folder)
+	}
+
+	if _, ok := folder.PreFiles[filepath.Join(name, "keep.txt")]; !ok {
+		t.Fatalf("preFiles %+v", folder.PreFiles)
+	}
+
+	unpack.checkFolderStats(time.Now())
+
+	if folder = unpack.folders.Folders[name]; folder == nil || folder.Status != WAITING || folder.Retries != 2 {
+		t.Fatalf("retry %+v", folder)
+	}
+
+	if item = unpack.Map[name]; item == nil || item.Status != WAITING || item.Retries != 2 {
+		t.Fatalf("retry map %+v", item)
+	}
+}
+
+func TestRestoreQueueFolderWatchPathGone(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.folders.Config = []*FolderConfig{{Path: t.TempDir()}}
+	unpack.upsertHistory(HistoryRecord{
+		ID: "/other/movie", Kind: FolderString, App: FolderString, Path: "/other/movie",
+		Status: EXTRACTED, Updated: time.Now(),
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map["/other/movie"] != nil {
+		t.Fatal("restored folder for a path that is not watched")
+	}
+
+	if unpack.folders.Folders["/other/movie"] != nil {
+		t.Fatal("tracker has unmatched folder")
+	}
+}
+
+func TestSeedFolderTrackerDropsUnwatched(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	name := filepath.Join(t.TempDir(), "movie")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: EXTRACTED, Updated: time.Now(),
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map[name] == nil {
+		t.Fatal("folder should stay in map until the watcher exists")
+	}
+
+	unpack.seedFolderTracker()
+
+	if unpack.Map[name] != nil || unpack.folders.Folders[name] != nil {
+		t.Fatal("unwatched restored folder should drop after PollFolders")
+	}
+}
+
+func TestRestoreQueueFolderImportedSkipped(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	unpack.folders.Config = []*FolderConfig{{Path: watch}}
+	name := filepath.Join(watch, "movie")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: IMPORTED, Updated: time.Now(),
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map[name] != nil {
+		t.Fatal("folder imported row restored")
+	}
+}
+
+func TestRestoreQueueForgottenFolderNotRestored(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	name := filepath.Join(watch, "movie")
+	unpack.folders.Config = []*FolderConfig{{Path: watch}}
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: EXTRACTED, Updated: time.Now(), Forgotten: true,
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map[name] != nil {
+		t.Fatal("forgotten folder restored")
+	}
+
+	if unpack.isForgotten(name) {
+		t.Fatal("folder forget should not rehydrate a Starr tombstone")
+	}
+}
+
+func TestRestoreQueueFolderQueuedBecomesWaiting(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	unpack.folders.Config = []*FolderConfig{{Path: watch}}
+	name := filepath.Join(watch, "movie.rar")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: QUEUED, Updated: time.Now(),
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map[name]
+	folder := unpack.folders.Folders[name]
+
+	if item == nil || item.Status != WAITING || folder == nil || folder.Status != WAITING {
+		t.Fatalf("queued folder %+v tracker %+v", item, folder)
+	}
+}
+
+func TestMaybeRecordHistoryWritesOrigFiles(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+
+	unpack.maybeRecordHistory("/watch/a", &Extract{
+		App:     FolderString,
+		Path:    "/watch/a",
+		Status:  EXTRACTED,
+		Updated: time.Now(),
+		Resp: &xtractr.Response{
+			NewFiles: []string{"/watch/a/ep.mkv"},
+			Archives: xtractr.ArchiveList{"/watch/a": []string{"/watch/a/a.rar"}},
+		},
+	})
+
+	if len(unpack.records) != 1 || len(unpack.records[0].OrigFiles) != 1 ||
+		unpack.records[0].OrigFiles[0] != "/watch/a/a.rar" {
+		t.Fatalf("%+v", unpack.records)
+	}
+}
+
+func TestFolderConfigForPathPrefersLongerWatch(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	parent := &FolderConfig{Path: root}
+	child := &FolderConfig{Path: filepath.Join(root, "tv")}
+	got := folderConfigForPath([]*FolderConfig{parent, child}, filepath.Join(root, "tv", "show"))
+
+	if got != child {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestFolderConfigForPathRootWatch(t *testing.T) {
+	t.Parallel()
+
+	rootPath := filepath.Clean("/")
+	root := &FolderConfig{Path: rootPath}
+	nestedPath := filepath.Join(rootPath, "downloads")
+	nested := &FolderConfig{Path: nestedPath}
+	item := filepath.Join(nestedPath, "movie")
+
+	if got := folderConfigForPath([]*FolderConfig{root}, item); got != root {
+		t.Fatalf("root watch %q missed %q", rootPath, item)
+	}
+
+	if got := folderConfigForPath([]*FolderConfig{root, nested}, item); got != nested {
+		t.Fatalf("nested watch lost to root: %+v", got)
+	}
+
+	slash := &FolderConfig{Path: nestedPath + string(os.PathSeparator)}
+	if got := folderConfigForPath([]*FolderConfig{slash}, item); got != slash {
+		t.Fatalf("trailing-sep watch missed %q", item)
 	}
 }

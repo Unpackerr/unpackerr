@@ -58,6 +58,7 @@ type HistoryRecord struct {
 	MaxBytes    uint64        `json:"maxBytes,omitempty"`
 	NoRetry     bool          `json:"noRetry,omitempty"`
 	NewFiles    []string      `json:"newFiles,omitempty"`
+	OrigFiles   []string      `json:"origFiles,omitempty"` // Archive paths; folder delete_orig after a restart.
 	PreFiles    []string      `json:"preFiles,omitempty"`
 	Forgotten   bool          `json:"forgotten,omitempty"`
 }
@@ -318,6 +319,7 @@ func fillHistoryStats(rec *HistoryRecord, item *Extract) {
 	rec.Files = len(item.Resp.NewFiles)
 	rec.Bytes = item.Resp.Size
 	rec.NewFiles = append([]string(nil), item.Resp.NewFiles...)
+	rec.OrigFiles = append([]string(nil), item.Resp.Archives.List()...)
 
 	if item.Resp.Elapsed > 0 {
 		rec.Elapsed = item.Resp.Elapsed.Round(time.Second).String()

@@ -456,6 +456,7 @@ func (u *Unpackerr) Run() {
 	}
 
 	u.PollFolders()          // This initializes channel(s) used below.
+	u.seedFolderTracker()    // PollFolders replaced the tracker; attach restored Folder rows.
 	u.retrieveAppQueues(now) // Get in-app queues on startup.
 	u.checkQueueChanges(now) // Same pairing as the poller tick; restored IMPORTED may still be queued.
 

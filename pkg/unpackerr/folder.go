@@ -101,11 +101,6 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		return
 	}
 
-	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
-	u.lockHistory()
-	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].Updated, true)
-	u.unlockHistory()
-
 	exclude := folderExcludeSuffixes(name, folder.Config)
 
 	if folder.Config.MoveBack {
@@ -122,6 +117,11 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 			folder.PreFiles = snap
 		}
 	}
+
+	// create a queue counter in the main history; add to u.Map and send webhook for a new folder.
+	u.lockHistory()
+	item := u.updateQueueStatus(&newStatus{Name: name, Status: QUEUED}, u.folders.Folders[name].Updated, true)
+	u.unlockHistory()
 
 	// extract it.
 	queueSize, err := u.Extract(&xtractr.Xtract{
@@ -533,6 +533,15 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 
 	u.Map[data.Name].Status = data.Status
 	u.Map[data.Name].Updated = now
+
+	if folder, ok := u.folders.Folders[data.Name]; ok && u.Map[data.Name].App == FolderString {
+		u.copyFolderRetriesLocked(data.Name, folder)
+
+		u.Map[data.Name].NoRetry = folder.NoRetry
+		if folder.PreFiles != nil {
+			u.Map[data.Name].PreFiles = folder.PreFiles
+		}
+	}
 
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])

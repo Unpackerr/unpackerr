@@ -114,3 +114,28 @@ export function progressCaption(item: {
   if (!max && !item.percent) return item.progress || ''
   return `${bytes(have)} / ${bytes(max)} (${Math.round(item.percent || 0)}%)`
 }
+
+// Compact remaining time until iso; empty when due/eta is missing or already past.
+export function remainCompact(iso: string | undefined, now = Date.now()): string {
+  if (!iso || isZeroTime(iso)) return ''
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return ''
+
+  const sec = Math.ceil((t - now) / 1000)
+  if (sec <= 0) return ''
+  if (sec < 60) return `${sec}s`
+
+  const min = Math.floor(sec / 60)
+  if (min < 60) {
+    const rem = sec % 60
+    return rem ? `${min}m ${rem}s` : `${min}m`
+  }
+
+  const hr = Math.floor(min / 60)
+  if (hr < 24) {
+    const rem = min % 60
+    return rem ? `${hr}h ${rem}m` : `${hr}h`
+  }
+
+  return `${Math.floor(hr / 24)}d`
+}

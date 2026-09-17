@@ -85,6 +85,10 @@ type QueueItem struct {
 	Archives   int           `json:"archives,omitempty"`
 	Extracted  int           `json:"extracted,omitempty"`
 	Archive    string        `json:"archive,omitempty"`
+	SpeedBps   uint64        `json:"speedBps,omitempty"`
+	ETA        time.Time     `json:"eta,omitzero"`
+	Due        time.Time     `json:"due,omitzero"`
+	DueKind    string        `json:"dueKind,omitempty"` // start, retry, cleanup, history
 }
 
 func isDurableHistory(status ExtractStatus) bool {
@@ -444,9 +448,13 @@ func (u *Unpackerr) queueSnapshot() []QueueItem {
 	return u.queueSnapshotLocked()
 }
 
-func queueFromExtract(id string, item *Extract) QueueItem {
+func queueFromExtract(itemID string, item *Extract) QueueItem {
+	return (*Unpackerr)(nil).queueFromExtract(itemID, item)
+}
+
+func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 	queue := QueueItem{
-		ID:         id,
+		ID:         itemID,
 		App:        item.Label(),
 		URL:        item.URL,
 		Path:       item.Path,
@@ -464,34 +472,125 @@ func queueFromExtract(id string, item *Extract) QueueItem {
 		queue.Progress = item.Note
 	}
 
-	if item.XProg != nil {
-		if prog := item.XProg.String(); prog != "no progress yet" {
-			queue.Progress = prog
-		}
-
-		if prog := item.XProg.Progress; prog != nil {
-			queue.Percent = prog.Percent()
-			queue.Wrote = prog.Wrote
-			queue.Total = prog.Total
-			queue.Read = prog.Read
-			queue.Compressed = prog.Compressed
-			queue.Files = prog.Files
-			queue.Count = prog.Count
-			queue.Archives = item.XProg.Archives
-			queue.Extracted = item.XProg.Extracted
-
-			if prog.XFile != nil {
-				rel := strings.TrimPrefix(prog.XFile.FilePath, item.Path)
-				queue.Archive = strings.TrimLeft(filepath.ToSlash(rel), `/\`)
-			}
-		}
-	}
+	fillQueueProgress(&queue, item)
+	u.fillQueueDue(&queue, itemID, item)
 
 	if item.Resp != nil && item.Resp.Error != nil {
 		queue.Error = item.Resp.Error.Error()
 	}
 
 	return queue
+}
+
+func fillQueueProgress(queue *QueueItem, item *Extract) {
+	if item.XProg == nil {
+		return
+	}
+
+	if prog := item.XProg.String(); prog != "no progress yet" {
+		queue.Progress = prog
+	}
+
+	prog := item.XProg.Progress
+	if prog == nil {
+		return
+	}
+
+	queue.Percent = prog.Percent()
+	queue.Wrote = prog.Wrote
+	queue.Total = prog.Total
+	queue.Read = prog.Read
+	queue.Compressed = prog.Compressed
+	queue.Files = prog.Files
+	queue.Count = prog.Count
+	queue.Archives = item.XProg.Archives
+	queue.Extracted = item.XProg.Extracted
+	queue.SpeedBps = item.XProg.SpeedBps
+	queue.ETA = item.XProg.ETA
+
+	if prog.XFile != nil {
+		rel := strings.TrimPrefix(prog.XFile.FilePath, item.Path)
+		queue.Archive = strings.TrimLeft(filepath.ToSlash(rel), `/\`)
+	}
+}
+
+const (
+	dueStart   = "start"
+	dueRetry   = "retry"
+	dueCleanup = "cleanup"
+	dueHistory = "history"
+)
+
+func (u *Unpackerr) fillQueueDue(queue *QueueItem, itemID string, item *Extract) {
+	if u == nil || item == nil {
+		return
+	}
+
+	due, kind := u.queueDue(itemID, item)
+	if due.IsZero() || kind == "" {
+		return
+	}
+
+	queue.Due = due
+	queue.DueKind = kind
+}
+
+func (u *Unpackerr) queueDue(itemID string, item *Extract) (time.Time, string) {
+	switch item.Status {
+	case WAITING:
+		if u.StartDelay.Duration <= 0 {
+			return time.Time{}, ""
+		}
+
+		if item.App != FolderString && item.Note != "" {
+			return time.Time{}, ""
+		}
+
+		return item.Updated.Add(u.StartDelay.Duration), dueStart
+	case EXTRACTFAILED:
+		if item.NoRetry || item.Retries >= u.maxRetries() {
+			return time.Time{}, ""
+		}
+
+		return item.Updated.Add(u.RetryDelay.Duration), dueRetry
+	case EXTRACTED:
+		delay := u.folderDeleteAfter(itemID, item)
+		if delay <= 0 {
+			return time.Time{}, ""
+		}
+
+		return item.Updated.Add(delay), dueCleanup
+	case IMPORTED:
+		if item.DeleteDelay < 0 {
+			return time.Time{}, ""
+		}
+
+		return item.Updated.Add(item.DeleteDelay), dueCleanup
+	case DELETED:
+		return item.Updated.Add(item.DeleteDelay), dueHistory
+	case EXTRACTEDNOTHING:
+		if item.App != FolderString || u.StartDelay.Duration <= 0 {
+			return time.Time{}, ""
+		}
+
+		return item.Updated.Add(u.StartDelay.Duration), dueHistory
+	default:
+		return time.Time{}, ""
+	}
+}
+
+func (u *Unpackerr) folderDeleteAfter(itemID string, item *Extract) time.Duration {
+	if item.App != FolderString {
+		return 0
+	}
+
+	if u.folders != nil {
+		if folder := u.folders.Folders[itemID]; folder != nil && folder.Config != nil && folder.Config.DeleteAfter != nil {
+			return folder.Config.DeleteAfter.Duration
+		}
+	}
+
+	return item.DeleteDelay
 }
 
 func (u *Unpackerr) deleteHistoryID(itemID string) error {

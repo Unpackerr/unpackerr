@@ -205,6 +205,13 @@
       "Refresh": "Ανανέωση",
       "UpdatedAgo": "Ενημερώθηκε πριν από {age}",
       "LastWrite": "Τελευταία εγγραφή",
+      "ArchiveOf": "Αρχείο {n} από {total}",
+      "ETA": "ETA {remain}",
+      "DueStart": "Ξεκινά σε {remain}",
+      "DueRetry": "Επανάληψη σε {remain}",
+      "DueCleanup": "Εκκαθάριση σε {remain}",
+      "DueHistory": "Ιστορικό σε {remain}",
+      "DueSoon": "σύντομα",
       "Retrying": "Επανάληψη {id}",
       "Forgotten": "Ξεχάστηκε {id}"
     },

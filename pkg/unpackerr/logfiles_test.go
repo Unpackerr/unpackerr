@@ -162,6 +162,7 @@ func TestLogFollowSnapshotUnknownID(t *testing.T) {
 func TestQueueFromExtractProgressFields(t *testing.T) {
 	t.Parallel()
 
+	eta := time.Unix(1_700_000_100, 0)
 	item := &Extract{
 		Path:    "/dl/show",
 		App:     "Sonarr",
@@ -171,6 +172,8 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 			Extract:   &Extract{Path: "/dl/show"},
 			Archives:  3,
 			Extracted: 1,
+			SpeedBps:  42,
+			ETA:       eta,
 			Progress: &xtractr.Progress{
 				Total:      100,
 				Wrote:      25,
@@ -186,7 +189,8 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 
 	got := queueFromExtract("Show.Name", item)
 	if got.ID != "Show.Name" || got.Percent != 25 || got.Wrote != 25 || got.Total != 100 ||
-		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" {
+		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" ||
+		got.SpeedBps != 42 || !got.ETA.Equal(eta) {
 		t.Fatalf("%+v", got)
 	}
 

@@ -205,6 +205,13 @@
       "Refresh": "Refresh",
       "UpdatedAgo": "Updated {age} ago",
       "LastWrite": "Last write",
+      "ArchiveOf": "Archive {n} of {total}",
+      "ETA": "ETA {remain}",
+      "DueStart": "Starts in {remain}",
+      "DueRetry": "Retry in {remain}",
+      "DueCleanup": "Cleanup in {remain}",
+      "DueHistory": "History in {remain}",
+      "DueSoon": "soon",
       "Retrying": "Retrying {id}",
       "Forgotten": "Forgot {id}"
     },

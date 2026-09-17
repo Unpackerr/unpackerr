@@ -112,6 +112,10 @@ export interface QueueItem {
   archives?: number
   extracted?: number
   archive?: string
+  speedBps?: number
+  eta?: string
+  due?: string
+  dueKind?: 'start' | 'retry' | 'cleanup' | 'history'
 }
 
 export interface HistoryRecord {

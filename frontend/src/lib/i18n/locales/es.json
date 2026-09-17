@@ -205,6 +205,13 @@
       "Refresh": "Actualizar",
       "UpdatedAgo": "Actualizado hace {age}",
       "LastWrite": "Última escritura",
+      "ArchiveOf": "Archivo {n} de {total}",
+      "ETA": "ETA {remain}",
+      "DueStart": "Empieza en {remain}",
+      "DueRetry": "Reintento en {remain}",
+      "DueCleanup": "Limpieza en {remain}",
+      "DueHistory": "Historial en {remain}",
+      "DueSoon": "pronto",
       "Retrying": "Reintentando {id}",
       "Forgotten": "Olvidado {id}"
     },

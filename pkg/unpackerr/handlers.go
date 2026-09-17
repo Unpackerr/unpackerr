@@ -245,7 +245,7 @@ func (u *Unpackerr) setItemNote(name string, item *Extract, note string) {
 
 	item.Note = note
 	if u.hub != nil {
-		u.hub.notifyProgress(queueFromExtract(name, item))
+		u.hub.notifyProgress(u.queueFromExtract(name, item))
 	}
 }
 

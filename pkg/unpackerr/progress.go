@@ -30,9 +30,11 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 
 	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
 		exp.XProg.Extracted++
+		exp.XProg.ResetSpeed()
 	}
 
 	exp.XProg.Progress = exp.Progress
+	exp.XProg.NoteSpeed(time.Now())
 
 	if u.hub != nil && exp.Extract != nil {
 		itemID := exp.Path
@@ -43,7 +45,7 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 			}
 		}
 
-		u.hub.notifyProgress(queueFromExtract(itemID, exp.Extract))
+		u.hub.notifyProgress(u.queueFromExtract(itemID, exp.Extract))
 	}
 }
 

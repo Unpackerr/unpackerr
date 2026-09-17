@@ -205,6 +205,13 @@
       "Refresh": "Vernieuwen",
       "UpdatedAgo": "{age} geleden bijgewerkt",
       "LastWrite": "Laatste schrijf",
+      "ArchiveOf": "Archief {n} van {total}",
+      "ETA": "ETA {remain}",
+      "DueStart": "Start over {remain}",
+      "DueRetry": "Opnieuw over {remain}",
+      "DueCleanup": "Opschonen over {remain}",
+      "DueHistory": "Geschiedenis over {remain}",
+      "DueSoon": "zo meteen",
       "Retrying": "{id} opnieuw proberen",
       "Forgotten": "{id} vergeten"
     },

@@ -379,7 +379,7 @@ func (u *Unpackerr) syncFolderQueue(dirPath string) {
 	item.Updated = folder.Updated
 
 	if u.hub != nil {
-		u.hub.notifyProgress(queueFromExtract(dirPath, item))
+		u.hub.notifyProgress(u.queueFromExtract(dirPath, item))
 	}
 }
 

@@ -143,13 +143,13 @@ code.wrap {
 }
 
 .queue-progress {
-  width: 12rem;
-  max-width: 12rem;
+  width: 16rem;
+  max-width: 16rem;
 }
 
 .queue-progress-inner {
-  width: 12rem;
-  max-width: 12rem;
+  width: 16rem;
+  max-width: 16rem;
 }
 
 .queue-progress .progress {

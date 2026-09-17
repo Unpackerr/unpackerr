@@ -453,7 +453,7 @@ func (u *Unpackerr) queueSnapshotLocked() []QueueItem {
 	out := make([]QueueItem, 0, len(u.Map))
 
 	for name, item := range u.Map {
-		out = append(out, queueFromExtract(name, item))
+		out = append(out, u.queueFromExtract(name, item))
 	}
 
 	return out

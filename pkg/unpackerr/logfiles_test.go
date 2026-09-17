@@ -249,8 +249,14 @@ func TestLogFileFolders(t *testing.T) {
 		t.Fatalf("diff dirs %q, want %q", got, want)
 	}
 
-	unpack.LogFile = ""
+	unpack.LogFile = "unpackerr.log"
 	unpack.Webserver.LogFile = ""
+
+	if got := unpack.logFileFolders(); got != "." {
+		t.Fatalf("relative %q", got)
+	}
+
+	unpack.LogFile = ""
 
 	if got := unpack.logFileFolders(); got != "" {
 		t.Fatalf("empty %q", got)

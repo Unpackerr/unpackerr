@@ -197,10 +197,6 @@ func (u *Unpackerr) logFileFolders() string {
 
 	for _, logPath := range logPaths {
 		dir := filepath.Dir(logPath)
-		if dir == "" || dir == "." {
-			continue
-		}
-
 		if _, dup := seen[dir]; dup {
 			continue
 		}

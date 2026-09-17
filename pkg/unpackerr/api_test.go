@@ -67,6 +67,29 @@ func TestStatsAndSystemRequireAuth(t *testing.T) {
 	}
 }
 
+func TestSystemReportsRelativeLogFolder(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.LogFile = "unpackerr.log"
+
+	rec := doAuth(t, unpack, http.MethodGet, "/api/system", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("system %d %s", rec.Code, rec.Body.String())
+	}
+
+	var info systemInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Logs != "." {
+		t.Fatalf("logs %q", info.Logs)
+	}
+}
+
 func TestSystemReportsPortOnlyBindAddr(t *testing.T) {
 	t.Parallel()
 

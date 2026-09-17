@@ -22,6 +22,7 @@ var (
 	errEmptyConfigSection = errors.New("empty config section")
 	errNilConfigEntry     = errors.New("nil config entry")
 	errPersistConfig      = errors.New("persisting config file")
+	errEmptySecretFile    = errors.New("secret file is empty")
 )
 
 type configWriteReply struct {
@@ -365,6 +366,11 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 	if !omitted {
 		if err := expandCryptPassFile(&next.UIPassword); err != nil {
 			return false, err
+		}
+
+		if fromFile && next.UIPassword.Val() == "" {
+			return false, fmt.Errorf("ui_password: %w: %s",
+				errEmptySecretFile, strings.TrimPrefix(submitted.Val(), filePrefix))
 		}
 
 		if err := normalizeStoredPassword(&next.UIPassword, u.uiPasswordUser(), fromFile); err != nil {

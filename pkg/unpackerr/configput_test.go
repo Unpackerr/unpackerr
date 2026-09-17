@@ -1272,6 +1272,50 @@ func TestConfigPutAcceptsNewUIPasswordFilepath(t *testing.T) {
 	}
 }
 
+func TestConfigPutRejectsEmptyUIPasswordFilepath(t *testing.T) {
+	t.Parallel()
+
+	secretFile := filepath.Join(t.TempDir(), "empty.pass")
+	if err := os.WriteFile(secretFile, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get webserver %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.UIPassword = CryptPass(filePrefix + secretFile)
+
+	wbody, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wrec := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(wbody), key)
+	if wrec.Code != http.StatusBadRequest || !strings.Contains(wrec.Body.String(), errEmptySecretFile.Error()) {
+		t.Fatalf("empty ui_password file %d %s", wrec.Code, wrec.Body.String())
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain(defaultUIUser, "correct-horse") {
+		t.Fatal("empty password file must not replace the live password")
+	}
+
+	if _, err := os.Stat(unpack.ConfigFile); !os.IsNotExist(err) {
+		t.Fatal("empty password file must not rewrite the config file")
+	}
+}
+
 func TestConfigPutReplacesFilepathWithLiteral(t *testing.T) {
 	t.Parallel()
 

@@ -61,23 +61,33 @@ func (u *Unpackerr) historyHandler(response http.ResponseWriter, _ *http.Request
 	writeJSON(response, http.StatusOK, u.historySnapshot())
 }
 
-func (u *Unpackerr) systemHandler(response http.ResponseWriter, _ *http.Request) {
+func (u *Unpackerr) systemHandler(response http.ResponseWriter, request *http.Request) {
 	host, _ := os.Hostname()
+	info := systemInfo{
+		Version:  version.Version,
+		Revision: version.Revision,
+		Started:  version.Started,
+		Uptime:   time.Since(version.Started).Round(time.Second).String(),
+		Hostname: host,
+		GOOS:     runtime.GOOS,
+	}
 
-	writeJSON(response, http.StatusOK, systemInfo{
-		Version:    version.Version,
-		Revision:   version.Revision,
-		Started:    version.Started,
-		Uptime:     time.Since(version.Started).Round(time.Second).String(),
-		ListenAddr: u.Webserver.bindAddr(),
-		URLBase:    u.Webserver.URLBase,
-		Auth:       u.uiPassword().Type().String(),
-		Metrics:    u.Webserver.Metrics,
-		ConfigFile: u.ConfigFile,
-		Hostname:   host,
-		GOOS:       runtime.GOOS,
-		Logs:       u.logFileFolders(),
+	err := u.onMainLoop(request.Context(), func() error {
+		info.ListenAddr = u.Webserver.bindAddr()
+		info.URLBase = u.Webserver.URLBase
+		info.Auth = u.uiPassword().Type().String()
+		info.Metrics = u.Webserver.Metrics
+		info.ConfigFile = u.ConfigFile
+		info.Logs = u.logFileFolders()
+
+		return nil
 	})
+	if err != nil {
+		writeJSON(response, http.StatusGatewayTimeout, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(response, http.StatusOK, info)
 }
 
 func (u *Unpackerr) configHelpHandler(response http.ResponseWriter, _ *http.Request) {

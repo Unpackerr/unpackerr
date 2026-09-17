@@ -86,7 +86,9 @@ export interface SystemInfo {
   auth: string
   metrics: boolean
   configFile: string
+  hostname: string
   goos: string
+  logs: string
 }
 
 export interface QueueItem {

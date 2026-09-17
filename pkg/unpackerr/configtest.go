@@ -140,6 +140,10 @@ func (u *Unpackerr) starrTestConfig(section ConfigSection, body configTestReques
 		Timeout:  cnfg.Duration{Duration: timeout},
 	}
 
+	if err := expandFilepaths(&cfg); err != nil {
+		return "", StarrConfig{}, err
+	}
+
 	if err := requireStarrTestAccess(cfg); err != nil {
 		return "", StarrConfig{}, err
 	}
@@ -297,6 +301,10 @@ func (u *Unpackerr) hookTestConfig(
 	}
 
 	overlayHook(hook, body)
+
+	if err := expandFilepaths(hook); err != nil {
+		return nil, 0, "", err
+	}
 
 	timeout := clampTestTimeout(body.Timeout.Duration, hook.Timeout.Duration, global)
 	hook.Timeout.Duration = timeout

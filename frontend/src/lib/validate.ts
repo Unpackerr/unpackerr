@@ -37,13 +37,14 @@ export function httpURLError(value: unknown): string {
   return ''
 }
 
-/** Starr API keys are 32+ characters. Unchanged filepath: or already-valid keys pass. */
+/** Starr API keys are 32+ characters. A filepath:/path value is also accepted. */
 export function starrAPIKeyError(value: unknown, original?: string): string {
   const v = typeof value === 'string' ? value : ''
+  if (v.startsWith('filepath:')) return ''
   if (
     original !== undefined &&
     v === original &&
-    (v.startsWith('filepath:') || v.length >= STARR_API_KEY_MIN)
+    v.length >= STARR_API_KEY_MIN
   ) {
     return ''
   }

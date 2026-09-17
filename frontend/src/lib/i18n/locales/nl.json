@@ -302,11 +302,10 @@
       "Notifiarr": "Notifiarr",
       "Xt": "xTractor Tool",
       "Version": "Versie",
-      "Revision": "Revisie",
+      "Host": "Host",
       "Started": "Gestart",
       "Uptime": "Uptime",
       "Listen": "Luisteren",
-      "URLBase": "URL-basis",
       "Auth": "Auth",
       "Metrics": "Metrics",
       "Username": "Gebruikersnaam",
@@ -314,7 +313,8 @@
       "Permissions": "Rechten",
       "enabled": "ingeschakeld",
       "disabled": "uitgeschakeld",
-      "ConfigFile": "Configuratiebestand"
+      "ConfigFile": "Configuratiebestand",
+      "Logs": "Logs"
     },
     "logs": {
       "Title": "Logs",
@@ -430,7 +430,7 @@
       "keepHistory": {
         "label": "Geschiedenis bewaren",
         "description": "Voltooide items in het geschiedenisbestand.",
-        "tooltip": "Dit is unpackerr.history.jsonl, naast het log (of het configuratiebestand als logs naar stdout gaan). 0 zet geschiedenis uit. Het tray-menu toont nog steeds alleen de laatste 10 namen.",
+        "tooltip": "Dit is unpackerr.history.jsonl, naast het log (of het configuratiebestand als logs naar stdout gaan). 0 zet geschiedenis uit.",
         "options": {
           "0": "(geen geschiedenis)"
         }

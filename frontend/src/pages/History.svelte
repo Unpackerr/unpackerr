@@ -185,7 +185,9 @@
 </Card>
 
 <Modal isOpen={pendingClear} toggle={cancelClear}>
-  <ModalHeader toggle={cancelClear}>{$_('phrases.ClearHistoryTitle')}</ModalHeader>
+  <ModalHeader toggle={cancelClear}
+    >{$_('phrases.ClearHistoryTitle')}</ModalHeader
+  >
   <ModalBody>{$_('phrases.ClearHistoryConfirm')}</ModalBody>
   <ModalFooter>
     <Button color="secondary" type="button" onclick={cancelClear}

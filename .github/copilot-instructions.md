@@ -40,14 +40,12 @@ in mind; the items below have been raised and rejected before.
 - The tray builds its menus in `readyTray` before `go u.Run()`, and a config PUT
   cannot apply until the loop drains `taskChan`, so those reads of live `Config`
   are ordered before any possible write. They are not a race and do not need a
-  lock. When the web UI replaces the tray history menu it reads `/api/history`,
-  which is already guarded by `histMu`.
+  lock.
 - `filepath:` values are kept as written in `fileConfig` and expanded on the live
-  copy only (`expandFilepaths`). PUT may keep an existing `filepath:` string in the
-  same section. A new or changed `filepath:` is 400; the API must not read a file
-  the operator did not already put in that section of the config. Webserver PUT
-  expands `filepath:` only on `ui_password`. Do not add `expandFilepaths` across
-  API keys or TLS paths as a drive-by.
+  copy only (`expandFilepaths`). PUT may add or change a `filepath:` string; a
+  missing secret file is 400. Webserver PUT expands `filepath:` only on
+  `ui_password`. Do not add `expandFilepaths` across API keys or TLS paths as a
+  drive-by.
 
 ## Tests
 

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -143,6 +145,82 @@ func TestConfigTestStarrQueue(t *testing.T) {
 	requireTestElapsed(t, rec.Body.Bytes())
 }
 
+func TestConfigTestStarrFilepathKey(t *testing.T) {
+	t.Parallel()
+
+	secret := strings.Repeat("k", apiKeyMinLength)
+	keyFile := filepath.Join(t.TempDir(), "sonarr.key")
+
+	if err := os.WriteFile(keyFile, []byte(secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var gotKey string
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		gotKey = request.Header.Get("X-Api-Key")
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(fakeStarrQueueJSON))
+	}))
+	t.Cleanup(server.Close)
+
+	unpack := testAuthUnpackerr(t)
+	liveKey := strings.Repeat("x", apiKeyMinLength)
+	live := &SonarrConfig{URL: "http://127.0.0.1:8989", APIKey: liveKey}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"uhd": live}
+
+	body, err := json.Marshal(map[string]string{
+		"url":    server.URL,
+		"apiKey": filePrefix + keyFile,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/sonarr/test", string(body), putKey(unpack))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("filepath key %d %s", rec.Code, rec.Body.String())
+	}
+
+	if gotKey != secret {
+		t.Fatalf("probe key %q, want file contents", gotKey)
+	}
+
+	if unpack.Sonarr["uhd"] != live || live.APIKey != liveKey {
+		t.Fatal("starr test must not persist the expanded key")
+	}
+
+	requireTestElapsed(t, rec.Body.Bytes())
+}
+
+func TestConfigTestStarrMissingFilepath(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	liveKey := strings.Repeat("x", apiKeyMinLength)
+	live := &SonarrConfig{URL: "http://127.0.0.1:8989", APIKey: liveKey}
+	unpack.Sonarr = InstanceMap[SonarrConfig]{"uhd": live}
+
+	missing := filepath.Join(t.TempDir(), "missing.key")
+
+	body, err := json.Marshal(map[string]string{
+		"url":    "http://127.0.0.1:8989",
+		"apiKey": filePrefix + missing,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/sonarr/test", string(body), putKey(unpack))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing filepath %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Sonarr["uhd"] != live || live.APIKey != liveKey {
+		t.Fatal("missing filepath test must not persist")
+	}
+}
+
 func TestConfigTestStarrFillsFromLive(t *testing.T) {
 	t.Parallel()
 
@@ -229,6 +307,68 @@ func TestConfigTestWebhook(t *testing.T) {
 
 	if !strings.Contains(gotBody, "extracted") || !strings.Contains(gotBody, "Radarr") {
 		t.Fatalf("payload %s", gotBody)
+	}
+}
+
+func TestConfigTestWebhookFilepathURL(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+
+	urlFile := filepath.Join(t.TempDir(), "hook.url")
+	if err := os.WriteFile(urlFile, []byte(server.URL+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	live := &WebhookConfig{Name: "discord", URL: "http://127.0.0.1/live"}
+	unpack.Webhook = InstanceMap[WebhookConfig]{"discord": live}
+
+	body, err := json.Marshal(map[string]string{
+		"url":   filePrefix + urlFile,
+		"event": "extracted",
+		"app":   "radarr",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/webhooks/test", string(body), putKey(unpack))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("filepath url %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Webhook["discord"] != live || live.URL != "http://127.0.0.1/live" {
+		t.Fatal("webhook test must not persist the expanded url")
+	}
+
+	requireTestElapsed(t, rec.Body.Bytes())
+}
+
+func TestConfigTestWebhookMissingFilepath(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	live := &WebhookConfig{Name: "discord", URL: "http://127.0.0.1/live"}
+	unpack.Webhook = InstanceMap[WebhookConfig]{"discord": live}
+
+	missing := filepath.Join(t.TempDir(), "missing.url")
+
+	body, err := json.Marshal(map[string]string{"url": filePrefix + missing})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/webhooks/test", string(body), putKey(unpack))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing filepath %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Webhook["discord"] != live || live.URL != "http://127.0.0.1/live" {
+		t.Fatal("missing filepath test must not persist")
 	}
 }
 
@@ -407,6 +547,43 @@ func TestConfigTestCmdhook(t *testing.T) {
 	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", body, putKey(unpack))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("cmdhook %d %s", rec.Code, rec.Body.String())
+	}
+
+	requireTestElapsed(t, rec.Body.Bytes())
+}
+
+func TestConfigTestCmdhookFilepathCommand(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("no /bin/echo")
+	}
+
+	cmdFile := filepath.Join(t.TempDir(), "hook.cmd")
+	if err := os.WriteFile(cmdFile, []byte("/bin/echo\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	live := &WebhookConfig{Name: "echo", Command: "/bin/false"}
+	unpack.Cmdhook = InstanceMap[WebhookConfig]{"echo": live}
+
+	body, err := json.Marshal(map[string]string{
+		"command": filePrefix + cmdFile,
+		"event":   "waiting",
+		"timeout": "2s",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", string(body), putKey(unpack))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("filepath command %d %s", rec.Code, rec.Body.String())
+	}
+
+	if unpack.Cmdhook["echo"] != live || live.Command != "/bin/false" {
+		t.Fatal("cmdhook test must not persist the expanded command")
 	}
 
 	requireTestElapsed(t, rec.Body.Bytes())

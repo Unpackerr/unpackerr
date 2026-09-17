@@ -29,7 +29,7 @@ Local builds: `make` / `make build`, `make generate`, `make docker`, `make dev`.
 `unstable` is a **manual publish branch**. Recut it by pushing the commit you want:
 
 ```bash
-git push unpackerr ci/goreleaser-pro:unstable
+git push unpackerr HEAD:unstable
 ```
 
 Do not fast-forward `unstable` from `main` in CI. Calendar nightly builds `main` and does not touch the git `unstable` branch.

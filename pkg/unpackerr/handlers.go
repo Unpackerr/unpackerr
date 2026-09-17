@@ -233,7 +233,6 @@ func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtract
 
 	u.Printf("[%s] Extraction Queued: %s, retries: %d, %s, delete orig: %v, queue size: %d",
 		item.Label(), item.Path, item.Retries, count, item.DeleteOrig, queueSize)
-	u.updateHistory(item.Label() + ": " + item.Path)
 }
 
 func (u *Unpackerr) setItemNote(name string, item *Extract, note string) {

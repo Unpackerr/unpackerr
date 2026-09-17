@@ -309,7 +309,7 @@ sections:
           In-flight Starr items are also written so a restart can put EXTRACTED
           and IMPORTED work back on the live queue for 72 hours; they do not
           count against this number. The history API still lists only completed
-          or failed rows. The tray menu still shows only the last 10 names.
+          or failed rows.
           `0` disables history and restart resume.
       - name: interval
         envvar: INTERVAL

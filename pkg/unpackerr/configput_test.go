@@ -26,8 +26,6 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
 	unpack.KeepHistory = 200
-	unpack.Items = make([]string, trayHistory)
-	unpack.Items[0] = "queued"
 	unpack.snapshotFileConfig()
 
 	withKey := func(req *http.Request) {
@@ -59,10 +57,6 @@ func TestConfigPutGeneralRoundTrip(t *testing.T) {
 
 	if unpack.KeepHistory != 50 || !unpack.Config.Debug {
 		t.Fatalf("applied %+v debug %v", unpack.KeepHistory, unpack.Config.Debug)
-	}
-
-	if len(unpack.Items) != trayHistory || unpack.Items[0] != "queued" {
-		t.Fatalf("PUT resized history items: %+v", unpack.Items)
 	}
 
 	written, err := os.ReadFile(unpack.ConfigFile)
@@ -109,27 +103,6 @@ func enableHistoryPUT(t *testing.T, unpack *Unpackerr, keep uint) {
 
 	if unpack.KeepHistory != keep {
 		t.Fatalf("applied keep_history %d", unpack.KeepHistory)
-	}
-}
-
-func TestConfigPutGeneralEnablesTrayHistory(t *testing.T) {
-	t.Parallel()
-
-	unpack := testAuthUnpackerr(t)
-	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
-	unpack.KeepHistory = 0
-	unpack.snapshotFileConfig()
-
-	enableHistoryPUT(t, unpack, 50)
-
-	if len(unpack.Items) != trayHistory {
-		t.Fatalf("tray items after enabling history: %d", len(unpack.Items))
-	}
-
-	unpack.updateHistory("queued")
-
-	if unpack.Items[0] != "queued" {
-		t.Fatalf("updateHistory after enable: %+v", unpack.Items)
 	}
 }
 
@@ -1176,33 +1149,7 @@ func TestConfigPutStarrFilepathKeyExpandsLiveOnly(t *testing.T) {
 	}
 }
 
-func TestRejectAddedFilepaths(t *testing.T) {
-	t.Parallel()
-
-	existing := generalConfig{Passwords: StringSlice{filePrefix + "/secrets"}}
-
-	if err := rejectAddedFilepaths(existing, generalConfig{
-		Passwords: StringSlice{filePrefix + "/secrets", "inline"},
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := rejectAddedFilepaths(existing, generalConfig{Passwords: StringSlice{"literal"}}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := rejectAddedFilepaths(nil, generalConfig{Passwords: StringSlice{filePrefix + "/etc/passwd"}}); err == nil ||
-		!errors.Is(err, errNewFilepath) {
-		t.Fatalf("new filepath: %v", err)
-	}
-
-	changed := generalConfig{Passwords: StringSlice{filePrefix + "/other"}}
-	if err := rejectAddedFilepaths(existing, changed); err == nil || !errors.Is(err, errNewFilepath) {
-		t.Fatalf("changed filepath: %v", err)
-	}
-}
-
-func TestConfigPutRejectsNewStarrFilepath(t *testing.T) {
+func TestConfigPutAcceptsNewStarrFilepath(t *testing.T) {
 	t.Parallel()
 
 	secret := strings.Repeat("s", apiKeyMinLength)
@@ -1224,26 +1171,26 @@ func TestConfigPutRejectsNewStarrFilepath(t *testing.T) {
 	}
 
 	rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", string(raw), putKey(unpack))
-
-	if rec.Code != http.StatusBadRequest {
+	if rec.Code != http.StatusOK {
 		t.Fatalf("new filepath: put %d %s", rec.Code, rec.Body.String())
 	}
 
-	if !strings.Contains(rec.Body.String(), errNewFilepath.Error()) {
-		t.Fatalf("want %q, got %s", errNewFilepath, rec.Body.String())
+	if got := unpack.Sonarr["0"].APIKey; got != secret {
+		t.Fatalf("live api key %q, want file contents", got)
 	}
 
-	if len(unpack.Sonarr) != 0 {
-		t.Fatalf("rejected put went live: %+v", unpack.Sonarr)
-	}
-
-	if len(unpack.fileConfig.Sonarr) != 0 {
-		t.Fatalf("rejected put staged file: %+v", unpack.fileConfig.Sonarr)
+	if got := unpack.fileConfig.Sonarr["0"].APIKey; got != filePrefix+keyFile {
+		t.Fatalf("file api key %q, want filepath: kept", got)
 	}
 }
 
-func TestConfigPutRejectsNewPasswordFilepath(t *testing.T) {
+func TestConfigPutAcceptsNewPasswordFilepath(t *testing.T) {
 	t.Parallel()
+
+	passFile := filepath.Join(t.TempDir(), "rar.pass")
+	if err := os.WriteFile(passFile, []byte("archive-secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	unpack := testAuthUnpackerr(t)
 	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
@@ -1260,7 +1207,7 @@ func TestConfigPutRejectsNewPasswordFilepath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	general.Passwords = StringSlice{filePrefix + "/run/secrets/rar"}
+	general.Passwords = StringSlice{filePrefix + passFile}
 
 	gbody, err := json.Marshal(general)
 	if err != nil {
@@ -1268,12 +1215,20 @@ func TestConfigPutRejectsNewPasswordFilepath(t *testing.T) {
 	}
 
 	grec := doAuth(t, unpack, http.MethodPut, "/api/config/general", string(gbody), key)
-	if grec.Code != http.StatusBadRequest || !strings.Contains(grec.Body.String(), errNewFilepath.Error()) {
+	if grec.Code != http.StatusOK {
 		t.Fatalf("new password filepath: put %d %s", grec.Code, grec.Body.String())
+	}
+
+	if len(unpack.Passwords) != 1 || unpack.Passwords[0] != "archive-secret" {
+		t.Fatalf("live passwords %+v", unpack.Passwords)
+	}
+
+	if len(unpack.fileConfig.Passwords) != 1 || unpack.fileConfig.Passwords[0] != filePrefix+passFile {
+		t.Fatalf("file passwords %+v", unpack.fileConfig.Passwords)
 	}
 }
 
-func TestConfigPutRejectsNewUIPasswordFilepath(t *testing.T) {
+func TestConfigPutAcceptsNewUIPasswordFilepath(t *testing.T) {
 	t.Parallel()
 
 	secretFile := filepath.Join(t.TempDir(), "ui.pass")
@@ -1304,12 +1259,60 @@ func TestConfigPutRejectsNewUIPasswordFilepath(t *testing.T) {
 	}
 
 	wrec := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(wbody), key)
-	if wrec.Code != http.StatusBadRequest || !strings.Contains(wrec.Body.String(), errNewFilepath.Error()) {
+	if wrec.Code != http.StatusOK {
 		t.Fatalf("new ui_password filepath: put %d %s", wrec.Code, wrec.Body.String())
 	}
 
-	if unpack.fileConfig.Webserver.UIPassword.Val() == filePrefix+secretFile {
-		t.Fatal("rejected ui_password filepath: must not land on the file snapshot")
+	if !unpack.Webserver.UIPassword.ValidPlain(defaultUIUser, "correct-horse") {
+		t.Fatal("live password must expand new filepath:")
+	}
+
+	if stored := unpack.fileConfig.Webserver.UIPassword.Val(); stored != filePrefix+secretFile {
+		t.Fatalf("file snapshot must keep filepath:, got %q", stored)
+	}
+}
+
+func TestConfigPutRejectsEmptyUIPasswordFilepath(t *testing.T) {
+	t.Parallel()
+
+	secretFile := filepath.Join(t.TempDir(), "empty.pass")
+	if err := os.WriteFile(secretFile, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+	key := putKey(unpack)
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", key)
+	if got.Code != http.StatusOK {
+		t.Fatalf("get webserver %d %s", got.Code, got.Body.String())
+	}
+
+	var web WebServer
+	if err := json.Unmarshal(got.Body.Bytes(), &web); err != nil {
+		t.Fatal(err)
+	}
+
+	web.UIPassword = CryptPass(filePrefix + secretFile)
+
+	wbody, err := json.Marshal(web)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wrec := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", string(wbody), key)
+	if wrec.Code != http.StatusBadRequest || !strings.Contains(wrec.Body.String(), errEmptySecretFile.Error()) {
+		t.Fatalf("empty ui_password file %d %s", wrec.Code, wrec.Body.String())
+	}
+
+	if !unpack.Webserver.UIPassword.ValidPlain(defaultUIUser, "correct-horse") {
+		t.Fatal("empty password file must not replace the live password")
+	}
+
+	if _, err := os.Stat(unpack.ConfigFile); !os.IsNotExist(err) {
+		t.Fatal("empty password file must not rewrite the config file")
 	}
 }
 

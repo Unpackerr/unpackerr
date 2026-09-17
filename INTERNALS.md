@@ -86,7 +86,7 @@ Count **ours**, not `net/http` per-connection goroutines or `xtractr` extract wo
 | Starr poll workers (`workChan`) | `max(1, starrAppCount)`, **grows never shrinks** on Starr PUT | Grow-on-PUT is new |
 | `folders.watchFSNotify` | At least one watch folder | No |
 | folder poller `Watcher.Start` | Folder interval ≥ minimum | No |
-| tray: `watchKillerChannels` / `watchDebugChannels` | GUI builds | No |
+| tray: `watchKillerChannels` | GUI builds | No |
 
 **Idle restart does not add a goroutine.** `maybeRestart` runs on the existing cleaner tick (5s). Unix `syscall.Exec` replaces the process (same PID). Windows starts a copy and `os.Exit(0)`.
 
@@ -157,11 +157,11 @@ Any string field `cnfgfile` walks can be `filepath:/abs/or/~/path`. At startup a
 
 **Disk and `fileConfig` keep the prefix.** GET file returns that string, TOML writes that string, live client uses the file contents. That was a real bug in the first PUT stack: round-trip kept `filepath:` on disk but published the literal to the Starr client.
 
-**PUT cannot introduce a new `filepath:`.** Every `filepath:` string in the body must already appear in the same file-config section. Changing `filepath:/a` to `filepath:/b` is 400. Replacing `filepath:` with a literal (or omitting it) is allowed. The check runs **before** `expandFilepaths` / `expandPasswords` / `expandCryptPassFile` so a rejected PUT does not read the target file. Operators who need a new secret file edit the TOML (or env), not the API.
+**PUT may add or change a `filepath:`.** The live copy is expanded (`expandFilepaths` / `expandPasswords` / `expandCryptPassFile`). Disk and `fileConfig` keep the prefix. Replacing `filepath:` with a literal (or omitting it) is allowed. A missing or empty secret file is 400. Starr `/test` and hook `/test` expand `filepath:` on the submitted fields the same way.
 
 Archive passwords: expansion is `expandPasswords` (newline split). Other fields: `expandFilepaths` (`cnfgfile.Parse`).
 
-Empty / missing secret file is an error on PUT (400) when the `filepath:` was already allowed. Startup already failed that way for live parse.
+Empty / missing secret file is an error on PUT (400). Startup already failed that way for live parse.
 
 ### Env (`UN_*`)
 
@@ -215,7 +215,7 @@ Env-only (no config path): skip write, still apply live.
 
 **Empty `apiKeys[].key`:** treated as “keep existing secret of this **name**”. File fill from **file snapshot only** (so an env-overlay key is not persisted). Live fill from live then file. That is how a redacted GET round-trips without `*`.
 
-**Omitted / blank `ui_password` on PUT:** keep live password. An already-stored `filepath:` on PUT: expand for live, store the `filepath:` string on disk. A new `filepath:` is 400.
+**Omitted / blank `ui_password` on PUT:** keep live password. A `filepath:` on PUT: expand for live, store the `filepath:` string on disk.
 
 **New `ui_password` on PUT:** `!!cryptd!!…`, `webauth`, `noauth`, or `user:<64-char hex>` where the hex is the same PBKDF2 digest as login (`CryptPass.Set`, then bcrypt; mixed-case hex is stored lowercase). Plaintext `user:pass` is **400**. While live auth is local password, changing the hash or switching to header/noauth requires `uiCurrentKdf` (login `Valid()` on the current username). Header/noauth live mode does not. `uiCurrentKdf` is a PUT-only JSON field and is never written to TOML. A body that contains only `uiCurrentKdf` is **400** (empty section), so it cannot wipe `listen_addr` / keys / roles. Omitting `uiPassword` or sending the on-disk value unchanged keeps the live overlay, so `UN_WEBSERVER_UI_PASSWORD` is not replaced by the file hash.
 
@@ -276,7 +276,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | POST | `{urlbase}api/auth/logout` | none | — | Clears session cookie |
 | GET | `{urlbase}api/auth/me` | yes | any auth | Session / key / proxy identity + permissions, `header`, `clientIP`, `upstreamAllowed`. `headers` (this request minus the Trust exclusion list) only with `system:headers:read` |
 | GET | `{urlbase}api/stats` | yes | `system:stats:read` | Queue counts + hook counters |
-| GET | `{urlbase}api/system` | yes | `system:info:read` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, GOOS |
+| GET | `{urlbase}api/system` | yes | `system:info:read` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, hostname, GOOS, log folders |
 | GET | `{urlbase}api/system/export` | yes | `system:info:read` | Startup-log style live rundown; each section also needs `config:{section}:read` (or `*`); omitted sections say so. Secrets omitted. |
 | GET | `{urlbase}api/queue` | yes | `system:queue:read` | In-flight items |
 | POST | `{urlbase}api/queue/retry` | yes | `system:queue:write` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |

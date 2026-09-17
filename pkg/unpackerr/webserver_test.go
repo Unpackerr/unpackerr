@@ -50,6 +50,45 @@ func TestWebServerBindAddr(t *testing.T) {
 	}
 }
 
+func TestWebServerLocalURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ws   *WebServer
+		want string
+	}{
+		{name: "nil", want: ""},
+		{name: "disabled", ws: &WebServer{}, want: ""},
+		{name: "wildcard", ws: &WebServer{ListenAddr: "0.0.0.0:5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
+		{name: "colon port", ws: &WebServer{ListenAddr: ":5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
+		{name: "port only", ws: &WebServer{ListenAddr: "5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
+		{name: "loopback", ws: &WebServer{ListenAddr: "127.0.0.1:5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
+		{name: "lan", ws: &WebServer{ListenAddr: "192.168.1.5:5656", URLBase: "/"}, want: "http://192.168.1.5:5656/"},
+		{
+			name: "urlbase",
+			ws:   &WebServer{ListenAddr: "0.0.0.0:5656", URLBase: "/unpackerr/"},
+			want: "http://127.0.0.1:5656/unpackerr/",
+		},
+		{
+			name: "tls",
+			ws:   &WebServer{ListenAddr: "127.0.0.1:5656", URLBase: "/", SSLCrtFile: "c.pem", SSLKeyFile: "k.pem"},
+			want: "https://127.0.0.1:5656/",
+		},
+		{name: "ipv6 all", ws: &WebServer{ListenAddr: "[::]:5656", URLBase: "/"}, want: "http://127.0.0.1:5656/"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := test.ws.localURL(); got != test.want {
+				t.Fatalf("localURL() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestWebServerNormalizeURLBase(t *testing.T) {
 	t.Parallel()
 

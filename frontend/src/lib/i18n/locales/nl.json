@@ -132,7 +132,8 @@
     "Theme": "Thema",
     "ThemeLight": "Licht",
     "ThemeDark": "Donker",
-    "Language": "Taal"
+    "Language": "Taal",
+    "Toggle": "Navigatie in- of uitschakelen"
   },
   "pages": {
     "login": {
@@ -215,6 +216,7 @@
       "Size": "Grootte",
       "Retries": "Pogingen",
       "Finished": "Klaar",
+      "Actions": "Acties",
       "DeletedRow": "Geschiedenisrij verwijderd",
       "Cleared": "Geschiedenis gewist"
     },

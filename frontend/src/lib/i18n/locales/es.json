@@ -132,7 +132,8 @@
     "Theme": "Tema",
     "ThemeLight": "Claro",
     "ThemeDark": "Oscuro",
-    "Language": "Idioma"
+    "Language": "Idioma",
+    "Toggle": "Mostrar u ocultar la navegación"
   },
   "pages": {
     "login": {
@@ -215,6 +216,7 @@
       "Size": "Tamaño",
       "Retries": "Reintentos",
       "Finished": "Terminado",
+      "Actions": "Acciones",
       "DeletedRow": "Fila de historial eliminada",
       "Cleared": "Historial borrado"
     },

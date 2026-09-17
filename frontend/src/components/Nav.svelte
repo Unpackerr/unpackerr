@@ -148,7 +148,11 @@
     <img src={icon} alt="" class="brand-logo me-2" />
     <span class="fw-semibold text-white">Unpackerr</span>
   </NavbarBrand>
-  <NavbarToggler on:click={() => (open = !open)} />
+  <NavbarToggler
+    on:click={() => (open = !open)}
+    aria-label={$_('nav.Toggle')}
+    aria-expanded={open}
+  />
   <Collapse isOpen={open} navbar>
     <Nav class="me-auto" navbar>
       {#if wide && settingItems.length}

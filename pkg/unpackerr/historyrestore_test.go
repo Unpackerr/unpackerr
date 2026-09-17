@@ -526,8 +526,9 @@ func TestFolderConfigForPathRootWatch(t *testing.T) {
 
 	rootPath := filepath.Clean("/")
 	root := &FolderConfig{Path: rootPath}
-	nested := &FolderConfig{Path: filepath.Join(rootPath, "downloads")}
-	item := filepath.Join(rootPath, "downloads", "movie")
+	nestedPath := filepath.Join(rootPath, "downloads")
+	nested := &FolderConfig{Path: nestedPath}
+	item := filepath.Join(nestedPath, "movie")
 
 	if got := folderConfigForPath([]*FolderConfig{root}, item); got != root {
 		t.Fatalf("root watch %q missed %q", rootPath, item)
@@ -537,8 +538,8 @@ func TestFolderConfigForPathRootWatch(t *testing.T) {
 		t.Fatalf("nested watch lost to root: %+v", got)
 	}
 
-	slash := &FolderConfig{Path: rootPath + string(os.PathSeparator)}
+	slash := &FolderConfig{Path: nestedPath + string(os.PathSeparator)}
 	if got := folderConfigForPath([]*FolderConfig{slash}, item); got != slash {
-		t.Fatalf("root+sep watch missed %q", item)
+		t.Fatalf("trailing-sep watch missed %q", item)
 	}
 }

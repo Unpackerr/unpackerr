@@ -27,6 +27,9 @@
     statusPhrase,
     relTime,
     progressCaption,
+    remainCompact,
+    isZeroTime,
+    bytes,
   } from '../lib/format'
   import { success, failure } from '../lib/toast'
   import { live, type LiveTopic } from '../lib/socket.svelte'
@@ -260,9 +263,77 @@
         item.total ||
         item.compressed ||
         item.wrote ||
-        item.read
+        item.read ||
+        item.archive ||
+        item.archives
       )
     )
+  }
+
+  const dueKeys: Record<string, string> = {
+    start: 'pages.dashboard.DueStart',
+    retry: 'pages.dashboard.DueRetry',
+    cleanup: 'pages.dashboard.DueCleanup',
+    history: 'pages.dashboard.DueHistory',
+  }
+
+  function dueLabel(item: QueueItem, clock: number): string {
+    if (isZeroTime(item.due) || !item.dueKind) return ''
+    const key = dueKeys[item.dueKind]
+    if (!key) return ''
+    const remain = remainCompact(item.due, clock)
+    if (!remain) return $_('pages.dashboard.DueSoon')
+    return $_(key, { values: { remain } })
+  }
+
+  function extractingBytes(item: QueueItem): string {
+    const max = item.total || item.compressed || 0
+    if (max || item.percent) return progressCaption(item)
+    return ''
+  }
+
+  function extractingSpeeds(item: QueueItem): string {
+    const parts: string[] = []
+    if (item.avgSpeedBps) {
+      parts.push(
+        $_('pages.dashboard.SpeedAvg', {
+          values: { speed: bytes(item.avgSpeedBps) },
+        }),
+      )
+    }
+    if (item.speedBps) {
+      parts.push(
+        $_('pages.dashboard.SpeedNow', {
+          values: { speed: bytes(item.speedBps) },
+        }),
+      )
+    }
+    return parts.join(' · ')
+  }
+
+  function extractingEta(item: QueueItem, clock: number): string {
+    if (isZeroTime(item.eta)) return ''
+    const remain = remainCompact(item.eta, clock)
+    return remain
+      ? $_('pages.dashboard.ETA', { values: { remain } })
+      : $_('pages.dashboard.DueSoon')
+  }
+
+  function extractingCaption(item: QueueItem, clock: number): string {
+    return [extractingBytes(item), extractingSpeeds(item), extractingEta(item, clock)]
+      .filter(Boolean)
+      .join(' · ')
+  }
+
+  function archiveLabel(item: QueueItem): string {
+    if (item.archives) {
+      const n = (item.extracted ?? 0) + 1
+      const of = $_('pages.dashboard.ArchiveOf', {
+        values: { n, total: item.archives },
+      })
+      return item.archive ? `${of} · ${item.archive}` : of
+    }
+    return item.archive || ''
   }
 
   async function retry(item: QueueItem) {
@@ -477,7 +548,7 @@
         {#if queue.length === 0}
           <p class="text-muted mb-0">{$_('phrases.NothingQueued')}</p>
         {:else}
-          <Table responsive hover size="sm" class="align-middle">
+          <Table hover size="sm" class="align-middle queue-table">
             <thead>
               <tr>
                 <th>{$_('pages.dashboard.App')}</th>
@@ -500,37 +571,90 @@
                   <td class="small queue-progress">
                     <div class="queue-progress-inner">
                       {#if showBar(item)}
+                        {@const cap = extractingCaption(item, now)}
+                        {@const bytesLine = extractingBytes(item)}
+                        {@const speeds = extractingSpeeds(item)}
+                        {@const eta = extractingEta(item, now)}
+                        {@const arch = archiveLabel(item)}
                         <div class="progress mb-1">
                           <div
                             class="progress-bar"
                             style="width: {Math.min(item.percent ?? 0, 100)}%"
                           ></div>
                         </div>
-                        <div class="queue-progress-caption text-muted">
-                          {progressCaption(item)}
-                        </div>
-                        <div class="text-truncate" title={item.archive || ''}>
-                          {item.archive || '\u00a0'}
-                        </div>
+                        {#if bytesLine}
+                          <div class="queue-progress-caption" title={cap}>
+                            {bytesLine}
+                          </div>
+                        {/if}
+                        {#if speeds}
+                          <div class="queue-progress-caption text-muted">
+                            {speeds}
+                          </div>
+                        {/if}
+                        {#if eta}
+                          <div class="queue-progress-caption text-muted">
+                            {eta}
+                          </div>
+                        {/if}
+                        {#if arch}
+                          <div
+                            class="queue-progress-archive text-muted"
+                            title={item.archive || arch}
+                          >
+                            {arch}
+                          </div>
+                        {/if}
                       {:else if item.status === 'waiting' && item.app === 'Folder'}
+                        {@const due = dueLabel(item, now)}
                         <div class="queue-progress-caption">
                           {$_('pages.dashboard.LastWrite')}
                           {relTime(item.updated, now)}
                         </div>
+                        {#if due}
+                          <div
+                            class="queue-progress-caption text-muted"
+                            title={item.due}
+                          >
+                            {due}
+                          </div>
+                        {/if}
                       {:else}
-                        <div
-                          class="queue-progress-caption text-muted"
-                          title={item.progress || ''}
-                        >
-                          {progressCaption(item) || $_('phrases.Empty')}
-                        </div>
+                        {@const cap = progressCaption(item)}
+                        {@const due = dueLabel(item, now)}
+                        {#if cap}
+                          <div
+                            class="queue-progress-caption text-muted"
+                            title={item.progress || ''}
+                          >
+                            {cap}
+                          </div>
+                        {/if}
+                        {#if due}
+                          <div
+                            class="queue-progress-caption text-muted"
+                            title={item.due}
+                          >
+                            {due}
+                          </div>
+                        {:else if !cap}
+                          <div class="queue-progress-caption text-muted">
+                            {$_('phrases.Empty')}
+                          </div>
+                        {/if}
                       {/if}
                     </div>
                   </td>
-                  <td class="text-end">{item.retries}</td>
-                  <td class="small text-nowrap">{relTime(item.updated, now)}</td
+                  <td
+                    class="text-end queue-retries"
+                    data-label={$_('pages.dashboard.Retries')}>{item.retries}</td
                   >
-                  <td class="text-end text-nowrap">
+                  <td
+                    class="small text-nowrap queue-updated"
+                    data-label={$_('pages.dashboard.Updated')}
+                    >{relTime(item.updated, now)}</td
+                  >
+                  <td class="text-end text-nowrap queue-actions">
                     {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
                       <ButtonGroup size="sm">
                         {#if item.status === 'extractfailed'}

@@ -440,6 +440,10 @@ func allowedTopics(info authInfo) []string {
 // notifyQueueLocked pushes a full queue+stats frame. Caller holds History.mu;
 // fillQueueStats then takes configMu (that lock order is required).
 func (u *Unpackerr) notifyQueueLocked() {
+	for name, item := range u.Map {
+		u.stampQueueDue(name, item)
+	}
+
 	if u.hub == nil {
 		return
 	}
@@ -453,7 +457,7 @@ func (u *Unpackerr) queueSnapshotLocked() []QueueItem {
 	out := make([]QueueItem, 0, len(u.Map))
 
 	for name, item := range u.Map {
-		out = append(out, queueFromExtract(name, item))
+		out = append(out, u.queueFromExtract(name, item))
 	}
 
 	return out

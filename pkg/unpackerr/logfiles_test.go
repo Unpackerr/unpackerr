@@ -162,15 +162,19 @@ func TestLogFollowSnapshotUnknownID(t *testing.T) {
 func TestQueueFromExtractProgressFields(t *testing.T) {
 	t.Parallel()
 
+	eta := time.Unix(1_700_000_100, 0)
 	item := &Extract{
 		Path:    "/dl/show",
 		App:     "Sonarr",
 		Status:  EXTRACTING,
 		Updated: time.Now(),
 		XProg: &ExtractProgress{
-			Extract:   &Extract{Path: "/dl/show"},
-			Archives:  3,
-			Extracted: 1,
+			Extract:     &Extract{Path: "/dl/show"},
+			Archives:    3,
+			Extracted:   1,
+			SpeedBps:    42,
+			AvgSpeedBps: 24,
+			ETA:         eta,
 			Progress: &xtractr.Progress{
 				Total:      100,
 				Wrote:      25,
@@ -184,16 +188,19 @@ func TestQueueFromExtractProgressFields(t *testing.T) {
 	}
 	item.XProg.Extract = item
 
-	got := queueFromExtract("Show.Name", item)
+	unpack := New()
+
+	got := unpack.queueFromExtract("Show.Name", item)
 	if got.ID != "Show.Name" || got.Percent != 25 || got.Wrote != 25 || got.Total != 100 ||
-		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" {
+		got.Archives != 3 || got.Extracted != 1 || got.Archive != "a.rar" ||
+		got.SpeedBps != 42 || got.AvgSpeedBps != 24 || !got.ETA.Equal(eta) {
 		t.Fatalf("%+v", got)
 	}
 
 	item.Path = `C:\dl\show`
 	item.XProg.XFile.FilePath = `C:\dl\show\a.rar`
 
-	got = queueFromExtract("Show.Name", item)
+	got = unpack.queueFromExtract("Show.Name", item)
 	if got.Archive != "a.rar" {
 		t.Fatalf("backslash archive %q", got.Archive)
 	}

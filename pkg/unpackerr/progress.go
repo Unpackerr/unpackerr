@@ -11,6 +11,21 @@ const (
 	defaultProgressInterval = 15 * time.Second
 )
 
+func resetExtractProgress(item *Extract, archives int) {
+	if item == nil {
+		return
+	}
+
+	if item.XProg == nil {
+		item.XProg = &ExtractProgress{Extract: item}
+	}
+
+	item.XProg.ResetSpeed()
+	item.XProg.Extracted = 0
+	item.XProg.Progress = nil
+	item.XProg.Archives = archives
+}
+
 func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress) {
 	return func(prog xtractr.Progress) { // sends update to u.handleProgress() (below)
 		u.progChan <- &ExtractProgress{Progress: &prog, Extract: item}
@@ -30,9 +45,11 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 
 	if exp.XProg.Progress != nil && exp.XProg.XFile != exp.XFile {
 		exp.XProg.Extracted++
+		exp.XProg.NoteArchiveDone()
 	}
 
 	exp.XProg.Progress = exp.Progress
+	exp.XProg.NoteSpeed(time.Now())
 
 	if u.hub != nil && exp.Extract != nil {
 		itemID := exp.Path
@@ -43,7 +60,7 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 			}
 		}
 
-		u.hub.notifyProgress(queueFromExtract(itemID, exp.Extract))
+		u.hub.notifyProgress(u.queueFromExtract(itemID, exp.Extract))
 	}
 }
 

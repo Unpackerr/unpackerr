@@ -30,7 +30,7 @@ func TestExtractCompletedDownloadNotesNoArchives(t *testing.T) {
 		t.Fatalf("note %q", item.Note)
 	}
 
-	got := queueFromExtract("Show.Name", item)
+	got := unpack.queueFromExtract("Show.Name", item)
 	if got.Progress != noteNoExtractable {
 		t.Fatalf("progress %q", got.Progress)
 	}
@@ -65,7 +65,7 @@ func TestQueueFromExtractFolderNoteDoesNotOverrideLastWrite(t *testing.T) {
 		Note:    noteNoExtractable,
 	}
 
-	got := queueFromExtract("/watch/a", item)
+	got := New().queueFromExtract("/watch/a", item)
 	if got.Progress != "last write" {
 		t.Fatalf("progress %q", got.Progress)
 	}
@@ -106,7 +106,7 @@ func TestExtractCompletedDownloadNotesWaitingSyncthing(t *testing.T) {
 		t.Fatalf("status %s", item.Status)
 	}
 
-	got := queueFromExtract("Show.Name", item)
+	got := unpack.queueFromExtract("Show.Name", item)
 	if got.Progress != noteWaitingSyncthing {
 		t.Fatalf("progress %q", got.Progress)
 	}

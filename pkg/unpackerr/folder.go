@@ -228,7 +228,8 @@ func (u *Unpackerr) folderXtractrCallback(resp *xtractr.Response) {
 	}
 
 	if !resp.Done {
-		item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
+		resetExtractProgress(item, resp.Archives.Count()+resp.Extras.Count())
+
 		folder.Status = EXTRACTING
 		u.Printf("[Folder] Extraction Started: %s, retries: %d, items in queue: %d", resp.X.Name, folder.Retries, resp.Queued)
 		folder.Updated = now
@@ -377,9 +378,10 @@ func (u *Unpackerr) syncFolderQueue(dirPath string) {
 	}
 
 	item.Updated = folder.Updated
+	u.stampQueueDue(dirPath, item)
 
 	if u.hub != nil {
-		u.hub.notifyProgress(queueFromExtract(dirPath, item))
+		u.hub.notifyProgress(u.queueFromExtract(dirPath, item))
 	}
 }
 
@@ -517,6 +519,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 		}
 
 		u.Map[data.Name].XProg = &ExtractProgress{Extract: u.Map[data.Name]}
+		u.copyFolderExtractLocked(data.Name, u.Map[data.Name])
 
 		if sendHook {
 			u.runAllHooks(u.Map[data.Name])
@@ -533,15 +536,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 
 	u.Map[data.Name].Status = data.Status
 	u.Map[data.Name].Updated = now
-
-	if folder, ok := u.folders.Folders[data.Name]; ok && u.Map[data.Name].App == FolderString {
-		u.copyFolderRetriesLocked(data.Name, folder)
-
-		u.Map[data.Name].NoRetry = folder.NoRetry
-		if folder.PreFiles != nil {
-			u.Map[data.Name].PreFiles = folder.PreFiles
-		}
-	}
+	u.copyFolderExtractLocked(data.Name, u.Map[data.Name])
 
 	if sendHook {
 		u.runAllHooks(u.Map[data.Name])
@@ -551,6 +546,31 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 	u.notifyQueueLocked()
 
 	return u.Map[data.Name]
+}
+
+// copyFolderExtractLocked copies tracker fields the queue/history Extract
+// should own so HTTP snapshots do not read u.folders.Folders. Caller holds
+// History.mu.
+func (u *Unpackerr) copyFolderExtractLocked(name string, item *Extract) {
+	if item == nil || item.App != FolderString || u.folders == nil {
+		return
+	}
+
+	folder, ok := u.folders.Folders[name]
+	if !ok {
+		return
+	}
+
+	item.Retries = folder.Retries
+	item.NoRetry = folder.NoRetry
+
+	if folder.PreFiles != nil {
+		item.PreFiles = folder.PreFiles
+	}
+
+	if folder.Config != nil && folder.Config.DeleteAfter != nil {
+		item.DeleteDelay = folder.Config.DeleteAfter.Duration
+	}
 }
 
 // copyFolderRetriesLocked writes the folder retry count onto the queue/history

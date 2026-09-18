@@ -46,7 +46,7 @@ func TestFolderWaitingShowsInQueue(t *testing.T) {
 		t.Fatalf("queue item %+v", item)
 	}
 
-	if got := queueFromExtract(archive, item); got.Progress != "last write" {
+	if got := unpack.queueFromExtract(archive, item); got.Progress != "last write" {
 		t.Fatalf("progress %q", got.Progress)
 	}
 

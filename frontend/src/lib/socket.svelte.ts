@@ -188,8 +188,9 @@ class LiveSocket {
       this.queue = [...this.queue, item]
       return
     }
+    // Replace the row. A shallow merge keeps stale due/speed when Go omits zeros.
     const next = this.queue.slice()
-    next[idx] = { ...next[idx], ...item }
+    next[idx] = item
     this.queue = next
   }
 

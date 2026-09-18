@@ -302,6 +302,9 @@ sections:
         desc: |
           How many completed or failed items to keep in unpackerr.history.jsonl
           (next to the log file, or the config file if logs go to stdout).
+          With neither a log file nor a config file, history stays in memory
+          for this process and is not written to disk, so it does not survive
+          a restart. Set `log_file` or use a config file to persist it.
           In-progress extracts are also written so a restart can resume them
           for 72 hours (Starr waiting for import, folders waiting on
           delete_after). Those in-progress rows do not count against this

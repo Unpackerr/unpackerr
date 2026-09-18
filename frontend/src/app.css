@@ -93,6 +93,33 @@ body {
   color: #dee2e6 !important;
 }
 
+/* Outline secondary/danger on Bootstrap's dark card (#212529) is ~3.3:1. */
+[data-bs-theme='dark'] .btn-outline-secondary {
+  --bs-btn-color: #ced4da;
+  --bs-btn-border-color: #adb5bd;
+  --bs-btn-hover-color: #12161c;
+  --bs-btn-hover-bg: #ced4da;
+  --bs-btn-hover-border-color: #ced4da;
+  --bs-btn-active-color: #12161c;
+  --bs-btn-active-bg: #ced4da;
+  --bs-btn-active-border-color: #ced4da;
+  --bs-btn-disabled-color: #adb5bd;
+  --bs-btn-disabled-border-color: #6c757d;
+}
+
+[data-bs-theme='dark'] .btn-outline-danger {
+  --bs-btn-color: #ea868f;
+  --bs-btn-border-color: #ea868f;
+  --bs-btn-hover-color: #12161c;
+  --bs-btn-hover-bg: #ea868f;
+  --bs-btn-hover-border-color: #ea868f;
+  --bs-btn-active-color: #12161c;
+  --bs-btn-active-bg: #ea868f;
+  --bs-btn-active-border-color: #ea868f;
+  --bs-btn-disabled-color: #ea868f;
+  --bs-btn-disabled-border-color: #ea868f;
+}
+
 .table thead th {
   font-size: 0.75rem;
   text-transform: uppercase;

@@ -99,12 +99,34 @@ func TestHistoryFilePathSkipsUnopenedLog(t *testing.T) {
 	}
 }
 
-func TestHistoryFilePathFallsBackToHome(t *testing.T) {
+func TestHistoryFilePathEmptyWithoutLogOrConfig(t *testing.T) {
 	t.Parallel()
 
-	got := New().historyFilePath()
-	if !strings.Contains(got, historyFileName) || !strings.Contains(got, ".unpackerr") {
-		t.Fatalf("home fallback %q", got)
+	if got := New().historyFilePath(); got != "" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestHistoryStaysInMemoryWithoutLogOrConfig(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.loadHistory()
+
+	if unpack.histPath != "" {
+		t.Fatalf("histPath %q", unpack.histPath)
+	}
+
+	unpack.maybeRecordHistory("/dl/done", &Extract{
+		Path:    "/dl/done",
+		Status:  IMPORTED,
+		Updated: time.Now(),
+	})
+
+	got := unpack.historySnapshot()
+	if len(got) != 1 || got[0].ID != "/dl/done" {
+		t.Fatalf("%+v", got)
 	}
 }
 

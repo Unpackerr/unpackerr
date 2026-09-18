@@ -687,7 +687,6 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 	fileList := cloneFolderMap(next.Folder)
 
 	preview, err := u.applyEnvOverlay(func(cfg *Config) {
-		cfg.Folder.Interval = next.Interval
 		cfg.Folder.Buffer = next.Buffer
 		cfg.Folders = cloneFolderMap(next.Folder)
 	})
@@ -707,11 +706,9 @@ func (u *Unpackerr) putFolders(raw json.RawMessage) (bool, error) {
 
 	// The fsnotify watcher is built once at startup; the new list needs a restart.
 	return true, u.commitConfig(func(cfg *Config) {
-		cfg.Folder.Interval = next.Interval
 		cfg.Folder.Buffer = next.Buffer
 		cfg.Folders = fileList
 	}, func() {
-		u.Folder.Interval = preview.Folder.Interval
 		u.Folder.Buffer = preview.Folder.Buffer
 		u.Folders = preview.Folders
 	})

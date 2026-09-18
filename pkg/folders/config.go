@@ -12,9 +12,7 @@ import (
 	"golift.io/xtractr"
 )
 
-// defaultPollInterval is used if Docker is detected.
 const (
-	DefaultPollInterval = time.Second
 	MinimumPollInterval = 5 * time.Millisecond
 	DefaultDeleteAfter  = 10 * time.Minute
 )
@@ -38,27 +36,38 @@ type FolderConfig struct {
 	MaxFiles         int            `json:"maxFiles"         toml:"max_files"         xml:"max_files"         yaml:"maxFiles"`
 	MaxRatio         float64        `json:"maxRatio"         toml:"max_ratio"         xml:"max_ratio"         yaml:"maxRatio"`
 	// ResolvedMaxBytes is 0 when unset: folder watcher is uncapped.
-	ResolvedMaxBytes uint64   `json:"-"             toml:"-"             xml:"-"            yaml:"-"`
-	ExcludePaths     []string `json:"exclude_paths" toml:"exclude_paths" xml:"exclude_path" yaml:"exclude_paths"`
-	Path             string   `json:"path"          toml:"path"          xml:"path"         yaml:"path"`
+	ResolvedMaxBytes uint64        `json:"-"             toml:"-"             xml:"-"            yaml:"-"`
+	ExcludePaths     []string      `json:"exclude_paths" toml:"exclude_paths" xml:"exclude_path" yaml:"exclude_paths"`
+	Interval         cnfg.Duration `json:"interval"      toml:"interval"      xml:"interval"     yaml:"interval"`
+	Path             string        `json:"path"          toml:"path"          xml:"path"         yaml:"path"`
 }
 
-// WatchConfig is the undocumented folders buffer/interval settings.
+// UsesPoller is true when this folder has its own radovskyb poller.
+func (c *FolderConfig) UsesPoller() bool {
+	return c != nil && c.Interval.Duration >= MinimumPollInterval
+}
+
+// WatchConfig is the undocumented folders event-buffer setting.
 type WatchConfig struct {
-	Buffer   uint          `json:"buffer"   toml:"buffer"   xml:"buffer"   yaml:"buffer"`
-	Interval cnfg.Duration `json:"interval" toml:"interval" xml:"interval" yaml:"interval"`
+	Buffer uint `json:"buffer" toml:"buffer" xml:"buffer" yaml:"buffer"`
+}
+
+// folderPoller is one radovskyb watcher for a single watch path.
+type folderPoller struct {
+	path     string
+	interval time.Duration
+	watcher  *watcher.Watcher
 }
 
 // Folders holds all known (created) folders in all watch paths.
 type Folders struct {
 	Logs
-	Interval     time.Duration
 	Config       []*FolderConfig
 	Folders      map[string]*Folder
 	Events       chan *Event
 	Updates      chan *xtractr.Response
 	FSNotify     *fsnotify.Watcher
-	Watcher      *watcher.Watcher
+	pollers      []*folderPoller
 	IgnoreSuffix string
 }
 

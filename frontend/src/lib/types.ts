@@ -248,6 +248,7 @@ export interface StarrConfig {
 
 export interface FolderConfig {
   path: string
+  interval: string
   extract_path: string
   delete_original: boolean
   delete_files: boolean
@@ -266,7 +267,6 @@ export interface FolderConfig {
 }
 
 export interface FoldersSection {
-  interval: string
   buffer: number
   folder: Record<string, FolderConfig> | null
 }

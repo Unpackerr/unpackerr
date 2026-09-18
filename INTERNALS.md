@@ -85,7 +85,7 @@ Count **ours**, not `net/http` per-connection goroutines or `xtractr` extract wo
 | `runWebServer` | `listen_addr` set | Yes relative to pre-#678 (metrics-only) |
 | Starr poll workers (`workChan`) | `max(1, starrAppCount)`, **grows never shrinks** on Starr PUT | Grow-on-PUT is new |
 | `folders.watchFSNotify` | At least one watch folder | No |
-| folder poller `Watcher.Start` | Folder interval ≥ minimum | No |
+| folder poller `Watcher.Start` | Per-folder interval ≥ minimum | No |
 | tray: `watchKillerChannels` | GUI builds | No |
 
 **Idle restart does not add a goroutine.** `maybeRestart` runs on the existing cleaner tick (5s). Unix `syscall.Exec` replaces the process (same PID). Windows starts a copy and `os.Exit(0)`.
@@ -221,7 +221,7 @@ Env-only (no config path): skip write, still apply live.
 
 **Starr PUT:** JSON object keyed by slug (letters, digits, `_`, `-`; same charset as roles). `name` is display only. Invalid URL/key on a **PUT-body** instance is **400** after `ParseENV` fills env secrets (so a Save that omits `apiKey` because `UN_*_API_KEY` is set still succeeds). Env-only overlay slugs that startup would skip (URL without key, or the reverse) are dropped from live, not 400 — they cannot block saving other instances. File commit is the PUT body. Live map is that body plus `ParseENV`, so a *complete* env-only extra instance survives `{}`. `path` merges into `paths` without dupes. Last poll `Queue` carries over when `url` + expanded `apiKey` match (`starrIdentity`). Work thread pool **grows** to `starrAppCount`. Changed in v1.0.0 (September 2026).
 
-**Folders PUT:** wrapper `{ interval, buffer, folder }`; inner `folder` is a slug map. Always `restartRequired: true`. Watcher is built once; rebuilding in-process was rejected (leak / dual poller).
+**Folders PUT:** wrapper `{ buffer, folder }`; inner `folder` is a slug map. Per-folder `interval` (default `0s` / off) starts one radovskyb poller for that path. Always `restartRequired: true`. Watcher is built once; rebuilding in-process was rejected (leak / dual poller).
 
 **Webhooks / cmdhooks PUT:** slug maps, same file-body / live overlay as Starr. Env-only overlay slugs that fail validation are dropped from live, not 400. PUT-body hooks still validate (including HTTP client) then publish. First-ever hook starts the hook worker.
 

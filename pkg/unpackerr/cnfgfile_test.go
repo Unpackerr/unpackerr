@@ -612,10 +612,10 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	unpack.Lidarr = instanceMap([]*LidarrConfig{{StarrConfig: starrConf("http://lidarr:8686"), SplitFlac: true}})
 	unpack.Readarr = instanceMap([]*ReadarrConfig{{StarrConfig: starrConf("http://readarr:8787")}})
 	unpack.Readarr["0"].APIKey = starrKey
-	unpack.Folder.Interval = cnfg.Duration{Duration: 4 * time.Second}
 	unpack.Folder.Buffer = 5000
 	unpack.Folders = instanceMap([]*FolderConfig{{
 		Path: "/watch", ExtractPath: "/extracted", DeleteOrig: true, MoveBack: true, ExtractISOs: true,
+		Interval:    cnfg.Duration{Duration: 4 * time.Second},
 		DeleteAfter: &cnfg.Duration{Duration: 11 * time.Minute}, MaxNested: 2, MaxFiles: 99, MaxRatio: 3.5,
 		ExcludePaths: []string{"/watch/skip"},
 	}})

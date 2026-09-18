@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golift.io/cnfg"
 )
 
 type noopLogger struct{}
@@ -385,15 +387,121 @@ func newTestFolders(t *testing.T, cfg *FolderConfig) *Folders {
 		t.Fatalf("creating watcher: %v", err)
 	}
 
-	t.Cleanup(func() {
-		if tracker.Watcher != nil {
-			tracker.Watcher.Close()
-		}
-
-		if tracker.FSNotify != nil {
-			_ = tracker.FSNotify.Close()
-		}
-	})
+	t.Cleanup(tracker.Close)
 
 	return tracker
+}
+
+func TestUsesPoller(t *testing.T) {
+	t.Parallel()
+
+	if (&FolderConfig{}).UsesPoller() {
+		t.Fatal("zero interval must be off")
+	}
+
+	if (&FolderConfig{Interval: cnfg.Duration{Duration: time.Millisecond}}).UsesPoller() {
+		t.Fatal("1ms is below MinimumPollInterval")
+	}
+
+	if !(&FolderConfig{Interval: cnfg.Duration{Duration: time.Second}}).UsesPoller() {
+		t.Fatal("1s must enable the poller")
+	}
+}
+
+func TestPollerAddRecursiveOnce(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	nested := filepath.Join(root, "sub")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &FolderConfig{Path: root, Interval: cnfg.Duration{Duration: time.Second}}
+
+	tracker, err := (WatchConfig{Buffer: 8}).NewWatcher([]*FolderConfig{cfg}, noopLogger{}, 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(tracker.Close)
+
+	if tracker.FSNotify != nil {
+		t.Fatal("poller-only folder must not open fsnotify")
+	}
+
+	if len(tracker.pollers) != 1 {
+		t.Fatalf("pollers %d", len(tracker.pollers))
+	}
+
+	before := len(tracker.pollers[0].watcher.WatchedFiles())
+	if before == 0 {
+		t.Fatal("AddRecursive must watch the tree")
+	}
+
+	if err := tracker.Add(nested); err != nil {
+		t.Fatal(err)
+	}
+
+	after := len(tracker.pollers[0].watcher.WatchedFiles())
+	if before != after {
+		t.Fatalf("nested Add changed poller watch set %d -> %d", before, after)
+	}
+}
+
+func TestFSNotifyFolderHasNoPoller(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	nested := filepath.Join(root, "sub")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &FolderConfig{Path: root}
+	tracker := newTestFolders(t, cfg)
+
+	if len(tracker.pollers) != 0 {
+		t.Fatalf("pollers %d", len(tracker.pollers))
+	}
+
+	if tracker.FSNotify == nil {
+		t.Fatal("expected fsnotify")
+	}
+
+	if err := tracker.Add(nested); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMixedPollerAndFSNotify(t *testing.T) {
+	t.Parallel()
+
+	pollPath := t.TempDir()
+	fsPath := t.TempDir()
+	cfgs := []*FolderConfig{
+		{Path: pollPath, Interval: cnfg.Duration{Duration: time.Second}},
+		{Path: fsPath},
+	}
+
+	tracker, err := (WatchConfig{Buffer: 8}).NewWatcher(cfgs, noopLogger{}, 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(tracker.Close)
+
+	if len(tracker.pollers) != 1 {
+		t.Fatalf("pollers %d", len(tracker.pollers))
+	}
+
+	if got := tracker.PollerSummaries(); len(got) != 1 || !strings.Contains(got[0], pollPath) {
+		t.Fatalf("poller summaries %v", got)
+	}
+
+	if got := tracker.FSNotifyPaths(); len(got) != 1 || got[0] != fsPath {
+		t.Fatalf("fsnotify paths %v", got)
+	}
 }

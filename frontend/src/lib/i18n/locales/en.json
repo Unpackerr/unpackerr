@@ -105,7 +105,7 @@
     "ConfigDurationOff": "This is a Go duration in the config file or environment. Off is <code>0s</code>.",
     "ConfigDurationUnset": "This is a Go duration in the config file or environment. Unset omits the value (or leaves it empty).",
     "ConfigDurationDisabled": "This is a Go duration in the config file or environment. Disabled is <code>-1s</code>.",
-    "ConfigDurationFolderPoll": "This is a Go duration in the config file or environment. Disabled is <code>0s</code>, which still polls inside Docker; use <code>1ms</code> there to turn polling off.",
+    "ConfigDurationFolderPoll": "This is a Go duration in the config file or environment. Off is <code>0s</code> and uses filesystem events.",
     "ConfigSize": "This is a size string in the config file or environment, such as <code>20GB</code>. Unlimited is <code>0</code>.",
     "BrowseFiles": "Browse files",
     "TestTitle": "Test {name}",
@@ -672,7 +672,7 @@
       "interval": {
         "label": "Poll interval",
         "description": "How often to scan watch folders for new archives.",
-        "tooltip": "Disabled uses filesystem events (inotify and friends). Docker usually has no such events, so pick a real interval there."
+        "tooltip": "Off uses filesystem events (inotify and friends). Enable a poll interval if files never show up in the queue, which is common on Docker and CIFS. Polling increases disk reads and is not recommended when fsnotify works."
       },
       "buffer": {
         "label": "Event buffer",

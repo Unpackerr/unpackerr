@@ -97,12 +97,14 @@ func (f *Folders) openFSNotify(folderConfig []*FolderConfig, logger Logs) error 
 	return nil
 }
 
+// newFolderPoller watches cfg.Path non-recursively, same as fsnotify.
+// Existing nested folders are not listed until Folders.Add after a new item appears.
 func newFolderPoller(cfg *FolderConfig) (*folderPoller, error) {
 	pollWatcher := watcher.New()
 	pollWatcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create, watcher.Remove)
 	pollWatcher.IgnoreHiddenFiles(true)
 
-	if err := pollWatcher.AddRecursive(cfg.Path); err != nil {
+	if err := pollWatcher.Add(cfg.Path); err != nil {
 		return nil, fmt.Errorf("poller: %w", err)
 	}
 
@@ -130,9 +132,13 @@ func (f *Folders) Close() {
 	}
 }
 
-// Add watches a nested path with fsnotify. Poller folders already watch the tree.
+// Add watches a nested path after a new archive or folder appears.
 func (f *Folders) Add(folder string) error {
-	if f.pollerFor(folder) != nil {
+	if poller := f.pollerFor(folder); poller != nil {
+		if err := poller.watcher.Add(folder); err != nil {
+			return fmt.Errorf("poller: %w", err)
+		}
+
 		return nil
 	}
 
@@ -147,8 +153,12 @@ func (f *Folders) Add(folder string) error {
 	return nil
 }
 
-// Remove drops an fsnotify watch. Recursive pollers cannot unwatch a subtree.
+// Remove drops a nested watch when extract starts or the item goes away.
 func (f *Folders) Remove(folder string) {
+	if poller := f.pollerFor(folder); poller != nil {
+		_ = poller.watcher.Remove(folder)
+	}
+
 	if f.FSNotify != nil {
 		_ = f.FSNotify.Remove(folder)
 	}

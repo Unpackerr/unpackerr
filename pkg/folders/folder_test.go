@@ -408,13 +408,18 @@ func TestUsesPoller(t *testing.T) {
 	}
 }
 
-func TestPollerAddRecursiveOnce(t *testing.T) {
+func TestPollerWatchesRootNotExistingTree(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 
 	nested := filepath.Join(root, "sub")
 	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	deep := filepath.Join(nested, "inside.rar")
+	if err := os.WriteFile(deep, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -435,18 +440,23 @@ func TestPollerAddRecursiveOnce(t *testing.T) {
 		t.Fatalf("pollers %d", len(tracker.pollers))
 	}
 
-	before := len(tracker.pollers[0].watcher.WatchedFiles())
-	if before == 0 {
-		t.Fatal("AddRecursive must watch the tree")
+	watched := tracker.pollers[0].watcher.WatchedFiles()
+	if _, ok := watched[deep]; ok {
+		t.Fatal("must not recurse into existing subfolders at start")
 	}
 
 	if err := tracker.Add(nested); err != nil {
 		t.Fatal(err)
 	}
 
-	after := len(tracker.pollers[0].watcher.WatchedFiles())
-	if before != after {
-		t.Fatalf("nested Add changed poller watch set %d -> %d", before, after)
+	if _, ok := tracker.pollers[0].watcher.WatchedFiles()[deep]; !ok {
+		t.Fatal("nested Add should watch inside a folder that appears after start")
+	}
+
+	tracker.Remove(nested)
+
+	if _, ok := tracker.pollers[0].watcher.WatchedFiles()[deep]; ok {
+		t.Fatal("Remove should drop the nested poller watch")
 	}
 }
 

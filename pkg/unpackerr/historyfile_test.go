@@ -256,6 +256,11 @@ func TestQueueFromExtractFillsDue(t *testing.T) {
 		Config: &FolderConfig{DeleteAfter: &cnfg.Duration{Duration: 10 * time.Minute}},
 	}
 
+	unstamped := unpack.queueFromExtract("a", &Extract{App: "Sonarr", Status: WAITING, Updated: now})
+	if unstamped.DueKind != "" || !unstamped.Due.IsZero() {
+		t.Fatalf("snapshot must copy stamped due only: %+v", unstamped)
+	}
+
 	tests := []queueDueCase{
 		dueCase("start", "a", dueStart, &Extract{App: "Sonarr", Status: WAITING, Updated: now}, now.Add(time.Minute)),
 		dueCase("noted", "a", "", &Extract{App: "Sonarr", Status: WAITING, Updated: now, Note: "x"}, time.Time{}),
@@ -279,6 +284,8 @@ func TestQueueFromExtractFillsDue(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+
+			unpack.stampQueueDue(test.itemID, test.item)
 
 			got := unpack.queueFromExtract(test.itemID, test.item)
 			if got.DueKind != test.kind || !got.Due.Equal(test.due) {

@@ -244,6 +244,8 @@ func (u *Unpackerr) setItemNote(name string, item *Extract, note string) {
 	}
 
 	item.Note = note
+	u.stampQueueDue(name, item)
+
 	if u.hub != nil {
 		u.hub.notifyProgress(u.queueFromExtract(name, item))
 	}
@@ -346,9 +348,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	}
 
 	if !resp.Done {
-		if item.XProg != nil {
-			item.XProg.Archives = resp.Archives.Count() + resp.Extras.Count()
-		}
+		resetExtractProgress(item, resp.Archives.Count()+resp.Extras.Count())
 
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)

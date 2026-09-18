@@ -459,6 +459,8 @@ func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 		Status:     item.Status,
 		Retries:    item.Retries,
 		Updated:    item.Updated,
+		Due:        item.Due,
+		DueKind:    item.DueKind,
 	}
 
 	if item.Status == WAITING && item.App == FolderString {
@@ -470,7 +472,6 @@ func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 	}
 
 	fillQueueProgress(&queue, item)
-	u.fillQueueDue(&queue, itemID, item)
 
 	if item.Resp != nil && item.Resp.Error != nil {
 		queue.Error = item.Resp.Error.Error()
@@ -519,14 +520,14 @@ const (
 	dueHistory = "history"
 )
 
-func (u *Unpackerr) fillQueueDue(queue *QueueItem, itemID string, item *Extract) {
-	due, kind := u.queueDue(itemID, item)
-	if due.IsZero() || kind == "" {
+// stampQueueDue writes the next timer onto the extract. Call from the main
+// loop after Status or Updated changes; HTTP readers only copy the fields.
+func (u *Unpackerr) stampQueueDue(itemID string, item *Extract) {
+	if item == nil {
 		return
 	}
 
-	queue.Due = due
-	queue.DueKind = kind
+	item.Due, item.DueKind = u.queueDue(itemID, item)
 }
 
 func (u *Unpackerr) queueDue(itemID string, item *Extract) (time.Time, string) {

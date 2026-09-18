@@ -73,3 +73,31 @@ func TestQueueSnapshotConcurrentWithProgress(t *testing.T) {
 
 	<-done
 }
+
+func TestQueueSnapshotConcurrentWithFolderTracker(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	item := &Extract{App: FolderString, Path: "/w", Status: EXTRACTED, DueKind: dueCleanup}
+
+	unpack.lockHistory()
+	unpack.Map["/w"] = item
+	unpack.unlockHistory()
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for range 2000 {
+			unpack.folders.Folders["/w"] = &Folder{}
+			delete(unpack.folders.Folders, "/w")
+		}
+	}()
+
+	for range 2000 {
+		_ = unpack.queueSnapshot()
+	}
+
+	<-done
+}

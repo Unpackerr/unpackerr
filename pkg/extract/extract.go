@@ -25,9 +25,13 @@ type Extract struct {
 	DeleteDelay time.Duration
 	DeleteOrig  bool
 	Status      Status
-	IDs         map[string]any
-	Resp        *xtractr.Response
-	XProg       *Progress
+	// Due is the next status-timer deadline. The main loop stamps it so HTTP
+	// queue snapshots do not read live config or the folder tracker.
+	Due     time.Time
+	DueKind string
+	IDs     map[string]any
+	Resp    *xtractr.Response
+	XProg   *Progress
 	// Note is a short waiting-state caption for the live queue (e.g. no archives yet).
 	Note string
 	// PreFiles maps cleaned full paths present in each archive dest before

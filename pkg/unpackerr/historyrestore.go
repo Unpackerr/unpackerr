@@ -66,6 +66,8 @@ func (u *Unpackerr) restoreQueueFromHistory() {
 		}
 
 		u.Map[itemID] = item
+		u.stampQueueDue(itemID, item)
+
 		restored++
 	}
 

@@ -116,10 +116,8 @@ recommendations:
     - name: 24 hours
       value: 24h
   folders: &FOLDER_INTERVALS
-    - name: Default (1s in Docker)
+    - name: Off
       value: 0s
-    - name: Disabled
-      value: 1ms
     - name: 1/2 second
       value: 500ms
     - name: 1 second
@@ -751,16 +749,6 @@ sections:
       ## Global Folder configuration that affects all watched folders.
     envvar_prefix: FOLDERS_
     params:
-      - name: interval
-        envvar: INTERVAL
-        default: 0s
-        docker: 1s
-        short: How often poller checks for new folders. Use `1ms` to disable it.
-        recommend: *FOLDER_INTERVALS
-        desc: |
-          How often poller checks for new folders.
-          The default of `0s` will disable the poller on all systems except Docker.
-          Set this value to `1ms` to disable it in Docker.
       - name: buffer
         envvar: BUFFER
         default: 20000
@@ -794,6 +782,17 @@ sections:
         default: ''
         example: /downloads/auto_extract
         short: Folder to watch for archives. **Not for Starr apps.**
+      - name: interval
+        envvar: INTERVAL
+        default: 0s
+        recommend: *FOLDER_INTERVALS
+        short: How often this folder is polled. Off (`0s`) uses filesystem events.
+        desc: |
+          How often this folder is scanned for new archives.
+          Off (`0s`) uses filesystem events (inotify and friends).
+          Enable a poll interval if files never show up in the queue, which is
+          common on Docker and CIFS. Polling increases disk reads and is not
+          recommended when fsnotify works.
       - name: exclude_paths
         envvar: EXCLUDE_PATH_
         default: []

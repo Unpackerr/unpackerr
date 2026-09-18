@@ -105,7 +105,7 @@
     "ConfigDurationOff": "Esto es una duración de Go en el archivo de configuración o el entorno. Apagado es <code>0s</code>.",
     "ConfigDurationUnset": "Esto es una duración de Go en el archivo de configuración o el entorno. Sin definir omite el valor (o lo deja vacío).",
     "ConfigDurationDisabled": "Esto es una duración de Go en el archivo de configuración o el entorno. Desactivado es <code>-1s</code>.",
-    "ConfigDurationFolderPoll": "Esto es una duración de Go en el archivo de configuración o el entorno. Desactivado es <code>0s</code>, que aún sondea dentro de Docker; usa <code>1ms</code> ahí para apagar el sondeo.",
+    "ConfigDurationFolderPoll": "Esto es una duración de Go en el archivo de configuración o el entorno. Desactivado es <code>0s</code> y usa eventos del sistema de archivos.",
     "ConfigSize": "Esto es una cadena de tamaño en el archivo de configuración o el entorno, como <code>20GB</code>. Ilimitado es <code>0</code>.",
     "BrowseFiles": "Explorar archivos",
     "TestTitle": "Probar {name}",
@@ -672,7 +672,7 @@
       "interval": {
         "label": "Intervalo de sondeo",
         "description": "Con qué frecuencia explorar las carpetas vigiladas en busca de archivos nuevos.",
-        "tooltip": "Desactivado usa eventos del sistema de archivos (inotify y similares). Docker casi nunca tiene esos eventos, así que elige un intervalo real ahí."
+        "tooltip": "Desactivado usa eventos del sistema de archivos (inotify y similares). Elige un intervalo de sondeo si los archivos nunca aparecen en la cola, lo habitual en Docker y CIFS. El sondeo aumenta las lecturas de disco y no se recomienda cuando fsnotify funciona."
       },
       "buffer": {
         "label": "Búfer de eventos",

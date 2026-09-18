@@ -21,15 +21,7 @@ func TestFolderWaitingShowsInQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		if tracker.Watcher != nil {
-			tracker.Watcher.Close()
-		}
-
-		if tracker.FSNotify != nil {
-			_ = tracker.FSNotify.Close()
-		}
-	})
+	t.Cleanup(tracker.Close)
 
 	unpack.folders = tracker
 
@@ -81,15 +73,7 @@ func TestCheckFolderStatsDropsMissingWaiting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		if tracker.Watcher != nil {
-			tracker.Watcher.Close()
-		}
-
-		if tracker.FSNotify != nil {
-			_ = tracker.FSNotify.Close()
-		}
-	})
+	t.Cleanup(tracker.Close)
 
 	unpack.folders = tracker
 

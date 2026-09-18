@@ -105,7 +105,7 @@
     "ConfigDurationOff": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uit is <code>0s</code>.",
     "ConfigDurationUnset": "Dit is een Go-duur in het configuratiebestand of de omgeving. Niet ingesteld laat de waarde weg (of leeg).",
     "ConfigDurationDisabled": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uitgeschakeld is <code>-1s</code>.",
-    "ConfigDurationFolderPoll": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uitgeschakeld is <code>0s</code>, wat in Docker nog steeds polst; gebruik daar <code>1ms</code> om het pollen uit te zetten.",
+    "ConfigDurationFolderPoll": "Dit is een Go-duur in het configuratiebestand of de omgeving. Uit is <code>0s</code> en gebruikt bestandssysteemgebeurtenissen.",
     "ConfigSize": "Dit is een groottetekst in het configuratiebestand of de omgeving, zoals <code>20GB</code>. Onbeperkt is <code>0</code>.",
     "BrowseFiles": "Bestanden bladeren",
     "TestTitle": "{name} testen",
@@ -672,7 +672,7 @@
       "interval": {
         "label": "Poll-interval",
         "description": "Hoe vaak bewaakte mappen op nieuwe archieven worden gescand.",
-        "tooltip": "Uitgeschakeld gebruikt bestandssysteemgebeurtenissen (inotify en vrienden). Docker heeft die gebeurtenissen meestal niet, dus kies daar een echt interval."
+        "tooltip": "Uit gebruikt bestandssysteemgebeurtenissen (inotify en vrienden). Kies een poll-interval als bestanden nooit in de wachtrij verschijnen, wat gebruikelijk is op Docker en CIFS. Polling verhoogt schijflezingen en wordt afgeraden als fsnotify werkt."
       },
       "buffer": {
         "label": "Gebeurtenisbuffer",

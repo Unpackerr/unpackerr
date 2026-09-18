@@ -149,6 +149,7 @@ export const STARR_ENV_FIELDS: Record<string, string> = {
 
 export const FOLDER_ENV_FIELDS: Record<string, string> = {
   path: 'PATH',
+  interval: 'INTERVAL',
   extract_path: 'EXTRACT_PATH',
   delete_original: 'DELETE_ORIGINAL',
   delete_files: 'DELETE_FILES',

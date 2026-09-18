@@ -38,9 +38,7 @@
     type InstanceRow,
   } from '../../lib/slug'
 
-  let interval = $state('5s')
   let buffer = $state(20000)
-  let origInterval = $state('5s')
   let origBuffer = $state(20000)
   let rows = $state<InstanceRow<FolderConfig>[]>([])
   let origFolder = $state<Record<string, FolderConfig>>({})
@@ -72,6 +70,7 @@
   function blank(): FolderConfig {
     return {
       path: '',
+      interval: '0s',
       extract_path: '',
       delete_original: false,
       delete_files: false,
@@ -100,6 +99,7 @@
       ...blank(),
       ...f,
       path: f.path ?? '',
+      interval: f.interval || '0s',
       extract_path: f.extract_path ?? '',
       delete_after: f.delete_after ?? '',
       maxBytes: f.maxBytes || '0',
@@ -160,10 +160,8 @@
     const { data, error: err } = await loadSection<FoldersSection>('folders')
     if (err) error = err
     else {
-      const loaded = data ?? { interval: '5s', buffer: 20000, folder: {} }
-      interval = loaded.interval
+      const loaded = data ?? { buffer: 20000, folder: {} }
       buffer = defaultBuffer(loaded.buffer)
-      origInterval = interval
       origBuffer = buffer
       const map = instanceMap<FolderConfig>(loaded.folder)
       const normalized: Record<string, FolderConfig> = {}
@@ -193,8 +191,7 @@
   trackDirty(
     () =>
       !loading &&
-      (interval !== origInterval ||
-        buffer !== origBuffer ||
+      (buffer !== origBuffer ||
         !deepEqual(currentFolderMap(), origFolder) ||
         JSON.stringify(excludeText) !== JSON.stringify(origExclude)),
   )
@@ -220,7 +217,6 @@
 
     saving = true
     const payload: FoldersSection = {
-      interval,
       buffer,
       folder: saveFolderMap(),
     }
@@ -233,7 +229,6 @@
           row.autoSlug = false
         }
       }
-      origInterval = interval
       origBuffer = buffer
       origFolder = deepCopy(currentFolderMap())
       origExclude = deepCopy(excludeText)
@@ -251,16 +246,6 @@
   <Card class="mb-3">
     <CardBody>
       <Row class="g-2">
-        <Col md="6">
-          <Input
-            id="config.folders.interval"
-            type="folderpoll"
-            bind:value={interval}
-            original={origInterval}
-            disabled={!canWrite}
-            envVar="FOLDERS_INTERVAL"
-          />
-        </Col>
         <Col md="6">
           <Input
             id="config.folders.buffer"
@@ -338,7 +323,19 @@
               validate={(_id, v) => requiredPathError(v)}
             />
           </Col>
-          <Col md="12">
+          <Col md="6">
+            <Input
+              id={`folder-${row.id}-interval`}
+              helpKey="config.folders.interval"
+              type="folderpoll"
+              label={$_('config.folders.interval.label')}
+              bind:value={folder.interval}
+              original={prev?.interval}
+              disabled={!canWrite || row.envOnly}
+              envVar={envField(envPrefix, slug, 'INTERVAL')}
+            />
+          </Col>
+          <Col md="6">
             <Input
               id={`folder-${row.id}-extract`}
               helpKey="config.folders.extract_path"

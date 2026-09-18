@@ -85,6 +85,24 @@ func NormalizeExcludePaths(basePath string, excludes []string) []string {
 	return cleaned
 }
 
+// PathContains reports whether item is watch or a child of watch.
+// Root paths (`/` and Windows volume roots) keep their trailing separator.
+func PathContains(watch, item string) bool {
+	watch = filepath.Clean(watch)
+	item = filepath.Clean(item)
+
+	if item == watch {
+		return true
+	}
+
+	sep := string(os.PathSeparator)
+	if strings.HasSuffix(watch, sep) {
+		return strings.HasPrefix(item, watch)
+	}
+
+	return strings.HasPrefix(item, watch+sep)
+}
+
 // IsExcludedPath returns true if path is the exclude or a child of it.
 func (c *FolderConfig) IsExcludedPath(path string) bool {
 	if len(c.ExcludePaths) == 0 || path == "" {

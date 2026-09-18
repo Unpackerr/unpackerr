@@ -45,22 +45,14 @@ func validateFolderList(list InstanceMap[FolderConfig]) error {
 // if those changes include the addition of compressed files, they
 // are processed for exctraction.
 func (u *Unpackerr) PollFolders() {
-	var (
-		flist []string
-		err   error
-	)
-
-	if isRunningInDocker() && u.Folder.Interval.Duration == 0 {
-		u.Folder.Interval.Duration = folders.DefaultPollInterval
-	}
-
 	// Abs-expand a clone so GET /api/config/folders/live keeps the configured
 	// path (file vs env), not the runtime filepath.Abs rewrite.
-	watched, flist := folders.Check(folders.CloneList(instanceValues(u.Folders)), u.Logger)
+	watched, _ := folders.Check(folders.CloneList(instanceValues(u.Folders)), u.Logger)
 
 	tracker, err := u.Folder.NewWatcher(watched, u.Logger, updateChanBuf, suffix)
 	if err != nil {
 		u.Errorf("Watching Folders: %s", err)
+
 		return
 	}
 
@@ -73,21 +65,14 @@ func (u *Unpackerr) PollFolders() {
 
 	go u.folders.WatchFSNotify()
 
-	u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(flist, ", "))
-
-	// Setting an interval of any value less than 5 milliseconds
-	// (except zero in docker) allows disabling the poller.
-	if u.Folder.Interval.Duration < folders.MinimumPollInterval {
-		return
+	if watching := u.folders.FSNotifyPaths(); len(watching) > 0 {
+		u.Printf("[Folder] Watching (fsnotify): %s", strings.Join(watching, ", "))
 	}
 
-	go func() {
-		if err := u.folders.StartPoller(u.Folder.Interval.Duration); err != nil {
-			u.Errorf("%s", err)
-		}
-	}()
-
-	u.Printf("[Folder] Polling @ %s: %s", u.Folder.Interval.String(), strings.Join(flist, ", "))
+	if summaries := u.folders.PollerSummaries(); len(summaries) > 0 {
+		u.folders.StartPollers()
+		u.Printf("[Folder] Polling: %s", strings.Join(summaries, ", "))
+	}
 }
 
 // extractTrackedItem starts an archive or folder's extraction after it hasn't been written to in a while.

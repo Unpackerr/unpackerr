@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Unpackerr/unpackerr/pkg/extract"
@@ -16,7 +17,7 @@ import (
 )
 
 // NewWatcher returns a new folder watcher.
-// You must call folders.FSNotify.Close() when you're done with it.
+// Call Close() when you are done with it (tests). The daemon leaves it open.
 func (c WatchConfig) NewWatcher(
 	folderConfig []*FolderConfig,
 	logger Logs,
@@ -24,7 +25,6 @@ func (c WatchConfig) NewWatcher(
 	ignoreSuffix string,
 ) (*Folders, error) {
 	folders := &Folders{
-		Interval:     c.Interval.Duration,
 		Config:       folderConfig,
 		Folders:      make(map[string]*Folder),
 		Events:       make(chan *Event, c.Buffer),
@@ -37,20 +37,56 @@ func (c WatchConfig) NewWatcher(
 		return folders, nil // do not initialize watcher
 	}
 
-	folders.Watcher = watcher.New()
-	folders.Watcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create, watcher.Remove)
-	folders.Watcher.IgnoreHiddenFiles(true)
+	if folders.addPollers(folderConfig, logger) {
+		if err := folders.openFSNotify(folderConfig, logger); err != nil {
+			folders.Close()
 
-	fsn, err := fsnotify.NewWatcher()
-	if err != nil {
-		return folders, fmt.Errorf("fsnotify.NewWatcher: %w", err)
+			return folders, err
+		}
 	}
 
-	folders.FSNotify = fsn
+	return folders, nil
+}
+
+func (f *Folders) addPollers(folderConfig []*FolderConfig, logger Logs) bool {
+	needFSNotify := false
 
 	for _, folder := range folderConfig {
-		if err := folders.Watcher.Add(folder.Path); err != nil {
-			logger.Errorf("Folder '%s' (cannot poll): %v", folder.Path, err)
+		if folder == nil {
+			continue
+		}
+
+		if !folder.UsesPoller() {
+			needFSNotify = true
+			continue
+		}
+
+		poller, err := newFolderPoller(folder)
+		if err != nil {
+			logger.Errorf("Folder '%s' (cannot poll, using fsnotify): %v", folder.Path, err)
+
+			needFSNotify = true
+
+			continue
+		}
+
+		f.pollers = append(f.pollers, poller)
+	}
+
+	return needFSNotify
+}
+
+func (f *Folders) openFSNotify(folderConfig []*FolderConfig, logger Logs) error {
+	fsn, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("fsnotify.NewWatcher: %w", err)
+	}
+
+	f.FSNotify = fsn
+
+	for _, folder := range folderConfig {
+		if folder == nil || f.pollerFor(folder.Path) != nil {
+			continue
 		}
 
 		if err := fsn.Add(folder.Path); err != nil {
@@ -58,16 +94,55 @@ func (c WatchConfig) NewWatcher(
 		}
 	}
 
-	return folders, nil
+	return nil
 }
 
-// Add uses either fsnotify or watcher.
+// newFolderPoller watches cfg.Path non-recursively, same as fsnotify.
+// Existing nested folders are not listed until Folders.Add after a new item appears.
+func newFolderPoller(cfg *FolderConfig) (*folderPoller, error) {
+	pollWatcher := watcher.New()
+	pollWatcher.FilterOps(watcher.Rename, watcher.Move, watcher.Write, watcher.Create, watcher.Remove)
+	pollWatcher.IgnoreHiddenFiles(true)
+
+	if err := pollWatcher.Add(cfg.Path); err != nil {
+		return nil, fmt.Errorf("poller: %w", err)
+	}
+
+	return &folderPoller{
+		path:     cfg.Path,
+		interval: cfg.Interval.Duration,
+		watcher:  pollWatcher,
+	}, nil
+}
+
+// Close stops pollers and fsnotify. Safe for tests; the daemon does not call this.
+func (f *Folders) Close() {
+	if f == nil {
+		return
+	}
+
+	for _, poller := range f.pollers {
+		if poller != nil && poller.watcher != nil {
+			poller.watcher.Close()
+		}
+	}
+
+	if f.FSNotify != nil {
+		_ = f.FSNotify.Close()
+	}
+}
+
+// Add watches a nested path after a new archive or folder appears.
 func (f *Folders) Add(folder string) error {
-	if f.Interval >= MinimumPollInterval {
-		if err := f.Watcher.Add(folder); err != nil {
-			return fmt.Errorf("watcher: %w", err)
+	if poller := f.pollerFor(folder); poller != nil {
+		if err := poller.watcher.Add(folder); err != nil {
+			return fmt.Errorf("poller: %w", err)
 		}
 
+		return nil
+	}
+
+	if f.FSNotify == nil {
 		return nil
 	}
 
@@ -78,10 +153,10 @@ func (f *Folders) Add(folder string) error {
 	return nil
 }
 
-// Remove uses either fsnotify or watcher.
+// Remove drops a nested watch when extract starts or the item goes away.
 func (f *Folders) Remove(folder string) {
-	if f.Watcher != nil {
-		_ = f.Watcher.Remove(folder)
+	if poller := f.pollerFor(folder); poller != nil {
+		_ = poller.watcher.Remove(folder)
 	}
 
 	if f.FSNotify != nil {
@@ -89,13 +164,83 @@ func (f *Folders) Remove(folder string) {
 	}
 }
 
-// StartPoller starts the radovskyb poll watcher.
-func (f *Folders) StartPoller(interval time.Duration) error {
-	if err := f.Watcher.Start(interval); err != nil {
-		return fmt.Errorf("folder poller stopped: %w", err)
+// StartPollers starts one radovskyb watcher per polled folder.
+func (f *Folders) StartPollers() {
+	for _, poller := range f.pollers {
+		go f.startPoller(poller)
+	}
+}
+
+func (f *Folders) startPoller(poller *folderPoller) {
+	if err := poller.watcher.Start(poller.interval); err != nil {
+		f.Errorf("folder poller stopped: %v", err)
+	}
+}
+
+// PollerSummaries lists each poller as "path @ interval" for startup logs.
+func (f *Folders) PollerSummaries() []string {
+	out := make([]string, 0, len(f.pollers))
+	for _, poller := range f.pollers {
+		out = append(out, poller.path+" @ "+poller.interval.String())
+	}
+
+	return out
+}
+
+// FSNotifyPaths are watch roots that use filesystem events, not a poller.
+func (f *Folders) FSNotifyPaths() []string {
+	out := make([]string, 0, len(f.Config))
+	for _, cfg := range f.Config {
+		if cfg == nil || f.pollerFor(cfg.Path) != nil {
+			continue
+		}
+
+		out = append(out, cfg.Path)
+	}
+
+	return out
+}
+
+func (f *Folders) pollerFor(path string) *folderPoller {
+	cfg := f.watchConfig(path)
+	if cfg == nil {
+		return nil
+	}
+
+	for _, poller := range f.pollers {
+		if poller != nil && poller.path == cfg.Path {
+			return poller
+		}
 	}
 
 	return nil
+}
+
+func (f *Folders) watchConfig(name string) *FolderConfig {
+	name = filepath.Clean(name)
+
+	var (
+		best    *FolderConfig
+		bestLen = -1
+	)
+
+	for _, cfg := range f.Config {
+		if cfg == nil || cfg.Path == "" {
+			continue
+		}
+
+		clean := filepath.Clean(cfg.Path)
+		if !PathContains(clean, name) {
+			continue
+		}
+
+		if len(clean) > bestLen {
+			best = cfg
+			bestLen = len(clean)
+		}
+	}
+
+	return best
 }
 
 // WatchFSNotify reads file system events from a channel and processes them.
@@ -103,10 +248,41 @@ func (f *Folders) StartPoller(interval time.Duration) error {
 func (f *Folders) WatchFSNotify() {
 	defer log.Println("Folder watcher routine exited. No longer watching any folders.")
 
+	var waitGroup sync.WaitGroup
+
+	for _, poller := range f.pollers {
+		waitGroup.Add(1)
+
+		go func(poller *folderPoller) {
+			defer waitGroup.Done()
+
+			f.watchPoller(poller)
+		}(poller)
+	}
+
+	if f.FSNotify != nil {
+		f.readFSNotify()
+	}
+
+	waitGroup.Wait()
+}
+
+func (f *Folders) watchPoller(poller *folderPoller) {
 	for {
 		select {
-		case err := <-f.Watcher.Error:
+		case err := <-poller.watcher.Error:
 			f.Errorf("watcher: %v", err)
+		case event := <-poller.watcher.Event:
+			f.handleFileEvent(event.Path, "w "+event.Op.String())
+		case <-poller.watcher.Closed:
+			return
+		}
+	}
+}
+
+func (f *Folders) readFSNotify() {
+	for {
+		select {
 		case err := <-f.FSNotify.Errors:
 			f.Errorf("fsnotify: %v", err)
 		case event, ok := <-f.FSNotify.Events:
@@ -115,10 +291,6 @@ func (f *Folders) WatchFSNotify() {
 			}
 
 			f.handleFileEvent(event.Name, "f "+event.Op.String())
-		case event := <-f.Watcher.Event:
-			f.handleFileEvent(event.Path, "w "+event.Op.String())
-		case <-f.Watcher.Closed:
-			return
 		}
 	}
 }
@@ -128,31 +300,27 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		return
 	}
 
-	for _, cfg := range f.Config {
-		// Do not handle events on the watched folder itself.
-		if name == cfg.Path {
-			return
-		}
-
-		if !strings.HasPrefix(name, cfg.Path) {
-			continue // Not the configured folder for the event we just got.
-		}
-
-		if cfg.IsExcludedPath(name) {
-			f.Debugf("Folder: Ignored event from excluded path: %v", name)
-			continue
-		}
-
-		if dir := filepath.Dir(name); dir == cfg.Path {
-			f.Events <- &Event{Name: filepath.Base(name), Config: cfg, File: name, Op: operation}
-		} else {
-			f.Events <- &Event{Name: filepath.Base(dir), Config: cfg, File: name, Op: operation}
-		}
-
+	cfg := f.watchConfig(name)
+	if cfg == nil {
+		f.Debugf("Folder: Ignored event from non-configured path: %v", name)
 		return
 	}
 
-	f.Debugf("Folder: Ignored event from non-configured path: %v", name)
+	if filepath.Clean(name) == filepath.Clean(cfg.Path) {
+		return
+	}
+
+	if cfg.IsExcludedPath(name) {
+		f.Debugf("Folder: Ignored event from excluded path: %v", name)
+		return
+	}
+
+	eventName := filepath.Base(name)
+	if dir := filepath.Dir(name); filepath.Clean(dir) != filepath.Clean(cfg.Path) {
+		eventName = filepath.Base(dir)
+	}
+
+	f.Events <- &Event{Name: eventName, Config: cfg, File: name, Op: operation}
 }
 
 // ProcessEvent processes the event that was received.

@@ -32,11 +32,10 @@ type generalConfig struct {
 	Passwords     StringSlice   `json:"passwords"`
 }
 
-// foldersConfigAPI is global folder poller settings plus the watch list.
+// foldersConfigAPI is the event buffer plus the watch list.
 type foldersConfigAPI struct {
-	Interval cnfg.Duration             `json:"interval"`
-	Buffer   uint                      `json:"buffer"`
-	Folder   InstanceMap[FolderConfig] `json:"folder"`
+	Buffer uint                      `json:"buffer"`
+	Folder InstanceMap[FolderConfig] `json:"folder"`
 }
 
 func (u *Unpackerr) requireConfigPerm(write bool, next http.HandlerFunc) http.HandlerFunc {
@@ -203,9 +202,8 @@ func publicWebserver(web *WebServer) *WebServer {
 
 func foldersConfigFrom(cfg *Config) foldersConfigAPI {
 	return foldersConfigAPI{
-		Interval: cfg.Folder.Interval,
-		Buffer:   cfg.Folder.Buffer,
-		Folder:   emptyIfNilMap(cfg.Folders),
+		Buffer: cfg.Folder.Buffer,
+		Folder: emptyIfNilMap(cfg.Folders),
 	}
 }
 

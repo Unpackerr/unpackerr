@@ -57,7 +57,6 @@ services:
     - UN_WEBSERVER_UPSTREAMS=
     - UN_WEBSERVER_WS_ORIGINS=
     ## Folder Settings
-    - UN_FOLDERS_INTERVAL=1s
     - UN_FOLDERS_BUFFER=20000
     ## Sonarr Settings
     - UN_SONARR_0_NAME=
@@ -126,6 +125,7 @@ services:
     - UN_READARR_0_MAX_BYTES=
     ## Watch Folders
     - UN_FOLDER_0_PATH=/downloads/auto_extract
+    - UN_FOLDER_0_INTERVAL=0s
     - UN_FOLDER_0_EXTRACT_PATH=
     - UN_FOLDER_0_DELETE_AFTER=10m
     - UN_FOLDER_0_DISABLE_RECURSION=false

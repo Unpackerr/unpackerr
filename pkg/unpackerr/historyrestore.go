@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/folders"
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
@@ -379,16 +379,7 @@ func folderConfigForPath(configs []*FolderConfig, itemPath string) *FolderConfig
 }
 
 func folderPathContains(watch, item string) bool {
-	if item == watch {
-		return true
-	}
-
-	sep := string(os.PathSeparator)
-	if strings.HasSuffix(watch, sep) {
-		return strings.HasPrefix(item, watch)
-	}
-
-	return strings.HasPrefix(item, watch+sep)
+	return folders.PathContains(watch, item)
 }
 
 func (u *Unpackerr) kindFromURL(url string) starr.App {

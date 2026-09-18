@@ -217,21 +217,26 @@ func (f *Folders) pollerFor(path string) *folderPoller {
 }
 
 func (f *Folders) watchConfig(name string) *FolderConfig {
-	sep := string(os.PathSeparator)
+	name = filepath.Clean(name)
 
-	var best *FolderConfig
+	var (
+		best    *FolderConfig
+		bestLen = -1
+	)
 
 	for _, cfg := range f.Config {
 		if cfg == nil || cfg.Path == "" {
 			continue
 		}
 
-		if name != cfg.Path && !strings.HasPrefix(name, cfg.Path+sep) {
+		clean := filepath.Clean(cfg.Path)
+		if !PathContains(clean, name) {
 			continue
 		}
 
-		if best == nil || len(cfg.Path) > len(best.Path) {
+		if len(clean) > bestLen {
 			best = cfg
+			bestLen = len(clean)
 		}
 	}
 
@@ -295,31 +300,27 @@ func (f *Folders) handleFileEvent(name, operation string) {
 		return
 	}
 
-	for _, cfg := range f.Config {
-		// Do not handle events on the watched folder itself.
-		if name == cfg.Path {
-			return
-		}
-
-		if !strings.HasPrefix(name, cfg.Path) {
-			continue // Not the configured folder for the event we just got.
-		}
-
-		if cfg.IsExcludedPath(name) {
-			f.Debugf("Folder: Ignored event from excluded path: %v", name)
-			continue
-		}
-
-		if dir := filepath.Dir(name); dir == cfg.Path {
-			f.Events <- &Event{Name: filepath.Base(name), Config: cfg, File: name, Op: operation}
-		} else {
-			f.Events <- &Event{Name: filepath.Base(dir), Config: cfg, File: name, Op: operation}
-		}
-
+	cfg := f.watchConfig(name)
+	if cfg == nil {
+		f.Debugf("Folder: Ignored event from non-configured path: %v", name)
 		return
 	}
 
-	f.Debugf("Folder: Ignored event from non-configured path: %v", name)
+	if filepath.Clean(name) == filepath.Clean(cfg.Path) {
+		return
+	}
+
+	if cfg.IsExcludedPath(name) {
+		f.Debugf("Folder: Ignored event from excluded path: %v", name)
+		return
+	}
+
+	eventName := filepath.Base(name)
+	if dir := filepath.Dir(name); filepath.Clean(dir) != filepath.Clean(cfg.Path) {
+		eventName = filepath.Base(dir)
+	}
+
+	f.Events <- &Event{Name: eventName, Config: cfg, File: name, Op: operation}
 }
 
 // ProcessEvent processes the event that was received.

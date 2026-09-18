@@ -515,3 +515,79 @@ func TestMixedPollerAndFSNotify(t *testing.T) {
 		t.Fatalf("fsnotify paths %v", got)
 	}
 }
+
+func TestPathContainsRoot(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Clean("/")
+	item := filepath.Join(root, "downloads", "movie.rar")
+
+	if !PathContains(root, item) {
+		t.Fatalf("%q should contain %q", root, item)
+	}
+
+	if PathContains(filepath.Join(root, "data"), filepath.Join(root, "data-old", "a.rar")) {
+		t.Fatal("sibling prefix must not match")
+	}
+}
+
+func TestPollerForRootWatch(t *testing.T) {
+	t.Parallel()
+
+	rootPath := filepath.Clean("/")
+	tracker := &Folders{
+		Config:  []*FolderConfig{{Path: rootPath}},
+		pollers: []*folderPoller{{path: rootPath}},
+	}
+
+	if got := tracker.pollerFor(filepath.Join(rootPath, "new-dir")); got == nil || got.path != rootPath {
+		t.Fatalf("root poller missed nested path: %+v", got)
+	}
+}
+
+func TestHandleFileEventPrefersNestedWatch(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	child := filepath.Join(parent, "tv")
+
+	if err := os.Mkdir(child, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := filepath.Join(child, "show.rar")
+	if err := os.WriteFile(archive, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	parentCfg := &FolderConfig{Path: parent}
+	childCfg := &FolderConfig{Path: child}
+	tracker := &Folders{
+		Config: []*FolderConfig{parentCfg, childCfg},
+		Events: make(chan *Event, 1),
+		Logs:   noopLogger{},
+	}
+
+	tracker.handleFileEvent(archive, "test")
+
+	select {
+	case event := <-tracker.Events:
+		if event.Config != childCfg {
+			t.Fatalf("got watch %q want %q", event.Config.Path, child)
+		}
+
+		if event.Name != "show.rar" {
+			t.Fatalf("name %q", event.Name)
+		}
+	default:
+		t.Fatal("expected nested-watch event")
+	}
+
+	tracker.handleFileEvent(child, "test")
+
+	select {
+	case event := <-tracker.Events:
+		t.Fatalf("did not expect event for nested watch root: %+v", event)
+	default:
+	}
+}

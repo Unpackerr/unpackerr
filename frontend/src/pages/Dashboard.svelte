@@ -286,10 +286,14 @@
     return $_(key, { values: { remain } })
   }
 
-  function extractingCaption(item: QueueItem, clock: number): string {
+  function extractingBytes(item: QueueItem): string {
     const max = item.total || item.compressed || 0
+    if (max || item.percent) return progressCaption(item)
+    return ''
+  }
+
+  function extractingSpeeds(item: QueueItem): string {
     const parts: string[] = []
-    if (max || item.percent) parts.push(progressCaption(item))
     if (item.avgSpeedBps) {
       parts.push(
         $_('pages.dashboard.SpeedAvg', {
@@ -304,15 +308,21 @@
         }),
       )
     }
-    if (!isZeroTime(item.eta)) {
-      const remain = remainCompact(item.eta, clock)
-      parts.push(
-        remain
-          ? $_('pages.dashboard.ETA', { values: { remain } })
-          : $_('pages.dashboard.DueSoon'),
-      )
-    }
     return parts.join(' · ')
+  }
+
+  function extractingEta(item: QueueItem, clock: number): string {
+    if (isZeroTime(item.eta)) return ''
+    const remain = remainCompact(item.eta, clock)
+    return remain
+      ? $_('pages.dashboard.ETA', { values: { remain } })
+      : $_('pages.dashboard.DueSoon')
+  }
+
+  function extractingCaption(item: QueueItem, clock: number): string {
+    return [extractingBytes(item), extractingSpeeds(item), extractingEta(item, clock)]
+      .filter(Boolean)
+      .join(' · ')
   }
 
   function archiveLabel(item: QueueItem): string {
@@ -538,7 +548,7 @@
         {#if queue.length === 0}
           <p class="text-muted mb-0">{$_('phrases.NothingQueued')}</p>
         {:else}
-          <Table responsive hover size="sm" class="align-middle">
+          <Table hover size="sm" class="align-middle queue-table">
             <thead>
               <tr>
                 <th>{$_('pages.dashboard.App')}</th>
@@ -562,6 +572,9 @@
                     <div class="queue-progress-inner">
                       {#if showBar(item)}
                         {@const cap = extractingCaption(item, now)}
+                        {@const bytesLine = extractingBytes(item)}
+                        {@const speeds = extractingSpeeds(item)}
+                        {@const eta = extractingEta(item, now)}
                         {@const arch = archiveLabel(item)}
                         <div class="progress mb-1">
                           <div
@@ -569,17 +582,24 @@
                             style="width: {Math.min(item.percent ?? 0, 100)}%"
                           ></div>
                         </div>
-                        {#if cap}
-                          <div
-                            class="queue-progress-caption text-muted"
-                            title={cap}
-                          >
-                            {cap}
+                        {#if bytesLine}
+                          <div class="queue-progress-caption" title={cap}>
+                            {bytesLine}
+                          </div>
+                        {/if}
+                        {#if speeds}
+                          <div class="queue-progress-caption text-muted">
+                            {speeds}
+                          </div>
+                        {/if}
+                        {#if eta}
+                          <div class="queue-progress-caption text-muted">
+                            {eta}
                           </div>
                         {/if}
                         {#if arch}
                           <div
-                            class="text-truncate"
+                            class="queue-progress-archive text-muted"
                             title={item.archive || arch}
                           >
                             {arch}
@@ -625,10 +645,16 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="text-end">{item.retries}</td>
-                  <td class="small text-nowrap">{relTime(item.updated, now)}</td
+                  <td
+                    class="text-end queue-retries"
+                    data-label={$_('pages.dashboard.Retries')}>{item.retries}</td
                   >
-                  <td class="text-end text-nowrap">
+                  <td
+                    class="small text-nowrap queue-updated"
+                    data-label={$_('pages.dashboard.Updated')}
+                    >{relTime(item.updated, now)}</td
+                  >
+                  <td class="text-end text-nowrap queue-actions">
                     {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
                       <ButtonGroup size="sm">
                         {#if item.status === 'extractfailed'}

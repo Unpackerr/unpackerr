@@ -142,14 +142,18 @@ code.wrap {
   line-height: 1.15;
 }
 
+.queue-table {
+  width: 100%;
+}
+
 .queue-progress {
-  width: 16rem;
-  max-width: 16rem;
+  width: 42%;
+  min-width: 12rem;
 }
 
 .queue-progress-inner {
-  width: 16rem;
-  max-width: 16rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .queue-progress .progress {
@@ -162,9 +166,79 @@ code.wrap {
 
 .queue-progress-caption {
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.queue-progress-archive {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 767.98px) {
+  .queue-table thead {
+    display: none;
+  }
+
+  .queue-table,
+  .queue-table > :not(caption) {
+    display: block;
+  }
+
+  .queue-table tbody.stack-item {
+    display: block;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+
+  .queue-table tbody.stack-item > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    border: 0;
+  }
+
+  .queue-table tbody.stack-item > tr > * {
+    border: 0;
+    width: auto;
+    max-width: none;
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td:nth-child(1) {
+    order: 1;
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td:nth-child(2) {
+    order: 2;
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td.queue-actions {
+    order: 3;
+    margin-left: auto;
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td.queue-progress {
+    flex: 1 1 100%;
+    order: 4;
+    width: 100%;
+    padding-top: 0.4rem;
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td.queue-retries,
+  .queue-table tbody.stack-item > tr:first-child > td.queue-updated {
+    order: 5;
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+  }
+
+  .queue-table tbody.stack-item > tr:first-child > td.queue-retries::before,
+  .queue-table tbody.stack-item > tr:first-child > td.queue-updated::before {
+    content: attr(data-label) ' ';
+  }
+
+  .queue-table tbody.stack-item > tr.stack-item-path > * {
+    width: 100%;
+  }
 }
 
 .settings-nav.nav-tabs {

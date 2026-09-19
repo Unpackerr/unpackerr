@@ -165,6 +165,8 @@ export const FOLDER_ENV_FIELDS: Record<string, string> = {
   maxFiles: 'MAX_FILES',
   maxRatio: 'MAX_RATIO',
   exclude_paths: 'EXCLUDE_PATH_',
+  wait_extensions: 'WAIT_EXTENSION_',
+  skip_empty: 'SKIP_EMPTY',
 }
 
 export const HOOK_ENV_FIELDS: Record<string, string> = {

@@ -34,6 +34,8 @@ type Extract struct {
 	XProg   *Progress
 	// Note is a short waiting-state caption for the live queue (e.g. no archives yet).
 	Note string
+	// Event is how an item arrived: fsnotify, polling, later manual. Starr omits it for now.
+	Event string
 	// PreFiles maps cleaned full paths present in each archive dest before
 	// extraction to their Lstat info (nil when the stat failed). Dest folders
 	// come from FindCompressedFiles so nested archive dirs are included.

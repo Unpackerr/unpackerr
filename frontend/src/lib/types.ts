@@ -117,6 +117,8 @@ export interface QueueItem {
   eta?: string
   due?: string
   dueKind?: 'start' | 'retry' | 'cleanup' | 'history'
+  note?: string
+  event?: 'fsnotify' | 'polling'
 }
 
 export interface HistoryRecord {
@@ -264,6 +266,8 @@ export interface FolderConfig {
   maxFiles: number
   maxRatio: number
   exclude_paths: string[]
+  wait_extensions: string[]
+  skip_empty: boolean
 }
 
 export interface FoldersSection {

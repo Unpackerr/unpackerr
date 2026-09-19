@@ -205,6 +205,11 @@
       "Refresh": "Vernieuwen",
       "UpdatedAgo": "{age} geleden bijgewerkt",
       "LastWrite": "Laatste schrijf",
+      "WaitFile": "Wachten op {file}",
+      "FSNotify": "fsnotify",
+      "Polling": "polling",
+      "FSNotifyHint": "Deze map gebruikt bestandssysteemgebeurtenissen (inotify en vrienden).",
+      "PollingHint": "Deze map wordt op een timer gepolld. Gebruik dat als Docker of CIFS geen bestandssysteemgebeurtenissen kan leveren.",
       "ArchiveOf": "Archief {n} van {total}",
       "SpeedAvg": "{speed}/s gem.",
       "SpeedNow": "{speed}/s",
@@ -377,6 +382,21 @@
     "DeleteFailed": "Verwijderen mislukt",
     "Deleted": "Verwijderd",
     "ExtractedNothing": "Niets uitgepakt"
+  },
+  "errors": {
+    "NoCompressedFiles": "Geen gecomprimeerde bestanden gevonden",
+    "NoExtractableFiles": "Geen uitpakbare bestanden",
+    "WaitingSyncthing": "Wachten op Syncthing",
+    "InterruptedRestart": "Onderbroken door herstart",
+    "UnknownArchiveType": "Onbekend archieftype",
+    "Checksum": "Checksum van gearchiveerd bestand komt niet overeen",
+    "MaxBytes": "Uitgepakte grootte overschrijdt het maximum aantal bytes",
+    "MaxFiles": "Aantal uitgepakte bestanden overschrijdt het maximum",
+    "MaxRatio": "Uitgepakte grootte overschrijdt de maximale compressieverhouding",
+    "MaxNested": "Aantal geneste archieven overschrijdt het maximum",
+    "ArchiveSymlink": "Weigeren een symbolische koppeling als archief uit te pakken",
+    "InvalidPath": "Gearchiveerd bestand bevat een ongeldig pad",
+    "InvalidHead": "Gearchiveerd bestand bevat een ongeldig headerbestand"
   },
   "config": {
     "general": {
@@ -671,7 +691,7 @@
     "folders": {
       "interval": {
         "label": "Poll-interval",
-        "description": "Hoe vaak bewaakte mappen op nieuwe archieven worden gescand.",
+        "description": "Hoe vaak bewaakte mappen op nieuwe archieven worden gescand. Uitgeschakeld gebruikt inotify of fsnotify.",
         "tooltip": "Uit gebruikt bestandssysteemgebeurtenissen (inotify en vrienden). Kies een poll-interval als bestanden nooit in de wachtrij verschijnen, wat gebruikelijk is op Docker en CIFS. Polling verhoogt schijflezingen en wordt afgeraden als fsnotify werkt."
       },
       "buffer": {
@@ -753,6 +773,16 @@
         "label": "Uitgesloten paden",
         "description": "Paden om onder deze map te negeren, één per regel.",
         "tooltip": "Uitgesloten paden en hun kinderen worden niet bewaakt of uitgepakt. Absoluut, of relatief aan het bewaakte pad."
+      },
+      "wait_extensions": {
+        "label": "Wacht-extensies",
+        "description": "Wachten zolang een bijpassend bestand in de bovenste map staat.",
+        "tooltip": "Eén achtervoegsel per regel, met een punt vooraan (.part, .crdownload). Submappen worden niet gescand. Uitpakken start na de startvertraging zodra die bestanden weg zijn. Wachtende items worden elke 5s opnieuw gecontroleerd, ook zonder poller. De map-poller inschakelen pollt de map dubbel en verhoogt het aantal schijflezingen. Nuttig als fsnotify niet beschikbaar is, en niet aanbevolen wanneer dat wel zo is."
+      },
+      "skip_empty": {
+        "label": "Lege mappen overslaan",
+        "description": "Mappen zonder archieven niet in de wachtrij zetten.",
+        "tooltip": "Na de startvertraging verlaten archiefloze mappen de wachtstatus zonder geschiedenis of webhooks."
       }
     },
     "hooks": {

@@ -25,6 +25,7 @@
   import {
     statusColor,
     statusPhrase,
+    errorPhrase,
     relTime,
     progressCaption,
     remainCompact,
@@ -282,8 +283,23 @@
     const key = dueKeys[item.dueKind]
     if (!key) return ''
     const remain = remainCompact(item.due, clock)
-    if (!remain) return $_('pages.dashboard.DueSoon')
+    if (!remain) {
+      if (item.note) return ''
+      return $_('pages.dashboard.DueSoon')
+    }
     return $_(key, { values: { remain } })
+  }
+
+  function isFolderWait(item: QueueItem): boolean {
+    return item.status === 'waiting' && !!item.event
+  }
+
+  function updatedAge(item: QueueItem, clock: number): string {
+    const ago = relTime(item.updated, clock)
+    if (isFolderWait(item)) {
+      return `${$_('pages.dashboard.LastWrite')} ${ago}`
+    }
+    return ago
   }
 
   function extractingBytes(item: QueueItem): string {
@@ -320,20 +336,33 @@
   }
 
   function extractingCaption(item: QueueItem, clock: number): string {
-    return [extractingBytes(item), extractingSpeeds(item), extractingEta(item, clock)]
+    return [
+      extractingBytes(item),
+      extractingSpeeds(item),
+      extractingEta(item, clock),
+    ]
       .filter(Boolean)
       .join(' · ')
   }
 
-  function archiveLabel(item: QueueItem): string {
-    if (item.archives) {
-      const n = (item.extracted ?? 0) + 1
-      const of = $_('pages.dashboard.ArchiveOf', {
-        values: { n, total: item.archives },
-      })
-      return item.archive ? `${of} · ${item.archive}` : of
-    }
-    return item.archive || ''
+  function archiveCount(item: QueueItem): string {
+    if (!item.archives) return ''
+    const n = (item.extracted ?? 0) + 1
+    return $_('pages.dashboard.ArchiveOf', {
+      values: { n, total: item.archives },
+    })
+  }
+
+  function queueMeta(item: QueueItem, clock: number): string {
+    const parts = [
+      `${$_('pages.dashboard.Retries')} ${item.retries}`,
+      isFolderWait(item)
+        ? `${$_('pages.dashboard.LastWrite')} ${relTime(item.updated, clock)}`
+        : `${$_('pages.dashboard.Updated')} ${relTime(item.updated, clock)}`,
+    ]
+    const due = dueLabel(item, clock)
+    if (due) parts.push(due)
+    return `${parts.join(' · ')}.`
   }
 
   async function retry(item: QueueItem) {
@@ -533,15 +562,15 @@
               >{$_('pages.dashboard.ActiveQueue')}</CardTitle
             >
           </Col>
-          <Col xs="auto" class="d-flex align-items-center gap-2">
+          <Col xs="auto" class="d-flex align-items-center gap-2 flex-wrap">
             {#if live.connected}
               <Badge color="success">{$_('pages.dashboard.Live')}</Badge>
             {:else if dataAge}
-              <span class="small text-muted text-nowrap"
-                >{$_('pages.dashboard.UpdatedAgo', {
+              <span class="small text-muted text-nowrap">
+                {$_('pages.dashboard.UpdatedAgo', {
                   values: { age: dataAge },
-                })}</span
-              >
+                })}
+              </span>
             {/if}
           </Col>
         </Row>
@@ -551,19 +580,20 @@
           <Table hover size="sm" class="align-middle queue-table">
             <thead>
               <tr>
-                <th>{$_('pages.dashboard.App')}</th>
-                <th>{$_('pages.dashboard.Status')}</th>
+                <th class="queue-app">{$_('pages.dashboard.App')}</th>
+                <th class="queue-status">{$_('pages.dashboard.Status')}</th>
                 <th class="queue-progress">{$_('pages.dashboard.Progress')}</th>
-                <th class="text-end">{$_('pages.dashboard.Retries')}</th>
-                <th>{$_('pages.dashboard.Updated')}</th>
-                <th class="text-end">{$_('pages.dashboard.Actions')}</th>
+                <th class="text-end queue-retries">{$_('pages.dashboard.Retries')}</th>
+                <th class="queue-updated">{$_('pages.dashboard.Updated')}</th>
+                <th class="text-end queue-actions">{$_('pages.dashboard.Actions')}</th>
               </tr>
             </thead>
-            {#each queue as item (item.id)}
+            {#each queue as item, i (item.id)}
+              {@const due = dueLabel(item, now)}
               <tbody class="stack-item">
                 <tr>
-                  <td>{item.app}</td>
-                  <td
+                  <td class="queue-app">{item.app}</td>
+                  <td class="queue-status"
                     ><Badge color={statusColor(item.status)}
                       >{$_(statusPhrase(item.status))}</Badge
                     ></td
@@ -575,7 +605,10 @@
                         {@const bytesLine = extractingBytes(item)}
                         {@const speeds = extractingSpeeds(item)}
                         {@const eta = extractingEta(item, now)}
-                        {@const arch = archiveLabel(item)}
+                        {@const archOf = archiveCount(item)}
+                        {@const etaArch = [eta, archOf]
+                          .filter(Boolean)
+                          .join(' · ')}
                         <div class="progress mb-1">
                           <div
                             class="progress-bar"
@@ -592,68 +625,60 @@
                             {speeds}
                           </div>
                         {/if}
-                        {#if eta}
+                        {#if etaArch}
                           <div class="queue-progress-caption text-muted">
-                            {eta}
+                            {etaArch}
                           </div>
                         {/if}
-                        {#if arch}
+                        {#if item.archive}
                           <div
                             class="queue-progress-archive text-muted"
-                            title={item.archive || arch}
+                            title={item.archive}
                           >
-                            {arch}
+                            {item.archive}
                           </div>
                         {/if}
-                      {:else if item.status === 'waiting' && item.app === 'Folder'}
-                        {@const due = dueLabel(item, now)}
-                        <div class="queue-progress-caption">
-                          {$_('pages.dashboard.LastWrite')}
-                          {relTime(item.updated, now)}
+                      {/if}
+                      {#if item.error}
+                        {@const errKey = errorPhrase(item.error)}
+                        <div class="queue-progress-caption text-danger">
+                          {errKey ? $_(errKey) : item.error}
                         </div>
-                        {#if due}
-                          <div
-                            class="queue-progress-caption text-muted"
-                            title={item.due}
-                          >
-                            {due}
-                          </div>
-                        {/if}
-                      {:else}
+                      {:else if !showBar(item) && isFolderWait(item) && item.note}
+                        <div
+                          class="queue-progress-caption text-muted"
+                          title={item.note}
+                        >
+                          {$_('pages.dashboard.WaitFile', {
+                            values: { file: item.note },
+                          })}
+                        </div>
+                      {:else if !showBar(item) && !isFolderWait(item)}
                         {@const cap = progressCaption(item)}
-                        {@const due = dueLabel(item, now)}
                         {#if cap}
+                          {@const capKey = errorPhrase(cap)}
                           <div
                             class="queue-progress-caption text-muted"
                             title={item.progress || ''}
                           >
-                            {cap}
-                          </div>
-                        {/if}
-                        {#if due}
-                          <div
-                            class="queue-progress-caption text-muted"
-                            title={item.due}
-                          >
-                            {due}
-                          </div>
-                        {:else if !cap}
-                          <div class="queue-progress-caption text-muted">
-                            {$_('phrases.Empty')}
+                            {capKey ? $_(capKey) : cap}
                           </div>
                         {/if}
                       {/if}
                     </div>
                   </td>
-                  <td
-                    class="text-end queue-retries"
-                    data-label={$_('pages.dashboard.Retries')}>{item.retries}</td
-                  >
-                  <td
-                    class="small text-nowrap queue-updated"
-                    data-label={$_('pages.dashboard.Updated')}
-                    >{relTime(item.updated, now)}</td
-                  >
+                  <td class="text-end queue-retries">{item.retries}</td>
+                  <td class="small queue-updated">
+                    <div class="queue-updated-inner">
+                      <div class="text-nowrap">{updatedAge(item, now)}</div>
+                      {#if due}
+                        <div class="text-nowrap text-muted" title={item.due}>
+                          {due}
+                        </div>
+                      {/if}
+                    </div>
+                  </td>
+                  <td class="small queue-meta">{queueMeta(item, now)}</td>
                   <td class="text-end text-nowrap queue-actions">
                     {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
                       <ButtonGroup size="sm">
@@ -681,11 +706,25 @@
                   </td>
                 </tr>
                 <tr class="stack-item-path">
-                  <td colspan="6">
-                    <code class="wrap small">{item.id}</code>
-                    {#if item.error}<div class="text-danger small">
-                        {item.error}
-                      </div>{/if}
+                  <td colspan="7">
+                    <code class="wrap small queue-path">
+                      {item.id}{#if item.event}<Badge
+                          id="{uid}-event-{i}"
+                          class="queue-event-badge"
+                          color={item.event === 'fsnotify'
+                            ? 'success'
+                            : 'warning'}
+                        >
+                          {item.event === 'fsnotify'
+                            ? $_('pages.dashboard.FSNotify')
+                            : $_('pages.dashboard.Polling')}
+                        </Badge>
+                        <Tooltip target="{uid}-event-{i}" placement="top">
+                          {item.event === 'fsnotify'
+                            ? $_('pages.dashboard.FSNotifyHint')
+                            : $_('pages.dashboard.PollingHint')}
+                        </Tooltip>{/if}
+                    </code>
                   </td>
                 </tr>
               </tbody>

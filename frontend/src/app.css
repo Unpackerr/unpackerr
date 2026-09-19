@@ -173,14 +173,24 @@ code.wrap {
   width: 100%;
 }
 
-.queue-progress {
-  width: 42%;
-  min-width: 12rem;
+/* 1% + nowrap shrink-wraps App/Status/Retries/Updated/Actions to content.
+   Progress at 99% takes the leftover so telemetry does not wrap in a 8–12rem strip. */
+.queue-table > thead > tr > *,
+.queue-table > tbody > tr:first-child > * {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.queue-table > thead > tr > .queue-progress,
+.queue-table > tbody > tr:first-child > .queue-progress {
+  width: 99%;
+  white-space: normal;
 }
 
 .queue-progress-inner {
   min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .queue-progress .progress {
@@ -195,19 +205,50 @@ code.wrap {
   font-variant-numeric: tabular-nums;
 }
 
+.queue-progress-caption:not(.text-danger) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-updated-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .queue-progress-archive {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-path {
   overflow-wrap: anywhere;
-  word-break: break-word;
+  word-break: break-all;
+}
+
+.queue-event-badge {
+  font-family: var(--bs-body-font-family);
+  font-weight: 500;
+  vertical-align: middle;
+  margin-left: 0.4em;
+  white-space: nowrap;
+}
+
+.queue-meta {
+  display: none;
 }
 
 @media (max-width: 767.98px) {
-  .queue-table thead {
-    display: none;
+  .queue-table,
+  .queue-table > tbody {
+    display: block;
   }
 
-  .queue-table,
-  .queue-table > :not(caption) {
-    display: block;
+  .queue-table > thead {
+    display: none;
   }
 
   .queue-table tbody.stack-item {
@@ -229,13 +270,14 @@ code.wrap {
     border: 0;
     width: auto;
     max-width: none;
+    white-space: normal;
   }
 
-  .queue-table tbody.stack-item > tr:first-child > td:nth-child(1) {
+  .queue-table tbody.stack-item > tr:first-child > td.queue-app {
     order: 1;
   }
 
-  .queue-table tbody.stack-item > tr:first-child > td:nth-child(2) {
+  .queue-table tbody.stack-item > tr:first-child > td.queue-status {
     order: 2;
   }
 
@@ -248,19 +290,31 @@ code.wrap {
     flex: 1 1 100%;
     order: 4;
     width: 100%;
+    min-width: 0;
     padding-top: 0.4rem;
+  }
+
+  .queue-table
+    tbody.stack-item
+    > tr:first-child
+    > td.queue-progress:not(:has(.progress, .queue-progress-caption, .queue-progress-archive)) {
+    display: none;
   }
 
   .queue-table tbody.stack-item > tr:first-child > td.queue-retries,
   .queue-table tbody.stack-item > tr:first-child > td.queue-updated {
-    order: 5;
-    font-size: 0.8rem;
-    color: var(--bs-secondary-color);
+    display: none;
   }
 
-  .queue-table tbody.stack-item > tr:first-child > td.queue-retries::before,
-  .queue-table tbody.stack-item > tr:first-child > td.queue-updated::before {
-    content: attr(data-label) ' ';
+  .queue-table tbody.stack-item > tr:first-child > td.queue-meta {
+    display: block;
+    flex: 1 1 100%;
+    order: 5;
+    width: 100%;
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.15rem;
   }
 
   .queue-table tbody.stack-item > tr.stack-item-path > * {

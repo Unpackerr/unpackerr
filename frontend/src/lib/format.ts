@@ -86,6 +86,44 @@ export function statusPhrase(status: string | undefined): string {
   return STATUS_PHRASE[status.toLowerCase()] ?? status
 }
 
+// Exact English Error()/note strings from the Go pipeline and xtractr.
+// Add a matching errors.* locale key when a new sentinel shows up in the UI.
+const ERROR_PHRASE: Record<string, string> = {
+  'no compressed files found': 'errors.NoCompressedFiles',
+  'no extractable files': 'errors.NoExtractableFiles',
+  'waiting for syncthing': 'errors.WaitingSyncthing',
+  'interrupted by restart': 'errors.InterruptedRestart',
+  'unknown archive file type': 'errors.UnknownArchiveType',
+  'archived file checksum mismatch': 'errors.Checksum',
+  'extracted size exceeds maximum bytes': 'errors.MaxBytes',
+  'extracted file count exceeds maximum': 'errors.MaxFiles',
+  'extracted size exceeds maximum compression ratio': 'errors.MaxRatio',
+  'nested archive count exceeds maximum': 'errors.MaxNested',
+  'refusing to extract a symbolic link as an archive': 'errors.ArchiveSymlink',
+  'archived file contains invalid path': 'errors.InvalidPath',
+  'archived file contains invalid header file': 'errors.InvalidHead',
+}
+
+const ERROR_PHRASE_LIST = Object.entries(ERROR_PHRASE).sort(
+  (a, b) => b[0].length - a[0].length,
+)
+
+// Map a backend error or note to an errors.* locale key. Empty means show the raw string.
+export function errorPhrase(msg: string | undefined): string {
+  if (!msg) return ''
+
+  const lower = msg.trim().toLowerCase()
+  const exact = ERROR_PHRASE[lower]
+  if (exact) return exact
+
+  for (const [en, key] of ERROR_PHRASE_LIST) {
+    // xtractr wraps sentinels: "file.rar: archived file checksum mismatch (got ..., want ...)"
+    if (lower.includes(en)) return key
+  }
+
+  return ''
+}
+
 const FINISHED_HISTORY = new Set([
   'extractfailed',
   'extract failed',
@@ -97,7 +135,9 @@ const FINISHED_HISTORY = new Set([
   'delete failed',
 ])
 
-export function isFinishedHistory(row: { status?: string } | undefined): boolean {
+export function isFinishedHistory(
+  row: { status?: string } | undefined,
+): boolean {
   return !!row?.status && FINISHED_HISTORY.has(row.status.toLowerCase())
 }
 
@@ -116,7 +156,10 @@ export function progressCaption(item: {
 }
 
 // Compact remaining time until iso; empty when due/eta is missing or already past.
-export function remainCompact(iso: string | undefined, now = Date.now()): string {
+export function remainCompact(
+  iso: string | undefined,
+  now = Date.now(),
+): string {
   if (!iso || isZeroTime(iso)) return ''
   const t = Date.parse(iso)
   if (Number.isNaN(t)) return ''

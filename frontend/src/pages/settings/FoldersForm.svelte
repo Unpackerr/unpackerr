@@ -44,6 +44,8 @@
   let origFolder = $state<Record<string, FolderConfig>>({})
   let excludeText = $state<Record<string, string>>({})
   let origExclude = $state<Record<string, string>>({})
+  let waitText = $state<Record<string, string>>({})
+  let origWait = $state<Record<string, string>>({})
   let loading = $state(true)
   let saving = $state(false)
   let error = $state('')
@@ -86,7 +88,39 @@
       maxFiles: 0,
       maxRatio: 0,
       exclude_paths: [],
+      wait_extensions: [],
+      skip_empty: false,
     }
+  }
+
+  function parseWaitExtensions(text: string): string[] {
+    const out: string[] = []
+    const seen = new Set<string>()
+    for (const raw of (text ?? '').split('\n')) {
+      let ext = raw.trim()
+      if (!ext || ext === '.') continue
+      if (!ext.startsWith('.')) ext = `.${ext}`
+      const key = ext.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(ext)
+    }
+    return out
+  }
+
+  function formatWaitExtensions(list: string[] | null | undefined): string {
+    return parseWaitExtensions((list ?? []).join('\n')).join('\n')
+  }
+
+  function forceWaitLines(text: string): string {
+    return (text ?? '')
+      .split('\n')
+      .map((line) => {
+        const ext = line.trim()
+        if (!ext || ext === '.') return ext
+        return ext.startsWith('.') ? ext : `.${ext}`
+      })
+      .join('\n')
   }
 
   function defaultBuffer(n: unknown): number {
@@ -105,11 +139,18 @@
       maxBytes: f.maxBytes || '0',
       // File GET encodes a missing list as null; the textarea always yields [].
       exclude_paths: f.exclude_paths ?? [],
+      wait_extensions: parseWaitExtensions(
+        (f.wait_extensions ?? []).join('\n'),
+      ),
+      skip_empty: !!f.skip_empty,
     }
   }
 
   function taken(row: InstanceRow<FolderConfig>): string[] {
-    return rows.filter((r) => r.id !== row.id).map((r) => r.slug).filter(Boolean)
+    return rows
+      .filter((r) => r.id !== row.id)
+      .map((r) => r.slug)
+      .filter(Boolean)
   }
 
   function setPath(row: InstanceRow<FolderConfig>, path: string) {
@@ -134,6 +175,7 @@
           .split('\n')
           .map((s) => s.trim())
           .filter(Boolean),
+        wait_extensions: parseWaitExtensions(waitText[row.id] ?? ''),
       }
     }
     return out
@@ -150,8 +192,14 @@
           .split('\n')
           .map((s) => s.trim())
           .filter(Boolean),
+        wait_extensions: parseWaitExtensions(waitText[row.id] ?? ''),
       }
-      out[row.slug] = omitEnvFields(envPrefix, row.slug, item, FOLDER_ENV_FIELDS)
+      out[row.slug] = omitEnvFields(
+        envPrefix,
+        row.slug,
+        item,
+        FOLDER_ENV_FIELDS,
+      )
     }
     return out
   }
@@ -166,9 +214,11 @@
       const map = instanceMap<FolderConfig>(loaded.folder)
       const normalized: Record<string, FolderConfig> = {}
       const ex: Record<string, string> = {}
+      const wait: Record<string, string> = {}
       for (const [slug, f] of Object.entries(map)) {
         normalized[slug] = normalizeOne(f)
         ex[slug] = (f.exclude_paths ?? []).join('\n')
+        wait[slug] = formatWaitExtensions(f.wait_extensions)
       }
       let next = rowsFromMap(normalized)
       const live = await loadSectionLive<FoldersSection>('folders')
@@ -180,8 +230,12 @@
         )
       }
       rows = next
-      excludeText = Object.fromEntries(rows.map((r) => [r.id, ex[r.slug] ?? '']))
+      excludeText = Object.fromEntries(
+        rows.map((r) => [r.id, ex[r.slug] ?? '']),
+      )
       origExclude = deepCopy(excludeText)
+      waitText = Object.fromEntries(rows.map((r) => [r.id, wait[r.slug] ?? '']))
+      origWait = deepCopy(waitText)
       origFolder = deepCopy(currentFolderMap())
     }
 
@@ -193,13 +247,15 @@
       !loading &&
       (buffer !== origBuffer ||
         !deepEqual(currentFolderMap(), origFolder) ||
-        JSON.stringify(excludeText) !== JSON.stringify(origExclude)),
+        JSON.stringify(excludeText) !== JSON.stringify(origExclude) ||
+        JSON.stringify(waitText) !== JSON.stringify(origWait)),
   )
 
   function add() {
     const row = newRow(blank())
     rows = [...rows, row]
     excludeText = { ...excludeText, [row.id]: '' }
+    waitText = { ...waitText, [row.id]: '' }
   }
 
   function remove(id: string) {
@@ -207,6 +263,9 @@
     const next = { ...excludeText }
     delete next[id]
     excludeText = next
+    const waits = { ...waitText }
+    delete waits[id]
+    waitText = waits
   }
 
   async function save() {
@@ -232,6 +291,7 @@
       origBuffer = buffer
       origFolder = deepCopy(currentFolderMap())
       origExclude = deepCopy(excludeText)
+      origWait = deepCopy(waitText)
     }
 
     saving = false
@@ -323,7 +383,7 @@
               validate={(_id, v) => requiredPathError(v)}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-interval`}
               helpKey="config.folders.interval"
@@ -335,7 +395,7 @@
               envVar={envField(envPrefix, slug, 'INTERVAL')}
             />
           </Col>
-          <Col md="6">
+          <Col md="8">
             <Input
               id={`folder-${row.id}-extract`}
               helpKey="config.folders.extract_path"
@@ -397,7 +457,7 @@
             />
           </Col>
           {@render heading($_('pages.settings.folders.Extraction'))}
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-isos`}
               helpKey="config.folders.extract_isos"
@@ -409,7 +469,19 @@
               envVar={envField(envPrefix, slug, 'EXTRACT_ISOS')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
+            <Input
+              id={`folder-${row.id}-skip-empty`}
+              helpKey="config.folders.skip_empty"
+              type="select"
+              label={$_('config.folders.skip_empty.label')}
+              bind:value={folder.skip_empty}
+              original={prev?.skip_empty}
+              disabled={!canWrite || row.envOnly}
+              envVar={envField(envPrefix, slug, 'SKIP_EMPTY')}
+            />
+          </Col>
+          <Col md="4">
             <Input
               id={`folder-${row.id}-norecurse`}
               helpKey="config.folders.disableRecursion"
@@ -422,7 +494,7 @@
               envVar={envField(envPrefix, slug, 'DISABLE_RECURSION')}
             />
           </Col>
-          <Col md="12">
+          <Col lg="6">
             <Input
               id={`folder-${row.id}-exclude`}
               helpKey="config.folders.exclude_paths"
@@ -435,8 +507,26 @@
               envVar={envField(envPrefix, slug, 'EXCLUDE_PATH_')}
             />
           </Col>
+          <Col lg="6">
+            <Input
+              id={`folder-${row.id}-wait-ext`}
+              helpKey="config.folders.wait_extensions"
+              type="textarea"
+              rows={2}
+              label={$_('config.folders.wait_extensions.label')}
+              bind:value={
+                () => waitText[row.id] ?? '',
+                (v) => {
+                  waitText[row.id] = forceWaitLines(String(v))
+                }
+              }
+              original={formatWaitExtensions(prev?.wait_extensions)}
+              disabled={!canWrite || row.envOnly}
+              envVar={envField(envPrefix, slug, 'WAIT_EXTENSION_')}
+            />
+          </Col>
           {@render heading($_('pages.settings.folders.Protection'))}
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-symlinks`}
               helpKey="config.folders.allowSymlinks"
@@ -448,7 +538,7 @@
               envVar={envField(envPrefix, slug, 'ALLOW_SYMLINKS')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-nested`}
               helpKey="config.folders.maxNested"
@@ -460,7 +550,7 @@
               envVar={envField(envPrefix, slug, 'MAX_NESTED')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-extras`}
               helpKey="config.folders.extrasMaxDepth"
@@ -472,7 +562,7 @@
               envVar={envField(envPrefix, slug, 'EXTRAS_MAX_DEPTH')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-bytes`}
               helpKey="config.folders.maxBytes"
@@ -484,7 +574,7 @@
               envVar={envField(envPrefix, slug, 'MAX_BYTES')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-files`}
               helpKey="config.folders.maxFiles"
@@ -496,7 +586,7 @@
               envVar={envField(envPrefix, slug, 'MAX_FILES')}
             />
           </Col>
-          <Col md="6">
+          <Col md="4">
             <Input
               id={`folder-${row.id}-ratio`}
               helpKey="config.folders.maxRatio"

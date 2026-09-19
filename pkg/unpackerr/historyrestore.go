@@ -328,6 +328,13 @@ func (u *Unpackerr) seedFolderItemLocked(itemID string, item *Extract, requireCo
 
 	u.folders.Folders[itemID] = folderFromExtract(item, cfg)
 
+	if item.Event == "" {
+		item.Event = folders.KindFSNotify
+		if cfg.UsesPoller() {
+			item.Event = folders.KindPolling
+		}
+	}
+
 	return true
 }
 

@@ -329,12 +329,16 @@ func (u *Unpackerr) processEvent(event *eventData, now time.Time) {
 	}
 
 	u.folders.ProcessEvent(event, now)
-	u.syncFolderQueue(filepath.Join(event.Config.Path, event.Name))
+
+	dirPath := filepath.Join(event.Config.Path, event.Name)
+
+	u.syncFolderQueue(dirPath, event.Kind())
+	u.refreshFolderWait(dirPath)
 }
 
 // syncFolderQueue mirrors a watched folder into the overview queue while it is
 // still tracking writes (before start_delay queues extraction).
-func (u *Unpackerr) syncFolderQueue(dirPath string) {
+func (u *Unpackerr) syncFolderQueue(dirPath, kind string) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
@@ -353,7 +357,16 @@ func (u *Unpackerr) syncFolderQueue(dirPath string) {
 	}
 
 	if _, exists := u.Map[dirPath]; !exists {
-		u.updateQueueStatus(&newStatus{Name: dirPath, Status: WAITING}, folder.Updated, false)
+		waitFile := ""
+		if folder.Config != nil {
+			waitFile = folders.WaitFileInTop(dirPath, folder.Config.WaitExtensions)
+		}
+
+		folder.WaitFile = waitFile
+		u.updateQueueStatus(&newStatus{
+			Name: dirPath, Status: WAITING, Event: kind, Note: waitFile,
+		}, folder.Updated, false)
+
 		return
 	}
 
@@ -363,6 +376,10 @@ func (u *Unpackerr) syncFolderQueue(dirPath string) {
 	}
 
 	item.Updated = folder.Updated
+	if kind != "" {
+		item.Event = kind
+	}
+
 	u.stampQueueDue(dirPath, item)
 
 	if u.hub != nil {
@@ -374,14 +391,27 @@ func (u *Unpackerr) checkWaitingFolder(name string, folder *Folder, now time.Tim
 	if _, err := os.Stat(name); err != nil {
 		delete(u.folders.Folders, name)
 		u.folders.Remove(name)
-		u.syncFolderQueue(name)
+		u.syncFolderQueue(name, "")
 
 		return
 	}
 
-	if now.Sub(folder.Updated) >= u.StartDelay.Duration {
-		u.extractTrackedItem(name, folder, now)
+	if u.folderWaitActive(folder, name, now) {
+		return
 	}
+
+	if now.Sub(folder.Updated) < u.StartDelay.Duration {
+		return
+	}
+
+	if folder.Config != nil && folder.Config.SkipEmpty && u.folderArchiveCount(name, folder) == 0 {
+		u.Printf("[Folder] Skipping empty folder: %s", name)
+		u.dropFolderUnqueued(name)
+
+		return
+	}
+
+	u.extractTrackedItem(name, folder, now)
 }
 
 // checkFolderStats runs at an interval to see if any folders need work done on them.
@@ -486,6 +516,8 @@ type newStatus struct {
 	Name   string
 	Status ExtractStatus
 	Resp   *xtractr.Response
+	Event  string
+	Note   string
 }
 
 // updateQueueStatus for an on-going tracked extraction.
@@ -500,6 +532,8 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 			App:     FolderString,
 			Status:  data.Status,
 			Updated: now,
+			Event:   data.Event,
+			Note:    data.Note,
 			IDs:     map[string]any{"title": data.Name}, // required or webhook may break.
 		}
 
@@ -521,6 +555,11 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 
 	u.Map[data.Name].Status = data.Status
 	u.Map[data.Name].Updated = now
+
+	if data.Status != WAITING {
+		u.Map[data.Name].Note = ""
+	}
+
 	u.copyFolderExtractLocked(data.Name, u.Map[data.Name])
 
 	if sendHook {
@@ -556,6 +595,87 @@ func (u *Unpackerr) copyFolderExtractLocked(name string, item *Extract) {
 	if folder.Config != nil && folder.Config.DeleteAfter != nil {
 		item.DeleteDelay = folder.Config.DeleteAfter.Duration
 	}
+}
+
+// folderWaitActive reports whether wait_extensions still block extraction.
+// A fresh Updated stamp skips ReadDir while the watcher is still seeing writes.
+func (u *Unpackerr) folderWaitActive(folder *Folder, name string, now time.Time) bool {
+	if folder != nil && folder.WaitFile != "" && now.Sub(folder.Updated) < cleanerInterval+time.Second {
+		return true
+	}
+
+	return u.refreshFolderWait(name)
+}
+
+// refreshFolderWait sets the waiting note from top-level wait_extensions files.
+// Returns true when extraction must stay in WAITING.
+func (u *Unpackerr) refreshFolderWait(name string) bool {
+	if u.folders == nil {
+		return false
+	}
+
+	folder, ok := u.folders.Folders[name]
+	if !ok || folder == nil || folder.Status != WAITING {
+		return false
+	}
+
+	var waitFile string
+	if folder.Config != nil {
+		waitFile = folders.WaitFileInTop(name, folder.Config.WaitExtensions)
+	}
+
+	folder.WaitFile = waitFile
+	u.setFolderWaitNote(name, waitFile)
+
+	return waitFile != ""
+}
+
+func (u *Unpackerr) setFolderWaitNote(name, waitFile string) {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	item := u.Map[name]
+	if item == nil || item.Status != WAITING {
+		return
+	}
+
+	if item.Note == waitFile {
+		return
+	}
+
+	item.Note = waitFile
+	u.stampQueueDue(name, item)
+
+	if u.hub != nil {
+		u.hub.notifyProgress(u.queueFromExtract(name, item))
+	}
+}
+
+func (u *Unpackerr) folderArchiveCount(name string, folder *Folder) int {
+	cfg := folder.Config
+	if cfg == nil {
+		cfg = &FolderConfig{}
+	}
+
+	found := xtractr.FindCompressedFiles(xtractr.Filter{
+		Path:          name,
+		ExcludeSuffix: folderExcludeSuffixes(name, cfg),
+		AllowSymlinks: cfg.AllowSymlinks,
+	})
+
+	return found.Count()
+}
+
+func (u *Unpackerr) dropFolderUnqueued(name string) {
+	if u.folders != nil {
+		u.folders.Remove(name)
+		delete(u.folders.Folders, name)
+	}
+
+	u.lockHistory()
+	delete(u.Map, name)
+	u.notifyQueueLocked()
+	u.unlockHistory()
 }
 
 // copyFolderRetriesLocked writes the folder retry count onto the queue/history

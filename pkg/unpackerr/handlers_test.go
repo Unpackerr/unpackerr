@@ -69,6 +69,10 @@ func TestQueueFromExtractFolderNoteDoesNotOverrideLastWrite(t *testing.T) {
 	if got.Progress != "last write" {
 		t.Fatalf("progress %q", got.Progress)
 	}
+
+	if got.Note != noteNoExtractable {
+		t.Fatalf("note %q", got.Note)
+	}
 }
 
 func TestExtractCompletedDownloadNotesWaitingSyncthing(t *testing.T) {

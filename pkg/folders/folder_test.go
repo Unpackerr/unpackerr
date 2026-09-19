@@ -408,6 +408,26 @@ func TestUsesPoller(t *testing.T) {
 	}
 }
 
+func TestEventKind(t *testing.T) {
+	t.Parallel()
+
+	if got := (&Event{Op: "f CREATE"}).Kind(); got != "fsnotify" {
+		t.Fatal(got)
+	}
+
+	if got := (&Event{Op: "w WRITE"}).Kind(); got != "polling" {
+		t.Fatal(got)
+	}
+
+	if got := (&Event{Op: "write"}).Kind(); got != "polling" {
+		t.Fatal(got)
+	}
+
+	if got := (&Event{Op: "CREATE"}).Kind(); got != "" {
+		t.Fatal(got)
+	}
+}
+
 func TestPollerWatchesRootNotExistingTree(t *testing.T) {
 	t.Parallel()
 

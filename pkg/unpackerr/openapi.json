@@ -234,6 +234,7 @@
           "noRetry": {"type": "boolean"},
           "newFiles": {"type": "array", "items": {"type": "string"}},
           "origFiles": {"type": "array", "items": {"type": "string"}, "description": "Original archive paths; folder delete_orig after a restart"},
+          "extraFiles": {"type": "array", "items": {"type": "string"}, "description": "Nested extra archives; display only, not delete_orig"},
           "preFiles": {"type": "array", "items": {"type": "string"}, "description": "Dest paths that existed before extract; used after a restart"},
           "forgotten": {"type": "boolean", "description": "User dropped this item from the live queue; restart must not restore it"},
           "ids": {"type": "object", "additionalProperties": true, "description": "Starr hook metadata such as title and downloadId"},

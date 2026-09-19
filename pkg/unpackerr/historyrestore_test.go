@@ -33,7 +33,8 @@ func TestRestoreQueueExtractedAndImported(t *testing.T) {
 	unpack.upsertHistory(HistoryRecord{
 		ID: "show", Kind: string(starr.Sonarr), App: "Sportarr", URL: "http://sonarr:8989",
 		Path: "/dl/show", Status: EXTRACTED, Updated: now.Add(-time.Hour),
-		NewFiles: []string{"/dl/show/ep.mkv"}, DeleteDelay: "5m",
+		NewFiles: []string{"/dl/show/ep.mkv"}, DeleteDelay: "5m", Elapsed: "3s",
+		OrigFiles: []string{"/dl/show/show.rar"}, ExtraFiles: []string{"/dl/show/nested.rar"},
 	})
 	unpack.upsertHistory(HistoryRecord{
 		ID: "movie", Kind: string(starr.Radarr), App: "Radarr", URL: "http://radarr:7878",
@@ -47,7 +48,8 @@ func TestRestoreQueueExtractedAndImported(t *testing.T) {
 		t.Fatalf("extracted %+v", show)
 	}
 
-	if show.Resp == nil || len(show.Resp.NewFiles) != 1 || show.DeleteDelay != 5*time.Minute {
+	if show.Resp == nil || len(show.Resp.NewFiles) != 1 || show.DeleteDelay != 5*time.Minute ||
+		show.Resp.Elapsed != 3*time.Second || show.Resp.Archives.Count() != 1 || show.Resp.Extras.Count() != 1 {
 		t.Fatalf("extracted files/delay %+v", show)
 	}
 
@@ -499,11 +501,13 @@ func TestMaybeRecordHistoryWritesOrigFiles(t *testing.T) {
 		Resp: &xtractr.Response{
 			NewFiles: []string{"/watch/a/ep.mkv"},
 			Archives: xtractr.ArchiveList{"/watch/a": []string{"/watch/a/a.rar"}},
+			Extras:   xtractr.ArchiveList{"/watch/a": []string{"/watch/a/nested.rar"}},
 		},
 	})
 
 	if len(unpack.records) != 1 || len(unpack.records[0].OrigFiles) != 1 ||
-		unpack.records[0].OrigFiles[0] != "/watch/a/a.rar" {
+		unpack.records[0].OrigFiles[0] != "/watch/a/a.rar" ||
+		len(unpack.records[0].ExtraFiles) != 1 || unpack.records[0].ExtraFiles[0] != "/watch/a/nested.rar" {
 		t.Fatalf("%+v", unpack.records)
 	}
 }

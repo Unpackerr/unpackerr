@@ -80,7 +80,10 @@
   }
 
   const due = $derived(item ? dueText(item, now) : '')
-  const origFiles = $derived(item?.origFiles ?? [])
+  const extraFiles = $derived(
+    item && 'extraFiles' in item ? (item.extraFiles ?? []) : [],
+  )
+  const origFiles = $derived([...(item?.origFiles ?? []), ...extraFiles])
   const newFiles = $derived(item?.newFiles ?? [])
   const hasOrig = $derived(origFiles.length > 0)
   const hasNew = $derived(newFiles.length > 0)

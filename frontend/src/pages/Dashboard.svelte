@@ -46,6 +46,7 @@
   let pendingForget = $state<QueueItem | null>(null)
   let pendingDetail = $state<QueueItem | null>(null)
   let detailFiles = $state<QueueItem | null>(null)
+  let detailFilesReady = $state(false)
 
   function ageLabel(ms: number): string {
     const sec = Math.max(0, Math.floor(ms / 1000))
@@ -73,6 +74,21 @@
     'deleted',
     'deletefailed',
   ]
+
+  function statusHasExtractResult(status: string): boolean {
+    switch (status.toLowerCase()) {
+      case 'extracted':
+      case 'extractednothing':
+      case 'extractfailed':
+      case 'imported':
+      case 'deleting':
+      case 'deleted':
+      case 'deletefailed':
+        return true
+      default:
+        return false
+    }
+  }
 
   const uid = $props.id()
   const stats = $derived(live.stats)
@@ -396,19 +412,35 @@
     }
   })
 
+  async function fetchDetail(id: string) {
+    const res = await api.get<QueueItem>(
+      'queue/item?id=' + encodeURIComponent(id),
+    )
+    if (res.ok && pendingDetail?.id === id) detailFiles = res.body
+  }
+
   async function openDetail(item: QueueItem) {
     pendingDetail = item
     detailFiles = null
-    const res = await api.get<QueueItem>(
-      'queue/item?id=' + encodeURIComponent(item.id),
-    )
-    if (res.ok && pendingDetail?.id === item.id) detailFiles = res.body
+    detailFilesReady = statusHasExtractResult(item.status)
+    await fetchDetail(item.id)
   }
 
   function closeDetail() {
     pendingDetail = null
     detailFiles = null
+    detailFilesReady = false
   }
+
+  // One-shot: live progress omits file lists, so refetch when extract finishes.
+  $effect(() => {
+    const open = pendingDetail
+    if (!open || detailFilesReady) return
+    const status = live.queue.find((row) => row.id === open.id)?.status
+    if (!status || !statusHasExtractResult(status)) return
+    detailFilesReady = true
+    void fetchDetail(open.id)
+  })
 
   function forget(item: QueueItem) {
     if (wantsCleanupWarning(item)) {

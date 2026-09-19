@@ -347,6 +347,7 @@ func TestQueueFromExtractOmitsFileLists(t *testing.T) {
 			Queued:   2,
 			Output:   "/dl/a_unpackerred",
 			Archives: xtractr.ArchiveList{"": []string{"/dl/a/file.rar"}},
+			Extras:   xtractr.ArchiveList{"": []string{"/dl/a/nested.rar"}},
 		},
 	}
 
@@ -361,7 +362,7 @@ func TestQueueFromExtractOmitsFileLists(t *testing.T) {
 
 	fillQueueFiles(&got, item)
 
-	if len(got.NewFiles) != 1 || len(got.OrigFiles) != 1 {
+	if len(got.NewFiles) != 1 || len(got.OrigFiles) != 2 {
 		t.Fatalf("detail files %+v", got)
 	}
 }
@@ -378,5 +379,19 @@ func TestHistoryFromExtractCopiesHookMeta(t *testing.T) {
 	})
 	if rec.Event != "fsnotify" || rec.Queue != 3 || rec.Output != "/tmp/out" || rec.IDs["title"] != "Show" {
 		t.Fatalf("%+v", rec)
+	}
+}
+
+func TestHistoryFromExtractKeepsRestoredElapsed(t *testing.T) {
+	t.Parallel()
+
+	item := New().extractFromHistoryRecord(HistoryRecord{
+		ID: "a", Path: "/dl/a", Status: EXTRACTED, Elapsed: "3s", Bytes: 1, NewFiles: []string{"a"},
+	}, "Sonarr", EXTRACTED, "", time.Now(), time.Now())
+	item.Status = IMPORTED
+
+	got := historyFromExtract("a", item)
+	if got.Elapsed != "3s" {
+		t.Fatalf("elapsed %q", got.Elapsed)
 	}
 }

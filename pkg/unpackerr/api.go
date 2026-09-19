@@ -60,8 +60,8 @@ func (u *Unpackerr) queueHandler(response http.ResponseWriter, _ *http.Request) 
 }
 
 func (u *Unpackerr) queueItemHandler(response http.ResponseWriter, request *http.Request) {
-	itemID := strings.TrimSpace(request.URL.Query().Get("id"))
-	if itemID == "" {
+	itemID := request.URL.Query().Get("id")
+	if strings.TrimSpace(itemID) == "" {
 		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errMissingID.Error()})
 		return
 	}

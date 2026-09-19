@@ -158,6 +158,7 @@ export interface HistoryRecord {
   noRetry?: boolean
   newFiles?: string[]
   origFiles?: string[]
+  extraFiles?: string[]
   preFiles?: string[]
   forgotten?: boolean
   ids?: Record<string, unknown>

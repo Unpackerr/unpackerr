@@ -59,7 +59,8 @@ type HistoryRecord struct {
 	MaxBytes    uint64         `json:"maxBytes,omitempty"`
 	NoRetry     bool           `json:"noRetry,omitempty"`
 	NewFiles    []string       `json:"newFiles,omitempty"`
-	OrigFiles   []string       `json:"origFiles,omitempty"` // Archive paths; folder delete_orig after a restart.
+	OrigFiles   []string       `json:"origFiles,omitempty"`  // Archive paths; folder delete_orig after a restart.
+	ExtraFiles  []string       `json:"extraFiles,omitempty"` // Nested extras; display + restore Resp.Extras.
 	PreFiles    []string       `json:"preFiles,omitempty"`
 	Forgotten   bool           `json:"forgotten,omitempty"`
 	IDs         map[string]any `json:"ids,omitempty"` // Starr hook metadata (title, downloadId, …).
@@ -345,8 +346,9 @@ func fillHistoryStats(rec *HistoryRecord, item *Extract) {
 	rec.Bytes = item.Resp.Size
 	rec.Queue = item.Resp.Queued
 	rec.Output = item.Resp.Output
-	rec.NewFiles = append([]string(nil), item.Resp.NewFiles...)
-	rec.OrigFiles = append([]string(nil), item.Resp.Archives.List()...)
+	rec.NewFiles = slices.Clone(item.Resp.NewFiles)
+	rec.OrigFiles = slices.Clone(item.Resp.Archives.List())
+	rec.ExtraFiles = slices.Clone(item.Resp.Extras.List())
 
 	if item.Resp.Elapsed > 0 {
 		rec.Elapsed = item.Resp.Elapsed.Round(time.Second).String()
@@ -540,15 +542,20 @@ func fillQueueFiles(queue *QueueItem, item *Extract) {
 	}
 
 	if n := len(item.Resp.NewFiles); n > 0 {
-		queue.NewFiles = append([]string(nil), item.Resp.NewFiles...)
+		queue.NewFiles = slices.Clone(item.Resp.NewFiles)
 	}
 
-	archives := append([]string(nil), item.Resp.Archives.List()...)
-	archives = append(archives, item.Resp.Extras.List()...)
-
-	if len(archives) > 0 {
+	if archives := respArchivePaths(item); len(archives) > 0 {
 		queue.OrigFiles = archives
 	}
+}
+
+func respArchivePaths(item *Extract) []string {
+	if item == nil || item.Resp == nil {
+		return nil
+	}
+
+	return append(slices.Clone(item.Resp.Archives.List()), item.Resp.Extras.List()...)
 }
 
 func cloneIDs(ids map[string]any) map[string]any {

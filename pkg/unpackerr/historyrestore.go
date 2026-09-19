@@ -175,7 +175,8 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 	}
 
 	if len(rec.NewFiles) == 0 && rec.Bytes == 0 && errMsg == "" &&
-		len(rec.OrigFiles) == 0 && rec.Output == "" && rec.Queue == 0 {
+		len(rec.OrigFiles) == 0 && rec.Output == "" && rec.Queue == 0 &&
+		rec.Elapsed == "" && len(rec.ExtraFiles) == 0 {
 		return
 	}
 
@@ -187,8 +188,18 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 		Started:  rec.Started,
 	}
 
+	if rec.Elapsed != "" {
+		if parsed, err := time.ParseDuration(rec.Elapsed); err == nil {
+			item.Resp.Elapsed = parsed
+		}
+	}
+
 	if len(rec.OrigFiles) > 0 {
 		item.Resp.Archives = xtractr.ArchiveList{"": append([]string(nil), rec.OrigFiles...)}
+	}
+
+	if len(rec.ExtraFiles) > 0 {
+		item.Resp.Extras = xtractr.ArchiveList{"": append([]string(nil), rec.ExtraFiles...)}
 	}
 
 	if rec.Error != "" {

@@ -18,7 +18,7 @@ type starrApp[T any] interface {
 	takeQueue(old *T) // keep the last polled queue from a matching old entry.
 	stripRuntime()    // nil the queue and client on a file-shaped clone.
 	// pollQueue fetches without publishing. The returned bind assigns Queue and
-	// must run under History.mu with lastQueued/lastRetrieved/lastPollErr.
+	// must run under History.mu with lastQueued/lastRetrieved/lastPolled/lastPollErr.
 	pollQueue() (bind func(), total, retrieved int, err error)
 	queueViews() []queueView
 	hasQueueTitle(name string) bool

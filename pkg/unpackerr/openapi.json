@@ -118,6 +118,7 @@
                 "match": {"type": "integer", "description": "Completed items whose protocol is in this instance's protocol list"},
                 "issues": {"type": "integer", "description": "Retrieved items that failed, warned, or have a tracked-download error/warning"},
                 "downloading": {"type": "integer", "description": "Retrieved items with Status downloading"},
+                "updatedAt": {"type": "string", "format": "date-time", "description": "When this instance's queue snapshot was last fetched"},
                 "error": {"type": "string"}
               }
             }

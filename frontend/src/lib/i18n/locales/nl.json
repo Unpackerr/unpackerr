@@ -237,7 +237,6 @@
       "Cleared": "Geschiedenis gewist"
     },
     "detail": {
-      "Open": "Itemdetails",
       "OpenItem": "Itemdetails: {id}",
       "Info": "Info",
       "Title": "Titel",
@@ -255,7 +254,6 @@
       "Dest": "Uitpakmap",
       "URL": "URL",
       "Kind": "Soort",
-      "Event": "Event",
       "Started": "Gestart",
       "Elapsed": "Duur",
       "Finished": "Klaar",

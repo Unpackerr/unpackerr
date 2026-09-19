@@ -237,7 +237,6 @@
       "Cleared": "History cleared"
     },
     "detail": {
-      "Open": "Item details",
       "OpenItem": "Item details: {id}",
       "Info": "Info",
       "Title": "Title",
@@ -255,7 +254,6 @@
       "Dest": "Extract folder",
       "URL": "URL",
       "Kind": "Kind",
-      "Event": "Event",
       "Started": "Started",
       "Elapsed": "Elapsed",
       "Finished": "Finished",

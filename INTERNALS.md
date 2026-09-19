@@ -279,6 +279,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/system` | yes | `system:info:read` | Version, uptime, bind addr, urlbase, auth type, metrics flag, config file, hostname, GOOS, log folders |
 | GET | `{urlbase}api/system/export` | yes | `system:info:read` | Startup-log style live rundown; each section also needs `config:{section}:read` (or `*`); omitted sections say so. Secrets omitted. |
 | GET | `{urlbase}api/queue` | yes | `system:queue:read` | In-flight items |
+| GET | `{urlbase}api/queue/item` | yes | `system:queue:read` | `?id=`; one live item, incl. newFiles/origFiles; 400 without id, 404 unknown |
 | POST | `{urlbase}api/queue/retry` | yes | `system:queue:write` | `{id}`; only `extractfailed`; Starr → `WAITING`; folder resets on main loop |
 | POST | `{urlbase}api/queue/forget` | yes | `system:queue:write` | Terminal statuses only; in-progress **409**; Starr titles get a tombstone until they leave the upstream queue |
 | GET | `{urlbase}api/history` | yes | `system:history:read` | Durable JSONL-backed rows |

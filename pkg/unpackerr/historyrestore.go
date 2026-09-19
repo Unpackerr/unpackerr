@@ -109,6 +109,12 @@ func (u *Unpackerr) historyRestoreGate(
 	}
 
 	kind := u.historyKind(rec)
+	// Saved WAITING is folder-only (Starr poll recreates WAITING). QUEUED still
+	// maps to WAITING above and must restore for Starr titles.
+	if rec.Status == WAITING && kind != FolderString {
+		return "", time.Time{}, 0, "", "", false
+	}
+
 	if restoreNeedsKind(status) && kind == "" {
 		return "", time.Time{}, 0, "", "", false
 	}
@@ -232,7 +238,7 @@ func applyHistoryRestoreClock(item *Extract, saved ExtractStatus, now, stamp tim
 
 func restoreQueueStatus(status ExtractStatus) (ExtractStatus, string, bool) {
 	switch status {
-	case EXTRACTED, IMPORTED, EXTRACTFAILED, EXTRACTEDNOTHING:
+	case WAITING, EXTRACTED, IMPORTED, EXTRACTFAILED, EXTRACTEDNOTHING:
 		return status, "", true
 	case QUEUED:
 		return WAITING, "", true

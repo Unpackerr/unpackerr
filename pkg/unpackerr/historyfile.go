@@ -120,9 +120,18 @@ func isDurableHistory(status ExtractStatus) bool {
 }
 
 // isPersistedHistory is written to JSONL so a restart can rebuild the live queue.
-// WAITING is left out; the next Starr poll recreates it.
-func isPersistedHistory(status ExtractStatus) bool {
-	switch status {
+// Starr WAITING is left out; the next poll recreates it. Folder WAITING is kept so
+// a retry after EXTRACTFAILED cannot restore the old failed row.
+func isPersistedHistory(item *Extract) bool {
+	if item == nil {
+		return false
+	}
+
+	if item.Status == WAITING && item.App == FolderString {
+		return true
+	}
+
+	switch item.Status {
 	case QUEUED, EXTRACTING, EXTRACTFAILED, EXTRACTED, IMPORTED,
 		DELETING, DELETEFAILED, DELETED, EXTRACTEDNOTHING:
 		return true
@@ -275,7 +284,7 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 }
 
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
-	if u.KeepHistory == 0 || !isPersistedHistory(item.Status) {
+	if u.KeepHistory == 0 || !isPersistedHistory(item) {
 		return
 	}
 

@@ -117,7 +117,8 @@ export function errorPhrase(msg: string | undefined): string {
   if (exact) return exact
 
   for (const [en, key] of ERROR_PHRASE_LIST) {
-    if (lower.endsWith(en)) return key
+    // xtractr wraps sentinels: "file.rar: archived file checksum mismatch (got ..., want ...)"
+    if (lower.includes(en)) return key
   }
 
   return ''

@@ -213,6 +213,49 @@ func TestQueueFromExtractWatchMode(t *testing.T) {
 	}
 }
 
+func TestProcessEventQueueSnapshotHasEventAndNote(t *testing.T) {
+	t.Parallel()
+
+	watch := t.TempDir()
+	item := filepath.Join(watch, "Pending.Download.Test")
+
+	if err := os.Mkdir(item, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	part := filepath.Join(item, "Pending.Download.Test.zip.part")
+	if err := os.WriteFile(part, []byte("zip"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &FolderConfig{Path: watch, WaitExtensions: []string{"part"}}
+	unpack := newFolderUnpack(t, cfg)
+	unpack.processEvent(&eventData{
+		Config: cfg, Name: "Pending.Download.Test", File: part, Op: "f CREATE",
+	}, time.Now())
+
+	unpack.hub.queueMu.Lock()
+	frame := unpack.hub.pendingQ
+	unpack.hub.queueMu.Unlock()
+
+	if frame == nil {
+		t.Fatal("no queue snapshot")
+	}
+
+	var row QueueItem
+
+	for _, queued := range frame.Items {
+		if queued.ID == item {
+			row = queued
+			break
+		}
+	}
+
+	if row.Event != "fsnotify" || row.Note != "Pending.Download.Test.zip.part" {
+		t.Fatalf("snapshot %+v", row)
+	}
+}
+
 func newFolderUnpack(t *testing.T, cfg *FolderConfig) *Unpackerr {
 	t.Helper()
 

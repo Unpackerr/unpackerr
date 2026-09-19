@@ -357,10 +357,15 @@ func (u *Unpackerr) syncFolderQueue(dirPath, kind string) {
 	}
 
 	if _, exists := u.Map[dirPath]; !exists {
-		item := u.updateQueueStatus(&newStatus{Name: dirPath, Status: WAITING}, folder.Updated, false)
-		if kind != "" && item != nil {
-			item.Event = kind
+		waitFile := ""
+		if folder.Config != nil {
+			waitFile = folders.WaitFileInTop(dirPath, folder.Config.WaitExtensions)
 		}
+
+		folder.WaitFile = waitFile
+		u.updateQueueStatus(&newStatus{
+			Name: dirPath, Status: WAITING, Event: kind, Note: waitFile,
+		}, folder.Updated, false)
 
 		return
 	}
@@ -511,6 +516,8 @@ type newStatus struct {
 	Name   string
 	Status ExtractStatus
 	Resp   *xtractr.Response
+	Event  string
+	Note   string
 }
 
 // updateQueueStatus for an on-going tracked extraction.
@@ -525,6 +532,8 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 			App:     FolderString,
 			Status:  data.Status,
 			Updated: now,
+			Event:   data.Event,
+			Note:    data.Note,
 			IDs:     map[string]any{"title": data.Name}, // required or webhook may break.
 		}
 

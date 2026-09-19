@@ -93,9 +93,9 @@
               </svg>
             {/if}
           </Button>
-          <Tooltip target="{uid}-up" theme={theme.tooltip}
-            ><T id="FileBrowser.tooltip.Up" /></Tooltip
-          >
+          <Tooltip target="{uid}-up" theme={theme.tooltip}>
+            <T id="FileBrowser.tooltip.Up" />
+          </Tooltip>
           <InputGroupText><T id="FileBrowser.Path" /></InputGroupText>
           <Input bind:value={fb.input} />
           {#if fb.input !== fb.wd.path}

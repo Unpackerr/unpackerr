@@ -57,16 +57,20 @@
 
   const idRows = $derived.by(() => {
     if (!item?.ids) return []
+
     const path = item.path || item.id
     const folder = item.app === 'Folder'
+
     const rows = Object.entries(item.ids).filter(([key, value]) => {
       if (value === undefined || value === null || value === '') return false
       // Folder items copy the path into ids.title for webhooks; skip the duplicate.
       if (key === 'title' && (folder || String(value) === path)) return false
       return true
     })
+
     const title = rows.find(([key]) => key === 'title')
     if (!title) return rows
+
     return [title, ...rows.filter(([key]) => key !== 'title')]
   })
 
@@ -83,22 +87,27 @@
 
   function dueText(row: ItemMeta, clock: number): string {
     if (!('dueKind' in row) || !row.dueKind || isZeroTime(row.due)) return ''
+
     const key = dueKeys[row.dueKind]
     if (!key) return ''
+
     const remain = remainCompact(row.due, clock)
     if (!remain) return $_('pages.dashboard.DueSoon')
+
     return $_(key, { values: { remain } })
   }
 
   function eventLabel(event: string): string {
     if (event === 'fsnotify') return $_('pages.dashboard.FSNotify')
     if (event === 'polling') return $_('pages.dashboard.Polling')
+
     return event
   }
 
   function eventHint(event: string): string {
     if (event === 'fsnotify') return $_('pages.dashboard.FSNotifyHint')
     if (event === 'polling') return $_('pages.dashboard.PollingHint')
+
     return event
   }
 
@@ -116,6 +125,7 @@
     a.href = url
     a.download = `${base}-${kind}.txt`
     a.rel = 'noopener'
+
     document.body.append(a)
     a.click()
     a.remove()
@@ -154,6 +164,7 @@
         {/if}
       </span>
     </ModalHeader>
+
     <ModalBody>
       <dl class="item-detail">
         {#if item.path || item.id}
@@ -342,6 +353,7 @@
         </div>
       {/if}
     </ModalBody>
+
     <ModalFooter>
       <Button color="secondary" type="button" onclick={onclose}>
         {$_('buttons.Close')}

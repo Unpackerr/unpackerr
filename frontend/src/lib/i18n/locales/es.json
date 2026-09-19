@@ -383,6 +383,21 @@
     "Deleted": "Eliminado",
     "ExtractedNothing": "Nada extraído"
   },
+  "errors": {
+    "NoCompressedFiles": "No se encontraron archivos comprimidos",
+    "NoExtractableFiles": "No hay archivos extraíbles",
+    "WaitingSyncthing": "Esperando a Syncthing",
+    "InterruptedRestart": "Interrumpido por reinicio",
+    "UnknownArchiveType": "Tipo de archivo desconocido",
+    "Checksum": "La suma de comprobación del archivo no coincide",
+    "MaxBytes": "El tamaño extraído supera el máximo de bytes",
+    "MaxFiles": "El recuento de archivos extraídos supera el máximo",
+    "MaxRatio": "El tamaño extraído supera la relación de compresión máxima",
+    "MaxNested": "El recuento de archivos anidados supera el máximo",
+    "ArchiveSymlink": "Se rechaza extraer un enlace simbólico como archivo",
+    "InvalidPath": "El archivo contiene una ruta no válida",
+    "InvalidHead": "El archivo contiene un archivo de cabecera no válido"
+  },
   "config": {
     "general": {
       "debug": {

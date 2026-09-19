@@ -419,7 +419,11 @@ func TestEventKind(t *testing.T) {
 		t.Fatal(got)
 	}
 
-	if got := (&Event{Op: "write"}).Kind(); got != "" {
+	if got := (&Event{Op: "write"}).Kind(); got != "polling" {
+		t.Fatal(got)
+	}
+
+	if got := (&Event{Op: "CREATE"}).Kind(); got != "" {
 		t.Fatal(got)
 	}
 }

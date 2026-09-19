@@ -383,6 +383,21 @@
     "Deleted": "Verwijderd",
     "ExtractedNothing": "Niets uitgepakt"
   },
+  "errors": {
+    "NoCompressedFiles": "Geen gecomprimeerde bestanden gevonden",
+    "NoExtractableFiles": "Geen uitpakbare bestanden",
+    "WaitingSyncthing": "Wachten op Syncthing",
+    "InterruptedRestart": "Onderbroken door herstart",
+    "UnknownArchiveType": "Onbekend archieftype",
+    "Checksum": "Checksum van gearchiveerd bestand komt niet overeen",
+    "MaxBytes": "Uitgepakte grootte overschrijdt het maximum aantal bytes",
+    "MaxFiles": "Aantal uitgepakte bestanden overschrijdt het maximum",
+    "MaxRatio": "Uitgepakte grootte overschrijdt de maximale compressieverhouding",
+    "MaxNested": "Aantal geneste archieven overschrijdt het maximum",
+    "ArchiveSymlink": "Weigeren een symbolische koppeling als archief uit te pakken",
+    "InvalidPath": "Gearchiveerd bestand bevat een ongeldig pad",
+    "InvalidHead": "Gearchiveerd bestand bevat een ongeldig headerbestand"
+  },
   "config": {
     "general": {
       "debug": {

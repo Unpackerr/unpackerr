@@ -24,6 +24,7 @@
   import {
     statusColor,
     statusPhrase,
+    errorPhrase,
     bytes,
     dateTime,
     relTime,
@@ -194,9 +195,12 @@
             <tr class="stack-item-path">
               <td colspan={canWrite ? 7 : 6} headers="hist-app">
                 <code class="wrap small">{row.id}</code>
-                {#if row.error}<div class="text-danger small">
-                    {row.error}
-                  </div>{/if}
+                {#if row.error}
+                  {@const errKey = errorPhrase(row.error)}
+                  <div class="text-danger small">
+                    {errKey ? $_(errKey) : row.error}
+                  </div>
+                {/if}
               </td>
             </tr>
           </tbody>

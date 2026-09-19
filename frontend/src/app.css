@@ -173,14 +173,24 @@ code.wrap {
   width: 100%;
 }
 
-.queue-progress {
-  width: 42%;
-  min-width: 12rem;
+/* 1% + nowrap shrink-wraps App/Status/Retries/Updated/Actions to content.
+   Progress at 99% takes the leftover so telemetry does not wrap in a 8–12rem strip. */
+.queue-table > thead > tr > *,
+.queue-table > tbody > tr:first-child > * {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.queue-table > thead > tr > .queue-progress,
+.queue-table > tbody > tr:first-child > .queue-progress {
+  width: 99%;
+  white-space: normal;
 }
 
 .queue-progress-inner {
   min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .queue-progress .progress {
@@ -195,6 +205,12 @@ code.wrap {
   font-variant-numeric: tabular-nums;
 }
 
+.queue-progress-caption:not(.text-danger) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .queue-updated-inner {
   display: flex;
   flex-direction: column;
@@ -203,8 +219,9 @@ code.wrap {
 }
 
 .queue-progress-archive {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .queue-path {
@@ -225,13 +242,13 @@ code.wrap {
 }
 
 @media (max-width: 767.98px) {
-  .queue-table thead {
-    display: none;
+  .queue-table,
+  .queue-table > tbody {
+    display: block;
   }
 
-  .queue-table,
-  .queue-table > :not(caption) {
-    display: block;
+  .queue-table > thead {
+    display: none;
   }
 
   .queue-table tbody.stack-item {
@@ -253,6 +270,7 @@ code.wrap {
     border: 0;
     width: auto;
     max-width: none;
+    white-space: normal;
   }
 
   .queue-table tbody.stack-item > tr:first-child > td.queue-app {
@@ -272,7 +290,15 @@ code.wrap {
     flex: 1 1 100%;
     order: 4;
     width: 100%;
+    min-width: 0;
     padding-top: 0.4rem;
+  }
+
+  .queue-table
+    tbody.stack-item
+    > tr:first-child
+    > td.queue-progress:not(:has(.progress, .queue-progress-caption, .queue-progress-archive)) {
+    display: none;
   }
 
   .queue-table tbody.stack-item > tr:first-child > td.queue-retries,

@@ -383,6 +383,21 @@
     "Deleted": "Deleted",
     "ExtractedNothing": "Nothing Extracted"
   },
+  "errors": {
+    "NoCompressedFiles": "No compressed files found",
+    "NoExtractableFiles": "No extractable files",
+    "WaitingSyncthing": "Waiting for Syncthing",
+    "InterruptedRestart": "Interrupted by restart",
+    "UnknownArchiveType": "Unknown archive file type",
+    "Checksum": "Archived file checksum mismatch",
+    "MaxBytes": "Extracted size exceeds maximum bytes",
+    "MaxFiles": "Extracted file count exceeds maximum",
+    "MaxRatio": "Extracted size exceeds maximum compression ratio",
+    "MaxNested": "Nested archive count exceeds maximum",
+    "ArchiveSymlink": "Refusing to extract a symbolic link as an archive",
+    "InvalidPath": "Archived file contains invalid path",
+    "InvalidHead": "Archived file contains invalid header file"
+  },
   "config": {
     "general": {
       "debug": {

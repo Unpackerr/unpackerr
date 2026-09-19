@@ -47,7 +47,7 @@ func TestWaitExtensionsKeepsFolderWaiting(t *testing.T) {
 	}
 
 	unpack.StartDelay.Duration = time.Hour
-	unpack.checkFolderStats(now.Add(cleanerInterval))
+	unpack.checkFolderStats(now.Add(cleanerInterval + time.Second))
 
 	got = unpack.Map[item]
 	if got == nil || got.Status != WAITING || got.Note != "" {
@@ -168,7 +168,7 @@ func TestWaitScanSkippedWhileFSNotifyHot(t *testing.T) {
 	}
 
 	unpack.StartDelay.Duration = time.Hour
-	unpack.checkFolderStats(now.Add(cleanerInterval))
+	unpack.checkFolderStats(now.Add(cleanerInterval + time.Second))
 
 	got = unpack.Map[item]
 	if got == nil || got.Status != WAITING || got.Note != "" {

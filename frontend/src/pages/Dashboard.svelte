@@ -25,6 +25,7 @@
   import {
     statusColor,
     statusPhrase,
+    errorPhrase,
     relTime,
     progressCaption,
     remainCompact,
@@ -579,12 +580,12 @@
           <Table hover size="sm" class="align-middle queue-table">
             <thead>
               <tr>
-                <th>{$_('pages.dashboard.App')}</th>
-                <th>{$_('pages.dashboard.Status')}</th>
+                <th class="queue-app">{$_('pages.dashboard.App')}</th>
+                <th class="queue-status">{$_('pages.dashboard.Status')}</th>
                 <th class="queue-progress">{$_('pages.dashboard.Progress')}</th>
-                <th class="text-end">{$_('pages.dashboard.Retries')}</th>
-                <th>{$_('pages.dashboard.Updated')}</th>
-                <th class="text-end">{$_('pages.dashboard.Actions')}</th>
+                <th class="text-end queue-retries">{$_('pages.dashboard.Retries')}</th>
+                <th class="queue-updated">{$_('pages.dashboard.Updated')}</th>
+                <th class="text-end queue-actions">{$_('pages.dashboard.Actions')}</th>
               </tr>
             </thead>
             {#each queue as item, i (item.id)}
@@ -639,8 +640,9 @@
                         {/if}
                       {/if}
                       {#if item.error}
+                        {@const errKey = errorPhrase(item.error)}
                         <div class="queue-progress-caption text-danger">
-                          {item.error}
+                          {errKey ? $_(errKey) : item.error}
                         </div>
                       {:else if !showBar(item) && isFolderWait(item) && item.note}
                         <div
@@ -654,11 +656,12 @@
                       {:else if !showBar(item) && !isFolderWait(item)}
                         {@const cap = progressCaption(item)}
                         {#if cap}
+                          {@const capKey = errorPhrase(cap)}
                           <div
                             class="queue-progress-caption text-muted"
                             title={item.progress || ''}
                           >
-                            {cap}
+                            {capKey ? $_(capKey) : cap}
                           </div>
                         {/if}
                       {/if}

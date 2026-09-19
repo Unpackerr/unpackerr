@@ -119,6 +119,16 @@ export interface QueueItem {
   dueKind?: 'start' | 'retry' | 'cleanup' | 'history'
   note?: string
   event?: 'fsnotify' | 'polling'
+  started?: string
+  elapsed?: string
+  bytes?: number
+  ratio?: number
+  queue?: number
+  output?: string
+  kind?: string
+  ids?: Record<string, unknown>
+  newFiles?: string[]
+  origFiles?: string[]
 }
 
 export interface HistoryRecord {
@@ -139,7 +149,25 @@ export interface HistoryRecord {
   elapsed: string
   error: string
   progress: string
+  kind?: string
+  deleteOrig?: boolean
+  deleteDelay?: string
+  syncthing?: boolean
+  splitFlac?: boolean
+  maxBytes?: number
+  noRetry?: boolean
+  newFiles?: string[]
+  origFiles?: string[]
+  extraFiles?: string[]
+  preFiles?: string[]
+  forgotten?: boolean
+  ids?: Record<string, unknown>
+  event?: 'fsnotify' | 'polling'
+  queue?: number
+  output?: string
 }
+
+export type ItemMeta = QueueItem | HistoryRecord
 
 export interface BrowseDir {
   sep: string

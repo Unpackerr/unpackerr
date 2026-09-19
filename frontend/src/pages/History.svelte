@@ -16,6 +16,7 @@
     ModalHeader,
     Spinner,
     Table,
+    Tooltip,
   } from '@sveltestrap/sveltestrap'
   import { _ } from '../lib/i18n/Translate.svelte'
   import { api } from '../lib/api'
@@ -34,13 +35,26 @@
   import { success, failure } from '../lib/toast'
   import type { HistoryRecord } from '../lib/types'
   import { live } from '../lib/socket.svelte'
+  import ItemDetail from '../components/ItemDetail.svelte'
+  import InfoIcon from 'phosphor-svelte/lib/Info'
+  import { theme } from '../lib/theme.svelte'
 
   let { now = Date.now() }: { now?: number } = $props()
+
+  const uid = $props.id()
 
   let filter = $state('')
   let busy = $state<Record<string, boolean>>({})
   let loaded = $state(false)
   let pendingClear = $state(false)
+  let pendingDetail = $state<HistoryRecord | null>(null)
+
+  const detailItem = $derived(
+    pendingDetail
+      ? (live.history.find((row) => row.id === pendingDetail?.id) ??
+          pendingDetail)
+      : null,
+  )
 
   const canWrite = has(systemPerm('history', 'write'))
   const rows = $derived(live.history.filter(isFinishedHistory))
@@ -149,15 +163,15 @@
             <th id="hist-retries" class="text-end" scope="col"
               >{$_('pages.history.Retries')}</th
             >
-            <th id="hist-finished" scope="col">{$_('pages.history.Finished')}</th>
-            {#if canWrite}
-              <th id="hist-actions" class="text-end" scope="col"
-                >{$_('pages.history.Actions')}</th
-              >
-            {/if}
+            <th id="hist-finished" scope="col">
+              {$_('pages.history.Finished')}
+            </th>
+            <th id="hist-actions" class="text-end" scope="col">
+              {$_('pages.history.Actions')}
+            </th>
           </tr>
         </thead>
-        {#each shown as row (row.id)}
+        {#each shown as row, i (row.id)}
           <tbody class="stack-item">
             <tr>
               <td headers="hist-app">{row.app}</td>
@@ -180,21 +194,62 @@
                   ? $_('phrases.Empty')
                   : relTime(row.finished, now)}
               </td>
-              {#if canWrite}
-                <td class="text-end" headers="hist-actions">
+              <td class="text-end" headers="hist-actions">
+                <ButtonGroup size="sm">
                   <Button
+                    id="{uid}-info-{i}"
                     size="sm"
                     color="secondary"
                     outline
-                    disabled={busy[row.id]}
-                    onclick={() => remove(row)}>{$_('buttons.Delete')}</Button
+                    type="button"
+                    aria-label={$_('pages.detail.Info')}
+                    aria-haspopup="dialog"
+                    onclick={() => (pendingDetail = row)}
                   >
-                </td>
-              {/if}
+                    <InfoIcon
+                      size="1.25em"
+                      weight="bold"
+                      aria-hidden="true"
+                      focusable="false"
+                    />
+                  </Button>
+                  {#if canWrite}
+                    <Button
+                      size="sm"
+                      color="secondary"
+                      outline
+                      disabled={busy[row.id]}
+                      onclick={() => remove(row)}>{$_('buttons.Delete')}</Button
+                    >
+                  {/if}
+                </ButtonGroup>
+                <Tooltip
+                  target="{uid}-info-{i}"
+                  placement="left"
+                  theme={theme.tooltip}
+                >
+                  {$_('pages.detail.Info')}
+                </Tooltip>
+              </td>
             </tr>
             <tr class="stack-item-path">
-              <td colspan={canWrite ? 7 : 6} headers="hist-app">
-                <code class="wrap small">{row.id}</code>
+              <td colspan="7" headers="hist-app">
+                <code class="wrap small">
+                  <button
+                    type="button"
+                    class="queue-path-btn"
+                    title={$_('pages.detail.OpenItem', {
+                      values: { id: row.id },
+                    })}
+                    aria-label={$_('pages.detail.OpenItem', {
+                      values: { id: row.id },
+                    })}
+                    aria-haspopup="dialog"
+                    onclick={() => (pendingDetail = row)}
+                  >
+                    {row.id}
+                  </button>
+                </code>
                 {#if row.error}
                   {@const errKey = errorPhrase(row.error)}
                   <div class="text-danger small">
@@ -211,9 +266,9 @@
 </Card>
 
 <Modal isOpen={pendingClear} toggle={cancelClear}>
-  <ModalHeader toggle={cancelClear}
-    >{$_('phrases.ClearHistoryTitle')}</ModalHeader
-  >
+  <ModalHeader toggle={cancelClear}>
+    {$_('phrases.ClearHistoryTitle')}
+  </ModalHeader>
   <ModalBody>{$_('phrases.ClearHistoryConfirm')}</ModalBody>
   <ModalFooter>
     <Button color="secondary" type="button" onclick={cancelClear}
@@ -224,3 +279,5 @@
     >
   </ModalFooter>
 </Modal>
+
+<ItemDetail item={detailItem} {now} onclose={() => (pendingDetail = null)} />

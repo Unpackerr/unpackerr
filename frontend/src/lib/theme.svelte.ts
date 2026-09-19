@@ -16,6 +16,8 @@ function parseMode(raw: string): ThemeMode {
 class Theme {
   mode = $state<ThemeMode>('light')
   resolved = $state<'light' | 'dark'>('light')
+  // Sveltestrap Tooltip uses Bootstrap's inverted colors (dark page → light bubble).
+  tooltip = $derived<'light' | 'dark'>(this.resolved === 'dark' ? 'light' : 'dark')
 
   constructor() {
     this.mode = parseMode(readCookie(cookieName))

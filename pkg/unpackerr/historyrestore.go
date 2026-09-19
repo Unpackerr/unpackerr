@@ -141,6 +141,8 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		NoRetry:    rec.NoRetry,
 		MaxBytes:   rec.MaxBytes,
 		PreFiles:   preFilesFromKeys(rec.PreFiles),
+		IDs:        cloneIDs(rec.IDs),
+		Event:      rec.Event,
 	}
 
 	if rec.App != "" && rec.App != kind {
@@ -172,17 +174,32 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 		errMsg = rec.Error
 	}
 
-	if len(rec.NewFiles) == 0 && rec.Bytes == 0 && errMsg == "" && len(rec.OrigFiles) == 0 {
+	if len(rec.NewFiles) == 0 && rec.Bytes == 0 && errMsg == "" &&
+		len(rec.OrigFiles) == 0 && rec.Output == "" && rec.Queue == 0 &&
+		rec.Elapsed == "" && len(rec.ExtraFiles) == 0 {
 		return
 	}
 
 	item.Resp = &xtractr.Response{
 		NewFiles: append([]string(nil), rec.NewFiles...),
 		Size:     rec.Bytes,
+		Output:   rec.Output,
+		Queued:   rec.Queue,
+		Started:  rec.Started,
+	}
+
+	if rec.Elapsed != "" {
+		if parsed, err := time.ParseDuration(rec.Elapsed); err == nil {
+			item.Resp.Elapsed = parsed
+		}
 	}
 
 	if len(rec.OrigFiles) > 0 {
 		item.Resp.Archives = xtractr.ArchiveList{"": append([]string(nil), rec.OrigFiles...)}
+	}
+
+	if len(rec.ExtraFiles) > 0 {
+		item.Resp.Extras = xtractr.ArchiveList{"": append([]string(nil), rec.ExtraFiles...)}
 	}
 
 	if rec.Error != "" {

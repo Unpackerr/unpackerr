@@ -192,7 +192,17 @@
           "due": {"type": "string", "format": "date-time", "description": "When the next start, retry, cleanup, or history transition is due"},
           "dueKind": {"type": "string", "enum": ["start", "retry", "cleanup", "history"], "description": "What due counts down toward"},
           "note": {"type": "string", "description": "Waiting caption, such as a wait_extensions filename"},
-          "event": {"type": "string", "enum": ["fsnotify", "polling"], "description": "How this folder item arrived; omitted for Starr apps"}
+          "event": {"type": "string", "enum": ["fsnotify", "polling"], "description": "How this folder item arrived; omitted for Starr apps"},
+          "started": {"type": "string", "format": "date-time"},
+          "elapsed": {"type": "string", "description": "Go duration, e.g. 1m2s"},
+          "bytes": {"type": "integer"},
+          "ratio": {"type": "number"},
+          "queue": {"type": "integer", "description": "xtractr waiting count when this extract started"},
+          "output": {"type": "string", "description": "xtractr destination folder"},
+          "kind": {"type": "string", "description": "Starr dialect or Folder. app is the instance label."},
+          "ids": {"type": "object", "additionalProperties": true, "description": "Starr hook metadata such as title and downloadId"},
+          "newFiles": {"type": "array", "items": {"type": "string"}, "description": "Extracted paths; only on GET /api/queue/item"},
+          "origFiles": {"type": "array", "items": {"type": "string"}, "description": "Archive paths; only on GET /api/queue/item"}
         }
       },
       "HistoryRecord": {
@@ -224,8 +234,13 @@
           "noRetry": {"type": "boolean"},
           "newFiles": {"type": "array", "items": {"type": "string"}},
           "origFiles": {"type": "array", "items": {"type": "string"}, "description": "Original archive paths; folder delete_orig after a restart"},
+          "extraFiles": {"type": "array", "items": {"type": "string"}, "description": "Nested extra archives; display only, not delete_orig"},
           "preFiles": {"type": "array", "items": {"type": "string"}, "description": "Dest paths that existed before extract; used after a restart"},
-          "forgotten": {"type": "boolean", "description": "User dropped this item from the live queue; restart must not restore it"}
+          "forgotten": {"type": "boolean", "description": "User dropped this item from the live queue; restart must not restore it"},
+          "ids": {"type": "object", "additionalProperties": true, "description": "Starr hook metadata such as title and downloadId"},
+          "event": {"type": "string", "enum": ["fsnotify", "polling"]},
+          "queue": {"type": "integer", "description": "xtractr waiting count when this extract started"},
+          "output": {"type": "string", "description": "xtractr destination folder"}
         }
       },
       "IDRequest": {
@@ -725,6 +740,32 @@
             "description": "Live queue",
             "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/QueueItem"}}}}
           },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/queue/item": {
+      "get": {
+        "tags": ["queue"],
+        "summary": "One in-flight extract, including archive and extracted file lists",
+        "description": "Requires system:queue:read. File lists are omitted from GET /api/queue and progress frames so large extracts stay cheap on the wire. Id is a query parameter because it is usually a filesystem path.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "Queue item id (usually a filesystem path)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue item with file lists",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/QueueItem"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"description": "Not in the live map", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

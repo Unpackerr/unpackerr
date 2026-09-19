@@ -35,12 +35,13 @@ func ValidateList(list []*FolderConfig, parseMax func(string) (uint64, bool, err
 		}
 
 		list[idx].ResolvedMaxBytes = n
+		list[idx].WaitExtensions = NormalizeWaitExtensions(list[idx].WaitExtensions)
 	}
 
 	return nil
 }
 
-// CloneList copies folder configs without sharing DeleteAfter or ExcludePaths.
+// CloneList copies folder configs without sharing DeleteAfter, ExcludePaths, or WaitExtensions.
 func CloneList(src []*FolderConfig) []*FolderConfig {
 	if src == nil {
 		return nil
@@ -55,6 +56,7 @@ func CloneList(src []*FolderConfig) []*FolderConfig {
 		}
 
 		cloned.ExcludePaths = append([]string(nil), folder.ExcludePaths...)
+		cloned.WaitExtensions = append([]string(nil), folder.WaitExtensions...)
 		out[idx] = &cloned
 	}
 

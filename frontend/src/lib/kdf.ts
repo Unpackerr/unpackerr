@@ -26,7 +26,10 @@ function hasSubtle(): boolean {
   return typeof globalThis.crypto?.subtle?.importKey === 'function'
 }
 
-async function deriveSubtle(username: string, password: string): Promise<string> {
+async function deriveSubtle(
+  username: string,
+  password: string,
+): Promise<string> {
   const enc = new TextEncoder()
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -50,7 +53,10 @@ async function deriveSubtle(username: string, password: string): Promise<string>
   return toHex(bits)
 }
 
-async function deriveNoble(username: string, password: string): Promise<string> {
+async function deriveNoble(
+  username: string,
+  password: string,
+): Promise<string> {
   const key = await pbkdf2Async(sha256, password, SALT_PREFIX + username, {
     c: ITERATIONS,
     dkLen: KEY_LEN_BYTES,

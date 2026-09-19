@@ -90,6 +90,8 @@ type QueueItem struct {
 	ETA         time.Time     `json:"eta,omitzero"`
 	Due         time.Time     `json:"due,omitzero"`
 	DueKind     string        `json:"dueKind,omitempty"` // start, retry, cleanup, history
+	Note        string        `json:"note,omitempty"`
+	Event       string        `json:"event,omitempty"` // folders: fsnotify, polling; later manual
 }
 
 func isDurableHistory(status ExtractStatus) bool {
@@ -462,6 +464,8 @@ func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 		Updated:    item.Updated,
 		Due:        item.Due,
 		DueKind:    item.DueKind,
+		Note:       item.Note,
+		Event:      item.Event,
 	}
 
 	if item.Status == WAITING && item.App == FolderString {

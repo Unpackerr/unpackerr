@@ -205,6 +205,11 @@
       "Refresh": "Actualizar",
       "UpdatedAgo": "Actualizado hace {age}",
       "LastWrite": "Última escritura",
+      "WaitFile": "Esperando {file}",
+      "FSNotify": "fsnotify",
+      "Polling": "polling",
+      "FSNotifyHint": "Esta carpeta usa eventos del sistema de archivos (inotify y similares).",
+      "PollingHint": "Esta carpeta se sondea con un temporizador. Úsalo cuando Docker o CIFS no puedan enviar eventos del sistema de archivos.",
       "ArchiveOf": "Archivo {n} de {total}",
       "SpeedAvg": "{speed}/s prom.",
       "SpeedNow": "{speed}/s",
@@ -671,7 +676,7 @@
     "folders": {
       "interval": {
         "label": "Intervalo de sondeo",
-        "description": "Con qué frecuencia explorar las carpetas vigiladas en busca de archivos nuevos.",
+        "description": "Con qué frecuencia explorar las carpetas vigiladas en busca de archivos nuevos. Desactivado usa inotify o fsnotify.",
         "tooltip": "Desactivado usa eventos del sistema de archivos (inotify y similares). Elige un intervalo de sondeo si los archivos nunca aparecen en la cola, lo habitual en Docker y CIFS. El sondeo aumenta las lecturas de disco y no se recomienda cuando fsnotify funciona."
       },
       "buffer": {
@@ -753,6 +758,16 @@
         "label": "Rutas excluidas",
         "description": "Rutas a ignorar bajo esta carpeta, una por línea.",
         "tooltip": "Las rutas excluidas y sus hijos no se vigilan ni extraen. Absolutas, o relativas a la ruta vigilada."
+      },
+      "wait_extensions": {
+        "label": "Extensiones de espera",
+        "description": "Seguir en espera mientras exista un archivo coincidente en la carpeta superior.",
+        "tooltip": "Un sufijo por línea, con un punto inicial (.part, .crdownload). No se recorren subcarpetas. La extracción empieza tras el retraso de inicio cuando esos archivos desaparecen. Los elementos en espera se vuelven a comprobar cada 5s aunque no haya sondeo. Activar el sondeo de carpetas sondea la carpeta dos veces y aumenta las lecturas de disco. Útil cuando fsnotify no está disponible, y no recomendado cuando sí lo está."
+      },
+      "skip_empty": {
+        "label": "Omitir carpetas vacías",
+        "description": "No poner en cola carpetas que no contienen archivos comprimidos.",
+        "tooltip": "Tras el retraso de inicio, las carpetas sin archivos comprimidos salen del estado de espera sin historial ni webhooks."
       }
     },
     "hooks": {

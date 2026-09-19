@@ -44,6 +44,9 @@ log_file_mode = "0600"
 
 ## How many completed or failed items to keep in unpackerr.history.jsonl
 ## (next to the log file, or the config file if logs go to stdout).
+## With neither a log file nor a config file, history stays in memory
+## for this process and is not written to disk, so it does not survive
+## a restart. Set `log_file` or use a config file to persist it.
 ## In-progress extracts are also written so a restart can resume them
 ## for 72 hours (Starr waiting for import, folders waiting on
 ## delete_after). Those in-progress rows do not count against this
@@ -390,8 +393,11 @@ passwords = []
 ##################################################################################
 #[folder.0]
 # path = '/downloads/auto_extract'
-## How often this folder is polled. Off (`0s`) uses filesystem events.
-## Enable a poll interval if files never show up in the queue (Docker, CIFS).
+## How often this folder is scanned for new archives.
+## Off (`0s`) uses filesystem events (inotify and friends).
+## Enable a poll interval if files never show up in the queue, which is
+## common on Docker and CIFS. Polling increases disk reads and is not
+## recommended when fsnotify works.
 # interval = "0s"
 ## Paths to ignore while watching this folder. Excluded paths and their
 ## children are not tracked or extracted.
@@ -428,6 +434,17 @@ passwords = []
 # move_back = false
 ## Set this to true if you want this app to extract ISO files with .iso extension.
 # extract_isos = false
+## Incomplete-download suffixes such as `.part` or `.crdownload`. Extraction
+## stays in waiting as long as any matching file is in the watched item's
+## top folder. Subfolders are not scanned. The UI and config always store
+## a leading period. Waiting items are rechecked every 5s even without the
+## poller. Enabling folder poller will double-poll the folder and increase
+## disk reads. Useful when fsnotify is not available, and not recommended
+## when it is.
+# wait_extensions = []
+## After start delay, skip watched folders that have no extractable archives.
+## They leave waiting without history or webhooks.
+# skip_empty = false
 
 ################
 ### Webhooks ###
@@ -491,4 +508,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 16 SEP 2026 07:45 UTC
+## => Content Auto Generated, 19 SEP 2026 05:12 UTC

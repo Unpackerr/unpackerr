@@ -176,10 +176,10 @@ func (u *Unpackerr) logFolders(printf configLine) {
 		}
 
 		printf(" => Folder Config: 1 path: %s%s; delete_after:%v delete_orig:%v delete_files:%v "+
-			"log_file:%v move_back:%v isos:%v max_bytes:%s files:%d ratio:%g nested:%d extras_depth:%d "+
-			"symlinks:%v poll:%v event_buffer:%d",
+			"log_file:%v move_back:%v isos:%v skip_empty:%v wait_ext:%v max_bytes:%s files:%d ratio:%g "+
+			"nested:%d extras_depth:%d symlinks:%v poll:%v event_buffer:%d",
 			folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+			!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.SkipEmpty, folder.WaitExtensions,
 			logMaxBytes(folder.MaxBytes, "uncapped"), folder.MaxFiles, folder.MaxRatio,
 			folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, folder.Interval, u.Folder.Buffer)
 	} else {
@@ -191,10 +191,10 @@ func (u *Unpackerr) logFolders(printf configLine) {
 			}
 
 			printf(" =>    Path: %s%s; delete_after:%v delete_orig:%v delete_files:%v log_file:%v "+
-				"move_back:%v isos:%v max_bytes:%s files:%d ratio:%g nested:%d extras_depth:%d "+
-				"symlinks:%v poll:%v",
+				"move_back:%v isos:%v skip_empty:%v wait_ext:%v max_bytes:%s files:%d ratio:%g "+
+				"nested:%d extras_depth:%d symlinks:%v poll:%v",
 				folder.Path, epath, folder.DeleteAfter, folder.DeleteOrig, folder.DeleteFiles,
-				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs,
+				!folder.DisableLog, folder.MoveBack, folder.ExtractISOs, folder.SkipEmpty, folder.WaitExtensions,
 				logMaxBytes(folder.MaxBytes, "uncapped"), folder.MaxFiles, folder.MaxRatio,
 				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, folder.Interval)
 		}

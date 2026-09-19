@@ -936,6 +936,27 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true enables .iso file extraction.
         desc: Set this to true if you want this app to extract ISO files with .iso extension.
+      - name: wait_extensions
+        envvar: WAIT_EXTENSION_
+        default: []
+        kind: list
+        short: Stay waiting while a top-level file with one of these extensions exists.
+        desc: |
+          Incomplete-download suffixes such as `.part` or `.crdownload`. Extraction
+          stays in waiting as long as any matching file is in the watched item's
+          top folder. Subfolders are not scanned. The UI and config always store
+          a leading period. Waiting items are rechecked every 5s even without the
+          poller. Enabling folder poller will double-poll the folder and increase
+          disk reads. Useful when fsnotify is not available, and not recommended
+          when it is.
+      - name: skip_empty
+        envvar: SKIP_EMPTY
+        default: false
+        recommend: *BOOLEAN
+        short: Do not queue folders that contain no archives.
+        desc: |
+          After start delay, skip watched folders that have no extractable archives.
+          They leave waiting without history or webhooks.
 
   webhook:
     title: Webhooks

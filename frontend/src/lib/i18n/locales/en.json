@@ -205,6 +205,11 @@
       "Refresh": "Refresh",
       "UpdatedAgo": "Updated {age} ago",
       "LastWrite": "Last write",
+      "WaitFile": "Waiting for {file}",
+      "FSNotify": "fsnotify",
+      "Polling": "polling",
+      "FSNotifyHint": "This folder uses filesystem events (inotify and friends).",
+      "PollingHint": "This folder is polled on a timer. Use that when Docker or CIFS cannot deliver filesystem events.",
       "ArchiveOf": "Archive {n} of {total}",
       "SpeedAvg": "{speed}/s avg",
       "SpeedNow": "{speed}/s",
@@ -671,7 +676,7 @@
     "folders": {
       "interval": {
         "label": "Poll interval",
-        "description": "How often to scan watch folders for new archives.",
+        "description": "How often to scan watch folders for new archives. Disabled uses inotify or fsnotify.",
         "tooltip": "Off uses filesystem events (inotify and friends). Enable a poll interval if files never show up in the queue, which is common on Docker and CIFS. Polling increases disk reads and is not recommended when fsnotify works."
       },
       "buffer": {
@@ -753,6 +758,16 @@
         "label": "Exclude paths",
         "description": "Paths to ignore under this folder, one per line.",
         "tooltip": "Excluded paths and their children are not watched or extracted. Absolute, or relative to the watch path."
+      },
+      "wait_extensions": {
+        "label": "Wait extensions",
+        "description": "Stay waiting while a matching file exists.",
+        "tooltip": "One suffix per line, with a leading period (.part, .crdownload). Top folder only, subfolders are not scanned. Extraction starts after start delay once those files are gone. Waiting items are rechecked every 5s even without the poller. Enabling folder poller will double-poll the folder and increase disk reads. This is useful when fsnotify is not available, and not recommended when it is."
+      },
+      "skip_empty": {
+        "label": "Skip empty folders",
+        "description": "Do not queue folders that contain no archives.",
+        "tooltip": "After start delay, archive-free folders leave the waiting state without history or webhooks."
       }
     },
     "hooks": {

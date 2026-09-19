@@ -58,6 +58,7 @@ export interface StarrQueueStat {
   match: number
   issues: number
   downloading: number
+  updatedAt?: string
   error?: string
 }
 

@@ -37,6 +37,7 @@ type StarrConfig struct {
 	// Last poll snapshot for GET /api/stats starrQueues. Published under History.mu.
 	lastQueued    int
 	lastRetrieved int
+	lastPolled    time.Time
 	lastPollErr   string
 	polled        bool // true after a successful GetQueue in this process (Queue != nil).
 }
@@ -48,6 +49,7 @@ func (c *StarrConfig) takePoll(old *StarrConfig) {
 
 	c.lastQueued = old.lastQueued
 	c.lastRetrieved = old.lastRetrieved
+	c.lastPolled = old.lastPolled
 	c.lastPollErr = old.lastPollErr
 	c.polled = old.polled
 }

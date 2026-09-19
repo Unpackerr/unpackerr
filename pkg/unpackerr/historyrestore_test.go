@@ -465,6 +465,46 @@ func TestRestoreQueueForgottenFolderNotRestored(t *testing.T) {
 	}
 }
 
+func TestRestoreQueueFolderWaiting(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	watch := t.TempDir()
+	unpack.folders.Config = []*FolderConfig{{Path: watch}}
+	name := filepath.Join(watch, "movie")
+	unpack.upsertHistory(HistoryRecord{
+		ID: name, Kind: FolderString, App: FolderString, Path: name,
+		Status: WAITING, Updated: time.Now(), Retries: 0, NoRetry: false,
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map[name]
+	folder := unpack.folders.Folders[name]
+
+	if item == nil || item.Status != WAITING || item.Retries != 0 || item.NoRetry {
+		t.Fatalf("waiting folder %+v", item)
+	}
+
+	if folder == nil || folder.Status != WAITING || folder.Retries != 0 || folder.NoRetry {
+		t.Fatalf("waiting tracker %+v", folder)
+	}
+}
+
+func TestRestoreQueueStarrWaitingSkipped(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), App: "Sportarr", URL: "http://sonarr:8989",
+		Path: "/dl/show", Status: WAITING, Updated: time.Now(),
+	})
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map["show"] != nil {
+		t.Fatal("starr waiting row restored")
+	}
+}
+
 func TestRestoreQueueFolderQueuedBecomesWaiting(t *testing.T) {
 	t.Parallel()
 

@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,8 @@ import (
 	"golift.io/starr/sonarr"
 	"golift.io/xtractr"
 )
+
+var errStarrPollTimeout = errors.New("timeout")
 
 func TestQueueViewsIDs(t *testing.T) {
 	t.Parallel()
@@ -332,6 +335,7 @@ func TestStarrQueueStatsShowsPollCounts(t *testing.T) {
 	unpack.Sonarr["0"].URL = "http://127.0.0.1:8989"
 	unpack.Sonarr["0"].lastQueued = 12
 	unpack.Sonarr["0"].lastRetrieved = 8
+	unpack.Sonarr["0"].lastPolled = time.Date(2026, 9, 19, 8, 0, 0, 0, time.UTC)
 	unpack.Sonarr["0"].lastPollErr = "timeout"
 
 	stats := &Stats{}
@@ -344,6 +348,34 @@ func TestStarrQueueStatsShowsPollCounts(t *testing.T) {
 	got := stats.StarrQueues[0]
 	if got.Name != "Sportarr" || got.Queued != 12 || got.Retrieved != 8 || got.Error != "timeout" {
 		t.Fatalf("%+v", got)
+	}
+
+	if !got.UpdatedAt.Equal(unpack.Sonarr["0"].lastPolled) {
+		t.Fatalf("updatedAt %v", got.UpdatedAt)
+	}
+}
+
+func TestPublishStarrPollSetsUpdatedAt(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	cfg := &StarrConfig{}
+	polled := time.Date(2026, 9, 19, 8, 1, 0, 0, time.UTC)
+	bound := false
+
+	unpack.publishStarrPoll(cfg, func() { bound = true }, 4, 3, polled, nil)
+
+	if !bound || cfg.lastQueued != 4 || cfg.lastRetrieved != 3 ||
+		!cfg.lastPolled.Equal(polled) || cfg.lastPollErr != "" || !cfg.polled {
+		t.Fatalf("success: queued=%d retrieved=%d polled=%v err=%q bound=%v",
+			cfg.lastQueued, cfg.lastRetrieved, cfg.lastPolled, cfg.lastPollErr, bound)
+	}
+
+	unpack.publishStarrPoll(cfg, func() { t.Fatal("bind on error") }, 9, 8, polled.Add(time.Minute), errStarrPollTimeout)
+
+	if cfg.lastQueued != 4 || !cfg.lastPolled.Equal(polled) || cfg.lastPollErr != errStarrPollTimeout.Error() {
+		t.Fatalf("error kept snapshot: queued=%d polled=%v err=%q",
+			cfg.lastQueued, cfg.lastPolled, cfg.lastPollErr)
 	}
 }
 

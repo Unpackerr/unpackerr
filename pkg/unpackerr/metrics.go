@@ -200,16 +200,17 @@ func chanStat[T any](ch <-chan T) BufferStat {
 
 // StarrQueueStat is one Starr instance's last activity-queue poll.
 type StarrQueueStat struct {
-	App         string `json:"app"`
-	Name        string `json:"name"`
-	URL         string `json:"url,omitempty"`
-	Queued      int    `json:"queued"`
-	Retrieved   int    `json:"retrieved"`
-	Complete    int    `json:"complete"`
-	Match       int    `json:"match"`
-	Issues      int    `json:"issues"`
-	Downloading int    `json:"downloading"`
-	Error       string `json:"error,omitempty"`
+	App         string    `json:"app"`
+	Name        string    `json:"name"`
+	URL         string    `json:"url,omitempty"`
+	Queued      int       `json:"queued"`
+	Retrieved   int       `json:"retrieved"`
+	Complete    int       `json:"complete"`
+	Match       int       `json:"match"`
+	Issues      int       `json:"issues"`
+	Downloading int       `json:"downloading"`
+	UpdatedAt   time.Time `json:"updatedAt,omitzero"`
+	Error       string    `json:"error,omitempty"`
 }
 
 // stats compiles and builds the statistics for the app.

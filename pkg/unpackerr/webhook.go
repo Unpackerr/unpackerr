@@ -49,7 +49,7 @@ func hookPayload(item *Extract) *hooks.Payload {
 		Started:  version.Started,
 	}
 
-	if item.Status <= EXTRACTED && item.Resp != nil {
+	if item.Resp != nil {
 		payload.Data = &hooks.XtractPayload{
 			Files:   hooks.StringSlice(item.Resp.NewFiles),
 			File:    item.Resp.NewFiles,

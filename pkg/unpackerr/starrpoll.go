@@ -95,7 +95,7 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 	}
 
 	bind, total, retrieved, err := server.pollQueue()
-	u.publishStarrPoll(cfg, bind, total, retrieved, err)
+	u.publishStarrPoll(cfg, bind, total, retrieved, time.Now(), err)
 
 	if err != nil {
 		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)
@@ -112,8 +112,8 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 
 // publishStarrPoll stores the last poll snapshot under History.mu so HTTP
 // stats() and Prometheus Collect cannot race the pointer swap or lastPollErr.
-// GetQueue stays outside this lock.
-func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retrieved int, err error) {
+// GetQueue stays outside this lock. lastPolled is the successful snapshot time.
+func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retrieved int, polled time.Time, err error) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
@@ -127,6 +127,7 @@ func (u *Unpackerr) publishStarrPoll(cfg *StarrConfig, bind func(), total, retri
 
 	cfg.lastQueued = total
 	cfg.lastRetrieved = retrieved
+	cfg.lastPolled = polled
 	cfg.lastPollErr = ""
 	cfg.polled = true
 }
@@ -281,6 +282,7 @@ func starrQueueRows[T any, P starrApp[T]](list InstanceMap[T], app starr.App) []
 			Match:       counts.match,
 			Issues:      counts.issues,
 			Downloading: counts.downloading,
+			UpdatedAt:   cfg.lastPolled,
 			Error:       cfg.lastPollErr,
 		})
 	}

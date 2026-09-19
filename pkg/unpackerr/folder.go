@@ -466,6 +466,7 @@ func (u *Unpackerr) checkFailedFolder(name string, folder *Folder, now time.Time
 		if item := u.Map[name]; item != nil {
 			item.Status = WAITING
 			item.Updated = now
+			u.maybeRecordHistory(name, item)
 		}
 
 		u.notifyQueueLocked()

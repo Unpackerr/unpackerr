@@ -141,6 +141,55 @@ func TestQueueRetryFolder(t *testing.T) {
 	}
 }
 
+func TestQueueRetryFolderCheckpointsHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.Map["/watch/fail"] = &Extract{
+		App: FolderString, Path: "/watch/fail", Status: EXTRACTFAILED,
+		NoRetry: true, Retries: 3, Updated: time.Now(),
+	}
+	unpack.folders = &Folders{
+		Config:  []*FolderConfig{{Path: "/watch"}},
+		Folders: map[string]*Folder{"/watch/fail": {Status: EXTRACTFAILED, NoRetry: true, Retries: 99}},
+	}
+	unpack.maybeRecordHistory("/watch/fail", unpack.Map["/watch/fail"])
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	retryOK := doAuth(t, unpack, http.MethodPost, "/api/queue/retry", `{"id":"/watch/fail"}`, withKey)
+	if retryOK.Code != http.StatusOK {
+		t.Fatalf("retry %d %s", retryOK.Code, retryOK.Body.String())
+	}
+
+	if len(unpack.records) != 1 || unpack.records[0].Status != WAITING ||
+		unpack.records[0].Retries != 0 || unpack.records[0].NoRetry {
+		t.Fatalf("folder retry history %+v", unpack.records)
+	}
+
+	if snap := unpack.historySnapshot(); len(snap) != 0 {
+		t.Fatalf("waiting retry still on history UI %+v", snap)
+	}
+
+	unpack.Map = map[string]*Extract{}
+	unpack.folders.Folders = map[string]*Folder{}
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map["/watch/fail"]
+	folder := unpack.folders.Folders["/watch/fail"]
+
+	if item == nil || item.Status != WAITING || item.Retries != 0 || item.NoRetry {
+		t.Fatalf("restore after folder retry %+v", item)
+	}
+
+	if folder == nil || folder.Status != WAITING || folder.Retries != 0 || folder.NoRetry {
+		t.Fatalf("tracker after folder retry %+v", folder)
+	}
+}
+
 func TestQueueForgetFolder(t *testing.T) {
 	t.Parallel()
 

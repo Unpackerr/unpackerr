@@ -167,6 +167,7 @@ func (u *Unpackerr) retryFolderLocked(itemID string, item *Extract, now time.Tim
 	item.Status = WAITING
 	item.Updated = now
 
+	u.maybeRecordHistory(itemID, item)
 	u.notifyQueueLocked()
 
 	return nil

@@ -17,6 +17,7 @@
   import { FileBrowser } from './browser.svelte'
   import ActionBar from './ActionBar.svelte'
   import { slide } from 'svelte/transition'
+  import { theme } from '../../lib/theme.svelte'
 
   type Props = {
     value: string
@@ -92,14 +93,16 @@
               </svg>
             {/if}
           </Button>
-          <Tooltip target="{uid}-up"><T id="FileBrowser.tooltip.Up" /></Tooltip>
+          <Tooltip target="{uid}-up" theme={theme.tooltip}
+            ><T id="FileBrowser.tooltip.Up" /></Tooltip
+          >
           <InputGroupText><T id="FileBrowser.Path" /></InputGroupText>
           <Input bind:value={fb.input} />
           {#if fb.input !== fb.wd.path}
             <Button id="{uid}-go" type="submit" color="primary" outline>
               <T id="buttons.Go" />
             </Button>
-            <Tooltip target="{uid}-go">
+            <Tooltip target="{uid}-go" theme={theme.tooltip}>
               <T id="FileBrowser.tooltip.Go" path={fb.input} />
             </Tooltip>
           {/if}
@@ -126,7 +129,7 @@
                 ></path>
               </svg>
             </Button>
-            <Tooltip target="{uid}-select">
+            <Tooltip target="{uid}-select" theme={theme.tooltip}>
               <T
                 id="FileBrowser.tooltip.SelectPath"
                 path={fb.preview(fb.input)}

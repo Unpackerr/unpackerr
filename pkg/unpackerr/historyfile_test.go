@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"golift.io/cnfg"
+	"golift.io/xtractr"
 )
 
 func TestHistoryUpsertAndCap(t *testing.T) {
@@ -83,6 +84,20 @@ func TestQueueAndHistoryAPI(t *testing.T) {
 	histRec := doAuth(t, unpack, http.MethodGet, "/api/history", "", withKey)
 	if histRec.Code != http.StatusOK || !strings.Contains(histRec.Body.String(), `/dl/old`) {
 		t.Fatalf("history %d %s", histRec.Code, histRec.Body.String())
+	}
+
+	itemRec := doAuth(t, unpack, http.MethodGet, "/api/queue/item?id=/dl/show", "", withKey)
+	if itemRec.Code != http.StatusOK || !strings.Contains(itemRec.Body.String(), `/dl/show`) {
+		t.Fatalf("queue item %d %s", itemRec.Code, itemRec.Body.String())
+	}
+
+	missing := doAuth(t, unpack, http.MethodGet, "/api/queue/item?id=/nope", "", withKey)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing %d %s", missing.Code, missing.Body.String())
+	}
+
+	if blank := doAuth(t, unpack, http.MethodGet, "/api/queue/item", "", withKey); blank.Code != http.StatusBadRequest {
+		t.Fatalf("blank %d %s", blank.Code, blank.Body.String())
 	}
 }
 
@@ -314,5 +329,54 @@ func TestQueueFromExtractFillsDue(t *testing.T) {
 				t.Fatalf("got kind %q due %v want %q %v", got.DueKind, got.Due, test.kind, test.due)
 			}
 		})
+	}
+}
+
+func TestQueueFromExtractOmitsFileLists(t *testing.T) {
+	t.Parallel()
+
+	item := &Extract{
+		Path: "/dl/a",
+		App:  "Sonarr",
+		IDs:  map[string]any{"title": "Show"},
+		Resp: &xtractr.Response{
+			NewFiles: []string{"/dl/a/file.mkv"},
+			Size:     100,
+			Started:  time.Unix(1_700_000_000, 0),
+			Elapsed:  time.Second,
+			Queued:   2,
+			Output:   "/dl/a_unpackerred",
+			Archives: xtractr.ArchiveList{"": []string{"/dl/a/file.rar"}},
+		},
+	}
+
+	got := New().queueFromExtract("/dl/a", item)
+	if len(got.NewFiles) != 0 || len(got.OrigFiles) != 0 {
+		t.Fatalf("progress payload must omit file lists: %+v", got)
+	}
+
+	if got.IDs["title"] != "Show" || got.Bytes != 100 || got.Queue != 2 || got.Output != "/dl/a_unpackerred" {
+		t.Fatalf("meta %+v", got)
+	}
+
+	fillQueueFiles(&got, item)
+
+	if len(got.NewFiles) != 1 || len(got.OrigFiles) != 1 {
+		t.Fatalf("detail files %+v", got)
+	}
+}
+
+func TestHistoryFromExtractCopiesHookMeta(t *testing.T) {
+	t.Parallel()
+
+	rec := historyFromExtract("/dl/a", &Extract{
+		Path:  "/dl/a",
+		App:   "Sonarr",
+		Event: "fsnotify",
+		IDs:   map[string]any{"title": "Show"},
+		Resp:  &xtractr.Response{Queued: 3, Size: 9, NewFiles: []string{"a"}, Output: "/tmp/out"},
+	})
+	if rec.Event != "fsnotify" || rec.Queue != 3 || rec.Output != "/tmp/out" || rec.IDs["title"] != "Show" {
+		t.Fatalf("%+v", rec)
 	}
 }

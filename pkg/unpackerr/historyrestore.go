@@ -141,6 +141,8 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		NoRetry:    rec.NoRetry,
 		MaxBytes:   rec.MaxBytes,
 		PreFiles:   preFilesFromKeys(rec.PreFiles),
+		IDs:        cloneIDs(rec.IDs),
+		Event:      rec.Event,
 	}
 
 	if rec.App != "" && rec.App != kind {
@@ -172,13 +174,17 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 		errMsg = rec.Error
 	}
 
-	if len(rec.NewFiles) == 0 && rec.Bytes == 0 && errMsg == "" && len(rec.OrigFiles) == 0 {
+	if len(rec.NewFiles) == 0 && rec.Bytes == 0 && errMsg == "" &&
+		len(rec.OrigFiles) == 0 && rec.Output == "" && rec.Queue == 0 {
 		return
 	}
 
 	item.Resp = &xtractr.Response{
 		NewFiles: append([]string(nil), rec.NewFiles...),
 		Size:     rec.Bytes,
+		Output:   rec.Output,
+		Queued:   rec.Queue,
+		Started:  rec.Started,
 	}
 
 	if len(rec.OrigFiles) > 0 {

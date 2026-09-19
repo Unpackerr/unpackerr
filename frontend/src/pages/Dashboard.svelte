@@ -36,11 +36,16 @@
   import { live, type LiveTopic } from '../lib/socket.svelte'
   import type { BufferStat, QueueItem } from '../lib/types'
   import History from './History.svelte'
+  import ItemDetail from '../components/ItemDetail.svelte'
+  import InfoIcon from 'phosphor-svelte/lib/Info'
+  import { theme } from '../lib/theme.svelte'
 
   let busy = $state<Record<string, boolean>>({})
   let now = $state(Date.now())
   let ageTimer: ReturnType<typeof setInterval> | undefined
   let pendingForget = $state<QueueItem | null>(null)
+  let pendingDetail = $state<QueueItem | null>(null)
+  let detailFiles = $state<QueueItem | null>(null)
 
   function ageLabel(ms: number): string {
     const sec = Math.max(0, Math.floor(ms / 1000))
@@ -378,6 +383,33 @@
     return item.status.toLowerCase() === 'imported'
   }
 
+  const detailItem = $derived.by(() => {
+    if (!pendingDetail) return null
+    const liveRow =
+      live.queue.find((row) => row.id === pendingDetail?.id) ?? pendingDetail
+    return {
+      ...liveRow,
+      newFiles: detailFiles?.newFiles ?? liveRow.newFiles,
+      origFiles: detailFiles?.origFiles ?? liveRow.origFiles,
+      output: detailFiles?.output ?? liveRow.output,
+      ids: liveRow.ids ?? detailFiles?.ids,
+    }
+  })
+
+  async function openDetail(item: QueueItem) {
+    pendingDetail = item
+    detailFiles = null
+    const res = await api.get<QueueItem>(
+      'queue/item?id=' + encodeURIComponent(item.id),
+    )
+    if (res.ok && pendingDetail?.id === item.id) detailFiles = res.body
+  }
+
+  function closeDetail() {
+    pendingDetail = null
+    detailFiles = null
+  }
+
   function forget(item: QueueItem) {
     if (wantsCleanupWarning(item)) {
       pendingForget = item
@@ -444,7 +476,7 @@
                   <div class="text-muted small text-uppercase">{c.label}</div>
                 </CardBody>
               </Card>
-              <Tooltip target="{uid}-{c.id}" placement="top">{c.hint}</Tooltip>
+              <Tooltip target="{uid}-{c.id}" placement="top" theme={theme.tooltip}>{c.hint}</Tooltip>
             </Col>
           {/each}
         </Row>
@@ -468,7 +500,7 @@
                       {/if}
                     </td>
                   </tr>
-                  <Tooltip target="{uid}-{row.id}" placement="top"
+                  <Tooltip target="{uid}-{row.id}" placement="top" theme={theme.tooltip}
                     >{row.hint}</Tooltip
                   >
                 {/each}
@@ -486,7 +518,7 @@
         <CardTitle class="mb-2" id="{uid}-starr-queues"
           >{$_('pages.dashboard.StarrQueues')}</CardTitle
         >
-        <Tooltip target="{uid}-starr-queues" placement="top"
+        <Tooltip target="{uid}-starr-queues" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueuesHint')}</Tooltip
         >
         <Table size="sm" striped borderless class="stat-side-table mb-0">
@@ -528,25 +560,25 @@
                 >
                 <td class="text-end">{row.downloading ?? 0}</td>
               </tr>
-              <Tooltip target="{uid}-starrq-{i}" placement="top">
+              <Tooltip target="{uid}-starrq-{i}" placement="top" theme={theme.tooltip}>
                 {row.error || row.url || $_('pages.dashboard.StarrQueuesHint')}
               </Tooltip>
             {/each}
           </tbody>
         </Table>
-        <Tooltip target="{uid}-starrq-h-total" placement="top"
+        <Tooltip target="{uid}-starrq-h-total" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueueTotalHint')}</Tooltip
         >
-        <Tooltip target="{uid}-starrq-h-complete" placement="top"
+        <Tooltip target="{uid}-starrq-h-complete" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueueCompleteHint')}</Tooltip
         >
-        <Tooltip target="{uid}-starrq-h-match" placement="top"
+        <Tooltip target="{uid}-starrq-h-match" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueueMatchHint')}</Tooltip
         >
-        <Tooltip target="{uid}-starrq-h-issues" placement="top"
+        <Tooltip target="{uid}-starrq-h-issues" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueueIssuesHint')}</Tooltip
         >
-        <Tooltip target="{uid}-starrq-h-dl" placement="top"
+        <Tooltip target="{uid}-starrq-h-dl" placement="top" theme={theme.tooltip}
           >{$_('pages.dashboard.StarrQueueDownloadingHint')}</Tooltip
         >
       </CardBody>
@@ -583,9 +615,13 @@
                 <th class="queue-app">{$_('pages.dashboard.App')}</th>
                 <th class="queue-status">{$_('pages.dashboard.Status')}</th>
                 <th class="queue-progress">{$_('pages.dashboard.Progress')}</th>
-                <th class="text-end queue-retries">{$_('pages.dashboard.Retries')}</th>
+                <th class="text-end queue-retries">
+                  {$_('pages.dashboard.Retries')}
+                </th>
                 <th class="queue-updated">{$_('pages.dashboard.Updated')}</th>
-                <th class="text-end queue-actions">{$_('pages.dashboard.Actions')}</th>
+                <th class="text-end queue-actions">
+                  {$_('pages.dashboard.Actions')}
+                </th>
               </tr>
             </thead>
             {#each queue as item, i (item.id)}
@@ -680,8 +716,24 @@
                   </td>
                   <td class="small queue-meta">{queueMeta(item, now)}</td>
                   <td class="text-end text-nowrap queue-actions">
-                    {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
-                      <ButtonGroup size="sm">
+                    <ButtonGroup size="sm">
+                      <Button
+                        id="{uid}-info-{i}"
+                        color="secondary"
+                        outline
+                        type="button"
+                        aria-label={$_('pages.detail.Info')}
+                        aria-haspopup="dialog"
+                        onclick={() => openDetail(item)}
+                      >
+                        <InfoIcon
+                          size="1.25em"
+                          weight="bold"
+                          aria-hidden="true"
+                          focusable="false"
+                        />
+                      </Button>
+                      {#if canWrite && (item.status === 'extractfailed' || TERMINAL.includes(item.status))}
                         {#if item.status === 'extractfailed'}
                           <Button
                             color="primary"
@@ -701,14 +753,34 @@
                             >{$_('buttons.Forget')}</Button
                           >
                         {/if}
-                      </ButtonGroup>
-                    {/if}
+                      {/if}
+                    </ButtonGroup>
+                    <Tooltip
+                      target="{uid}-info-{i}"
+                      placement="left"
+                      theme={theme.tooltip}
+                    >
+                      {$_('pages.detail.Info')}
+                    </Tooltip>
                   </td>
                 </tr>
                 <tr class="stack-item-path">
                   <td colspan="7">
                     <code class="wrap small queue-path">
-                      {item.id}{#if item.event}<Badge
+                      <button
+                        type="button"
+                        class="queue-path-btn"
+                        title={$_('pages.detail.OpenItem', {
+                          values: { id: item.id },
+                        })}
+                        aria-label={$_('pages.detail.OpenItem', {
+                          values: { id: item.id },
+                        })}
+                        aria-haspopup="dialog"
+                        onclick={() => openDetail(item)}
+                      >
+                        {item.id}
+                      </button>{#if item.event}<Badge
                           id="{uid}-event-{i}"
                           class="queue-event-badge"
                           color={item.event === 'fsnotify'
@@ -719,7 +791,7 @@
                             ? $_('pages.dashboard.FSNotify')
                             : $_('pages.dashboard.Polling')}
                         </Badge>
-                        <Tooltip target="{uid}-event-{i}" placement="top">
+                        <Tooltip target="{uid}-event-{i}" placement="top" theme={theme.tooltip}>
                           {item.event === 'fsnotify'
                             ? $_('pages.dashboard.FSNotifyHint')
                             : $_('pages.dashboard.PollingHint')}
@@ -756,3 +828,5 @@
     >
   </ModalFooter>
 </Modal>
+
+<ItemDetail item={detailItem} {now} onclose={closeDetail} />

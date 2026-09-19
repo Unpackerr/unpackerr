@@ -95,7 +95,7 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 	}
 
 	bind, total, retrieved, err := server.pollQueue()
-	u.publishStarrPoll(cfg, bind, total, retrieved, start, err)
+	u.publishStarrPoll(cfg, bind, total, retrieved, time.Now(), err)
 
 	if err != nil {
 		u.saveQueueMetrics(0, start, app, cfg.URL, label, err)

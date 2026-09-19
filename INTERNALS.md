@@ -43,7 +43,7 @@ Unpackerr is **one process**. One goroutine — `(*Unpackerr).Run()` in `pkg/unp
 
 HTTP handlers **must not** mutate those on the HTTP goroutine. They validate the body, then call `onMainLoop`. Queue retry/forget use the same handoff. Config GET of the **file** snapshot does **not** need the main loop (it is under `configMu`). Config GET of **live** general/starr/folders **does**, because live `Config` is main-loop memory.
 
-`GET /api/stats` (and Prometheus `Collect`) is the exception that reads live Starr/folder map headers off-loop. That path takes `configMu` for the instance headers (same as hook counts) and `History.mu` for `Queue` / `lastQueued` / `lastRetrieved` / `lastPollErr`. Poll workers publish those fields under the history write lock **after** `GetQueue` returns. Do not hop stats onto `onMainLoop`; that would stall scrapes behind Starr HTTP. Other new readers of live `u.Sonarr` / `u.Passwords` / `u.StartDelay` still go through `onMainLoop`.
+`GET /api/stats` (and Prometheus `Collect`) is the exception that reads live Starr/folder map headers off-loop. That path takes `configMu` for the instance headers (same as hook counts) and `History.mu` for `Queue` / `lastQueued` / `lastRetrieved` / `lastPolled` / `lastPollErr`. Poll workers publish those fields under the history write lock **after** `GetQueue` returns. Do not hop stats onto `onMainLoop`; that would stall scrapes behind Starr HTTP. Other new readers of live `u.Sonarr` / `u.Passwords` / `u.StartDelay` still go through `onMainLoop`.
 
 ---
 
@@ -357,7 +357,7 @@ This file is **ours**. Do not add line-length caps, atomic rename, or `.bak` har
 | `configMu` | `fileConfig` + hook/Starr/folder maps `/api/stats` counts |
 | `uiPassMu` | live webserver auth fields HTTP reads |
 | `histMu` | history records + JSONL |
-| `History.mu` | extract map; Starr poll snapshot (`Queue`, `lastQueued`, `lastRetrieved`, `lastPollErr`) |
+| `History.mu` | extract map; Starr poll snapshot (`Queue`, `lastQueued`, `lastRetrieved`, `lastPolled`, `lastPollErr`) |
 
 `syncFileUIPassword` takes `uiPassword()` (uiPassMu) **then** `configMu`. That order is intentional.
 

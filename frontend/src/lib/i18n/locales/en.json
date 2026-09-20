@@ -85,6 +85,7 @@
     "UiPasswordFilepath": "This password is a filepath: reference. Saving a new password or auth type writes the value into the config file instead.",
     "ReservedUsername": "Usernames webauth, noauth, and filepath are reserved, and a username cannot contain a colon.",
     "FilterPlaceholder": "Filter…",
+    "FilterHint": "Matches path, app, status, and error text.",
     "Empty": "—",
     "URLMustBeginWithHttp": "URL must begin with http:// or https://",
     "URLInvalid": "That is not a valid URL.",

@@ -294,7 +294,7 @@ func (w *Config) Template() (*template.Template, error) {
 	})
 
 	// Providing a template name that exists overrides template_path.
-	// Unknown names must fall through to URL / template_path detection.
+	// Unknown names fall through to template_path, then URL detection.
 	name := strings.ToLower(w.TempName)
 	if name == "default" {
 		name = "notifiarr"
@@ -304,19 +304,20 @@ func (w *Config) Template() (*template.Template, error) {
 		return template.Parse(body)
 	}
 
-	// Figure out which template to use based on URL or template_path.
-	switch url := strings.ToLower(w.URL); {
-	default:
-		fallthrough
-	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
-		return template.Parse(WebhookTemplateNotifiarr)
-	case w.TmplPath != "":
+	if w.TmplPath != "" {
 		s, err := os.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}
 
 		return template.Parse(string(s))
+	}
+
+	switch url := strings.ToLower(w.URL); {
+	default:
+		fallthrough
+	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
+		return template.Parse(WebhookTemplateNotifiarr)
 	case strings.Contains(url, "discord.com"), strings.Contains(url, "discordapp.com"):
 		return template.Parse(WebhookTemplateDiscord)
 	case strings.Contains(url, "api.telegram.org"):

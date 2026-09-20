@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +113,63 @@ func TestBuiltinWebhookTemplateNames(t *testing.T) {
 
 	if got := WebhookTemplateFileName("Discord"); got != "unpackerr-webhook-discord.tmpl" {
 		t.Fatalf("file name %q", got)
+	}
+}
+
+func TestTemplatePathBeatsNotifiarrURL(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "custom.tmpl")
+	if err := os.WriteFile(path, []byte("from-file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpl, err := (&Config{
+		URL:      "https://notifiarr.com/api/v1/notification/unpackerr",
+		TmplPath: path,
+	}).Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, &Payload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if buf.String() != "from-file" {
+		t.Fatalf("got %q", buf.String())
+	}
+}
+
+func TestNamedTemplateBeatsTemplatePath(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "custom.tmpl")
+	if err := os.WriteFile(path, []byte("from-file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpl, err := (&Config{
+		TempName: "discord",
+		URL:      "https://notifiarr.com/api/v1/notification/unpackerr",
+		TmplPath: path,
+	}).Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, &Payload{Path: "/dl", App: "Sonarr"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if buf.String() == "from-file" {
+		t.Fatal("named template should ignore template file")
+	}
+
+	if !strings.Contains(buf.String(), `"username"`) {
+		t.Fatalf("expected discord template:\n%s", buf.String())
 	}
 }
 

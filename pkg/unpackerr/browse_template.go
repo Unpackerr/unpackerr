@@ -80,6 +80,13 @@ func writeWebhookTemplate(path, name string) (string, error) {
 	}
 
 	path = expandBrowsePath(path)
+
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("unable to write template: %w", err)
+	}
+
+	path = abs
 	want := hooks.WebhookTemplateFileName(name)
 
 	if filepath.Base(path) != want {

@@ -362,7 +362,7 @@ func TestBrowseTemplateWritesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got.Path != path {
+	if got.Path != path || !filepath.IsAbs(got.Path) {
 		t.Fatalf("path %q", got.Path)
 	}
 

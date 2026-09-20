@@ -14,9 +14,9 @@
 <ul class="p-0">
   {#each dirs as folder (folder)}
     <li class="px-2">
-      <button type="button" class="file-link" onclick={(e) => fb.cd(e, folder)}
-        >{folder}</button
-      ><span class="text-muted">{fb.wd.sep}</span>
+      <button type="button" class="file-link" onclick={(e) => fb.cd(e, folder)}>
+        {folder}<span class="text-muted">{fb.wd.sep}</span>
+      </button>
     </li>
   {/each}
   {#if !dir}
@@ -46,6 +46,11 @@
     cursor: pointer;
     font: inherit;
     text-align: left;
+    display: block;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .file-link:hover {
@@ -54,13 +59,16 @@
   }
 
   ul {
-    columns: auto 200px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: 0;
     list-style: none;
   }
 
   ul li {
-    break-inside: avoid-column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   ul li:nth-child(even) {
@@ -69,5 +77,11 @@
 
   ul li:hover {
     background-color: var(--bs-tertiary-bg);
+  }
+
+  @media (max-width: 767.98px) {
+    ul {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>

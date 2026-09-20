@@ -43,6 +43,7 @@ func (u *Unpackerr) registerAPIRoutes() {
 	u.Webserver.handlePost(basePath("history/delete"), u.requirePerm(PermWriteSystemHistory, u.historyDeleteHandler))
 	u.Webserver.handleGet(basePath("browse"), u.requirePerm(PermReadSystemBrowse, u.browseHandler))
 	u.Webserver.handlePost(basePath("browse"), u.requirePerm(PermWriteSystemBrowse, u.browseCreateHandler))
+	u.Webserver.handlePost(basePath("browse/template"), u.requirePerm(PermWriteSystemBrowse, u.browseTemplateHandler))
 	u.Webserver.handleGet(basePath("config/help"), u.requireAuth(u.configHelpHandler))
 	u.Webserver.handleGet(basePath("config/env"), u.requireAuth(u.configEnvHandler))
 	u.Webserver.handleGet(basePath("config/{section}/live"), u.requireConfigPerm(false, u.configGetLiveHandler))

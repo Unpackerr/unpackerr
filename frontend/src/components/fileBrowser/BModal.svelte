@@ -30,12 +30,12 @@
   )
 </script>
 
-<Modal bind:isOpen size="xl" scrollable toggle={close}>
+<Modal bind:isOpen size="xl" class="file-browser-modal" toggle={close}>
   <ModalHeader toggle={close}>{heading}</ModalHeader>
   <ModalBody class="p-2">
     <Browser
       bind:value
-      height="min(70vh, 720px)"
+      height="100%"
       {close}
       description={intro}
       {disableMkdir}

@@ -287,6 +287,7 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | POST | `{urlbase}api/history/delete` | yes | `system:history:write` | `{id}`; in-progress **409** |
 | GET | `{urlbase}api/browse` | yes | `system:browse:read` | `?dir=`; empty → home; file path lists parent; unreadable path (Stat or ReadDir) with readable parent is 200 + `error`; both fail → 406. `mom` is empty at a volume root. Windows empty/`/`/`\` lists `C:\`–`Z:\` that exist. |
 | POST | `{urlbase}api/browse` | yes | `system:browse:write` | `{path}`; folder `MkdirAll` 0755 (existing folders succeed) |
+| POST | `{urlbase}api/browse/template` | yes | `system:browse:write` | `{path, template}`; writes `unpackerr-webhook-<template>.tmpl` (0644) with the built-in Go template; basename must match; 409 if the file exists |
 | GET | `{urlbase}api/config/help` | yes | any auth | English field help from definitions.yml |
 | GET | `{urlbase}api/config/env` | yes | any auth | UN_* overlays from startup; secret values blank unless `*`; `WEBSERVER_UI_PASSWORD` always blank (key kept so the UI can lock the field) |
 | GET | `{urlbase}api/config/{section}` | yes | `config:{section}:read` | File snapshot |

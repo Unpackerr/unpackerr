@@ -47,16 +47,25 @@ export class FileBrowser {
   public respErr: string
   public loading: boolean
   public input: string
-  public readonly fileName: string
+  public fileName: string
   private value: string
   private selected: string
-  private readonly defaultFile: string
+  private defaultFile: string
   private readonly close: (value: string) => void
 
-  constructor(value: string, close: (value: string) => void, defaultFile = '') {
+  constructor(
+    value: string,
+    close: (value: string) => void,
+    defaultFile = '',
+    lockName = false,
+  ) {
     this.value = value || ''
     this.defaultFile = defaultFile
-    this.fileName = fileNameFor(value || '', defaultFile)
+    this.fileName = $state(
+      lockName && defaultFile
+        ? defaultFile
+        : fileNameFor(value || '', defaultFile),
+    )
     this.wd = $state({
       path: this.value,
       files: [],
@@ -76,6 +85,12 @@ export class FileBrowser {
   public readonly preview = (dirPath: string): string => {
     if (!this.defaultFile) return dirPath
     return joinFile(dirPath, this.fileName, this.wd.sep || '/')
+  }
+
+  public readonly lockFile = (name: string) => {
+    if (!name) return
+    this.defaultFile = name
+    this.fileName = name
   }
 
   public readonly cd = async (e: Event, to: string, direct = false) => {

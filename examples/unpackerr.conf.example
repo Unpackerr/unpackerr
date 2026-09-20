@@ -493,9 +493,9 @@ passwords = []
 # token = ""
 ## Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
-## Override internal webhook template for discord.com or other hooks.
+## Used when template is empty (automatic). A named template ignores this file.
 # template_path = ''
-## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack
+## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack. Empty uses the URL or template_path.
 # template = ""
 ## Set this to true to ignore the SSL certificate on the server.
 # ignore_ssl = false
@@ -528,4 +528,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 20 SEP 2026 04:47 UTC
+## => Content Auto Generated, 20 SEP 2026 18:03 UTC

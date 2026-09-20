@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 )
 
 func TestBrowseDirListsSortedEntries(t *testing.T) {
@@ -215,6 +217,11 @@ func TestBrowseForbiddenWithoutPermission(t *testing.T) {
 	if rec := doAuth(t, unpack, http.MethodPost, "/api/browse", body, withKey); rec.Code != http.StatusForbidden {
 		t.Fatalf("post %d %s", rec.Code, rec.Body.String())
 	}
+
+	tmpl := `{"path":"/tmp/unpackerr-webhook-discord.tmpl","template":"discord"}`
+	if rec := doAuth(t, unpack, http.MethodPost, "/api/browse/template", tmpl, withKey); rec.Code != http.StatusForbidden {
+		t.Fatalf("template %d %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestBrowseListsTempDir(t *testing.T) {
@@ -318,6 +325,12 @@ func TestBrowseCreateForbiddenWithoutWrite(t *testing.T) {
 		`{"path":`+jsonString(t, filepath.Join(dir, "x"))+`}`, withKey); rec.Code != http.StatusForbidden {
 		t.Fatalf("post %d %s", rec.Code, rec.Body.String())
 	}
+
+	tmplPath := filepath.Join(dir, "unpackerr-webhook-discord.tmpl")
+	if rec := doAuth(t, unpack, http.MethodPost, "/api/browse/template",
+		`{"path":`+jsonString(t, tmplPath)+`,"template":"discord"}`, withKey); rec.Code != http.StatusForbidden {
+		t.Fatalf("template %d %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestBrowseCreateRejectsEmptyPath(t *testing.T) {
@@ -328,6 +341,70 @@ func TestBrowseCreateRejectsEmptyPath(t *testing.T) {
 
 	if rec := doAuth(t, unpack, http.MethodPost, "/api/browse", body, withAdminKey); rec.Code != http.StatusBadRequest {
 		t.Fatalf("empty %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBrowseTemplateWritesFile(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "unpackerr-webhook-discord.tmpl")
+	body := `{"path":` + jsonString(t, path) + `,"template":"discord"}`
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/browse/template", body, withAdminKey)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("write %d %s", rec.Code, rec.Body.String())
+	}
+
+	var got browseTemplateResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Path != path || !filepath.IsAbs(got.Path) {
+		t.Fatalf("path %q", got.Path)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want, ok := hooks.BuiltinWebhookTemplate("discord")
+	if !ok {
+		t.Fatal("missing discord template")
+	}
+
+	if string(written) != want {
+		t.Fatalf("wrote %d bytes, want %d", len(written), len(want))
+	}
+
+	again := doAuth(t, unpack, http.MethodPost, "/api/browse/template", body, withAdminKey)
+	if again.Code != http.StatusConflict {
+		t.Fatalf("exists %d %s", again.Code, again.Body.String())
+	}
+}
+
+func TestBrowseTemplateRejectsBadName(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	dir := t.TempDir()
+	wrong := filepath.Join(dir, "custom.tmpl")
+	body := `{"path":` + jsonString(t, wrong) + `,"template":"discord"}`
+	rec := doAuth(t, unpack, http.MethodPost, "/api/browse/template", body, withAdminKey)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("basename %d %s", rec.Code, rec.Body.String())
+	}
+
+	path := filepath.Join(dir, "unpackerr-webhook-nope.tmpl")
+	unknown := `{"path":` + jsonString(t, path) + `,"template":"nope"}`
+	bad := doAuth(t, unpack, http.MethodPost, "/api/browse/template", unknown, withAdminKey)
+
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("unknown %d %s", bad.Code, bad.Body.String())
 	}
 }
 

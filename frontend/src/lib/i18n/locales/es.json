@@ -123,7 +123,9 @@
     "TestReply": "Respuesta",
     "TestDuration": "Duración",
     "TestStarrEnvOwned": "No se puede probar cuando la URL o la clave API vienen del entorno.",
-    "TestHookEnvOwned": "No se puede probar cuando la URL o el comando vienen del entorno."
+    "TestHookEnvOwned": "No se puede probar cuando la URL o el comando vienen del entorno.",
+    "CreateHookTemplate": "Crear archivo de plantilla",
+    "CreateFailed": "No se pudo crear el archivo."
   },
   "nav": {
     "Dashboard": "Panel",
@@ -894,14 +896,14 @@
       },
       "template": {
         "label": "Plantilla",
-        "description": "Plantilla integrada. Vacío elige una a partir de la URL.",
-        "tooltip": "Fuerza notifiarr, discord, telegram, gotify, pushover o slack. Deja automático salvo que la URL no se reconozca.",
-        "auto": "Automático (desde la URL)"
+        "description": "Plantilla integrada. Vacío elige una a partir de la URL o el archivo de plantilla.",
+        "tooltip": "Fuerza notifiarr, discord, telegram, gotify, pushover o slack. Deja automático para usar la URL o el archivo de plantilla.",
+        "auto": "Automático (desde la URL o el archivo)"
       },
       "templatePath": {
         "label": "Archivo de plantilla",
         "description": "Archivo de plantilla Go personalizado en lugar de una integrada.",
-        "tooltip": "Anula la detección automática y el ajuste Plantilla. Elige un archivo existente."
+        "tooltip": "Se usa cuando Plantilla es Automático. Una plantilla con nombre ignora este archivo."
       }
     },
     "payload": {
@@ -922,6 +924,7 @@
     "Path": "Ruta",
     "intro": "Elige una ruta en esta máquina.",
     "introFolderFile": "Elige una carpeta. El archivo se llamará <code>{file}</code>, pero puedes cambiar el nombre después de elegir.",
+    "introLockedFile": "Elige una carpeta. El archivo se llamará <code>{file}</code>.",
     "tooltip": {
       "Go": "<code>cd {path}</code><br />Cambiar el directorio a la ruta del recuadro.",
       "SelectPath": "Seleccionar ruta: <code>{path}</code>",

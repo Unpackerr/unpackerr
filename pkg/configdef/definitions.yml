@@ -1086,8 +1086,8 @@ sections:
       - name: template_path
         envvar: TEMPLATE_PATH
         default: ''
-        short: Instead of an internal template, provide your own.
-        desc: Override internal webhook template for discord.com or other hooks.
+        short: Custom Go template file; used when template is automatic.
+        desc: Used when template is empty (automatic). A named template ignores this file.
       - name: template
         envvar: TEMPLATE
         default: ''
@@ -1098,8 +1098,8 @@ sections:
           - value: 'gotify'
           - value: 'pushover'
           - value: 'slack'
-        short: Instead of auto template selection, force a built-in template.
-        desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack'
+        short: Force a built-in template instead of the URL or template file.
+        desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack. Empty uses the URL or template_path.'
       - name: ignore_ssl
         envvar: IGNORE_SSL
         default: false

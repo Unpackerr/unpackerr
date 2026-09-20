@@ -294,35 +294,30 @@ func (w *Config) Template() (*template.Template, error) {
 	})
 
 	// Providing a template name that exists overrides template_path.
-	// Do not add a 'default' case here.
-	switch strings.ToLower(w.TempName) {
-	case "notifiarr", "default":
-		return template.Parse(WebhookTemplateNotifiarr)
-	case "discord":
-		return template.Parse(WebhookTemplateDiscord)
-	case "telegram":
-		return template.Parse(WebhookTemplateTelegram)
-	case "slack":
-		return template.Parse(WebhookTemplateSlack)
-	case "pushover":
-		return template.Parse(WebhookTemplatePushover)
-	case "gotify":
-		return template.Parse(WebhookTemplateGotify)
+	// Unknown names fall through to template_path, then URL detection.
+	name := strings.ToLower(w.TempName)
+	if name == "default" {
+		name = "notifiarr"
 	}
 
-	// Figure out which template to use based on URL or template_path.
-	switch url := strings.ToLower(w.URL); {
-	default:
-		fallthrough
-	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
-		return template.Parse(WebhookTemplateNotifiarr)
-	case w.TmplPath != "":
+	if body, ok := BuiltinWebhookTemplate(name); ok {
+		return template.Parse(body)
+	}
+
+	if w.TmplPath != "" {
 		s, err := os.ReadFile(w.TmplPath)
 		if err != nil {
 			return nil, fmt.Errorf("template file: %w", err)
 		}
 
 		return template.Parse(string(s))
+	}
+
+	switch url := strings.ToLower(w.URL); {
+	default:
+		fallthrough
+	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
+		return template.Parse(WebhookTemplateNotifiarr)
 	case strings.Contains(url, "discord.com"), strings.Contains(url, "discordapp.com"):
 		return template.Parse(WebhookTemplateDiscord)
 	case strings.Contains(url, "api.telegram.org"):
@@ -334,6 +329,37 @@ func (w *Config) Template() (*template.Template, error) {
 	case strings.Contains(url, "gotify"):
 		return template.Parse(WebhookTemplateGotify)
 	}
+}
+
+const (
+	webhookTemplateFilePrefix = "unpackerr-webhook-"
+	webhookTemplateFileExt    = ".tmpl"
+)
+
+// BuiltinWebhookTemplate returns a built-in webhook template body.
+// Name is one of notifiarr, discord, telegram, slack, pushover, gotify.
+func BuiltinWebhookTemplate(name string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "notifiarr":
+		return WebhookTemplateNotifiarr, true
+	case "discord":
+		return WebhookTemplateDiscord, true
+	case "telegram":
+		return WebhookTemplateTelegram, true
+	case "slack":
+		return WebhookTemplateSlack, true
+	case "pushover":
+		return WebhookTemplatePushover, true
+	case "gotify":
+		return WebhookTemplateGotify, true
+	default:
+		return "", false
+	}
+}
+
+// WebhookTemplateFileName is the locked basename for a built-in template dump.
+func WebhookTemplateFileName(name string) string {
+	return webhookTemplateFilePrefix + strings.ToLower(strings.TrimSpace(name)) + webhookTemplateFileExt
 }
 
 func separator(separator string) func() string {

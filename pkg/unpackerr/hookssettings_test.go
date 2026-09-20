@@ -21,6 +21,14 @@ func TestValidateHooksConfig(t *testing.T) {
 	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{"nope": "x"}}); err == nil {
 		t.Fatal("expected unknown title")
 	}
+
+	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{"2": "x"}}); err == nil {
+		t.Fatal("expected numeric title key")
+	}
+
+	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{" extracting ": "x"}}); err == nil {
+		t.Fatal("expected padded title key")
+	}
 }
 
 func TestPayloadCustomIDs(t *testing.T) {

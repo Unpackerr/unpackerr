@@ -63,6 +63,8 @@ const WebhookTemplateNotifiarr = `{
     {{$s := separator ",\n"}}{{range $key, $value := .CustomIDs}}{{call $s}}"{{$key}}": {{encode $value}}{{end}}
   },
 {{ end }}  "unpackerr_eventtype": "{{.Event}}",
+  "retries": {{.Retries}},
+  "eventTitle": {{encode .EventTitle}},
   "time": "{{.Time}}",
 {{ if .Data }}    "data": {
     "error": {{encode .Data.Error}},
@@ -87,7 +89,8 @@ const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
   "disable_web_page_preview": true,
-  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.EventTitle -}}
+  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: ` +
+	`{{rawencode (htmlencode .EventTitle) -}}
     \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{htmlencode .App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
@@ -105,7 +108,7 @@ const WebhookTemplateTelegram = `{
 // The extra spaces before the newlines here are required to make this look good on web and on android.
 
 const WebhookTemplateGotify = `{
-  "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.EventTitle}}",
+  "title": {{encode (print (or (nickname) "Unpackerr") ": " .EventTitle)}},
   "message": "**App**: {{rawencode .App}}  \n` +
 	`**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
     {{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
@@ -136,7 +139,7 @@ const WebhookTemplateDiscord = `{
     "title": {{encode (index .IDs "title")}},
     "timestamp": "{{timestamp .Time}}",
     "author": {
-     "name": "Unpackerr: {{.EventTitle}}",
+     "name": {{encode (print "Unpackerr: " .EventTitle)}},
      "icon_url": "https://unpackerr.zip/img/icon.png",
      "url": "https://github.com/Unpackerr/unpackerr/releases"
     },
@@ -195,7 +198,7 @@ const WebhookTemplateSlack = `
       "type": "header",
       "text": {
         "type": "plain_text",
-        "text": "Unpackerr: {{or .EventTitle .Event.Desc}}"
+        "text": {{encode (print "Unpackerr: " (or .EventTitle .Event.Desc))}}
       }
     },
     {

@@ -20,7 +20,7 @@
   import { trackDirty } from '../../lib/dirty.svelte'
   import { failure } from '../../lib/toast'
   import { envHas } from '../../lib/env.svelte'
-  import { mapKeysInvalid } from '../../lib/slug'
+  import { mapFromPairs, pairsFromMap } from '../../lib/slug'
   import {
     EXTRACT_EVENT_TITLES,
     EXTRACT_STATUSES,
@@ -49,13 +49,14 @@
 
   const canWrite = has(configPerm(section, 'write'))
   const titlesLocked = $derived(envHas('HOOKS_TITLES_*'))
-  const invalid = $derived(mapKeysInvalid(cfg?.customIDs))
+  let idsInvalid = $state(false)
+  const invalid = $derived(idsInvalid)
 
   function normalize(
     raw: Partial<HooksConfig> | null | undefined,
   ): HooksConfig {
     return {
-      customIDs: { ...(raw?.customIDs ?? {}) },
+      customIDs: mapFromPairs(pairsFromMap(raw?.customIDs)),
       titles: { ...(raw?.titles ?? {}) },
     }
   }
@@ -67,7 +68,7 @@
       if (t) titles[key] = t
     }
 
-    return { customIDs: { ...(cfg?.customIDs ?? {}) }, titles }
+    return { customIDs: mapFromPairs(pairsFromMap(cfg?.customIDs)), titles }
   }
 
   onMount(async () => {
@@ -119,6 +120,7 @@
     <Col md="12">
       <MapPairs
         bind:values={data.customIDs}
+        bind:invalid={idsInvalid}
         disabled={!canWrite}
         idPrefix="hooks-ids"
         helpKey="config.payload.customIds"
@@ -130,9 +132,9 @@
     <Col md="12">
       <FormGroup>
         <Label>{$_('config.payload.titles.label')}</Label>
-        <FormText class="d-block mb-2"
-          >{$_('config.payload.titles.description')}</FormText
-        >
+        <FormText class="d-block mb-2">
+          {$_('config.payload.titles.description')}
+        </FormText>
         <Row class="g-1">
           {#each EXTRACT_STATUSES as st, si (st.id)}
             <Col md="6">

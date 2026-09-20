@@ -134,12 +134,14 @@ export function pairsFromMap(m?: Record<string, string> | null): MapPair[] {
 }
 
 export function mapFromPairs(pairs: MapPair[]): Record<string, string> {
-  const out: Record<string, string> = {}
+  const out = Object.create(null) as Record<string, string>
   for (const p of pairs) {
     const k = p.key.trim()
     if (!k) continue
+
     out[k] = p.value
   }
+
   return out
 }
 
@@ -148,10 +150,13 @@ export function mapKeysInvalid(m?: Record<string, string> | null): boolean {
   const seen = new Set<string>()
   for (const key of Object.keys(m ?? {})) {
     if (!validSlug(key)) return true
+
     const lower = key.toLowerCase()
     if (seen.has(lower)) return true
+
     seen.add(lower)
   }
+
   return false
 }
 

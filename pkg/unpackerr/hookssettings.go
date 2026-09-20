@@ -53,7 +53,7 @@ func validateHookIDs(ids map[string]string) error {
 func validateHookTitles(titles map[string]string) error {
 	for key := range titles {
 		var status extract.Status
-		if err := status.UnmarshalText([]byte(key)); err != nil {
+		if err := status.UnmarshalText([]byte(key)); err != nil || key != status.String() {
 			return fmt.Errorf("%w: %q", errUnknownHookTitleKey, key)
 		}
 	}

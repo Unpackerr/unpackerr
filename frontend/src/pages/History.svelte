@@ -36,7 +36,9 @@
   import type { HistoryRecord } from '../lib/types'
   import { live } from '../lib/socket.svelte'
   import ItemDetail from '../components/ItemDetail.svelte'
+  import Hint from '../components/Hint.svelte'
   import InfoIcon from 'phosphor-svelte/lib/Info'
+  import QuestionIcon from 'phosphor-svelte/lib/QuestionIcon'
   import { theme } from '../lib/theme.svelte'
 
   let { now = Date.now() }: { now?: number } = $props()
@@ -62,11 +64,23 @@
 
   const shown = $derived(
     filter.trim()
-      ? rows.filter((r) =>
-          (r.id + r.app + r.status)
+      ? rows.filter((r) => {
+          const q = filter.trim().toLowerCase()
+          const errKey = errorPhrase(r.error)
+          return [
+            r.id,
+            r.path,
+            r.app,
+            r.status,
+            $_(statusPhrase(r.status)),
+            r.error,
+            errKey ? $_(errKey) : '',
+          ]
+            .filter(Boolean)
+            .join('\n')
             .toLowerCase()
-            .includes(filter.trim().toLowerCase()),
-        )
+            .includes(q)
+        })
       : rows,
   )
 
@@ -113,7 +127,7 @@
       <Col>
         <CardTitle class="mb-0">{$_('pages.history.Title')}</CardTitle>
       </Col>
-      <Col xs="auto">
+      <Col xs="auto" class="d-flex align-items-center gap-1">
         <Input
           id="history-filter"
           name="history-filter"
@@ -124,6 +138,19 @@
           bind:value={filter}
           style="width: 12rem"
         />
+        <Hint
+          id="{uid}-filter-hint"
+          hint={$_('phrases.FilterHint')}
+          label={$_('phrases.FilterHint')}
+        >
+          <QuestionIcon
+            size="1.15em"
+            class="text-muted"
+            weight="bold"
+            aria-hidden="true"
+            focusable="false"
+          />
+        </Hint>
       </Col>
       <Col xs="auto">
         <ButtonGroup size="sm">

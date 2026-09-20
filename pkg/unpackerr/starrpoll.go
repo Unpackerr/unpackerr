@@ -106,7 +106,7 @@ func (u *Unpackerr) getStarrQueue[T any, P starrApp[T]](server P, app starr.App,
 	u.saveQueueMetrics(total, start, app, cfg.URL, label, nil)
 
 	if !u.Activity || total > 0 {
-		u.Printf("[%s] Updated (%s): %d Items Queued, %d Retrieved", label, cfg.URL, total, retrieved)
+		u.Printf("[%s] Updated: %d Items Queued, %d Retrieved", label, total, retrieved)
 	}
 }
 
@@ -150,7 +150,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 
 			switch {
 			case found && item.Status == EXTRACTED && isComplete(rec.Status, rec.Protocol, cfg.Protocols):
-				unpack.Debugf("%s (%s): Item Waiting for Import (%s): %v", cfg.Label(app), cfg.URL, rec.Protocol, rec.Title)
+				unpack.Debugf("%s: Item Waiting for Import (%s): %v", cfg.Label(app), rec.Protocol, rec.Title)
 			case !found && isComplete(rec.Status, rec.Protocol, cfg.Protocols) && !unpack.isForgotten(rec.Title):
 				waiting := &Extract{
 					App:         app,
@@ -172,8 +172,8 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 
 				fallthrough
 			default:
-				unpack.Debugf("%s (%s): %s (%s:%d%%): %v%s",
-					cfg.Label(app), cfg.URL, rec.Status, rec.Protocol,
+				unpack.Debugf("%s: %s (%s:%d%%): %v%s",
+					cfg.Label(app), rec.Status, rec.Protocol,
 					percent(rec.Sizeleft, rec.Size), rec.Title, rec.DebugExtra)
 			}
 		}

@@ -64,10 +64,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.stat-card {
-  cursor: help;
-}
-
 .stat-side-table {
   font-size: 0.8125rem;
 }
@@ -80,7 +76,49 @@ body {
 .stat-side-table th {
   color: var(--bs-secondary-color);
   font-weight: 500;
-  cursor: help;
+}
+
+.hint-target {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  vertical-align: baseline;
+}
+
+.hint-target:focus {
+  outline: none;
+}
+
+.hint-target:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.stat-side-table th.starr-q-app {
+  color: var(--bs-body-color);
+}
+
+.starr-q-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.starr-q-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  row-gap: 0.1rem;
+  margin-top: 0.15rem;
 }
 
 .stat-side-table td {
@@ -449,7 +487,9 @@ code.wrap {
   .queue-table
     tbody.stack-item
     > tr:first-child
-    > td.queue-progress:not(:has(.progress, .queue-progress-caption, .queue-progress-archive)) {
+    > td.queue-progress:not(
+      :has(.progress, .queue-progress-caption, .queue-progress-archive)
+    ) {
     display: none;
   }
 

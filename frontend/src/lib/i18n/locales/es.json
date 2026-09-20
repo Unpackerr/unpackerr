@@ -85,6 +85,7 @@
     "UiPasswordFilepath": "Esta contraseña es una referencia filepath:. Guardar una contraseña o un tipo de autenticación nuevos escribe el valor en el archivo de configuración.",
     "ReservedUsername": "Los nombres de usuario webauth, noauth y filepath están reservados, y un nombre de usuario no puede contener dos puntos.",
     "FilterPlaceholder": "Filtrar…",
+    "FilterHint": "Coincide con ruta, app, estado y texto de error.",
     "Empty": "—",
     "URLMustBeginWithHttp": "La URL debe empezar por http:// o https://",
     "URLInvalid": "Esa no es una URL válida.",

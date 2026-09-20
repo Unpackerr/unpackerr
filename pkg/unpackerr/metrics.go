@@ -85,7 +85,7 @@ func (u *Unpackerr) saveQueueMetrics(size int, start time.Time, app starr.App, u
 			label = string(app)
 		}
 
-		u.Errorf("%s (%s): %v", label, url, err)
+		u.Errorf("%s: %v", label, err)
 	}
 
 	if u.metrics == nil {

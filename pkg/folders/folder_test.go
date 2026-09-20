@@ -551,6 +551,25 @@ func TestPathContainsRoot(t *testing.T) {
 	}
 }
 
+func TestPathContainsWindowsFold(t *testing.T) {
+	t.Parallel()
+
+	watch := filepath.Join("Watch", "TV")
+	item := filepath.Join("watch", "tv", "Show")
+
+	if pathContains(watch, item, false) {
+		t.Fatal("case-sensitive match must fail")
+	}
+
+	if !pathContains(watch, item, true) {
+		t.Fatal("windows fold should match watch path casing")
+	}
+
+	if pathContains("data", filepath.Join("Data-old", "a.rar"), true) {
+		t.Fatal("folded sibling prefix must not match")
+	}
+}
+
 func TestPollerForRootWatch(t *testing.T) {
 	t.Parallel()
 

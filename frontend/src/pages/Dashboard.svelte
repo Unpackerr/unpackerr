@@ -31,13 +31,16 @@
     remainCompact,
     isZeroTime,
     bytes,
+    dateTime,
   } from '../lib/format'
   import { success, failure } from '../lib/toast'
   import { live, type LiveTopic } from '../lib/socket.svelte'
-  import type { BufferStat, QueueItem } from '../lib/types'
+  import type { BufferStat, QueueItem, StarrQueueStat } from '../lib/types'
   import History from './History.svelte'
   import ItemDetail from '../components/ItemDetail.svelte'
+  import Hint from '../components/Hint.svelte'
   import InfoIcon from 'phosphor-svelte/lib/Info'
+  import Warning from 'phosphor-svelte/lib/Warning'
   import { theme } from '../lib/theme.svelte'
 
   let busy = $state<Record<string, boolean>>({})
@@ -277,6 +280,10 @@
 
   const starrQueues = $derived(stats?.starrQueues ?? [])
 
+  function starrRowHint(row: StarrQueueStat): string {
+    return row.error || $_('pages.dashboard.StarrQueuesHint')
+  }
+
   function showBar(item: QueueItem): boolean {
     return (
       item.status === 'extracting' &&
@@ -502,13 +509,16 @@
         <Row class="g-2">
           {#each cards as c (c.id)}
             <Col xs="6" sm="3">
-              <Card id="{uid}-{c.id}" class="stat-card text-center h-100">
+              <Card class="stat-card text-center h-100">
                 <CardBody class="py-2 px-1">
                   <div class="stat-value text-{c.color}">{c.value}</div>
-                  <div class="text-muted small text-uppercase">{c.label}</div>
+                  <Hint id="{uid}-{c.id}" hint={c.hint}>
+                    <span class="text-muted small text-uppercase">
+                      {c.label}
+                    </span>
+                  </Hint>
                 </CardBody>
               </Card>
-              <Tooltip target="{uid}-{c.id}" placement="top" theme={theme.tooltip}>{c.hint}</Tooltip>
             </Col>
           {/each}
         </Row>
@@ -520,7 +530,11 @@
               <tbody>
                 {#each side as row (row.id)}
                   <tr>
-                    <th id="{uid}-{row.id}" scope="row">{row.label}</th>
+                    <th scope="row">
+                      <Hint id="{uid}-{row.id}" hint={row.hint}>
+                        {row.label}
+                      </Hint>
+                    </th>
                     <td class="text-end" class:text-danger={row.full}>
                       {#if row.fail === undefined}
                         {row.value}
@@ -532,9 +546,6 @@
                       {/if}
                     </td>
                   </tr>
-                  <Tooltip target="{uid}-{row.id}" placement="top" theme={theme.tooltip}
-                    >{row.hint}</Tooltip
-                  >
                 {/each}
               </tbody>
             </Table>
@@ -547,38 +558,83 @@
   {#if canStats && starrQueues.length}
     <Card class="mb-3">
       <CardBody class="py-2 px-2">
-        <CardTitle class="mb-2" id="{uid}-starr-queues"
-          >{$_('pages.dashboard.StarrQueues')}</CardTitle
-        >
-        <Tooltip target="{uid}-starr-queues" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueuesHint')}</Tooltip
-        >
+        <CardTitle class="mb-2">
+          <Hint
+            id="{uid}-starr-queues"
+            hint={$_('pages.dashboard.StarrQueuesHint')}
+            >{$_('pages.dashboard.StarrQueues')}
+          </Hint>
+        </CardTitle>
         <Table size="sm" striped borderless class="stat-side-table mb-0">
           <thead>
             <tr>
               <th scope="col">{$_('pages.dashboard.App')}</th>
-              <th id="{uid}-starrq-h-total" class="text-end" scope="col"
-                >{$_('pages.dashboard.StarrQueueTotal')}</th
-              >
-              <th id="{uid}-starrq-h-complete" class="text-end" scope="col"
-                >{$_('pages.dashboard.StarrQueueComplete')}</th
-              >
-              <th id="{uid}-starrq-h-match" class="text-end" scope="col"
-                >{$_('pages.dashboard.StarrQueueMatch')}</th
-              >
-              <th id="{uid}-starrq-h-issues" class="text-end" scope="col"
-                >{$_('pages.dashboard.StarrQueueIssues')}</th
-              >
-              <th id="{uid}-starrq-h-dl" class="text-end" scope="col"
-                >{$_('pages.dashboard.StarrQueueDownloading')}</th
-              >
+              <th class="text-end" scope="col">
+                <Hint
+                  id="{uid}-starrq-h-total"
+                  hint={$_('pages.dashboard.StarrQueueTotalHint')}
+                  >{$_('pages.dashboard.StarrQueueTotal')}
+                </Hint>
+              </th>
+              <th class="text-end" scope="col">
+                <Hint
+                  id="{uid}-starrq-h-complete"
+                  hint={$_('pages.dashboard.StarrQueueCompleteHint')}
+                  >{$_('pages.dashboard.StarrQueueComplete')}
+                </Hint>
+              </th>
+              <th class="text-end" scope="col">
+                <Hint
+                  id="{uid}-starrq-h-match"
+                  hint={$_('pages.dashboard.StarrQueueMatchHint')}
+                  >{$_('pages.dashboard.StarrQueueMatch')}
+                </Hint>
+              </th>
+              <th class="text-end" scope="col">
+                <Hint
+                  id="{uid}-starrq-h-issues"
+                  hint={$_('pages.dashboard.StarrQueueIssuesHint')}
+                  >{$_('pages.dashboard.StarrQueueIssues')}</Hint
+                >
+              </th>
+              <th class="text-end" scope="col">
+                <Hint
+                  id="{uid}-starrq-h-dl"
+                  hint={$_('pages.dashboard.StarrQueueDownloadingHint')}
+                  >{$_('pages.dashboard.StarrQueueDownloading')}
+                </Hint>
+              </th>
             </tr>
           </thead>
           <tbody>
             {#each starrQueues as row, i (`${row.app}-${row.url}-${i}`)}
               <tr>
-                <th id="{uid}-starrq-{i}" scope="row">{row.name}</th>
-                <td class="text-end" class:text-danger={!!row.error}>
+                <th scope="row" class="starr-q-app">
+                  <Hint id="{uid}-starrq-{i}" hint={starrRowHint(row)}>
+                    <span class="starr-q-name" class:text-danger={!!row.error}>
+                      {#if row.error}
+                        <Warning
+                          size="1.1em"
+                          weight="fill"
+                          aria-hidden="true"
+                          focusable="false"
+                        />
+                      {/if}
+                      {row.name}
+                    </span>
+                  </Hint>
+                  <div class="starr-q-meta small fw-normal">
+                    {#if row.url}
+                      <code class="wrap">{row.url}</code>
+                    {/if}
+                    <span class="text-muted" title={dateTime(row.updatedAt)}>
+                      {isZeroTime(row.updatedAt)
+                        ? $_('phrases.Empty')
+                        : relTime(row.updatedAt, now)}
+                    </span>
+                  </div>
+                </th>
+                <td class="text-end">
                   {#if row.queued !== row.retrieved}
                     {row.queued} / {row.retrieved}
                   {:else}
@@ -587,32 +643,14 @@
                 </td>
                 <td class="text-end">{row.complete ?? 0}</td>
                 <td class="text-end">{row.match ?? 0}</td>
-                <td class="text-end" class:text-danger={(row.issues ?? 0) > 0}
-                  >{row.issues ?? 0}</td
-                >
+                <td class="text-end" class:text-danger={(row.issues ?? 0) > 0}>
+                  {row.issues ?? 0}
+                </td>
                 <td class="text-end">{row.downloading ?? 0}</td>
               </tr>
-              <Tooltip target="{uid}-starrq-{i}" placement="top" theme={theme.tooltip}>
-                {row.error || row.url || $_('pages.dashboard.StarrQueuesHint')}
-              </Tooltip>
             {/each}
           </tbody>
         </Table>
-        <Tooltip target="{uid}-starrq-h-total" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueueTotalHint')}</Tooltip
-        >
-        <Tooltip target="{uid}-starrq-h-complete" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueueCompleteHint')}</Tooltip
-        >
-        <Tooltip target="{uid}-starrq-h-match" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueueMatchHint')}</Tooltip
-        >
-        <Tooltip target="{uid}-starrq-h-issues" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueueIssuesHint')}</Tooltip
-        >
-        <Tooltip target="{uid}-starrq-h-dl" placement="top" theme={theme.tooltip}
-          >{$_('pages.dashboard.StarrQueueDownloadingHint')}</Tooltip
-        >
       </CardBody>
     </Card>
   {/if}
@@ -812,22 +850,26 @@
                         onclick={() => openDetail(item)}
                       >
                         {item.id}
-                      </button>{#if item.event}<Badge
+                      </button>
+                      {#if item.event}
+                        <Hint
                           id="{uid}-event-{i}"
-                          class="queue-event-badge"
-                          color={item.event === 'fsnotify'
-                            ? 'success'
-                            : 'warning'}
-                        >
-                          {item.event === 'fsnotify'
-                            ? $_('pages.dashboard.FSNotify')
-                            : $_('pages.dashboard.Polling')}
-                        </Badge>
-                        <Tooltip target="{uid}-event-{i}" placement="top" theme={theme.tooltip}>
-                          {item.event === 'fsnotify'
+                          hint={item.event === 'fsnotify'
                             ? $_('pages.dashboard.FSNotifyHint')
                             : $_('pages.dashboard.PollingHint')}
-                        </Tooltip>{/if}
+                        >
+                          <Badge
+                            class="queue-event-badge"
+                            color={item.event === 'fsnotify'
+                              ? 'success'
+                              : 'warning'}
+                          >
+                            {item.event === 'fsnotify'
+                              ? $_('pages.dashboard.FSNotify')
+                              : $_('pages.dashboard.Polling')}
+                          </Badge>
+                        </Hint>
+                      {/if}
                     </code>
                   </td>
                 </tr>

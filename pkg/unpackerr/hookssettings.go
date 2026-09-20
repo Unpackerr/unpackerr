@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"maps"
 	"strings"
-
-	"github.com/Unpackerr/unpackerr/pkg/extract"
 )
 
 var (
-	errInvalidHookIDKey    = errors.New("hook id key must be letters, digits, underscore, or hyphen")
-	errUnknownHookTitleKey = errors.New("unknown hook title event")
-	errDuplicateHookIDKey  = errors.New("duplicate hook id key")
+	errInvalidHookIDKey   = errors.New("hook id key must be letters, digits, underscore, or hyphen")
+	errDuplicateHookIDKey = errors.New("duplicate hook id key")
 )
 
 func (u *Unpackerr) validateHooks() error {
@@ -24,11 +21,7 @@ func validateHooksConfig(cfg *HooksConfig) error {
 		return nil
 	}
 
-	if err := validateHookIDs(cfg.CustomIDs); err != nil {
-		return fmt.Errorf("hooks custom ids: %w", err)
-	}
-
-	return validateHookTitles(cfg.Titles)
+	return validateHookIDs(cfg.CustomIDs)
 }
 
 func validateHookIDs(ids map[string]string) error {
@@ -50,30 +43,59 @@ func validateHookIDs(ids map[string]string) error {
 	return nil
 }
 
-func validateHookTitles(titles map[string]string) error {
-	for key := range titles {
-		var status extract.Status
-		if err := status.UnmarshalText([]byte(key)); err != nil || key != status.String() {
-			return fmt.Errorf("%w: %q", errUnknownHookTitleKey, key)
-		}
-	}
-
-	return nil
-}
-
 func cloneHooks(src HooksConfig) HooksConfig {
 	return HooksConfig{
 		CustomIDs: maps.Clone(src.CustomIDs),
-		Titles:    maps.Clone(src.Titles),
+		Titles:    src.Titles,
 	}
 }
 
-func eventTitle(status extract.Status, titles map[string]string) string {
-	if title := strings.TrimSpace(titles[status.String()]); title != "" {
+func (t HookTitles) forStatus(status ExtractStatus) string {
+	var title string
+
+	switch status {
+	case WAITING:
+		title = t.Waiting
+	case QUEUED:
+		title = t.Queued
+	case EXTRACTING:
+		title = t.Extracting
+	case EXTRACTFAILED:
+		title = t.ExtractFailed
+	case EXTRACTED:
+		title = t.Extracted
+	case IMPORTED:
+		title = t.Imported
+	case DELETING:
+		title = t.Deleting
+	case DELETEFAILED:
+		title = t.DeleteFailed
+	case DELETED:
+		title = t.Deleted
+	case EXTRACTEDNOTHING:
+		title = t.ExtractedNothing
+	}
+
+	if title = strings.TrimSpace(title); title != "" {
 		return title
 	}
 
 	return status.Desc()
+}
+
+func (t HookTitles) nonEmpty() int {
+	count := 0
+
+	for _, title := range []string{
+		t.Waiting, t.Queued, t.Extracting, t.ExtractFailed, t.Extracted,
+		t.Imported, t.Deleting, t.DeleteFailed, t.Deleted, t.ExtractedNothing,
+	} {
+		if strings.TrimSpace(title) != "" {
+			count++
+		}
+	}
+
+	return count
 }
 
 func payloadCustomIDs(ids map[string]string) map[string]string {

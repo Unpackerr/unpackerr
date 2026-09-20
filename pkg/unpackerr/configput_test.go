@@ -2372,7 +2372,7 @@ func TestConfigPutHooksPayload(t *testing.T) {
 	}
 
 	if unpack.Hooks.CustomIDs["url"] != "https://unpackerr.example" ||
-		unpack.Hooks.Titles["extracting"] != "Archive Found" {
+		unpack.Hooks.Titles.Extracting != "Archive Found" {
 		t.Fatalf("live %+v", unpack.Hooks)
 	}
 
@@ -2399,7 +2399,7 @@ func TestConfigPutHooksPayload(t *testing.T) {
 	}
 
 	if parsed.Hooks.CustomIDs["url"] != "https://unpackerr.example" ||
-		parsed.Hooks.Titles["extracting"] != "Archive Found" {
+		parsed.Hooks.Titles.Extracting != "Archive Found" {
 		t.Fatalf("file hooks %+v", parsed.Hooks)
 	}
 
@@ -2411,6 +2411,6 @@ func TestConfigPutHooksPayload(t *testing.T) {
 	bad := doAuth(t, unpack, http.MethodPut, "/api/config/hooks",
 		`{"titles":{"nope":"x"}}`, putKey(unpack))
 	if bad.Code != http.StatusBadRequest {
-		t.Fatalf("unknown title %d %s", bad.Code, bad.Body.String())
+		t.Fatalf("unknown title field %d %s", bad.Code, bad.Body.String())
 	}
 }

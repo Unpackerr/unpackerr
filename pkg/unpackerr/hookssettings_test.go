@@ -9,7 +9,7 @@ func TestValidateHooksConfig(t *testing.T) {
 
 	if err := validateHooksConfig(&HooksConfig{
 		CustomIDs: map[string]string{"url": "https://x"},
-		Titles:    map[string]string{"extracting": "Archive Found"},
+		Titles:    HookTitles{Extracting: "Archive Found"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -17,17 +17,22 @@ func TestValidateHooksConfig(t *testing.T) {
 	if err := validateHooksConfig(&HooksConfig{CustomIDs: map[string]string{"bad key": "x"}}); err == nil {
 		t.Fatal("expected invalid id key")
 	}
+}
 
-	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{"nope": "x"}}); err == nil {
-		t.Fatal("expected unknown title")
+func TestHookTitlesForStatus(t *testing.T) {
+	t.Parallel()
+
+	titles := HookTitles{Extracting: "  Archive Found  "}
+	if got := titles.forStatus(EXTRACTING); got != "Archive Found" {
+		t.Fatalf("custom %q", got)
 	}
 
-	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{"2": "x"}}); err == nil {
-		t.Fatal("expected numeric title key")
+	if got := titles.forStatus(EXTRACTED); got != EXTRACTED.Desc() {
+		t.Fatalf("builtin %q", got)
 	}
 
-	if err := validateHooksConfig(&HooksConfig{Titles: map[string]string{" extracting ": "x"}}); err == nil {
-		t.Fatal("expected padded title key")
+	if titles.nonEmpty() != 1 {
+		t.Fatalf("count %d", titles.nonEmpty())
 	}
 }
 

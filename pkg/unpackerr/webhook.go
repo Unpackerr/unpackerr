@@ -32,11 +32,11 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 	}
 }
 
-func (u *Unpackerr) hookExtras() (map[string]string, map[string]string) {
+func (u *Unpackerr) hookExtras() (map[string]string, HookTitles) {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
-	return maps.Clone(u.Hooks.CustomIDs), maps.Clone(u.Hooks.Titles)
+	return maps.Clone(u.Hooks.CustomIDs), u.Hooks.Titles
 }
 
 func (u *Unpackerr) hookPayload(item *Extract) *hooks.Payload {
@@ -51,7 +51,7 @@ func (u *Unpackerr) hookPayload(item *Extract) *hooks.Payload {
 		Data:       nil,
 		Event:      item.Status,
 		Retries:    item.Retries,
-		EventTitle: eventTitle(item.Status, titles),
+		EventTitle: titles.forStatus(item.Status),
 		// Application Metadata.
 		Go:       runtime.Version(),
 		OS:       runtime.GOOS,
@@ -98,10 +98,10 @@ func (u *Unpackerr) decorateSamplePayload(payload *hooks.Payload, event extract.
 
 	u.configMu.RLock()
 	global := maps.Clone(u.Hooks.CustomIDs)
-	titles := maps.Clone(u.Hooks.Titles)
+	titles := u.Hooks.Titles
 	u.configMu.RUnlock()
 
-	payload.EventTitle = eventTitle(event, titles)
+	payload.EventTitle = titles.forStatus(event)
 	payload.CustomIDs = payloadCustomIDs(global)
 }
 

@@ -212,7 +212,7 @@ func foldersConfigFrom(cfg *Config) foldersConfigAPI {
 func hooksConfigFrom(cfg *Config) HooksConfig {
 	return HooksConfig{
 		CustomIDs: emptyIfNilMap(cfg.Hooks.CustomIDs),
-		Titles:    emptyIfNilMap(cfg.Hooks.Titles),
+		Titles:    cfg.Hooks.Titles,
 	}
 }
 

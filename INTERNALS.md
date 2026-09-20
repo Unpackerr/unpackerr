@@ -395,7 +395,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 | webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, HTTP log |
 | sonarr…readarr | Rebuild clients, carry queues, grow workers | No |
 | folders | Live map updated | **Always** (watcher) |
-| hooks | Replace custom_ids/titles maps | No |
+| hooks | Replace custom_ids map / titles struct | No |
 | webhooks / cmdhooks | Replace maps, ensure worker | No |
 
 ---

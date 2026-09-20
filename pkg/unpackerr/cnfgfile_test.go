@@ -415,6 +415,17 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	skip := map[string]struct{}{
 		"path": {}, // legacy StarrConfig alias for paths
 		"key":  {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
+		// nested [hooks.titles]; parent titles is in the schema
+		"waiting":          {},
+		"queued":           {},
+		"extracting":       {},
+		"extractfailed":    {},
+		"extracted":        {},
+		"imported":         {},
+		"deleting":         {},
+		"deletefailed":     {},
+		"deleted":          {},
+		"extractednothing": {},
 	}
 
 	missing := missingSchemaTags(reflect.TypeFor[Config](), schema.ParamNames(), skip)

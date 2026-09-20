@@ -63,6 +63,7 @@
     if (!key) return ''
 
     if (!validSlug(key)) return $_('phrases.SlugInvalid')
+
     const dup = pairs.some(
       (p, idx) => idx !== i && p.key.trim().toLowerCase() === key.toLowerCase(),
     )
@@ -71,7 +72,9 @@
     return ''
   }
 
-  const keysInvalid = $derived(pairs.some((_, i) => keyError(i, pairs[i].key) !== ''))
+  const keysInvalid = $derived(
+    pairs.some((_, i) => keyError(i, pairs[i].key) !== ''),
+  )
 
   $effect(() => {
     invalid = keysInvalid
@@ -91,12 +94,10 @@
         <Input
           compact
           id="{idPrefix}-key-{i}"
-          helpKey={i === 0 ? helpKey : ''}
           label={i === 0 ? $_('phrases.MapKey') : ''}
           aria-label={i === 0 ? undefined : $_('phrases.MapKey')}
           bind:value={() => pair.key, (v) => setKey(i, String(v))}
           disabled={locked}
-          envVar={i === 0 ? envVar : ''}
           validate={(_id, v) => keyError(i, v)}
         />
       </div>
@@ -104,10 +105,12 @@
         <Input
           compact
           id="{idPrefix}-val-{i}"
+          helpKey={i === 0 ? helpKey : ''}
           label={i === 0 ? $_('phrases.MapValue') : ''}
           aria-label={i === 0 ? undefined : $_('phrases.MapValue')}
           bind:value={() => pair.value, (v) => setValue(i, String(v))}
           disabled={locked}
+          envVar={i === 0 ? envVar : ''}
         >
           {#snippet post()}
             {#if !locked}

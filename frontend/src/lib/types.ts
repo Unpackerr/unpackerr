@@ -322,9 +322,22 @@ export interface WebhookConfig {
   channel: string
 }
 
+export interface HookTitles {
+  waiting: string
+  queued: string
+  extracting: string
+  extractfailed: string
+  extracted: string
+  imported: string
+  deleting: string
+  deletefailed: string
+  deleted: string
+  extractednothing: string
+}
+
 export interface HooksConfig {
   customIDs: Record<string, string>
-  titles: Record<string, string>
+  titles: HookTitles
 }
 
 export type ConfigSection =
@@ -347,21 +360,24 @@ export const STARR_SECTIONS: ConfigSection[] = [
 ]
 
 // Extract statuses used by webhook `events`, matching pkg/unpackerr ExtractStatus.
-export const EXTRACT_STATUSES: { value: number; id: string; label: string }[] =
-  [
-    { value: 0, id: 'waiting', label: 'Waiting' },
-    { value: 1, id: 'queued', label: 'Queued' },
-    { value: 2, id: 'extracting', label: 'Extracting' },
-    { value: 3, id: 'extractfailed', label: 'Extract Failed' },
-    { value: 4, id: 'extracted', label: 'Extracted' },
-    { value: 5, id: 'imported', label: 'Imported' },
-    { value: 6, id: 'deleting', label: 'Deleting' },
-    { value: 7, id: 'deletefailed', label: 'Delete Failed' },
-    { value: 8, id: 'deleted', label: 'Deleted' },
-    { value: 9, id: 'extractednothing', label: 'Nothing Extracted' },
-  ]
+export const EXTRACT_STATUSES: {
+  value: number
+  id: keyof HookTitles
+  label: string
+}[] = [
+  { value: 0, id: 'waiting', label: 'Waiting' },
+  { value: 1, id: 'queued', label: 'Queued' },
+  { value: 2, id: 'extracting', label: 'Extracting' },
+  { value: 3, id: 'extractfailed', label: 'Extract Failed' },
+  { value: 4, id: 'extracted', label: 'Extracted' },
+  { value: 5, id: 'imported', label: 'Imported' },
+  { value: 6, id: 'deleting', label: 'Deleting' },
+  { value: 7, id: 'deletefailed', label: 'Delete Failed' },
+  { value: 8, id: 'deleted', label: 'Deleted' },
+  { value: 9, id: 'extractednothing', label: 'Nothing Extracted' },
+]
 
-export const EXTRACT_EVENT_TITLES: Record<string, string> = {
+export const EXTRACT_EVENT_TITLES: Record<keyof HookTitles, string> = {
   waiting: 'Waiting, pre-Queue',
   queued: 'Queued',
   extracting: 'Extracting',
@@ -372,4 +388,19 @@ export const EXTRACT_EVENT_TITLES: Record<string, string> = {
   deletefailed: 'Delete Failed',
   deleted: 'Deleted',
   extractednothing: 'Nothing Extracted',
+}
+
+export function emptyHookTitles(): HookTitles {
+  return {
+    waiting: '',
+    queued: '',
+    extracting: '',
+    extractfailed: '',
+    extracted: '',
+    imported: '',
+    deleting: '',
+    deletefailed: '',
+    deleted: '',
+    extractednothing: '',
+  }
 }

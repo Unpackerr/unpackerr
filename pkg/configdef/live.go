@@ -286,6 +286,8 @@ func renderNestedValue(section section, name, kind string, value reflect.Value) 
 		if value.Len() == 0 {
 			return ""
 		}
+	case reflect.Struct:
+		// kind: map of a struct is [section.name] + writeStructFields, same as a KV map.
 	default:
 		return ""
 	}
@@ -317,6 +319,24 @@ func renderNestedTables(section section, name string, value reflect.Value) strin
 }
 
 func renderNestedMap(section section, name string, value reflect.Value) string {
+	if value.Kind() == reflect.Struct {
+		var fields bytes.Buffer
+
+		writeStructFields(&fields, value)
+
+		if fields.Len() == 0 {
+			return ""
+		}
+
+		var buf bytes.Buffer
+
+		fmt.Fprintf(&buf, "[%s.%s]\n", section, name)
+		buf.Write(fields.Bytes())
+		buf.WriteByte('\n')
+
+		return buf.String()
+	}
+
 	if value.Kind() != reflect.Map {
 		return ""
 	}
@@ -393,12 +413,20 @@ func writeStructFields(buf *bytes.Buffer, value reflect.Value) {
 			continue
 		}
 
-		tag, _, _ := strings.Cut(field.Tag.Get("toml"), ",")
+		tag, opts, _ := strings.Cut(field.Tag.Get("toml"), ",")
 		if tag == "" || tag == "-" {
 			continue
 		}
 
-		fmt.Fprintf(buf, " %s = %s\n", tag, formatTOML(tag, value.Field(idx).Interface()))
+		fieldVal := value.Field(idx)
+		if strings.Contains(opts, "omitempty") {
+			empty := derefValue(fieldVal)
+			if empty.Kind() == reflect.String && empty.String() == "" {
+				continue
+			}
+		}
+
+		fmt.Fprintf(buf, " %s = %s\n", tag, formatTOML(tag, fieldVal.Interface()))
 	}
 }
 

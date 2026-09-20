@@ -137,11 +137,11 @@ func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 
 	if strings.Contains(example, "\n custom_ids =") || strings.Contains(example, "\ncustom_ids =") ||
 		strings.Contains(example, "\n titles =") || strings.Contains(example, "\ntitles =") {
-		t.Fatal("hook string maps must not be inlined; use [hooks.custom_ids] tables")
+		t.Fatal("hook maps/structs must not be inlined; use [hooks.custom_ids] tables")
 	}
 
 	if !strings.Contains(example, "[hooks.custom_ids]") || !strings.Contains(example, "[hooks.titles]") {
-		t.Fatal("example conf must document nested hook string-map tables")
+		t.Fatal("example conf must document nested hook tables")
 	}
 
 	dir := t.TempDir()

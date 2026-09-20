@@ -96,7 +96,7 @@ func TestHookPayloadRetriesAndEventTitle(t *testing.T) {
 			"host":       "unpackerr",
 			"downloadId": "nope",
 		},
-		Titles: map[string]string{"extracting": "Archive Found"},
+		Titles: HookTitles{Extracting: "Archive Found"},
 	})
 
 	payload := unpack.hookPayload(&Extract{

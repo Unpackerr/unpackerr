@@ -429,7 +429,23 @@
         "description": "Global [hooks] table. Empty {} is allowed. No restart.",
         "properties": {
           "customIDs": {"type": "object", "additionalProperties": {"type": "string"}, "description": "User-provided ids sent separately from native item ids (JSON customIDs, cmdhook UN_CUSTOM_ID_<key>)"},
-          "titles": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Per-event English title overrides; empty keeps Status.Desc()"}
+          "titles": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Per-event English title overrides; empty keeps Status.Desc()",
+            "properties": {
+              "waiting": {"type": "string"},
+              "queued": {"type": "string"},
+              "extracting": {"type": "string"},
+              "extractfailed": {"type": "string"},
+              "extracted": {"type": "string"},
+              "imported": {"type": "string"},
+              "deleting": {"type": "string"},
+              "deletefailed": {"type": "string"},
+              "deleted": {"type": "string"},
+              "extractednothing": {"type": "string"}
+            }
+          }
         }
       },
       "ConfigSection": {

@@ -206,16 +206,8 @@ func (u *Unpackerr) logFolders(printf configLine) {
 }
 
 func (u *Unpackerr) logHookPayload(printf configLine) {
-	ids := len(u.Hooks.CustomIDs)
-	titles := 0
-
-	for _, title := range u.Hooks.Titles {
-		if strings.TrimSpace(title) != "" {
-			titles++
-		}
-	}
-
-	printf(" => Hook Payload: %d extra ids, %d custom titles", ids, titles)
+	printf(" => Hook Payload: %d extra ids, %d custom titles",
+		len(u.Hooks.CustomIDs), u.Hooks.Titles.nonEmpty())
 }
 
 func (u *Unpackerr) logWebhook(printf configLine) {

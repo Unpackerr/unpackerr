@@ -24,6 +24,7 @@
   import {
     EXTRACT_EVENT_TITLES,
     EXTRACT_STATUSES,
+    emptyHookTitles,
     type HooksConfig,
   } from '../../lib/types'
 
@@ -57,15 +58,15 @@
   ): HooksConfig {
     return {
       customIDs: mapFromPairs(pairsFromMap(raw?.customIDs)),
-      titles: { ...(raw?.titles ?? {}) },
+      titles: { ...emptyHookTitles(), ...(raw?.titles ?? {}) },
     }
   }
 
   function savePayload(): HooksConfig {
-    const titles: Record<string, string> = {}
-    for (const [key, value] of Object.entries(cfg?.titles ?? {})) {
-      const t = value.trim()
-      if (t) titles[key] = t
+    const titles = emptyHookTitles()
+    for (const st of EXTRACT_STATUSES) {
+      const t = (cfg?.titles[st.id] ?? '').trim()
+      if (t) titles[st.id] = t
     }
 
     return { customIDs: mapFromPairs(pairsFromMap(cfg?.customIDs)), titles }
@@ -152,7 +153,7 @@
                 }
                 original={orig?.titles[st.id] ?? ''}
                 disabled={!canWrite || titlesLocked}
-                envVar={`HOOKS_TITLES_${st.id}`}
+                envVar={`HOOKS_TITLES_${st.id.toUpperCase()}`}
               />
             </Col>
           {/each}

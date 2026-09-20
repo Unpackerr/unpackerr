@@ -54,9 +54,13 @@ type liveHook struct {
 	Events []liveStatus `toml:"events"`
 }
 
+type liveHookTitles struct {
+	Extracting string `toml:"extracting"`
+}
+
 type liveHooks struct {
 	CustomIDs map[string]string `toml:"custom_ids"`
-	Titles    map[string]string `toml:"titles"`
+	Titles    liveHookTitles    `toml:"titles"`
 }
 
 type liveStatus uint8
@@ -314,7 +318,7 @@ func TestRenderLiveHookStringMaps(t *testing.T) {
 	body := MustLoad(t).RenderTOML(&liveRoot{
 		Hooks: &liveHooks{
 			CustomIDs: map[string]string{"asdasdas": "asdasd"},
-			Titles:    map[string]string{"extracting": "Archive Found"},
+			Titles:    liveHookTitles{Extracting: "Archive Found"},
 		},
 	}, RenderOpts{Mode: RenderLive})
 
@@ -338,7 +342,7 @@ func TestRenderLiveHookStringMaps(t *testing.T) {
 		t.Fatalf("written TOML must parse: %v\n%s", err, snippet(body, "[hooks]"))
 	}
 
-	if decoded.Hooks.CustomIDs["asdasdas"] != "asdasd" || decoded.Hooks.Titles["extracting"] != "Archive Found" {
+	if decoded.Hooks.CustomIDs["asdasdas"] != "asdasd" || decoded.Hooks.Titles.Extracting != "Archive Found" {
 		t.Fatalf("decoded %+v", decoded.Hooks)
 	}
 }

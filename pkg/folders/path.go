@@ -3,6 +3,7 @@ package folders
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -87,9 +88,20 @@ func NormalizeExcludePaths(basePath string, excludes []string) []string {
 
 // PathContains reports whether item is watch or a child of watch.
 // Root paths (`/` and Windows volume roots) keep their trailing separator.
+// Windows folds case without probing the filesystem (ReFS and some network
+// mounts can be case-sensitive).
 func PathContains(watch, item string) bool {
+	return pathContains(watch, item, runtime.GOOS == "windows")
+}
+
+func pathContains(watch, item string, fold bool) bool {
 	watch = filepath.Clean(watch)
 	item = filepath.Clean(item)
+
+	if fold {
+		watch = strings.ToLower(watch)
+		item = strings.ToLower(item)
+	}
 
 	if item == watch {
 		return true
@@ -109,11 +121,8 @@ func (c *FolderConfig) IsExcludedPath(path string) bool {
 		return false
 	}
 
-	path = filepath.Clean(path)
-
 	for _, exclude := range c.ExcludePaths {
-		exclude = filepath.Clean(exclude)
-		if path == exclude || strings.HasPrefix(path, exclude+string(os.PathSeparator)) {
+		if PathContains(exclude, path) {
 			return true
 		}
 	}

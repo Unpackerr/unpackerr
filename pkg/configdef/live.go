@@ -321,6 +321,15 @@ func renderNestedMap(section section, name string, value reflect.Value) string {
 		return ""
 	}
 
+	elem := value.Type().Elem()
+	for elem.Kind() == reflect.Pointer {
+		elem = elem.Elem()
+	}
+
+	if elem.Kind() != reflect.Struct {
+		return renderNestedKVMap(section, name, value)
+	}
+
 	keys := value.MapKeys()
 	slices.SortFunc(keys, func(left, right reflect.Value) int {
 		return strings.Compare(left.String(), right.String())
@@ -335,6 +344,39 @@ func renderNestedMap(section section, name string, value reflect.Value) string {
 	}
 
 	return buf.String()
+}
+
+func renderNestedKVMap(section section, name string, value reflect.Value) string {
+	keys := sortedMapStringKeys(value)
+	if len(keys) == 0 {
+		return ""
+	}
+
+	var buf strings.Builder
+
+	fmt.Fprintf(&buf, "[%s.%s]\n", section, name)
+
+	for _, key := range keys {
+		fmt.Fprintf(&buf, " %s = %s\n", tomlKey(key), formatTOML("", value.MapIndex(reflect.ValueOf(key)).Interface()))
+	}
+
+	buf.WriteByte('\n')
+
+	return buf.String()
+}
+
+func sortedMapStringKeys(value reflect.Value) []string {
+	keys := make([]string, 0, value.Len())
+
+	for _, key := range value.MapKeys() {
+		if key.Kind() == reflect.String {
+			keys = append(keys, key.String())
+		}
+	}
+
+	slices.Sort(keys)
+
+	return keys
 }
 
 func writeStructFields(buf *bytes.Buffer, value reflect.Value) {
@@ -425,8 +467,8 @@ func formatTOML(name string, val any) string {
 		return "''"
 	}
 
-	if value.Kind() == reflect.Map && value.Len() == 0 {
-		return "{}"
+	if value.Kind() == reflect.Map {
+		return formatTOMLMap(value)
 	}
 
 	if (value.Kind() == reflect.Slice || value.Kind() == reflect.Array) && value.Len() == 0 {
@@ -436,6 +478,34 @@ func formatTOML(name string, val any) string {
 	out := marshalTOML(value)
 
 	return strings.TrimSpace(string(preferPathQuotes(name, out)))
+}
+
+// formatTOMLMap writes an inline table. toml.Marshal of a map emits document
+// rows (`key = "val"`), which become `name = key = "val"` in an assignment.
+func formatTOMLMap(value reflect.Value) string {
+	if !value.IsValid() || value.Len() == 0 {
+		return "{}"
+	}
+
+	keys := sortedMapStringKeys(value)
+
+	var buf strings.Builder
+
+	buf.WriteString("{ ")
+
+	for idx, key := range keys {
+		if idx > 0 {
+			buf.WriteString(", ")
+		}
+
+		buf.WriteString(tomlKey(key))
+		buf.WriteString(" = ")
+		buf.WriteString(formatTOML("", value.MapIndex(reflect.ValueOf(key)).Interface()))
+	}
+
+	buf.WriteString(" }")
+
+	return buf.String()
 }
 
 func emptyCollectionTOML(value reflect.Value) string {

@@ -11,6 +11,8 @@ import (
 	"golift.io/xtractr"
 )
 
+const sampleRetries = 2
+
 // SamplePayload is a fake payload used by `unpackerr -w`.
 func SamplePayload() *Payload {
 	return &Payload{
@@ -21,14 +23,19 @@ func SamplePayload() *Payload {
 			"downloadId": fmt.Sprintf("some-id-goes-here-%d", time.Now().Unix()),
 			"otherId":    "another-id-here-like-imdb",
 		},
-		Time:     time.Now(),
-		Go:       runtime.Version(),
-		OS:       runtime.GOOS,
-		Arch:     runtime.GOARCH,
-		Version:  version.Version,
-		Revision: version.Revision,
-		Branch:   version.Branch,
-		Started:  version.Started,
+		CustomIDs: map[string]string{
+			"url": "https://unpackerr.example",
+		},
+		Time:       time.Now(),
+		Retries:    sampleRetries,
+		EventTitle: extract.EXTRACTING.Desc(),
+		Go:         runtime.Version(),
+		OS:         runtime.GOOS,
+		Arch:       runtime.GOARCH,
+		Version:    version.Version,
+		Revision:   version.Revision,
+		Branch:     version.Branch,
+		Started:    version.Started,
 		Data: &XtractPayload{
 			Start:    version.Started,
 			Elapsed:  cnfg.Duration{Duration: time.Since(version.Started)},
@@ -42,12 +49,17 @@ func SamplePayload() *Payload {
 }
 
 // PrepareSample mutates a sample payload for the requested event.
-func PrepareSample(payload *Payload, e extract.Status) error {
-	payload.Event = e
+func PrepareSample(payload *Payload, event extract.Status) error {
+	payload.Event = event
+	payload.EventTitle = event.Desc()
 
-	switch e {
+	if payload.Retries == 0 {
+		payload.Retries = sampleRetries
+	}
+
+	switch event {
 	default:
-		return fmt.Errorf("%w: %s", ErrUnknownEvent, e)
+		return fmt.Errorf("%w: %s", ErrUnknownEvent, event)
 	case extract.WAITING:
 		payload.Data = nil
 	case extract.QUEUED:

@@ -17,21 +17,24 @@ import (
 
 // Payload defines the data sent to notifarr.com (and other) webhooks.
 type Payload struct {
-	Path   string         `json:"path"`                // Path for the extracted item.
-	App    starr.App      `json:"app"`                 // Application Triggering Event
-	IDs    map[string]any `json:"ids,omitempty"`       // Arbitrary IDs from each app.
-	Event  extract.Status `json:"unpackerr_eventtype"` // The type of the event.
-	Time   time.Time      `json:"time"`                // Time of this event.
-	Data   *XtractPayload `json:"data,omitempty"`      // Payload from extraction process.
-	Config *Config        `json:"-"`                   // Payload from extraction process.
+	Path      string            `json:"path"`                                // Path for the extracted item.
+	App       starr.App         `json:"app"`                                 // Application Triggering Event
+	IDs       map[string]any    `json:"ids,omitempty"`                       // Arbitrary IDs from each app.
+	CustomIDs map[string]string `json:"customIDs,omitempty" xml:"custom_id"` // User IDs from [hooks].custom_ids.
+	Event     extract.Status    `json:"unpackerr_eventtype"`                 // The type of the event.
+	Time      time.Time         `json:"time"`                                // Time of this event.
+	Data      *XtractPayload    `json:"data,omitempty"`                      // Payload from extraction process.
+	Config    *Config           `json:"-"`                                   // Payload from extraction process.
 	// Application Metadata.
-	Go       string    `json:"go"`       // Version of go compiled with
-	OS       string    `json:"os"`       // Operating system: linux, windows, darwin
-	Arch     string    `json:"arch"`     // Architecture: amd64, armhf
-	Version  string    `json:"version"`  // Application Version
-	Revision string    `json:"revision"` // Application Revision
-	Branch   string    `json:"branch"`   // Branch built from.
-	Started  time.Time `json:"started"`  // App start time.
+	Retries    uint      `json:"retries"`              // Extract retry count for this item.
+	EventTitle string    `json:"eventTitle,omitempty"` // English (or customized) event title.
+	Go         string    `json:"go"`                   // Version of go compiled with
+	OS         string    `json:"os"`                   // Operating system: linux, windows, darwin
+	Arch       string    `json:"arch"`                 // Architecture: amd64, armhf
+	Version    string    `json:"version"`              // Application Version
+	Revision   string    `json:"revision"`             // Application Revision
+	Branch     string    `json:"branch"`               // Branch built from.
+	Started    time.Time `json:"started"`              // App start time.
 }
 
 // XtractPayload is a rewrite of xtractr.Response.
@@ -56,7 +59,10 @@ const WebhookTemplateNotifiarr = `{
   "ids": {
     {{$s := separator ",\n"}}{{range $key, $value := .IDs}}{{call $s}}"{{$key}}": {{encode $value}}{{end}}
   },
-  "unpackerr_eventtype": "{{.Event}}",
+{{ if .CustomIDs }}  "customIDs": {
+    {{$s := separator ",\n"}}{{range $key, $value := .CustomIDs}}{{call $s}}"{{$key}}": {{encode $value}}{{end}}
+  },
+{{ end }}  "unpackerr_eventtype": "{{.Event}}",
   "time": "{{.Time}}",
 {{ if .Data }}    "data": {
     "error": {{encode .Data.Error}},
@@ -81,7 +87,7 @@ const WebhookTemplateTelegram = `{
   "chat_id": "{{nickname}}",
   "parse_mode": "HTML",
   "disable_web_page_preview": true,
-  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.Event.Desc -}}
+  "text": "<b><a href=\"https://github.com/Unpackerr/unpackerr/releases\">Unpackerr</a></b>: {{.EventTitle -}}
     \n<b>Title</b>: {{rawencode (index .IDs "title") -}}
     \n<b>App</b>: {{htmlencode .App -}}
     \n\n<b>Path</b>: <code>{{rawencode .Path}}</code>
@@ -99,7 +105,7 @@ const WebhookTemplateTelegram = `{
 // The extra spaces before the newlines here are required to make this look good on web and on android.
 
 const WebhookTemplateGotify = `{
-  "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.Event.Desc}}",
+  "title": "{{if nickname}}{{nickname}}{{else}}Unpackerr{{end}}: {{.EventTitle}}",
   "message": "**App**: {{rawencode .App}}  \n` +
 	`**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
     {{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
@@ -130,7 +136,7 @@ const WebhookTemplateDiscord = `{
     "title": {{encode (index .IDs "title")}},
     "timestamp": "{{timestamp .Time}}",
     "author": {
-     "name": "Unpackerr: {{.Event.Desc}}",
+     "name": "Unpackerr: {{.EventTitle}}",
      "icon_url": "https://unpackerr.zip/img/icon.png",
      "url": "https://github.com/Unpackerr/unpackerr/releases"
     },
@@ -164,7 +170,7 @@ const WebhookTemplateDiscord = `{
 }
 `
 
-const WebhookTemplatePushover = `token={{token}}&user={{channel}}&html=1&title={{formencode .Event.Desc}}&` +
+const WebhookTemplatePushover = `token={{token}}&user={{channel}}&html=1&title={{formencode .EventTitle}}&` +
 	`{{if nickname}}device={{nickname}}&{{end}}message=<pre><b>App</b>: {{formencode (htmlencode .App)}}
 <b>Name</b>: {{formencode (index .IDs "title")}}
 <b>Path</b>: {{formencode .Path}}
@@ -189,7 +195,7 @@ const WebhookTemplateSlack = `
       "type": "header",
       "text": {
         "type": "plain_text",
-        "text": "Unpackerr: {{.Event.Desc}}"
+        "text": "Unpackerr: {{or .EventTitle .Event.Desc}}"
       }
     },
     {

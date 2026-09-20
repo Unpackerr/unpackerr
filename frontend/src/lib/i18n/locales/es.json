@@ -46,7 +46,8 @@
     "Download": "Descargar",
     "Cancel": "Cancelar",
     "Close": "Cerrar",
-    "Test": "Probar"
+    "Test": "Probar",
+    "AddPair": "Añadir par"
   },
   "phrases": {
     "EnvironmentVariable": "Variable de entorno: <code>{variableName}</code>",
@@ -67,6 +68,8 @@
     "NoInstances": "No hay instancias de {section} configuradas.",
     "NoFolders": "No hay carpetas configuradas.",
     "NoWebhooks": "No hay webhooks configurados.",
+    "MapKey": "Clave",
+    "MapValue": "Valor",
     "NoCmdhooks": "No hay ganchos de comando configurados.",
     "NoApiKeys": "No hay claves API.",
     "ClearHistoryTitle": "¿Borrar historial?",
@@ -289,7 +292,8 @@
       },
       "hooks": {
         "label": "Ganchos",
-        "intro": "Devoluciones HTTP y comandos locales cuando una extracción cambia de estado."
+        "tab": "Payload",
+        "intro": "IDs extra y títulos de evento personalizados enviados con cada webhook y gancho de comando."
       },
       "webserver": {
         "label": "Servidor web",
@@ -898,6 +902,18 @@
         "label": "Archivo de plantilla",
         "description": "Archivo de plantilla Go personalizado en lugar de una integrada.",
         "tooltip": "Anula la detección automática y el ajuste Plantilla. Elige un archivo existente."
+      }
+    },
+    "payload": {
+      "customIDs": {
+        "label": "IDs globales de gancho",
+        "description": "IDs de texto extra en cada payload de gancho, separados de los IDs del elemento de Starr.",
+        "tooltip": "Webhooks: customIDs JSON y {{index .CustomIDs \"key\"}}. Ganchos de comando: UN_CUSTOM_ID_<key>. Las claves deben ser letras, dígitos, guion bajo o guion."
+      },
+      "titles": {
+        "label": "Títulos de evento",
+        "description": "Texto personalizado para cada estado de extracción en los payloads. Vacío mantiene el título en inglés integrado.",
+        "tooltip": "Se usa como eventTitle en JSON y como encabezado en las plantillas de Discord, Slack, Telegram, Gotify y Pushover."
       }
     }
   },

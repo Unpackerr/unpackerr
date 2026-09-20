@@ -20,6 +20,8 @@ func uiSectionName(name section) string {
 		return "starr"
 	case "folders", "folder":
 		return "folders"
+	case "hooks":
+		return "payload"
 	case "webhook":
 		return "webhook"
 	case "cmdhook":

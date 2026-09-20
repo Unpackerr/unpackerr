@@ -12,11 +12,12 @@
   import StarrForm from './settings/StarrForm.svelte'
   import StarrPollInterval from './settings/StarrPollInterval.svelte'
   import FoldersForm from './settings/FoldersForm.svelte'
+  import PayloadForm from './settings/PayloadForm.svelte'
   import HooksForm from './settings/HooksForm.svelte'
 
   type SettingsTab = ConfigSection
 
-  const hookTabs: ConfigSection[] = ['webhooks', 'cmdhooks']
+  const hookTabs: ConfigSection[] = ['hooks', 'webhooks', 'cmdhooks']
 
   const current = $derived((segments()[1] as SettingsTab) ?? 'general')
   const starrTabs = $derived(
@@ -28,11 +29,15 @@
   const isStarr = $derived(STARR_SECTIONS.includes(current as ConfigSection))
   const isHook = $derived(hookTabs.includes(current as ConfigSection))
   const innerTabs = $derived(isStarr ? starrTabs : isHook ? hookVisible : [])
+  function tabLabel(id: ConfigSection): string {
+    if (id === 'hooks') return $_('pages.settings.hooks.tab')
+    return $_('pages.settings.' + id + '.label')
+  }
   const heading = $derived(
     $_('pages.settings.Heading', {
       values: {
         settings: $_('pages.settings.Title'),
-        page: $_('pages.settings.' + (isStarr ? 'starrs' : current) + '.label'),
+        page: isStarr ? $_('pages.settings.starrs.label') : tabLabel(current),
       },
     }),
   )
@@ -53,7 +58,7 @@
           active={current === id}
           onclick={(e) => hashLinkClick(e, '/settings/' + id)}
         >
-          {$_('pages.settings.' + id + '.label')}
+          {tabLabel(id)}
         </NavLink>
       </NavItem>
     {/each}
@@ -70,6 +75,8 @@
   <WebserverForm />
 {:else if current === 'folders'}
   <FoldersForm />
+{:else if current === 'hooks'}
+  <PayloadForm />
 {:else if isHook}
   {#key current}
     <HooksForm section={current as ConfigSection} />

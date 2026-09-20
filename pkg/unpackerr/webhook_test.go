@@ -11,15 +11,21 @@ import (
 
 var errHookExtract = errors.New("boom")
 
+func hookUnpackerr(hooks HooksConfig) *Unpackerr {
+	return &Unpackerr{Config: &Config{Hooks: hooks}}
+}
+
 func TestHookPayloadUsesLabel(t *testing.T) {
 	t.Parallel()
 
-	payload := hookPayload(&Extract{App: starr.Sonarr, Name: "Sportarr", Path: "/dl"})
+	unpack := hookUnpackerr(HooksConfig{})
+
+	payload := unpack.hookPayload(&Extract{App: starr.Sonarr, Name: "Sportarr", Path: "/dl"})
 	if payload.App != "Sportarr" {
 		t.Fatalf("payload.App = %q, want Sportarr", payload.App)
 	}
 
-	plain := hookPayload(&Extract{App: starr.Sonarr, Path: "/dl"})
+	plain := unpack.hookPayload(&Extract{App: starr.Sonarr, Path: "/dl"})
 	if plain.App != starr.Sonarr {
 		t.Fatalf("unnamed payload.App = %q, want %s", plain.App, starr.Sonarr)
 	}
@@ -40,8 +46,10 @@ func TestHookPayloadKeepsDataForImportedAndDeleted(t *testing.T) {
 		Error:    errHookExtract,
 	}
 
+	unpack := hookUnpackerr(HooksConfig{})
+
 	for _, status := range []ExtractStatus{IMPORTED, DELETED} {
-		payload := hookPayload(&Extract{
+		payload := unpack.hookPayload(&Extract{
 			App:    starr.Sonarr,
 			Path:   "/dl",
 			Status: status,
@@ -72,8 +80,58 @@ func TestHookPayloadKeepsDataForImportedAndDeleted(t *testing.T) {
 func TestHookPayloadOmitsDataWithoutResp(t *testing.T) {
 	t.Parallel()
 
-	payload := hookPayload(&Extract{App: starr.Sonarr, Path: "/dl", Status: IMPORTED})
+	payload := hookUnpackerr(HooksConfig{}).hookPayload(&Extract{App: starr.Sonarr, Path: "/dl", Status: IMPORTED})
 	if payload.Data != nil {
 		t.Fatalf("data = %+v", payload.Data)
+	}
+}
+
+func TestHookPayloadRetriesAndEventTitle(t *testing.T) {
+	t.Parallel()
+
+	unpack := hookUnpackerr(HooksConfig{
+		CustomIDs: map[string]string{
+			"url":        "https://unpackerr.example",
+			"title":      "ignored",
+			"host":       "unpackerr",
+			"downloadId": "nope",
+		},
+		Titles: map[string]string{"extracting": "Archive Found"},
+	})
+
+	payload := unpack.hookPayload(&Extract{
+		App:     starr.Sonarr,
+		Path:    "/dl",
+		Status:  EXTRACTING,
+		Retries: 3,
+		IDs:     map[string]any{"title": "Show", "downloadId": "abc"},
+	})
+
+	if payload.Retries != 3 {
+		t.Fatalf("retries %d", payload.Retries)
+	}
+
+	if payload.EventTitle != "Archive Found" {
+		t.Fatalf("title %q", payload.EventTitle)
+	}
+
+	if payload.IDs["title"] != "Show" || payload.IDs["downloadId"] != "abc" {
+		t.Fatalf("native ids clobbered: %+v", payload.IDs)
+	}
+
+	if _, ok := payload.IDs["url"]; ok {
+		t.Fatalf("custom ids must not merge into ids: %+v", payload.IDs)
+	}
+
+	if payload.CustomIDs["url"] != "https://unpackerr.example" ||
+		payload.CustomIDs["host"] != "unpackerr" ||
+		payload.CustomIDs["title"] != "ignored" ||
+		payload.CustomIDs["downloadId"] != "nope" {
+		t.Fatalf("custom ids %+v", payload.CustomIDs)
+	}
+
+	plain := hookUnpackerr(HooksConfig{}).hookPayload(&Extract{Status: EXTRACTED})
+	if plain.EventTitle != EXTRACTED.Desc() {
+		t.Fatalf("default title %q", plain.EventTitle)
 	}
 }

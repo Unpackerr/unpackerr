@@ -322,6 +322,11 @@ export interface WebhookConfig {
   channel: string
 }
 
+export interface HooksConfig {
+  customIDs: Record<string, string>
+  titles: Record<string, string>
+}
+
 export type ConfigSection =
   | 'general'
   | 'webserver'
@@ -330,6 +335,7 @@ export type ConfigSection =
   | 'lidarr'
   | 'readarr'
   | 'folders'
+  | 'hooks'
   | 'webhooks'
   | 'cmdhooks'
 
@@ -354,3 +360,16 @@ export const EXTRACT_STATUSES: { value: number; id: string; label: string }[] =
     { value: 8, id: 'deleted', label: 'Deleted' },
     { value: 9, id: 'extractednothing', label: 'Nothing Extracted' },
   ]
+
+export const EXTRACT_EVENT_TITLES: Record<string, string> = {
+  waiting: 'Waiting, pre-Queue',
+  queued: 'Queued',
+  extracting: 'Extracting',
+  extractfailed: 'Extraction Failed',
+  extracted: 'Extracted, Awaiting Import',
+  imported: 'Imported',
+  deleting: 'Deleting',
+  deletefailed: 'Delete Failed',
+  deleted: 'Deleted',
+  extractednothing: 'Nothing Extracted',
+}

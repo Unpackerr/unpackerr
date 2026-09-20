@@ -13,6 +13,40 @@ import (
 	"golift.io/starr"
 )
 
+func TestNotifiarrTemplateCustomIDs(t *testing.T) {
+	t.Parallel()
+
+	payload := &Payload{
+		Path:      "/dl",
+		App:       starr.Sonarr,
+		IDs:       map[string]any{"title": "Show"},
+		CustomIDs: map[string]string{"url": "https://unpackerr.example"},
+		Event:     extract.EXTRACTED,
+		Time:      time.Unix(0, 0).UTC(),
+	}
+
+	body := renderHookTemplate(t, "notifiarr", payload)
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		t.Fatalf("json: %v\n%s", err, body)
+	}
+
+	ids, _ := parsed["ids"].(map[string]any)
+	if ids["title"] != "Show" {
+		t.Fatalf("ids %+v", ids)
+	}
+
+	if _, ok := ids["url"]; ok {
+		t.Fatalf("custom id merged into ids: %+v", ids)
+	}
+
+	custom, _ := parsed["customIDs"].(map[string]any)
+	if custom["url"] != "https://unpackerr.example" {
+		t.Fatalf("customIDs %+v body=%s", custom, body)
+	}
+}
+
 func TestBuiltinTemplatesEncodeApp(t *testing.T) {
 	t.Parallel()
 

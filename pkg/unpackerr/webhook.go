@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
+	"maps"
 	"runtime"
 
 	"github.com/Unpackerr/unpackerr/pkg/extract"
@@ -16,7 +17,7 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
-	payload := hookPayload(item)
+	payload := u.hookPayload(item)
 
 	for _, hook := range u.hookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
@@ -31,14 +32,26 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 	}
 }
 
-func hookPayload(item *Extract) *hooks.Payload {
+func (u *Unpackerr) hookExtras() (map[string]string, map[string]string) {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	return maps.Clone(u.Hooks.CustomIDs), maps.Clone(u.Hooks.Titles)
+}
+
+func (u *Unpackerr) hookPayload(item *Extract) *hooks.Payload {
+	global, titles := u.hookExtras()
+
 	payload := &hooks.Payload{
-		Path:  item.Path,
-		App:   starr.App(item.Label()),
-		IDs:   item.IDs,
-		Time:  item.Updated,
-		Data:  nil,
-		Event: item.Status,
+		Path:       item.Path,
+		App:        starr.App(item.Label()),
+		IDs:        cloneIDs(item.IDs),
+		CustomIDs:  payloadCustomIDs(global),
+		Time:       item.Updated,
+		Data:       nil,
+		Event:      item.Status,
+		Retries:    item.Retries,
+		EventTitle: eventTitle(item.Status, titles),
 		// Application Metadata.
 		Go:       runtime.Version(),
 		OS:       runtime.GOOS,
@@ -76,6 +89,20 @@ func hookPayload(item *Extract) *hooks.Payload {
 	}
 
 	return payload
+}
+
+func (u *Unpackerr) decorateSamplePayload(payload *hooks.Payload, event extract.Status) {
+	if payload == nil {
+		return
+	}
+
+	u.configMu.RLock()
+	global := maps.Clone(u.Hooks.CustomIDs)
+	titles := maps.Clone(u.Hooks.Titles)
+	u.configMu.RUnlock()
+
+	payload.EventTitle = eventTitle(event, titles)
+	payload.CustomIDs = payloadCustomIDs(global)
 }
 
 func (u *Unpackerr) hookList() []*hooks.Config {
@@ -138,13 +165,15 @@ func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	return hooks.CountAll(u.cmdhookList())
 }
 
-func (u *Unpackerr) sampleWebhook(e extract.Status) error {
-	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", e)
+func (u *Unpackerr) sampleWebhook(event extract.Status) error {
+	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", event)
 
 	payload := hooks.SamplePayload()
-	if err := hooks.PrepareSample(payload, e); err != nil {
+	if err := hooks.PrepareSample(payload, event); err != nil {
 		return fmt.Errorf("preparing sample webhook: %w", err)
 	}
+
+	u.decorateSamplePayload(payload, event)
 
 	for _, hook := range instanceValues(u.Webhook) {
 		hooks.SendWithLog(u.Logger, hook, payload)

@@ -96,7 +96,14 @@ type Config struct {
 	Folders       InstanceMap[FolderConfig]  `json:"folder,omitempty"  toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
 	Webhook       InstanceMap[WebhookConfig] `json:"webhook,omitempty" toml:"webhook"        xml:"webhook"        yaml:"webhook,omitempty"`
 	Cmdhook       InstanceMap[WebhookConfig] `json:"cmdhook,omitempty" toml:"cmdhook"        xml:"cmdhook"        yaml:"cmdhook,omitempty"`
+	Hooks         HooksConfig                `json:"hooks"             toml:"hooks"          xml:"hooks"          yaml:"hooks"`
 	Folder        FoldersConfig              `json:"folders"           toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
+}
+
+// HooksConfig is the global [hooks] table: extra payload IDs and per-event titles.
+type HooksConfig struct {
+	CustomIDs map[string]string `json:"customIDs" toml:"custom_ids,omitempty" xml:"custom_ids" yaml:"customIDs"`
+	Titles    map[string]string `json:"titles"    toml:"titles,omitempty"     xml:"titles"     yaml:"titles"`
 }
 
 func (u *Unpackerr) watchWorkThread() {
@@ -157,6 +164,7 @@ func (u *Unpackerr) validateApps() error {
 		func() error { return validateStarrList[ReadarrConfig, *ReadarrConfig](u, u.Readarr, starr.Readarr) },
 		func() error { return validateStarrList[SonarrConfig, *SonarrConfig](u, u.Sonarr, starr.Sonarr) },
 		u.validateFolders,
+		u.validateHooks,
 	} {
 		if err := validate(); err != nil {
 			return err

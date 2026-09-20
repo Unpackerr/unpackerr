@@ -135,6 +135,15 @@ func TestExampleConfAPIKeysAndRoles(t *testing.T) {
 		t.Fatal("example conf must document nested role tables")
 	}
 
+	if strings.Contains(example, "\n custom_ids =") || strings.Contains(example, "\ncustom_ids =") ||
+		strings.Contains(example, "\n titles =") || strings.Contains(example, "\ntitles =") {
+		t.Fatal("hook string maps must not be inlined; use [hooks.custom_ids] tables")
+	}
+
+	if !strings.Contains(example, "[hooks.custom_ids]") || !strings.Contains(example, "[hooks.titles]") {
+		t.Fatal("example conf must document nested hook string-map tables")
+	}
+
 	dir := t.TempDir()
 	createCompose(config, "docker-compose.yml", dir)
 
@@ -814,6 +823,9 @@ func TestUIHelpKeys(t *testing.T) {
 		"config.starr.path",
 		"config.folders.buffer",
 		"config.folders.delete_after",
+		"config.payload.custom_ids",
+		"config.payload.customIds",
+		"config.payload.titles",
 		"config.hooks.url",
 		"config.webhook.url",
 		"config.cmdhook.command",

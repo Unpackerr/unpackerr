@@ -78,6 +78,10 @@ func (u *Unpackerr) writeRunningConfig(printf configLine, auth dumpAuth) {
 		u.logFolders(printf)
 	}
 
+	if !auth.omit(printf, SectionHooks, "Hook Payload") {
+		u.logHookPayload(printf)
+	}
+
 	if !auth.omit(printf, SectionGeneral, "General Config") {
 		u.logGeneral(printf)
 	}
@@ -199,6 +203,19 @@ func (u *Unpackerr) logFolders(printf configLine) {
 				folder.MaxNested, folder.ExtrasMaxDepth, folder.AllowSymlinks, folder.Interval)
 		}
 	}
+}
+
+func (u *Unpackerr) logHookPayload(printf configLine) {
+	ids := len(u.Hooks.CustomIDs)
+	titles := 0
+
+	for _, title := range u.Hooks.Titles {
+		if strings.TrimSpace(title) != "" {
+			titles++
+		}
+	}
+
+	printf(" => Hook Payload: %d extra ids, %d custom titles", ids, titles)
 }
 
 func (u *Unpackerr) logWebhook(printf configLine) {

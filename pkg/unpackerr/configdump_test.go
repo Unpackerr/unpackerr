@@ -164,7 +164,7 @@ func TestLiveConfigOmitsWithoutSectionRead(t *testing.T) {
 
 	for _, section := range []ConfigSection{
 		SectionSonarr, SectionRadarr, SectionLidarr, SectionReadarr,
-		SectionFolders, SectionGeneral, SectionWebhooks, SectionCmdhooks, SectionWebserver,
+		SectionFolders, SectionHooks, SectionGeneral, SectionWebhooks, SectionCmdhooks, SectionWebserver,
 	} {
 		need := "omitted (need " + PermReadConfig(section) + ")"
 		if !strings.Contains(got, need) {

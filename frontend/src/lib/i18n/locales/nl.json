@@ -46,7 +46,8 @@
     "Download": "Downloaden",
     "Cancel": "Annuleren",
     "Close": "Sluiten",
-    "Test": "Testen"
+    "Test": "Testen",
+    "AddPair": "Paar toevoegen"
   },
   "phrases": {
     "EnvironmentVariable": "Omgevingsvariabele: <code>{variableName}</code>",
@@ -67,6 +68,8 @@
     "NoInstances": "Geen {section}-instanties geconfigureerd.",
     "NoFolders": "Geen mappen geconfigureerd.",
     "NoWebhooks": "Geen webhooks geconfigureerd.",
+    "MapKey": "Sleutel",
+    "MapValue": "Waarde",
     "NoCmdhooks": "Geen opdracht-hooks geconfigureerd.",
     "NoApiKeys": "Geen API-sleutels.",
     "ClearHistoryTitle": "Geschiedenis wissen?",
@@ -289,7 +292,8 @@
       },
       "hooks": {
         "label": "Hooks",
-        "intro": "HTTP-callbacks en lokale opdrachten wanneer een uitpakstatus verandert."
+        "tab": "Payload",
+        "intro": "Extra IDs en aangepaste gebeurtenistitels bij elke webhook en opdracht-hook."
       },
       "webserver": {
         "label": "Webserver",
@@ -898,6 +902,18 @@
         "label": "Sjabloonbestand",
         "description": "Aangepast Go-sjabloonbestand in plaats van een ingebouwd sjabloon.",
         "tooltip": "Overschrijft automatische herkenning en de Sjabloon-instelling. Kies een bestaand bestand."
+      }
+    },
+    "payload": {
+      "customIDs": {
+        "label": "Globale hook-IDs",
+        "description": "Extra tekst-IDs op elke hook-payload, los van Starr-item-IDs.",
+        "tooltip": "Webhooks: customIDs JSON en {{index .CustomIDs \"key\"}}. Opdracht-hooks: UN_CUSTOM_ID_<key>. Sleutels moeten letters, cijfers, underscore of koppelteken zijn."
+      },
+      "titles": {
+        "label": "Gebeurtenistitels",
+        "description": "Aangepaste tekst per uitpakstatus in hook-payloads. Leeg houdt de ingebouwde Engelse titel.",
+        "tooltip": "Wordt gebruikt als eventTitle in JSON en als kop in Discord-, Slack-, Telegram-, Gotify- en Pushover-sjablonen."
       }
     }
   },

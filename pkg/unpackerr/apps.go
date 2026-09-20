@@ -96,7 +96,30 @@ type Config struct {
 	Folders       InstanceMap[FolderConfig]  `json:"folder,omitempty"  toml:"folder"         xml:"folder"         yaml:"folder,omitempty"`
 	Webhook       InstanceMap[WebhookConfig] `json:"webhook,omitempty" toml:"webhook"        xml:"webhook"        yaml:"webhook,omitempty"`
 	Cmdhook       InstanceMap[WebhookConfig] `json:"cmdhook,omitempty" toml:"cmdhook"        xml:"cmdhook"        yaml:"cmdhook,omitempty"`
+	Hooks         HooksConfig                `json:"hooks"             toml:"hooks"          xml:"hooks"          yaml:"hooks"`
 	Folder        FoldersConfig              `json:"folders"           toml:"folders"        xml:"folders"        yaml:"folders"` // undocumented.
+}
+
+// HooksConfig is the global [hooks] table: extra payload IDs and per-event titles.
+type HooksConfig struct {
+	CustomIDs map[string]string `json:"customIDs" toml:"custom_ids,omitempty" xml:"custom_ids" yaml:"customIDs"`
+	Titles    HookTitles        `json:"titles"    toml:"titles,omitempty"     xml:"titles"     yaml:"titles"`
+}
+
+// HookTitles is the known extract-event title overrides. Empty keeps Status.Desc().
+//
+//nolint:lll
+type HookTitles struct {
+	Waiting          string `json:"waiting"          toml:"waiting,omitempty"          xml:"waiting"          yaml:"waiting"`
+	Queued           string `json:"queued"           toml:"queued,omitempty"           xml:"queued"           yaml:"queued"`
+	Extracting       string `json:"extracting"       toml:"extracting,omitempty"       xml:"extracting"       yaml:"extracting"`
+	ExtractFailed    string `json:"extractfailed"    toml:"extractfailed,omitempty"    xml:"extractfailed"    yaml:"extractfailed"`
+	Extracted        string `json:"extracted"        toml:"extracted,omitempty"        xml:"extracted"        yaml:"extracted"`
+	Imported         string `json:"imported"         toml:"imported,omitempty"         xml:"imported"         yaml:"imported"`
+	Deleting         string `json:"deleting"         toml:"deleting,omitempty"         xml:"deleting"         yaml:"deleting"`
+	DeleteFailed     string `json:"deletefailed"     toml:"deletefailed,omitempty"     xml:"deletefailed"     yaml:"deletefailed"`
+	Deleted          string `json:"deleted"          toml:"deleted,omitempty"          xml:"deleted"          yaml:"deleted"`
+	ExtractedNothing string `json:"extractednothing" toml:"extractednothing,omitempty" xml:"extractednothing" yaml:"extractednothing"`
 }
 
 func (u *Unpackerr) watchWorkThread() {
@@ -157,6 +180,7 @@ func (u *Unpackerr) validateApps() error {
 		func() error { return validateStarrList[ReadarrConfig, *ReadarrConfig](u, u.Readarr, starr.Readarr) },
 		func() error { return validateStarrList[SonarrConfig, *SonarrConfig](u, u.Sonarr, starr.Sonarr) },
 		u.validateFolders,
+		u.validateHooks,
 	} {
 		if err := validate(); err != nil {
 			return err

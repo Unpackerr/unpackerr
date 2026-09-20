@@ -46,7 +46,8 @@
     "Download": "Download",
     "Cancel": "Cancel",
     "Close": "Close",
-    "Test": "Test"
+    "Test": "Test",
+    "AddPair": "Add pair"
   },
   "phrases": {
     "EnvironmentVariable": "Environment variable: <code>{variableName}</code>",
@@ -67,6 +68,8 @@
     "NoInstances": "No {section} instances configured.",
     "NoFolders": "No folders configured.",
     "NoWebhooks": "No webhooks configured.",
+    "MapKey": "Key",
+    "MapValue": "Value",
     "NoCmdhooks": "No command hooks configured.",
     "NoApiKeys": "No API keys.",
     "ClearHistoryTitle": "Clear history?",
@@ -289,7 +292,8 @@
       },
       "hooks": {
         "label": "Hooks",
-        "intro": "HTTP callbacks and local commands when an extract changes status."
+        "tab": "Payload",
+        "intro": "Extra IDs and custom event titles sent with every webhook and command hook."
       },
       "webserver": {
         "label": "Web Server",
@@ -898,6 +902,18 @@
         "label": "Template file",
         "description": "Custom Go template file instead of a built-in template.",
         "tooltip": "Overrides automatic template detection and the Template setting. Pick an existing file."
+      }
+    },
+    "payload": {
+      "customIDs": {
+        "label": "Global hook IDs",
+        "description": "Extra string IDs on every hook payload, separate from Starr item IDs.",
+        "tooltip": "Webhooks: customIDs JSON and {{index .CustomIDs \"key\"}}. Command hooks: UN_CUSTOM_ID_<key>. Keys must be letters, digits, underscore, or hyphen."
+      },
+      "titles": {
+        "label": "Event titles",
+        "description": "Custom text for each extract status in hook payloads. Empty keeps the built-in English title.",
+        "tooltip": "Used as eventTitle in JSON and as the heading in Discord, Slack, Telegram, Gotify, and Pushover templates."
       }
     }
   },

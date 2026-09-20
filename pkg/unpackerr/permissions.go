@@ -32,6 +32,7 @@ const (
 	SectionLidarr    ConfigSection = "lidarr"
 	SectionReadarr   ConfigSection = "readarr"
 	SectionFolders   ConfigSection = "folders"
+	SectionHooks     ConfigSection = "hooks"
 	SectionWebhooks  ConfigSection = "webhooks"
 	SectionCmdhooks  ConfigSection = "cmdhooks"
 )
@@ -41,7 +42,7 @@ func ConfigSections() []ConfigSection {
 	return []ConfigSection{
 		SectionGeneral, SectionWebserver,
 		SectionSonarr, SectionRadarr, SectionLidarr, SectionReadarr,
-		SectionFolders, SectionWebhooks, SectionCmdhooks,
+		SectionFolders, SectionHooks, SectionWebhooks, SectionCmdhooks,
 	}
 }
 

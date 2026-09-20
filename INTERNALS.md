@@ -245,7 +245,7 @@ Permission: `config:{section}:write` (same as PUT). Does not persist.
 
 **Hooks** (`webhooks` / `cmdhooks`): overlay posted fields onto a clone of the live hook (or a new hook). Non-empty strings replace live values; omitted strings keep them. `shell` and `ignoreSsl` override when present (including `false`); omitted keep live. `event` defaults to `extracted`; `app` defaults to Sonarr (`sonarr` / `radarr` / `lidarr` / `readarr` / `folder` or a named instance). `hooks.Fire` runs on the HTTP goroutine (not the hook worker). Reply is `{status, reply, elapsed}` with `reply` clipped to 2048 runes. Missing URL/command is **400**. Delivery failure is **424** `{error, elapsed}`.
 
-**general**, **webserver**, **folders**: **400** `this section cannot be tested`.
+**general**, **webserver**, **folders**, **hooks**: **400** `this section cannot be tested`.
 
 ---
 
@@ -292,11 +292,11 @@ Index is `GET {urlbase}{$}` so `GET /` is not a ServeMux prefix match (that woul
 | GET | `{urlbase}api/config/{section}` | yes | `config:{section}:read` | File snapshot |
 | GET | `{urlbase}api/config/{section}/live` | yes | `config:{section}:read` | Running copy |
 | PUT | `{urlbase}api/config/{section}` | yes | `config:{section}:write` | Replace section |
-| POST | `{urlbase}api/config/{section}/test` | yes | `config:{section}:write` | Starr queue probe or one-shot hook Fire. Does not persist. general/webserver/folders → 400. Remote failure → 424 |
+| POST | `{urlbase}api/config/{section}/test` | yes | `config:{section}:write` | Starr queue probe or one-shot hook Fire. Does not persist. general/webserver/folders/hooks → 400. Remote failure → 424 |
 | GET | `/metrics` (+ urlbase) | **API key / Bearer only** | `system:metrics:read` | No session cookie, no webauth/noauth |
 | GET | `/debug/pprof/…` | none extra | — | Only if `pprof = true`. Treat as a loaded gun. |
 
-`{section}` is one of: `general`, `webserver`, `sonarr`, `radarr`, `lidarr`, `readarr`, `folders`, `webhooks`, `cmdhooks`. Unknown → 404 from `requireConfigPerm`.
+`{section}` is one of: `general`, `webserver`, `sonarr`, `radarr`, `lidarr`, `readarr`, `folders`, `hooks`, `webhooks`, `cmdhooks`. Unknown → 404 from `requireConfigPerm`.
 
 Stdlib mux does **not** redirect trailing slashes the way httprouter did. `/api/stats/` is 404. Documented as acceptable for this API (no external consumers). Do not add a compatibility wrapper unless product asks.
 
@@ -395,6 +395,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 | webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, HTTP log |
 | sonarr…readarr | Rebuild clients, carry queues, grow workers | No |
 | folders | Live map updated | **Always** (watcher) |
+| hooks | Replace custom_ids map / titles struct | No |
 | webhooks / cmdhooks | Replace maps, ensure worker | No |
 
 ---

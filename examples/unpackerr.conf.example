@@ -446,6 +446,26 @@ passwords = []
 ## They leave waiting without history or webhooks.
 # skip_empty = false
 
+####################
+### Hook Payload ###
+####################
+# Extra IDs and custom event titles shared by every webhook and command hook.
+[hooks]
+## Nested [hooks.custom_ids] table, not an inline map.
+## Webhooks get `customIDs` in JSON (`{{index .CustomIDs "url"}}` in templates).
+## Command hooks get `UN_CUSTOM_ID_<key>` environment variables.
+## Env: UN_HOOKS_CUSTOM_IDS_url=https://…
+## [hooks.custom_ids]
+## url = "https://unpackerr.example"
+## Nested [hooks.titles] table with one field per extract event:
+## waiting, queued, extracting, extractfailed, extracted, imported,
+## deleting, deletefailed, deleted, extractednothing.
+## Empty values keep the built-in English title. Built-in Discord, Slack,
+## Telegram, Gotify, and Pushover templates use this string.
+## Env: UN_HOOKS_TITLES_EXTRACTING=Archive Found
+## [hooks.titles]
+## extracting = "Archive Found"
+
 ################
 ### Webhooks ###
 ################
@@ -508,4 +528,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 19 SEP 2026 08:17 UTC
+## => Content Auto Generated, 20 SEP 2026 04:47 UTC

@@ -8,6 +8,7 @@ const SECTIONS: ConfigSection[] = [
   'lidarr',
   'readarr',
   'folders',
+  'hooks',
   'webhooks',
   'cmdhooks',
 ]

@@ -69,7 +69,7 @@ func TestFireCmdhook(t *testing.T) {
 
 	hook := &Config{
 		Name:    "echo",
-		Command: "/bin/echo",
+		Command: "/bin/echo ok",
 		Timeout: cnfg.Duration{Duration: 2 * time.Second},
 	}
 
@@ -78,7 +78,7 @@ func TestFireCmdhook(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out == "" && err != nil {
+	if out == "" {
 		t.Fatal("expected command output or success")
 	}
 }
@@ -92,5 +92,30 @@ func TestFireNilAndEmpty(t *testing.T) {
 
 	if _, err := Fire(t.Context(), &Config{}, SamplePayload()); !errors.Is(err, ErrWebhookNoURL) {
 		t.Fatalf("empty %v", err)
+	}
+}
+
+func TestPayloadCustomIDEnv(t *testing.T) {
+	t.Parallel()
+
+	env, err := cnfg.MarshalENV(&Payload{
+		Path:      "/dl",
+		IDs:       map[string]any{"title": "Show"},
+		CustomIDs: map[string]string{"url": "https://unpackerr.example"},
+	}, "UN")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if env["UN_IDS_title"] != "Show" {
+		t.Fatalf("ids env %+v", env)
+	}
+
+	if env["UN_CUSTOM_ID_url"] != "https://unpackerr.example" {
+		t.Fatalf("custom id env %+v", env)
+	}
+
+	if _, ok := env["UN_IDS_url"]; ok {
+		t.Fatalf("custom id merged into UN_IDS_ %+v", env)
 	}
 }

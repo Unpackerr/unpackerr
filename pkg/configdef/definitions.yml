@@ -8,6 +8,7 @@ order:
   - starr_header
   - starr
   - folder
+  - hooks
   - webhook
   - cmdhook
 def_order:
@@ -958,6 +959,48 @@ sections:
           After start delay, skip watched folders that have no extractable archives.
           They leave waiting without history or webhooks.
 
+  hooks:
+    title: Hook Payload
+    envvar_prefix: HOOKS_
+    text: |
+      ####################
+      ### Hook Payload ###
+      ####################
+      # Extra IDs and custom event titles shared by every webhook and command hook.
+    docs: |
+      Extra payload IDs and per-event titles for every webhook and command hook.
+      Custom IDs are separate from Starr item IDs (`ids`).
+      Empty title values keep the built-in English event title (`Status.Desc()`).
+    params:
+      - name: custom_ids
+        envvar: CUSTOM_IDS_
+        default: {}
+        kind: map
+        omit_compose: true
+        short: Extra string IDs on every hook payload, separate from Starr item IDs.
+        desc: |
+          Nested [hooks.custom_ids] table, not an inline map.
+          Webhooks get `customIDs` in JSON (`{{index .CustomIDs "url"}}` in templates).
+          Command hooks get `UN_CUSTOM_ID_<key>` environment variables.
+          Env: UN_HOOKS_CUSTOM_IDS_url=https://…
+          [hooks.custom_ids]
+          url = "https://unpackerr.example"
+      - name: titles
+        envvar: TITLES_
+        default: {}
+        kind: map
+        omit_compose: true
+        short: Override the English event title sent in hook payloads.
+        desc: |
+          Nested [hooks.titles] table with one field per extract event:
+          waiting, queued, extracting, extractfailed, extracted, imported,
+          deleting, deletefailed, deleted, extractednothing.
+          Empty values keep the built-in English title. Built-in Discord, Slack,
+          Telegram, Gotify, and Pushover templates use this string.
+          Env: UN_HOOKS_TITLES_EXTRACTING=Archive Found
+          [hooks.titles]
+          extracting = "Archive Found"
+
   webhook:
     title: Webhooks
     text: |
@@ -1090,6 +1133,7 @@ sections:
     tail: |
       All extraction data is input to the command using environment variables, see example below.
       Extracted files variables names begin with `UN_DATA_FILES_`.
+      Custom IDs from `[hooks].custom_ids` appear as `UN_CUSTOM_ID_<key>`.
       Try `/usr/bin/env` as an example command to see what variables are available.
 
       <details>

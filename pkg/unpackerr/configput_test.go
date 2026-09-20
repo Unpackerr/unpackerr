@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"golift.io/cnfg"
 	"golift.io/starr/sonarr"
 )
@@ -2348,5 +2349,68 @@ func TestConfigPutSonarrOtherSlugWhenEnvURLHasNoKey(t *testing.T) {
 	got := unpack.Sonarr["1"]
 	if got == nil || got.URL != "http://sonarr-uhd:8989" || got.APIKey != otherKey {
 		t.Fatalf("live slug 1 %+v", got)
+	}
+}
+
+func TestConfigPutHooksPayload(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	empty := doAuth(t, unpack, http.MethodPut, "/api/config/hooks", `{}`, putKey(unpack))
+	if empty.Code != http.StatusOK {
+		t.Fatalf("empty put %d %s", empty.Code, empty.Body.String())
+	}
+
+	body := `{"customIDs":{"url":"https://unpackerr.example"},"titles":{"extracting":"Archive Found"}}`
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/hooks", body, putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	if unpack.Hooks.CustomIDs["url"] != "https://unpackerr.example" ||
+		unpack.Hooks.Titles.Extracting != "Archive Found" {
+		t.Fatalf("live %+v", unpack.Hooks)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := string(written)
+	if strings.Contains(text, "custom_ids =") || strings.Contains(text, "titles = {") ||
+		strings.Contains(text, "custom_ids = url") || strings.Contains(text, "titles = extracting") {
+		t.Fatalf("string maps wrote assignments:\n%s", text)
+	}
+
+	if !strings.Contains(text, "[hooks.custom_ids]") || !strings.Contains(text, "[hooks.titles]") {
+		t.Fatalf("missing nested hook tables:\n%s", text)
+	}
+
+	parsed := struct {
+		Hooks HooksConfig `toml:"hooks"`
+	}{}
+	if err := toml.Unmarshal(written, &parsed); err != nil {
+		t.Fatalf("written TOML: %v\n%s", err, text)
+	}
+
+	if parsed.Hooks.CustomIDs["url"] != "https://unpackerr.example" ||
+		parsed.Hooks.Titles.Extracting != "Archive Found" {
+		t.Fatalf("file hooks %+v", parsed.Hooks)
+	}
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/hooks", "", putKey(unpack))
+	if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), "Archive Found") {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	bad := doAuth(t, unpack, http.MethodPut, "/api/config/hooks",
+		`{"titles":{"nope":"x"}}`, putKey(unpack))
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("unknown title field %d %s", bad.Code, bad.Body.String())
 	}
 }

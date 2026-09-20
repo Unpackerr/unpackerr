@@ -67,6 +67,8 @@
     browseFile?: string
     /** Hide create-folder in the picker. File pickers are picker-only anyway. */
     disableMkdir?: boolean
+    /** Tighter bottom margin for dense grids. */
+    compact?: boolean
     [key: string]: any
   }
 
@@ -96,6 +98,7 @@
     browse,
     disableMkdir = false,
     browseFile = '',
+    compact = false,
     ...rest
   }: Props = $props()
 
@@ -447,13 +450,15 @@
 </script>
 
 <div class="input">
-  <FormGroup>
-    <Label for={id}>
-      {@html labelText}
-      {#if badge}
-        <Badge color="secondary" style="margin-left: 0.5rem;">{badge}</Badge>
-      {/if}
-    </Label>
+  <FormGroup spacing={compact ? 'mb-1' : 'mb-3'}>
+    {#if labelText || badge}
+      <Label for={id}>
+        {@html labelText}
+        {#if badge}
+          <Badge color="secondary" style="margin-left: 0.5rem;">{badge}</Badge>
+        {/if}
+      </Label>
+    {/if}
 
     <InputGroup>
       {#if showHelp}
@@ -573,7 +578,7 @@
       </div>
     {/if}
 
-    {#if descriptionHtml}<FormText>{@html descriptionHtml}</FormText>{/if}
+    {#if descriptionHtml && !compact}<FormText>{@html descriptionHtml}</FormText>{/if}
     {@render msg?.()}
   </FormGroup>
 

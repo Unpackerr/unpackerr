@@ -83,7 +83,7 @@
     STARR_SECTIONS.find((id) => has(configPerm(id, 'read'))) ?? 'sonarr',
   )
   const firstHook = $derived(
-    (['webhooks', 'cmdhooks'] as const).find((id) =>
+    (['hooks', 'webhooks', 'cmdhooks'] as const).find((id) =>
       has(configPerm(id, 'read')),
     ) ?? 'webhooks',
   )
@@ -113,6 +113,7 @@
         href: '/settings/' + firstHook,
         label: $_('pages.settings.hooks.label'),
         show:
+          has(configPerm('hooks', 'read')) ||
           has(configPerm('webhooks', 'read')) ||
           has(configPerm('cmdhooks', 'read')),
       },
@@ -131,8 +132,13 @@
     ) {
       return STARR_SECTIONS.some((id) => path === '/settings/' + id)
     }
-    if (href.includes('webhooks') || href.includes('cmdhooks')) {
-      return path === '/settings/webhooks' || path === '/settings/cmdhooks'
+    const hookPaths = [
+      '/settings/hooks',
+      '/settings/webhooks',
+      '/settings/cmdhooks',
+    ]
+    if (hookPaths.includes(href)) {
+      return hookPaths.includes(path)
     }
     if (href === '/settings/general') {
       return path === '/settings' || path === '/settings/general'

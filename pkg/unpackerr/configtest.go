@@ -273,6 +273,7 @@ func (u *Unpackerr) testHookSection(
 	}
 
 	payload.App = app
+	u.decorateSamplePayload(payload, event)
 
 	started := time.Now()
 	reply, err := hooks.Fire(ctx, hook, payload)

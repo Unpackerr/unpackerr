@@ -96,6 +96,8 @@ func (u *Unpackerr) replaceConfigSection(section ConfigSection, raw json.RawMess
 			func(c *Config) *InstanceMap[ReadarrConfig] { return &c.Readarr })
 	case SectionFolders:
 		return u.putFolders(raw)
+	case SectionHooks:
+		return false, u.putHooksConfig(raw)
 	case SectionWebhooks:
 		return false, u.putHooks(raw, u.validateWebhookList,
 			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Webhook })
@@ -638,6 +640,36 @@ func putStarrList[T any, P starrApp[T]](
 		*live = liveList
 
 		unpackerr.ensureWorkThreads(unpackerr.starrAppCount())
+	})
+}
+
+func (u *Unpackerr) putHooksConfig(raw json.RawMessage) error {
+	var next HooksConfig
+	if err := unmarshalStrict(raw, &next); err != nil {
+		return err
+	}
+
+	if err := validateHooksConfig(&next); err != nil {
+		return err
+	}
+
+	file := cloneHooks(next)
+
+	preview, err := u.applyEnvOverlay(func(cfg *Config) {
+		cfg.Hooks = cloneHooks(next)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := validateHooksConfig(&preview.Hooks); err != nil {
+		return err
+	}
+
+	return u.commitConfig(func(cfg *Config) {
+		cfg.Hooks = file
+	}, func() {
+		u.Hooks = cloneHooks(preview.Hooks)
 	})
 }
 

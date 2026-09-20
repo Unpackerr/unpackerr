@@ -66,7 +66,16 @@
     filter.trim()
       ? rows.filter((r) => {
           const q = filter.trim().toLowerCase()
-          return [r.id, r.app, r.status, r.error]
+          const errKey = errorPhrase(r.error)
+          return [
+            r.id,
+            r.path,
+            r.app,
+            r.status,
+            $_(statusPhrase(r.status)),
+            r.error,
+            errKey ? $_(errKey) : '',
+          ]
             .filter(Boolean)
             .join('\n')
             .toLowerCase()

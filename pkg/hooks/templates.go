@@ -349,16 +349,16 @@ func separator(separator string) func() string {
 	}
 }
 
-func humanbytes(size int64) string {
+func humanbytes(size uint64) string {
 	const byteUnit = 1024
 
 	// This is from https://yourbasic.org/golang/formatting-byte-size-to-human-readable-format/
-	// This func converts an int to a human readable byte string.
+	// This func converts a size to a human readable byte string.
 	if size < byteUnit {
 		return fmt.Sprintf("%dB", size)
 	}
 
-	div, exp := int64(byteUnit), 0
+	div, exp := uint64(byteUnit), 0
 
 	for n := size / byteUnit; n >= byteUnit; n /= byteUnit {
 		div *= byteUnit

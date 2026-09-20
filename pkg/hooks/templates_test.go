@@ -199,6 +199,42 @@ func TestBuiltinTemplatesEmptyEventTitleFallsBack(t *testing.T) {
 	}
 }
 
+func TestBuiltinTemplatesRenderDataBytes(t *testing.T) {
+	t.Parallel()
+
+	const size uint64 = 2048
+
+	payload := &Payload{
+		Path:  "/dl",
+		App:   "Sonarr",
+		IDs:   map[string]any{"title": "Show"},
+		Event: extract.EXTRACTED,
+		Time:  time.Unix(0, 0).UTC(),
+		Data:  &XtractPayload{Bytes: size},
+	}
+
+	want := humanbytes(size)
+
+	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify", "pushover"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			body := renderHookTemplate(t, name, payload)
+			if name == "notifiarr" {
+				if !strings.Contains(body, "2048") {
+					t.Fatalf("missing bytes:\n%s", body)
+				}
+
+				return
+			}
+
+			if !strings.Contains(body, want) {
+				t.Fatalf("missing %q:\n%s", want, body)
+			}
+		})
+	}
+}
+
 func assertPushoverApp(t *testing.T, body, app string) {
 	t.Helper()
 

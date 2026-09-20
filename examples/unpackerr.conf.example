@@ -457,12 +457,12 @@ passwords = []
 ## Env: UN_HOOKS_CUSTOM_IDS_url=https://…
 ## [hooks.custom_ids]
 ## url = "https://unpackerr.example"
-## Nested [hooks.titles] table. Keys are event names: waiting, queued,
-## extracting, extractfailed, extracted, imported, deleting, deletefailed,
-## deleted, extractednothing.
+## Nested [hooks.titles] table with one field per extract event:
+## waiting, queued, extracting, extractfailed, extracted, imported,
+## deleting, deletefailed, deleted, extractednothing.
 ## Empty values keep the built-in English title. Built-in Discord, Slack,
 ## Telegram, Gotify, and Pushover templates use this string.
-## Env: UN_HOOKS_TITLES_extracting=Archive Found
+## Env: UN_HOOKS_TITLES_EXTRACTING=Archive Found
 ## [hooks.titles]
 ## extracting = "Archive Found"
 

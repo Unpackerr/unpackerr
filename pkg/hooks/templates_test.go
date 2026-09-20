@@ -162,6 +162,43 @@ func TestBuiltinTemplatesEncodeEventTitle(t *testing.T) {
 	}
 }
 
+func TestBuiltinTemplatesEmptyEventTitleFallsBack(t *testing.T) {
+	t.Parallel()
+
+	want := extract.EXTRACTED.Desc()
+	payload := &Payload{
+		Path:  "/dl",
+		App:   "Sonarr",
+		IDs:   map[string]any{"title": "Show"},
+		Event: extract.EXTRACTED,
+		Time:  time.Unix(0, 0).UTC(),
+		Data:  &XtractPayload{},
+	}
+
+	if payload.Title() != want {
+		t.Fatalf("Title() %q", payload.Title())
+	}
+
+	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify", "pushover"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			body := renderHookTemplate(t, name, payload)
+			if name == "pushover" {
+				if !strings.Contains(body, url.QueryEscape(want)) {
+					t.Fatalf("pushover missing fallback %q:\n%s", want, body)
+				}
+
+				return
+			}
+
+			if !strings.Contains(body, want) {
+				t.Fatalf("missing fallback %q:\n%s", want, body)
+			}
+		})
+	}
+}
+
 func assertPushoverApp(t *testing.T, body, app string) {
 	t.Helper()
 

@@ -60,8 +60,6 @@
 
   function keyError(i: number, raw: unknown): string {
     const key = String(raw ?? '').trim()
-    if (!key) return ''
-
     if (!validSlug(key)) return $_('phrases.SlugInvalid')
 
     const dup = pairs.some(

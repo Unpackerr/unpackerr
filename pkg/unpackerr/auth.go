@@ -687,3 +687,26 @@ func writeJSON(response http.ResponseWriter, code int, msg any) {
 	response.WriteHeader(code)
 	_, _ = response.Write(append(body, '\n'))
 }
+
+// readJSON decodes one JSON object into dest. Unknown fields, trailing
+// values, and oversize bodies are 400.
+func readJSON(response http.ResponseWriter, request *http.Request, maxBytes int64, dest any) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxBytes))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(dest); err != nil {
+		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return false
+	}
+
+	switch err := decoder.Decode(&struct{}{}); {
+	case errors.Is(err, io.EOF):
+		return true
+	case err != nil:
+		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return false
+	default:
+		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errExtraJSON.Error()})
+		return false
+	}
+}

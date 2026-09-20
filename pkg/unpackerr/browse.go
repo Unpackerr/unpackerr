@@ -1,10 +1,8 @@
 package unpackerr
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -56,8 +54,13 @@ func (u *Unpackerr) browseHandler(response http.ResponseWriter, request *http.Re
 }
 
 func (u *Unpackerr) browseCreateHandler(response http.ResponseWriter, request *http.Request) {
-	body, ok := readBrowseCreate(response, request)
-	if !ok {
+	var body browseCreateRequest
+	if !readJSON(response, request, maxBrowseBody, &body) {
+		return
+	}
+
+	if strings.TrimSpace(body.Path) == "" {
+		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errMissingPath.Error()})
 		return
 	}
 
@@ -70,34 +73,6 @@ func (u *Unpackerr) browseCreateHandler(response http.ResponseWriter, request *h
 	}
 
 	writeJSON(response, http.StatusOK, output)
-}
-
-func readBrowseCreate(response http.ResponseWriter, request *http.Request) (browseCreateRequest, bool) {
-	var body browseCreateRequest
-
-	decoder := json.NewDecoder(http.MaxBytesReader(response, request.Body, maxBrowseBody))
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&body); err != nil {
-		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
-		return browseCreateRequest{}, false
-	}
-
-	switch err := decoder.Decode(&struct{}{}); {
-	case errors.Is(err, io.EOF):
-		if strings.TrimSpace(body.Path) == "" {
-			writeJSON(response, http.StatusBadRequest, map[string]string{"error": errMissingPath.Error()})
-			return browseCreateRequest{}, false
-		}
-
-		return body, true
-	case err != nil:
-		writeJSON(response, http.StatusBadRequest, map[string]string{"error": "invalid json"})
-		return browseCreateRequest{}, false
-	default:
-		writeJSON(response, http.StatusBadRequest, map[string]string{"error": errExtraJSON.Error()})
-		return browseCreateRequest{}, false
-	}
 }
 
 func mkdirBrowsePath(path string) (*BrowseDir, error) {

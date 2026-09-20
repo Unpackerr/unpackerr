@@ -123,7 +123,9 @@
     "TestReply": "Reply",
     "TestDuration": "Duration",
     "TestStarrEnvOwned": "Test cannot run when the URL or API key comes from the environment.",
-    "TestHookEnvOwned": "Test cannot run when the URL or command comes from the environment."
+    "TestHookEnvOwned": "Test cannot run when the URL or command comes from the environment.",
+    "CreateHookTemplate": "Create template file",
+    "CreateFailed": "Could not create the file."
   },
   "nav": {
     "Dashboard": "Dashboard",
@@ -894,14 +896,14 @@
       },
       "template": {
         "label": "Template",
-        "description": "Built-in template. Empty picks one from the URL.",
-        "tooltip": "Force notifiarr, discord, telegram, gotify, pushover, or slack. Leave automatic unless the URL is not recognized.",
-        "auto": "Automatic (from URL)"
+        "description": "Built-in template. Empty picks one from the URL or template file.",
+        "tooltip": "Force notifiarr, discord, telegram, gotify, pushover, or slack. Leave automatic to use the URL or template file.",
+        "auto": "Automatic (from URL or file)"
       },
       "templatePath": {
         "label": "Template file",
         "description": "Custom Go template file instead of a built-in template.",
-        "tooltip": "Overrides automatic template detection and the Template setting. Pick an existing file."
+        "tooltip": "Used when Template is Automatic. A named Template ignores this file."
       }
     },
     "payload": {
@@ -922,6 +924,7 @@
     "Path": "Path",
     "intro": "Pick a path on this machine.",
     "introFolderFile": "Pick a folder. The file will be named <code>{file}</code>, but you can change the name after choosing.",
+    "introLockedFile": "Pick a folder. The file will be named <code>{file}</code>.",
     "tooltip": {
       "Go": "<code>cd {path}</code><br />Change directory to the path in the box.",
       "SelectPath": "Select path: <code>{path}</code>",

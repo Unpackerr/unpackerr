@@ -123,7 +123,9 @@
     "TestReply": "Antwoord",
     "TestDuration": "Duur",
     "TestStarrEnvOwned": "Testen kan niet als de URL of API-sleutel uit de omgeving komt.",
-    "TestHookEnvOwned": "Testen kan niet als de URL of opdracht uit de omgeving komt."
+    "TestHookEnvOwned": "Testen kan niet als de URL of opdracht uit de omgeving komt.",
+    "CreateHookTemplate": "Sjabloonbestand maken",
+    "CreateFailed": "Het bestand kon niet worden gemaakt."
   },
   "nav": {
     "Dashboard": "Dashboard",
@@ -894,14 +896,14 @@
       },
       "template": {
         "label": "Sjabloon",
-        "description": "Ingebouwd sjabloon. Leeg kiest er een uit de URL.",
-        "tooltip": "Dwing notifiarr, discord, telegram, gotify, pushover of slack af. Laat automatisch tenzij de URL niet herkend wordt.",
-        "auto": "Automatisch (uit de URL)"
+        "description": "Ingebouwd sjabloon. Leeg kiest er een uit de URL of het sjabloonbestand.",
+        "tooltip": "Dwing notifiarr, discord, telegram, gotify, pushover of slack af. Laat automatisch om de URL of het sjabloonbestand te gebruiken.",
+        "auto": "Automatisch (uit de URL of het bestand)"
       },
       "templatePath": {
         "label": "Sjabloonbestand",
         "description": "Aangepast Go-sjabloonbestand in plaats van een ingebouwd sjabloon.",
-        "tooltip": "Overschrijft automatische herkenning en de Sjabloon-instelling. Kies een bestaand bestand."
+        "tooltip": "Gebruikt als Sjabloon op Automatisch staat. Een gekozen sjabloon negeert dit bestand."
       }
     },
     "payload": {
@@ -922,6 +924,7 @@
     "Path": "Pad",
     "intro": "Kies een pad op deze machine.",
     "introFolderFile": "Kies een map. Het bestand heet <code>{file}</code>, maar je kunt de naam na het kiezen nog wijzigen.",
+    "introLockedFile": "Kies een map. Het bestand heet <code>{file}</code>.",
     "tooltip": {
       "Go": "<code>cd {path}</code><br />Wijzig de map naar het pad in het vak.",
       "SelectPath": "Pad selecteren: <code>{path}</code>",

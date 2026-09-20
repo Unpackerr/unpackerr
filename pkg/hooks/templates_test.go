@@ -95,6 +95,25 @@ func TestBuiltinTemplatesEncodeApp(t *testing.T) {
 	}
 }
 
+func TestBuiltinWebhookTemplateNames(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "pushover", "gotify"} {
+		body, ok := BuiltinWebhookTemplate(name)
+		if !ok || body == "" {
+			t.Fatalf("%s missing", name)
+		}
+	}
+
+	if _, ok := BuiltinWebhookTemplate("nope"); ok {
+		t.Fatal("unknown template should be missing")
+	}
+
+	if got := WebhookTemplateFileName("Discord"); got != "unpackerr-webhook-discord.tmpl" {
+		t.Fatalf("file name %q", got)
+	}
+}
+
 func renderHookTemplate(t *testing.T, name string, payload *Payload) string {
 	t.Helper()
 

@@ -19,6 +19,7 @@
   } from '@sveltestrap/sveltestrap'
   import Input from '../../components/Input.svelte'
   import SaveBar from '../../components/SaveBar.svelte'
+  import CreateTemplate from '../../components/fileBrowser/CreateTemplate.svelte'
   import { _ } from '../../lib/i18n/Translate.svelte'
   import {
     loadSection,
@@ -27,7 +28,7 @@
     testSection,
   } from '../../lib/config'
   import { has } from '../../lib/auth.svelte'
-  import { configPerm } from '../../lib/perms'
+  import { configPerm, systemPerm } from '../../lib/perms'
   import {
     EXTRACT_STATUSES,
     type ConfigSection,
@@ -73,8 +74,12 @@
   let testError = $state('')
   let testElapsed = $state('')
   let testResult = $state<HookTestResult | null>(null)
+  let createRow = $state<InstanceRow<WebhookConfig> | null>(null)
 
   const canWrite = $derived(has(configPerm(section, 'write')))
+  const canCreateTemplate = $derived(
+    canWrite && has(systemPerm('browse', 'write')),
+  )
   const envPrefix = $derived(isCmd ? 'CMDHOOK' : 'WEBHOOK')
   const idField = $derived(isCmd ? 'COMMAND' : 'URL')
   const invalid = $derived(
@@ -197,7 +202,10 @@
   }
 
   function taken(row: InstanceRow<WebhookConfig>): string[] {
-    return rows.filter((r) => r.id !== row.id).map((r) => r.slug).filter(Boolean)
+    return rows
+      .filter((r) => r.id !== row.id)
+      .map((r) => r.slug)
+      .filter(Boolean)
   }
 
   function setName(row: InstanceRow<WebhookConfig>, name: string) {
@@ -326,11 +334,7 @@
   function dialectOn(hook: WebhookConfig, dialect: string): boolean {
     return excludeHas(hook, dialect)
   }
-  function nameOn(
-    hook: WebhookConfig,
-    dialect: string,
-    name: string,
-  ): boolean {
+  function nameOn(hook: WebhookConfig, dialect: string, name: string): boolean {
     return dialectOn(hook, dialect) || excludeHas(hook, name)
   }
   function setExclude(hook: WebhookConfig, remove: string[], add: string[]) {
@@ -457,6 +461,18 @@
       return
     }
     testResult = res.body
+  }
+
+  function closeCreate() {
+    createRow = null
+  }
+
+  function createdTemplate(path: string) {
+    if (createRow) {
+      createRow.value.templatePath = path
+      createRow.value.template = ''
+    }
+    createRow = null
   }
 </script>
 
@@ -731,7 +747,20 @@
                 envVar={envField(envPrefix, slug, 'TEMPLATE_PATH')}
                 browse="file"
                 disableMkdir
-              />
+              >
+                {#snippet post()}
+                  {#if canCreateTemplate && !row.envOnly && !envHas(envField(envPrefix, slug, 'TEMPLATE_PATH'))}
+                    <Button
+                      type="button"
+                      color="primary"
+                      outline
+                      on:click={() => (createRow = row)}
+                    >
+                      {$_('buttons.Create')}
+                    </Button>
+                  {/if}
+                {/snippet}
+              </Input>
             </Col>
             <Col md="6">
               <Input
@@ -862,9 +891,9 @@
     {:else if testError}
       <p class="text-danger mb-0">{testError}</p>
       {#if testElapsed}
-        <p class="text-muted mb-0 mt-2"
-          >{$_('phrases.TestDuration')}: {testElapsed}</p
-        >
+        <p class="text-muted mb-0 mt-2">
+          {$_('phrases.TestDuration')}: {testElapsed}
+        </p>
       {/if}
     {:else if testResult}
       {#if testElapsed}
@@ -887,3 +916,12 @@
     >
   </ModalFooter>
 </Modal>
+
+{#if createRow}
+  <CreateTemplate
+    startPath={createRow.value.templatePath}
+    startTemplate={createRow.value.template}
+    oncreated={createdTemplate}
+    onclose={closeCreate}
+  />
+{/if}

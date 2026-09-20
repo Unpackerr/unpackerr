@@ -487,6 +487,20 @@
         "properties": {
           "path": {"type": "string", "description": "Folder to create (MkdirAll 0755); existing folders succeed"}
         }
+      },
+      "BrowseTemplate": {
+        "type": "object",
+        "required": ["path", "template"],
+        "properties": {
+          "path": {"type": "string", "description": "Destination file; basename must be unpackerr-webhook-<template>.tmpl"},
+          "template": {"type": "string", "enum": ["notifiarr", "discord", "telegram", "slack", "pushover", "gotify"]}
+        }
+      },
+      "BrowseTemplateResult": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Absolute path written"}
+        }
       }
     },
     "responses": {
@@ -500,6 +514,10 @@
       },
       "BadRequest": {
         "description": "Invalid JSON or validation error",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "Conflict": {
+        "description": "The file already exists",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
       },
       "GatewayTimeout": {
@@ -669,6 +687,28 @@
           },
           "400": {"$ref": "#/components/responses/BadRequest"},
           "500": {"description": "Create failed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/api/browse/template": {
+      "post": {
+        "tags": ["files"],
+        "summary": "Write a built-in webhook template file",
+        "description": "Requires system:browse:write. Writes unpackerr-webhook-<template>.tmpl with the built-in Go template. Fails if the file already exists.",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseTemplate"}}}
+        },
+        "responses": {
+          "201": {
+            "description": "File written",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BrowseTemplateResult"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "500": {"description": "Write failed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"}
         }

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +25,9 @@ var (
 	ErrCmdhookNoCmd  = errors.New("cmdhook without a command configured; fix it")
 	ErrNilConfig     = errors.New("nil config entry")
 	ErrMessageGone   = errors.New("previous message is gone")
+	ErrHeaderName    = errors.New("webhook header name must be letters, digits, underscore, or hyphen")
+	ErrHeaderValue   = errors.New("webhook header value cannot contain a newline")
+	ErrHeaderDup     = errors.New("duplicate webhook header name")
 )
 
 // Logger is the logging surface hooks need from the daemon.
@@ -32,6 +36,9 @@ type Logger interface {
 	Errorf(msg string, v ...any)
 	Debugf(msg string, v ...any)
 }
+
+// HeaderMap is extra HTTP headers sent with a webhook POST.
+type HeaderMap = map[string]string
 
 // Config defines a webhook or command hook.
 type Config struct {
@@ -51,6 +58,7 @@ type Config struct {
 	Token      string        `json:"token"        toml:"token"         xml:"token,omitempty"         yaml:"token"`
 	Channel    string        `json:"channel"      toml:"channel"       xml:"channel,omitempty"       yaml:"channel"`
 	Update     *bool         `json:"update"       toml:"update"        xml:"update,omitempty"        yaml:"update"`
+	Headers    HeaderMap     `json:"headers"      toml:"headers"       xml:"headers,omitempty"       yaml:"headers"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -225,6 +233,7 @@ func CloneList(src []*Config) []*Config {
 			URL:       hook.URL,
 			Command:   hook.Command,
 			CType:     hook.CType,
+			Headers:   maps.Clone(hook.Headers),
 			TmplPath:  hook.TmplPath,
 			TempName:  hook.TempName,
 			Timeout:   hook.Timeout,

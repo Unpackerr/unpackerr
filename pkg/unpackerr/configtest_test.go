@@ -425,6 +425,85 @@ func TestOverlayHookKeepsLiveUnlessPosted(t *testing.T) {
 	}
 }
 
+func TestOverlayHookHeaders(t *testing.T) {
+	t.Parallel()
+
+	live := &hooks.Config{
+		URL:     "http://live.example/hook",
+		Headers: map[string]string{"X-Static": "file"},
+	}
+
+	keep := hooks.CloneList([]*hooks.Config{live})[0]
+	overlayHook(keep, configTestRequest{})
+
+	if keep.Headers["X-Static"] != "file" {
+		t.Fatalf("omitted headers %+v", keep.Headers)
+	}
+
+	var posted configTestRequest
+	if err := json.Unmarshal([]byte(`{"headers":{"X-Test":"1"}}`), &posted); err != nil {
+		t.Fatal(err)
+	}
+
+	got := hooks.CloneList([]*hooks.Config{live})[0]
+	overlayHook(got, posted)
+
+	if got.Headers["X-Test"] != "1" || got.Headers["X-Static"] != "" {
+		t.Fatalf("posted headers %+v", got.Headers)
+	}
+}
+
+func TestHookTestConfigReoverlaysEnvHeaders(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Webhook = InstanceMap[WebhookConfig]{
+		"discord": {
+			Name: "discord",
+			URL:  "http://127.0.0.1/hook",
+			Headers: map[string]string{
+				"X-Static":  "file",
+				"X-Api-Key": "env-secret",
+			},
+		},
+	}
+	unpack.envUsed = map[string]string{
+		"WEBHOOK_discord_HEADERS_X-Api-Key": "env-secret",
+	}
+
+	hook, _, _, err := unpack.hookTestConfig(SectionWebhooks, configTestRequest{
+		Slug: "discord",
+		Headers: map[string]string{
+			"X-Static": "posted",
+			"Title":    "Unpackerr",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hook.Headers["X-Static"] != "posted" || hook.Headers["Title"] != "Unpackerr" ||
+		hook.Headers["X-Api-Key"] != "env-secret" {
+		t.Fatalf("env children %+v", hook.Headers)
+	}
+}
+
+func TestConfigTestWebhookRejectsBadHeaders(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/webhooks/test",
+		`{"url":"http://127.0.0.1/hook","headers":{"Bad Name":"x"}}`, putKey(unpack))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "header name") {
+		t.Fatalf("error %s", rec.Body.String())
+	}
+}
+
 func TestConfigTestWebhookFillsFromLive(t *testing.T) {
 	t.Parallel()
 

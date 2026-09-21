@@ -1895,6 +1895,39 @@ func TestConfigGetLiveRedactsInstanceSecrets(t *testing.T) {
 	}
 }
 
+func TestConfigGetLiveRedactsHookHeaders(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.Webhook = InstanceMap[WebhookConfig]{
+		"discord": {
+			URL:  "http://hooks.example/discord",
+			Name: "discord",
+			Headers: map[string]string{
+				"Authorization": "Bearer header-secret",
+				"Title":         "Unpackerr",
+			},
+		},
+	}
+	unpack.snapshotFileConfig()
+
+	key := putKey(unpack)
+
+	live := doAuth(t, unpack, http.MethodGet, "/api/config/webhooks/live", "", key)
+	if live.Code != http.StatusOK {
+		t.Fatalf("live %d %s", live.Code, live.Body.String())
+	}
+
+	if strings.Contains(live.Body.String(), "header-secret") {
+		t.Fatalf("live GET leaked header secret: %s", live.Body.String())
+	}
+
+	file := doAuth(t, unpack, http.MethodGet, "/api/config/webhooks", "", key)
+	if file.Code != http.StatusOK || !strings.Contains(file.Body.String(), "header-secret") {
+		t.Fatalf("file GET %d %s", file.Code, file.Body.String())
+	}
+}
+
 func envWebhookUnpackerr(t *testing.T, envURL, envSecret string) *Unpackerr {
 	t.Helper()
 

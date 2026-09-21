@@ -49,9 +49,10 @@ type liveFolder struct {
 }
 
 type liveHook struct {
-	URL    string       `toml:"url"`
-	Token  string       `toml:"token"`
-	Events []liveStatus `toml:"events"`
+	URL     string            `toml:"url"`
+	Token   string            `toml:"token"`
+	Events  []liveStatus      `toml:"events"`
+	Headers map[string]string `toml:"headers"`
 }
 
 type liveHookTitles struct {
@@ -344,6 +345,39 @@ func TestRenderLiveHookStringMaps(t *testing.T) {
 
 	if decoded.Hooks.CustomIDs["asdasdas"] != "asdasd" || decoded.Hooks.Titles.Extracting != "Archive Found" {
 		t.Fatalf("decoded %+v", decoded.Hooks)
+	}
+}
+
+func TestRenderLiveWebhookHeaders(t *testing.T) {
+	t.Parallel()
+
+	body := MustLoad(t).RenderTOML(&liveRoot{
+		Webhook: map[string]liveHook{
+			"discord": {
+				URL:     "https://discord.com/api/webhooks/1/x",
+				Headers: map[string]string{"X-Api-Key": "secret", "Authorization": "Bearer tok"},
+			},
+		},
+	}, RenderOpts{Mode: RenderLive})
+
+	if strings.Contains(body, "[webhook.headers]") || strings.Contains(body, "headers =") {
+		t.Fatalf("headers must nest under the instance:\n%s", snippet(body, "[webhook"))
+	}
+
+	if !strings.Contains(body, "[webhook.discord.headers]") {
+		t.Fatalf("missing [webhook.discord.headers]:\n%s", snippet(body, "[webhook"))
+	}
+
+	decoded := struct {
+		Webhook map[string]liveHook `toml:"webhook"`
+	}{}
+	if err := toml.Unmarshal([]byte(body), &decoded); err != nil {
+		t.Fatalf("written TOML must parse: %v\n%s", err, snippet(body, "[webhook"))
+	}
+
+	got := decoded.Webhook["discord"].Headers
+	if got["X-Api-Key"] != "secret" || got["Authorization"] != "Bearer tok" {
+		t.Fatalf("decoded %+v", got)
 	}
 }
 

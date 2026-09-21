@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -27,23 +28,24 @@ var errSectionNotTestable = errors.New("this section cannot be tested")
 // Starr uses url/apiKey/valid_ssl/timeout. Hooks use event/app and hook fields.
 // Hook shell/ignoreSsl are pointers so omitted JSON keeps the live values.
 type configTestRequest struct {
-	Slug         string        `json:"slug"`
-	URL          string        `json:"url"`
-	APIKey       string        `json:"apiKey"`
-	ValidSSL     bool          `json:"valid_ssl"`
-	Timeout      cnfg.Duration `json:"timeout"`
-	Event        string        `json:"event"`
-	App          string        `json:"app"`
-	Command      string        `json:"command"`
-	Token        string        `json:"token"`
-	ContentType  string        `json:"contentType"`
-	Template     string        `json:"template"`
-	TemplatePath string        `json:"templatePath"`
-	Shell        *bool         `json:"shell"`
-	IgnoreSSL    *bool         `json:"ignoreSsl"`
-	Nickname     string        `json:"nickname"`
-	Channel      string        `json:"channel"`
-	Name         string        `json:"name"`
+	Slug         string            `json:"slug"`
+	URL          string            `json:"url"`
+	APIKey       string            `json:"apiKey"`
+	ValidSSL     bool              `json:"valid_ssl"`
+	Timeout      cnfg.Duration     `json:"timeout"`
+	Event        string            `json:"event"`
+	App          string            `json:"app"`
+	Command      string            `json:"command"`
+	Token        string            `json:"token"`
+	ContentType  string            `json:"contentType"`
+	Template     string            `json:"template"`
+	TemplatePath string            `json:"templatePath"`
+	Shell        *bool             `json:"shell"`
+	IgnoreSSL    *bool             `json:"ignoreSsl"`
+	Nickname     string            `json:"nickname"`
+	Channel      string            `json:"channel"`
+	Name         string            `json:"name"`
+	Headers      map[string]string `json:"headers"`
 }
 
 type starrTestResult struct {
@@ -302,6 +304,13 @@ func (u *Unpackerr) hookTestConfig(
 	}
 
 	overlayHook(hook, body)
+	u.overlayEnvHookHeaders(section, strings.TrimSpace(body.Slug), hook)
+
+	if section != SectionCmdhooks {
+		if err := hooks.ValidateHeaders(hook.Headers); err != nil {
+			return nil, 0, "", fmt.Errorf("validating headers: %w", err)
+		}
+	}
 
 	if err := expandFilepaths(hook); err != nil {
 		return nil, 0, "", err
@@ -383,6 +392,44 @@ func overlayHook(hook *hooks.Config, body configTestRequest) {
 
 	if body.IgnoreSSL != nil {
 		hook.IgnoreSSL = *body.IgnoreSSL
+	}
+
+	if body.Headers != nil {
+		hook.Headers = maps.Clone(body.Headers)
+	}
+}
+
+// overlayEnvHookHeaders puts UN_WEBHOOK_<slug>_HEADERS_* (and cmdhook) children
+// back after a posted headers map replaced the live clone wholesale.
+func (u *Unpackerr) overlayEnvHookHeaders(section ConfigSection, slug string, hook *hooks.Config) {
+	if hook == nil || slug == "" {
+		return
+	}
+
+	var tag string
+
+	switch section {
+	case SectionWebhooks:
+		tag = "WEBHOOK"
+	case SectionCmdhooks:
+		tag = "CMDHOOK"
+	default:
+		return
+	}
+
+	prefix := tag + "_" + slug + "_HEADERS_"
+
+	for key, val := range u.envUsed {
+		name, ok := strings.CutPrefix(key, prefix)
+		if !ok || name == "" {
+			continue
+		}
+
+		if hook.Headers == nil {
+			hook.Headers = make(hooks.HeaderMap)
+		}
+
+		hook.Headers[name] = val
 	}
 }
 

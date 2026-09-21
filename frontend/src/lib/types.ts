@@ -324,6 +324,7 @@ export interface WebhookConfig {
   token: string
   channel: string
   update?: boolean
+  headers?: Record<string, string>
 }
 
 export interface HookTitles {

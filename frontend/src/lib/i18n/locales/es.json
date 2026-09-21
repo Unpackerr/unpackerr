@@ -856,6 +856,11 @@
         "description": "Cabecera Content-Type enviada con el webhook.",
         "tooltip": "Deja application/json salvo que una plantilla personalizada necesite otro tipo MIME."
       },
+      "headers": {
+        "label": "Cabeceras",
+        "description": "Cabeceras HTTP extra en el POST del webhook.",
+        "tooltip": "Se aplican primero. Content-Type y el Bearer de ntfy del token siguen ganando. Visible al elegir una plantilla o un archivo personalizado."
+      },
       "ignoreSsl": {
         "label": "Ignorar SSL",
         "description": "Omitir las comprobaciones de certificado TLS de esta URL.",

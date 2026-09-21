@@ -20,6 +20,7 @@
     Badge,
   } from '@sveltestrap/sveltestrap'
   import Input from '../../components/Input.svelte'
+  import MapPairs from '../../components/MapPairs.svelte'
   import SaveBar from '../../components/SaveBar.svelte'
   import CreateTemplate from '../../components/fileBrowser/CreateTemplate.svelte'
   import { _ } from '../../lib/i18n/Translate.svelte'
@@ -52,6 +53,7 @@
     HOOK_TEMPLATE_NAMES,
     hookFormProfile,
     hookShowsField,
+    hookShowsHeaders,
     type DetectedHookTemplate,
     type HookFormProfile,
   } from '../../lib/hooktmpl'
@@ -59,6 +61,7 @@
     envField,
     HOOK_ENV_FIELDS,
     instanceMap,
+    mapKeysInvalid,
     mergeEnvOnlyRows,
     newRow,
     omitEnvFields,
@@ -104,6 +107,7 @@
       if (slugError(row.slug) || slugDuplicateError(row.slug, others))
         return true
       if (envHas(envField(envPrefix, row.slug, idField))) return false
+      if (!isCmd && mapKeysInvalid(row.value.headers)) return true
       return isCmd
         ? !!requiredCommandError(row.value.command)
         : !!httpURLError(row.value.url)
@@ -209,6 +213,7 @@
       token: '',
       channel: '',
       update: true,
+      headers: {},
     }
   }
 
@@ -221,6 +226,7 @@
       timeout: explicitTimeout(h?.timeout),
       events: Array.isArray(h?.events) ? [...h.events] : [],
       exclude: Array.isArray(h?.exclude) ? [...h.exclude] : [],
+      headers: { ...(h?.headers ?? {}) },
       update: h?.update ?? true,
     }
   }
@@ -257,9 +263,13 @@
     const out: Record<string, WebhookConfig> = {}
     for (const row of rows) {
       if (row.envOnly || !row.slug) continue
-      out[row.slug] = omitHiddenContentType(
+      let hook = omitHiddenContentType(
         omitEnvFields(envPrefix, row.slug, row.value, HOOK_ENV_FIELDS),
       )
+      if (isCmd) {
+        hook = { ...hook, headers: undefined }
+      }
+      out[row.slug] = hook
     }
     return out
   }
@@ -478,6 +488,12 @@
       nickname: hook.nickname,
       channel: hook.channel,
       name: hook.name,
+      headers:
+        isCmd || envHas(envField(envPrefix, row.slug, 'HEADERS_*'))
+          ? undefined
+          : hookShowsHeaders(profileOf(hook), hook.headers)
+            ? (hook.headers ?? {})
+            : undefined,
       event: testEvent,
       app: testApp,
     })
@@ -564,7 +580,11 @@
   }
 
   function advancedDefault(hook: WebhookConfig): boolean {
-    return !!(hook.template ?? '').trim() || !!(hook.templatePath ?? '').trim()
+    return (
+      !!(hook.template ?? '').trim() ||
+      !!(hook.templatePath ?? '').trim() ||
+      Object.keys(hook.headers ?? {}).length > 0
+    )
   }
 
   function isAdvancedOpen(row: InstanceRow<WebhookConfig>): boolean {
@@ -1018,6 +1038,22 @@
                     </Input>
                   </Col>
                 </Row>
+                {#if hookShowsHeaders(profile, hook.headers)}
+                  <MapPairs
+                    bind:values={
+                      () => hook.headers ?? {},
+                      (v) => {
+                        hook.headers = v
+                      }
+                    }
+                    disabled={!canWrite || row.envOnly}
+                    idPrefix={`${section}-${row.id}-headers`}
+                    helpKey="config.hooks.headers"
+                    envVar={envField(envPrefix, slug, 'HEADERS_*')}
+                    label={$_('config.hooks.headers.label')}
+                    description={$_('config.hooks.headers.description')}
+                  />
+                {/if}
               </Collapse>
             </Col>
           {/if}

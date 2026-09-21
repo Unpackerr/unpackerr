@@ -430,3 +430,66 @@ func TestConfigEnvUIPasswordAlwaysRedacted(t *testing.T) {
 		t.Fatalf("ui password env must stay redacted: %v", admin)
 	}
 }
+
+func TestConfigEnvRedactsHookHeaders(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.envUsed = map[string]string{
+		"WEBHOOK_discord_HEADERS_Authorization":           "Bearer tok",
+		"WEBHOOK_discord_HEADERS_CF-Access-Client-Secret": "shh",
+		"WEBHOOK_discord_HEADERS_X-Api-Key":               "secret",
+		"WEBHOOK_discord_HEADERS_Title":                   "Unpackerr",
+		"WEBHOOK_discord_HEADERS_CF-Access-Client-Id":     "id",
+	}
+
+	adminRec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	})
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("env %d %s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var admin map[string]string
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &admin); err != nil {
+		t.Fatal(err)
+	}
+
+	if admin["WEBHOOK_discord_HEADERS_Authorization"] != "Bearer tok" ||
+		admin["WEBHOOK_discord_HEADERS_Title"] != "Unpackerr" {
+		t.Fatalf("admin env %v", admin)
+	}
+
+	readKey := strings.Repeat("H", apiKeyMinLen)
+	unpack.Webserver.Roles = map[string]Role{
+		"envread": {Permissions: []string{PermReadConfig(SectionGeneral)}},
+	}
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
+		Name:  "envread",
+		Key:   readKey,
+		Roles: []string{"envread"},
+	})
+
+	readRec := doAuth(t, unpack, http.MethodGet, "/api/config/env", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, readKey)
+	})
+	if readRec.Code != http.StatusOK {
+		t.Fatalf("env read %d %s", readRec.Code, readRec.Body.String())
+	}
+
+	var limited map[string]string
+	if err := json.Unmarshal(readRec.Body.Bytes(), &limited); err != nil {
+		t.Fatal(err)
+	}
+
+	if limited["WEBHOOK_discord_HEADERS_Authorization"] != "" ||
+		limited["WEBHOOK_discord_HEADERS_CF-Access-Client-Secret"] != "" ||
+		limited["WEBHOOK_discord_HEADERS_X-Api-Key"] != "" {
+		t.Fatalf("limited env leaked header secrets %v", limited)
+	}
+
+	if limited["WEBHOOK_discord_HEADERS_Title"] != "Unpackerr" ||
+		limited["WEBHOOK_discord_HEADERS_CF-Access-Client-Id"] != "id" {
+		t.Fatalf("limited env hid non-secrets %v", limited)
+	}
+}

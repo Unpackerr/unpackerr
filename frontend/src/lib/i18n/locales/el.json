@@ -856,6 +856,11 @@
         "description": "Κεφαλίδα Content-Type που στέλνεται με το webhook.",
         "tooltip": "Αφήστε application/json εκτός αν ένα προσαρμοσμένο πρότυπο χρειάζεται άλλο τύπο MIME."
       },
+      "headers": {
+        "label": "Κεφαλίδες",
+        "description": "Επιπλέον κεφαλίδες HTTP στο POST του webhook.",
+        "tooltip": "Εφαρμόζονται πρώτα. Το Content-Type και το Bearer ntfy από το διακριτικό κερδίζουν μετά. Φαίνονται όταν επιλέγετε πρότυπο ή προσαρμοσμένο αρχείο."
+      },
       "ignoreSsl": {
         "label": "Αγνόηση SSL",
         "description": "Παράλειψη ελέγχων πιστοποιητικού TLS για αυτό το URL.",

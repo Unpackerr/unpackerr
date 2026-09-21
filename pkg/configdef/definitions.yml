@@ -1023,6 +1023,7 @@ sections:
       - Telegram: `nickname` is the `chat_id`. Pushover: `token` is the app token, `channel` is the user key, `nickname` is an optional device.
       - Slack and Mattermost: `nickname` is the display name; `channel` is an optional override.
       - ntfy: optional `token` as Bearer. Gotify, ntfy, and Apprise: `nickname` is an optional title prefix.
+      - Extra `headers` are sent when set; the UI shows them for a named `template` or a custom `template_path`. Content-Type and ntfy Bearer still win after those headers.
       - Empty or unknown URLs use the Notifiarr JSON payload. Set `template_path` for a custom Go template; a named `template` ignores that file.
       - _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
       - Built-in templates: `notifiarr`, `discord`, `telegram`, `slack`, `pushover`, `gotify`, `ntfy`, `apprise`, `mattermost`.
@@ -1135,6 +1136,18 @@ sections:
           - value: 'application/x-www-form-urlencoded'
         short: Content-Type header sent to webhook.
         desc: If your custom template uses another MIME type, set this.
+      - name: headers
+        envvar: HEADERS_
+        default: {}
+        kind: map
+        omit_compose: true
+        short: Extra HTTP headers sent with the webhook POST.
+        desc: |
+          Nested [webhook.0.headers] table. Header names are letters, digits, underscore, or hyphen.
+          Applied first; Content-Type and ntfy Authorization Bearer from token still win.
+          Env: UN_WEBHOOK_0_HEADERS_Authorization=Bearer token
+          [webhook.0.headers]
+          Authorization = "Bearer token"
 
   cmdhook:
     title: Command Hooks

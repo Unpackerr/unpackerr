@@ -737,6 +737,31 @@ func TestEnvSuffixesAndSecrets(t *testing.T) {
 	}
 }
 
+func TestEnvValueSecretHookHeaders(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{
+		"WEBHOOK_discord_HEADERS_Authorization",
+		"WEBHOOK_0_HEADERS_CF-Access-Client-Secret",
+		"WEBHOOK_ntfy_HEADERS_X-Api-Key",
+		"CMDHOOK_echo_HEADERS_Cookie",
+	} {
+		if !envValueSecret(name) {
+			t.Fatalf("expected secret %s", name)
+		}
+	}
+
+	for _, name := range []string{
+		"WEBHOOK_discord_HEADERS_Title",
+		"WEBHOOK_discord_HEADERS_CF-Access-Client-Id",
+		"WEBSERVER_SSL_KEY_FILE",
+	} {
+		if envValueSecret(name) {
+			t.Fatalf("unexpected secret %s", name)
+		}
+	}
+}
+
 func TestValidateSonarrSkipsShortAPIKey(t *testing.T) {
 	t.Parallel()
 

@@ -84,7 +84,8 @@
   let testElapsed = $state('')
   let testResult = $state<HookTestResult | null>(null)
   let createRow = $state<InstanceRow<WebhookConfig> | null>(null)
-  let guideRow = $state<InstanceRow<WebhookConfig> | null>(null)
+  let guideOpen = $state(false)
+  let guidePick = $state<DetectedHookTemplate>('notifiarr')
   let advancedOpen = $state<Record<string, boolean>>({})
 
   const canWrite = $derived(has(configPerm(section, 'write')))
@@ -177,6 +178,18 @@
       name: i18nOr('config.hooks.profile.' + name, name),
     })),
   ])
+
+  const GUIDE_TEMPLATES: readonly DetectedHookTemplate[] = [
+    ...HOOK_TEMPLATE_NAMES,
+    'custom',
+  ]
+
+  const guideChoices = $derived(
+    GUIDE_TEMPLATES.map((name) => ({
+      value: name,
+      name: i18nOr('config.hooks.profile.' + name, name),
+    })),
+  )
 
   function blank(): WebhookConfig {
     return {
@@ -506,16 +519,13 @@
     return i18nOr('config.hooks.' + field + '.' + part, '')
   }
 
-  function guideTitle(profile: HookFormProfile): string {
-    const name = i18nOr(
-      'config.hooks.profile.' + profile.template,
-      profile.template,
-    )
+  function guideTitle(template: DetectedHookTemplate): string {
+    const name = i18nOr('config.hooks.profile.' + template, template)
     return $_('config.hooks.guide.title', { values: { name } })
   }
 
-  function guideParagraphs(profile: HookFormProfile): string[] {
-    const key = 'config.hooks.guide.' + profile.template
+  function guideParagraphs(template: DetectedHookTemplate): string[] {
+    const key = 'config.hooks.guide.' + template
     const text = $_(key)
     if (!text || text === key) return []
     return text
@@ -561,15 +571,13 @@
     advancedOpen[row.id] = !isAdvancedOpen(row)
   }
 
-  const guideOpen = $derived(guideRow !== null)
-  const guideProfile = $derived(guideRow ? profileOf(guideRow.value) : null)
-
   function closeGuide() {
-    guideRow = null
+    guideOpen = false
   }
 
   function openGuide(row: InstanceRow<WebhookConfig>) {
-    guideRow = row
+    guidePick = profileOf(row.value).template
+    guideOpen = true
   }
 </script>
 
@@ -641,18 +649,6 @@
                 envVar={envField(envPrefix, slug, 'NAME')}
               />
             </Col>
-            <Col md="6">
-              <Input
-                id={`${section}-${row.id}-timeout`}
-                helpKey="config.hooks.timeout"
-                type="timeout"
-                label={$_('config.hooks.timeout.label')}
-                bind:value={hook.timeout}
-                original={prev?.timeout}
-                disabled={!canWrite || row.envOnly}
-                envVar={envField(envPrefix, slug, 'TIMEOUT')}
-              />
-            </Col>
             <Col md="12">
               <Input
                 id={`${section}-${row.id}-command`}
@@ -683,7 +679,19 @@
                 {/snippet}
               </Input>
             </Col>
-            <Col md="6">
+            <Col md="4">
+              <Input
+                id={`${section}-${row.id}-timeout`}
+                helpKey="config.hooks.timeout"
+                type="timeout"
+                label={$_('config.hooks.timeout.label')}
+                bind:value={hook.timeout}
+                original={prev?.timeout}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'TIMEOUT')}
+              />
+            </Col>
+            <Col md="4">
               <Input
                 id={`${section}-${row.id}-shell`}
                 helpKey="config.hooks.shell"
@@ -695,7 +703,7 @@
                 envVar={envField(envPrefix, slug, 'SHELL')}
               />
             </Col>
-            <Col md="6">
+            <Col md="4">
               <Input
                 id={`${section}-${row.id}-silent`}
                 helpKey="config.hooks.silent"
@@ -719,7 +727,7 @@
                 envVar={envField(envPrefix, slug, 'NAME')}
               />
             </Col>
-            <Col md="12">
+            <Col md="8">
               <Input
                 id={`${section}-${row.id}-url`}
                 helpKey="config.hooks.url"
@@ -747,20 +755,7 @@
                 {/snippet}
               </Input>
             </Col>
-            <Col md="12">
-              <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                <Badge color="info">{profileChip(profile)}</Badge>
-                <Button
-                  type="button"
-                  size="sm"
-                  color="secondary"
-                  outline
-                  on:click={() => openGuide(row)}
-                  >{$_('config.hooks.guide.button')}</Button
-                >
-              </div>
-            </Col>
-            <Col md="6">
+            <Col md="4">
               <Input
                 id={`${section}-${row.id}-timeout`}
                 helpKey="config.hooks.timeout"
@@ -771,6 +766,19 @@
                 disabled={!canWrite || row.envOnly}
                 envVar={envField(envPrefix, slug, 'TIMEOUT')}
               />
+            </Col>
+            <Col md="12">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <Badge color="info">{profileChip(profile)}</Badge>
+                <Button
+                  type="button"
+                  size="sm"
+                  color="primary"
+                  outline
+                  on:click={() => openGuide(row)}
+                  >{$_('config.hooks.guide.button')}</Button
+                >
+              </div>
             </Col>
             <Col md="6">
               <Input
@@ -849,7 +857,7 @@
               </Col>
             {/if}
             {#if hookShowsField(profile, 'token')}
-              <Col md="12">
+              <Col md="6">
                 <Input
                   id={`${section}-${row.id}-token`}
                   helpKey="config.hooks.token"
@@ -1083,20 +1091,24 @@
 </Modal>
 
 <Modal isOpen={guideOpen} toggle={closeGuide}>
-  <ModalHeader toggle={closeGuide}
-    >{guideProfile ? guideTitle(guideProfile) : $_('config.hooks.guide.button')}</ModalHeader
-  >
+  <ModalHeader toggle={closeGuide}>{guideTitle(guidePick)}</ModalHeader>
   <ModalBody>
-    {#if guideProfile}
-      {#each guideParagraphs(guideProfile) as para, i (i)}
-        <p class="mt-2 mb-0">
-          {#each inlineParts(para) as part, j (`${i}-${j}`)}
-            {#if part.code}<code>{part.text}</code>{:else}{part.text}{/if}
-          {/each}
-        </p>
-      {/each}
-      <p class="mt-3 mb-0">{$_('config.hooks.guide.test')}</p>
-    {/if}
+    <FormGroup>
+      <Label for="hook-guide-pick">{$_('config.hooks.guide.pick')}</Label>
+      <select id="hook-guide-pick" class="form-select" bind:value={guidePick}>
+        {#each guideChoices as choice (choice.value)}
+          <option value={choice.value}>{choice.name}</option>
+        {/each}
+      </select>
+    </FormGroup>
+    {#each guideParagraphs(guidePick) as para, i (i)}
+      <p class="mt-2 mb-0">
+        {#each inlineParts(para) as part, j (`${i}-${j}`)}
+          {#if part.code}<code>{part.text}</code>{:else}{part.text}{/if}
+        {/each}
+      </p>
+    {/each}
+    <p class="mt-3 mb-0">{$_('config.hooks.guide.test')}</p>
   </ModalBody>
   <ModalFooter>
     <Button color="warning" on:click={closeGuide}

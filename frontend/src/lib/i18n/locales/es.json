@@ -343,7 +343,7 @@
       "AddSection": "Añadir {section}",
       "AddFolder": "Añadir carpeta",
       "Key": "Clave",
-      "KeyLocked": "Nombre de esta instancia en el archivo de configuración, como [sonarr.uhd] o [folder.tv]. Se bloquea tras el primer guardado.",
+      "KeyLocked": "Nombre único de esta instancia en el archivo de configuración. Se bloquea tras el primer guardado.",
       "KeyTooltip": "Hace única cada instancia. No se usa en los registros ni en nada visible. También es el slug de entorno, como UN_SONARR_uhd_URL. Las claves distinguen mayúsculas.",
       "AddWebhook": "Añadir webhook",
       "AddCmdhook": "Añadir gancho de comando"
@@ -1012,6 +1012,7 @@
       },
       "guide": {
         "button": "Guía de configuración",
+        "pick": "Servicio",
         "title": "Guía de configuración: {name}",
         "test": "Después de guardar, pulsa Probar en el campo URL para enviar un payload de muestra.",
         "notifiarr": "En notifiarr.com abre Integraciones → Unpackerr y copia la URL del webhook.\n\nPégala aquí. Apodo, canal y token no se usan.\n\nCada evento de extracción es un payload JSON nuevo. Las URL desconocidas también usan esta plantilla.",

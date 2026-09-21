@@ -343,7 +343,7 @@
       "AddSection": "Add {section}",
       "AddFolder": "Add folder",
       "Key": "Key",
-      "KeyLocked": "Name of this instance in the config file, like [sonarr.uhd] or [folder.tv]. Locked after the first save.",
+      "KeyLocked": "Unique name of this instance in the config file. Locked after the first save.",
       "KeyTooltip": "Used to make each instance unique. Not used in logs or anywhere you'll see it. Also the env slug, such as UN_SONARR_uhd_URL. Keys are case-sensitive.",
       "AddWebhook": "Add webhook",
       "AddCmdhook": "Add command hook"
@@ -1012,6 +1012,7 @@
       },
       "guide": {
         "button": "Setup guide",
+        "pick": "Service",
         "title": "Setup guide: {name}",
         "test": "After you save, click Test on the URL field to send a sample payload.",
         "notifiarr": "On notifiarr.com open Integrations → Unpackerr and copy the webhook URL.\n\nPaste it here. Nickname, channel, and token are unused.\n\nEach extract event is a new JSON payload. Unknown URLs also use this template.",

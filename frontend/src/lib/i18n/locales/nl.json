@@ -343,7 +343,7 @@
       "AddSection": "{section} toevoegen",
       "AddFolder": "Map toevoegen",
       "Key": "Sleutel",
-      "KeyLocked": "Naam van deze instantie in het configuratiebestand, zoals [sonarr.uhd] of [folder.tv]. Vast na de eerste keer opslaan.",
+      "KeyLocked": "Unieke naam van deze instantie in het configuratiebestand. Vast na de eerste keer opslaan.",
       "KeyTooltip": "Maakt elke instantie uniek. Niet gebruikt in logs of ergens zichtbaar. Ook de env-slug, zoals UN_SONARR_uhd_URL. Sleutels zijn hoofdlettergevoelig.",
       "AddWebhook": "Webhook toevoegen",
       "AddCmdhook": "Opdracht-hook toevoegen"
@@ -1012,6 +1012,7 @@
       },
       "guide": {
         "button": "Installatiegids",
+        "pick": "Dienst",
         "title": "Installatiegids: {name}",
         "test": "Klik na het opslaan op Testen bij het URL-veld om een voorbeeldpayload te sturen.",
         "notifiarr": "Open op notifiarr.com Integraties → Unpackerr en kopieer de webhook-URL.\n\nPlak die hier. Bijnaam, kanaal en token worden niet gebruikt.\n\nElke extract-gebeurtenis is een nieuwe JSON-payload. Onbekende URL's gebruiken dit sjabloon ook.",

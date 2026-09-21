@@ -377,6 +377,10 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
+	u.upsertHistoryLocked(rec)
+}
+
+func (u *Unpackerr) upsertHistoryLocked(rec HistoryRecord) {
 	u.records = u.capHistoryLocked(mergeHistory(u.records, rec))
 	if len(u.records) == 0 {
 		return

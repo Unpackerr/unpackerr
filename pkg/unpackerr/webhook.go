@@ -12,8 +12,8 @@ import (
 	"golift.io/version"
 )
 
-func (u *Unpackerr) runAllHooks(item *Extract) {
-	if item.Status == IMPORTED && item.App == FolderString {
+func (u *Unpackerr) runAllHooks(itemID string, item *Extract) {
+	if item == nil || (item.Status == IMPORTED && item.App == FolderString) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
@@ -21,13 +21,13 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 
 	for _, hook := range u.hookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 
 	for _, hook := range u.cmdhookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 }
@@ -166,19 +166,16 @@ func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 }
 
 // recordHookFail increments the per-extract hook-failure counter.
-// Live queue items match Payload.Path; finished rows match history Path or ID.
-func (u *Unpackerr) recordHookFail(path string) {
-	if path == "" {
+// itemID is the Map key and history record ID (Starr title or folder path).
+func (u *Unpackerr) recordHookFail(itemID string) {
+	if itemID == "" {
 		return
 	}
 
 	u.lockHistory()
 
-	for itemID, item := range u.Map {
-		if item == nil || item.Path != path {
-			continue
-		}
-
+	item := u.Map[itemID]
+	if item != nil {
 		item.HookFail++
 		u.maybeRecordHistory(itemID, item)
 
@@ -192,32 +189,23 @@ func (u *Unpackerr) recordHookFail(path string) {
 	}
 
 	u.unlockHistory()
-	u.bumpHistoryHookFail(path)
+	u.bumpHistoryHookFail(itemID)
 }
 
-func (u *Unpackerr) bumpHistoryHookFail(path string) {
+func (u *Unpackerr) bumpHistoryHookFail(itemID string) {
 	u.histMu.Lock()
-
-	var rec HistoryRecord
-
-	found := false
+	defer u.histMu.Unlock()
 
 	for _, row := range u.records {
-		if row.Path != path && row.ID != path {
+		if row.ID != itemID {
 			continue
 		}
 
-		rec = row
+		rec := row
 		rec.HookFail++
-		found = true
+		u.upsertHistoryLocked(rec)
 
-		break
-	}
-
-	u.histMu.Unlock()
-
-	if found {
-		u.upsertHistory(rec)
+		return
 	}
 }
 

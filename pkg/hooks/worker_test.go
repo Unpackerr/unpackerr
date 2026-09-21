@@ -103,6 +103,14 @@ func TestWorkerDoneOnFailedCommand(t *testing.T) {
 	}
 }
 
+func TestWorkerRunSkipsNil(t *testing.T) {
+	t.Parallel()
+
+	if drainWorker(t, nil) != 1 {
+		t.Fatal("after")
+	}
+}
+
 func drainWorker(t *testing.T, items ...*Item) int32 {
 	t.Helper()
 

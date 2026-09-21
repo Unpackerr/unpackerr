@@ -5,10 +5,11 @@ import (
 )
 
 // History holds the history of extracted items.
-// mu guards Map, Finished, Retries, forgotten, per-item Status/Updated, Note, XProg
-// progress, and the Starr poll snapshot (Queue, lastQueued, lastRetrieved,
-// lastPolled, lastPollErr) so HTTP stats, queue snapshots, and Prometheus Collect cannot race
-// poll workers. It is not reentrant; do not lock inside a caller that already holds it.
+// mu guards Map, Finished, Retries, forgotten, per-item Status/Updated, Note,
+// HookFail, XProg progress, and the Starr poll snapshot (Queue, lastQueued,
+// lastRetrieved, lastPolled, lastPollErr) so HTTP stats, queue snapshots, and
+// Prometheus Collect cannot race poll workers. It is not reentrant; do not lock
+// inside a caller that already holds it.
 type History struct {
 	mu        sync.RWMutex
 	Finished  uint
@@ -21,8 +22,38 @@ func (h *History) lockHistory() {
 	h.mu.Lock()
 }
 
+// unlockHistory only drops the mutex. Unpackerr.unlockHistory shadows this
+// and flushes pendingHooks after the unlock.
 func (h *History) unlockHistory() {
 	h.mu.Unlock()
+}
+
+type pendingHook struct {
+	itemID string
+	item   Extract // status snapshot; Map can move on after History.mu drops.
+}
+
+// queuePendingHook records a hook to fire after History.mu is dropped.
+// Caller must hold History.mu.
+func (u *Unpackerr) queuePendingHook(itemID string, item *Extract) {
+	if item == nil {
+		return
+	}
+
+	u.pendingHooks = append(u.pendingHooks, pendingHook{itemID: itemID, item: *item})
+}
+
+// unlockHistory drops History.mu then delivers any hooks queued while it was
+// held. Enqueue can block on a full worker; the worker's Done must be able to
+// take History.mu, so this cannot run under the lock.
+func (u *Unpackerr) unlockHistory() {
+	pending := u.pendingHooks
+	u.pendingHooks = nil
+	u.History.unlockHistory()
+
+	for i := range pending {
+		u.runAllHooks(pending[i].itemID, &pending[i].item)
+	}
 }
 
 func (h *History) rLockHistory() {

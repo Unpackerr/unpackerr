@@ -542,7 +542,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 		u.copyFolderExtractLocked(data.Name, u.Map[data.Name])
 
 		if sendHook {
-			u.runAllHooks(u.Map[data.Name])
+			u.queuePendingHook(data.Name, u.Map[data.Name])
 		}
 
 		u.notifyQueueLocked()
@@ -564,7 +564,7 @@ func (u *Unpackerr) updateQueueStatus(data *newStatus, now time.Time, sendHook b
 	u.copyFolderExtractLocked(data.Name, u.Map[data.Name])
 
 	if sendHook {
-		u.runAllHooks(u.Map[data.Name])
+		u.queuePendingHook(data.Name, u.Map[data.Name])
 	}
 
 	u.maybeRecordHistory(data.Name, u.Map[data.Name])

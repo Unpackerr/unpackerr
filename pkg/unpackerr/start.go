@@ -66,15 +66,16 @@ type Unpackerr struct {
 	*Config
 	*History
 	*xtractr.Xtractr
-	metrics    *metrics
-	folders    *Folders
-	sigChan    chan os.Signal
-	updates    chan *xtractr.Response
-	progChan   chan *ExtractProgress
-	hookWorker *hooks.Worker
-	delChan    chan *fileDeleteReq
-	taskChan   chan *mainTask // HTTP hands config applies and queue actions to Run().
-	workChan   chan []func()
+	metrics      *metrics
+	folders      *Folders
+	sigChan      chan os.Signal
+	updates      chan *xtractr.Response
+	progChan     chan *ExtractProgress
+	hookWorker   *hooks.Worker
+	pendingHooks []pendingHook // filled under History.mu; flushed in unlockHistory.
+	delChan      chan *fileDeleteReq
+	taskChan     chan *mainTask // HTTP hands config applies and queue actions to Run().
+	workChan     chan []func()
 	*Logger
 	rotatorr *rotatorr.Logger
 	httpLog  *rotatorr.Logger
@@ -397,17 +398,15 @@ func (u *Unpackerr) ensureHookWorker() {
 }
 
 // queueHook publishes a hook and counts it in flight. See queueDelete.
-func (u *Unpackerr) queueHook(item *hooks.Item) {
-	if item != nil {
-		path := ""
-		if item.Payload != nil {
-			path = item.Path
-		}
+// itemID is the Map/history key (Starr title or folder path), not Payload.Path.
+func (u *Unpackerr) queueHook(itemID string, item *hooks.Item) {
+	if item == nil {
+		return
+	}
 
-		item.Done = func(err error) {
-			if err != nil {
-				u.recordHookFail(path)
-			}
+	item.Done = func(err error) {
+		if err != nil {
+			u.recordHookFail(itemID)
 		}
 	}
 

@@ -190,6 +190,113 @@ func TestRecordHookFailIncrementsLiveAndHistory(t *testing.T) {
 	}
 }
 
+func TestRecordHookFailUsesMapIDNotPath(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Map["Show A"] = &Extract{Path: "/shared", App: starr.Sonarr, Status: EXTRACTING}
+	unpack.Map["Show B"] = &Extract{Path: "/shared", App: starr.Sonarr, Status: EXTRACTING}
+
+	unpack.recordHookFail("Show B")
+
+	if unpack.Map["Show A"].HookFail != 0 {
+		t.Fatal("same-path neighbor must not increment")
+	}
+
+	if unpack.Map["Show B"].HookFail != 1 {
+		t.Fatalf("live %d", unpack.Map["Show B"].HookFail)
+	}
+}
+
+func TestRecordHookFailHistoryMatchesID(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.upsertHistory(HistoryRecord{ID: "old", Path: "/shared", Status: IMPORTED, HookFail: 1})
+	unpack.upsertHistory(HistoryRecord{ID: "new", Path: "/shared", Status: IMPORTED})
+
+	unpack.recordHookFail("new")
+
+	var oldFail, newFail uint
+
+	for _, rec := range unpack.records {
+		switch rec.ID {
+		case "old":
+			oldFail = rec.HookFail
+		case "new":
+			newFail = rec.HookFail
+		}
+	}
+
+	if oldFail != 1 || newFail != 1 {
+		t.Fatalf("old %d new %d", oldFail, newFail)
+	}
+}
+
+func TestRecordHookFailDoesNotResurrectDeleted(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.upsertHistory(HistoryRecord{ID: "gone", Path: "/dl/gone", Status: IMPORTED, HookFail: 1})
+
+	if err := unpack.deleteHistoryID("gone"); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.recordHookFail("gone")
+
+	if len(unpack.records) != 0 {
+		t.Fatalf("resurrected %+v", unpack.records)
+	}
+}
+
+func TestPendingHooksFlushAfterUnlock(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	now := time.Now()
+
+	unpack.lockHistory()
+	unpack.updateQueueStatus(&newStatus{Name: "/dl/folder", Status: QUEUED}, now, true)
+	unpack.updateQueueStatus(&newStatus{Name: "/dl/folder", Status: EXTRACTING}, now, true)
+
+	if len(unpack.pendingHooks) != 2 {
+		t.Fatalf("pending %d", len(unpack.pendingHooks))
+	}
+
+	if unpack.pendingHooks[0].item.Status != QUEUED || unpack.pendingHooks[1].item.Status != EXTRACTING {
+		t.Fatalf("snapshots %s %s", unpack.pendingHooks[0].item.Status, unpack.pendingHooks[1].item.Status)
+	}
+
+	if unpack.Map["/dl/folder"].Status != EXTRACTING {
+		t.Fatal("live extract moved on")
+	}
+
+	unpack.unlockHistory()
+
+	if len(unpack.pendingHooks) != 0 {
+		t.Fatalf("flushed %d", len(unpack.pendingHooks))
+	}
+}
+
+func TestQueueHookIgnoresNil(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.queueHook("Show A", nil)
+
+	if unpack.inFlight.Load() != 0 {
+		t.Fatalf("in-flight %d", unpack.inFlight.Load())
+	}
+
+	if unpack.hookWorker.Len() != 0 {
+		t.Fatalf("queued %d", unpack.hookWorker.Len())
+	}
+}
+
 func TestRecordHookFailIgnoresEmptyPath(t *testing.T) {
 	t.Parallel()
 

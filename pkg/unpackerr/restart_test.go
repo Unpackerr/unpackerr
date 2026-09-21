@@ -40,6 +40,23 @@ func TestIdleBlocksOnInFlightWork(t *testing.T) {
 	}
 }
 
+func TestIdleBlocksOnPendingHookFails(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.reportHookFail("Show A")
+
+	if unpack.idle() {
+		t.Fatal("queued hook failures must block a restart")
+	}
+
+	unpack.drainHookFails()
+
+	if !unpack.idle() {
+		t.Fatal("drained hook failures must not block")
+	}
+}
+
 func TestMaybeRestartWaitsForIdle(t *testing.T) {
 	t.Parallel()
 

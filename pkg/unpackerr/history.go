@@ -44,8 +44,7 @@ func (u *Unpackerr) queuePendingHook(itemID string, item *Extract) {
 }
 
 // unlockHistory drops History.mu then delivers any hooks queued while it was
-// held. Enqueue can block on a full worker; the worker's Done must be able to
-// take History.mu, so this cannot run under the lock.
+// held. Enqueue can block on a full worker, so this cannot run under the lock.
 func (u *Unpackerr) unlockHistory() {
 	pending := u.pendingHooks
 	u.pendingHooks = nil

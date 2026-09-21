@@ -301,6 +301,25 @@ func TestReportHookFailWaitsForDrain(t *testing.T) {
 	}
 }
 
+func TestRecordHookFailBumpsHistoryWhenWaiting(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.upsertHistory(HistoryRecord{ID: "Show", Path: "/shared", Status: EXTRACTFAILED, HookFail: 1})
+	unpack.Map["Show"] = &Extract{Path: "/shared", App: starr.Sonarr, Status: WAITING, HookFail: 1}
+
+	unpack.recordHookFail("Show")
+
+	if unpack.Map["Show"].HookFail != 2 {
+		t.Fatalf("live %d", unpack.Map["Show"].HookFail)
+	}
+
+	if len(unpack.records) != 1 || unpack.records[0].Status != EXTRACTFAILED || unpack.records[0].HookFail != 2 {
+		t.Fatalf("checkpoint %+v", unpack.records)
+	}
+}
+
 func TestBumpHistoryHookFailSkipsWhenHistoryOff(t *testing.T) {
 	t.Parallel()
 

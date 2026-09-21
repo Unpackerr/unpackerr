@@ -182,6 +182,13 @@ func (u *Unpackerr) reportHookFail(itemID string) {
 	}
 }
 
+func (u *Unpackerr) hasPendingHookFails() bool {
+	u.hookFailMu.Lock()
+	defer u.hookFailMu.Unlock()
+
+	return len(u.hookFails) > 0
+}
+
 func (u *Unpackerr) drainHookFails() {
 	u.hookFailMu.Lock()
 	ids := u.hookFails
@@ -212,7 +219,13 @@ func (u *Unpackerr) recordHookFail(itemID string) {
 			u.hub.notifyProgress(u.queueFromExtract(itemID, item))
 		}
 
+		persistable := isPersistedHistory(item)
+
 		u.History.unlockHistory()
+
+		if !persistable {
+			u.bumpHistoryHookFail(itemID)
+		}
 
 		return
 	}

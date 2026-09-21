@@ -137,6 +137,7 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		Syncthing:  rec.Syncthing,
 		SplitFlac:  rec.SplitFlac,
 		Retries:    rec.Retries,
+		HookFail:   rec.HookFail,
 		Path:       rec.Path,
 		OutputPath: rec.OutputPath,
 		App:        starr.App(kind),

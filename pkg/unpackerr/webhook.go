@@ -165,6 +165,62 @@ func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	return hooks.CountAll(u.cmdhookList())
 }
 
+// recordHookFail increments the per-extract hook-failure counter.
+// Live queue items match Payload.Path; finished rows match history Path or ID.
+func (u *Unpackerr) recordHookFail(path string) {
+	if path == "" {
+		return
+	}
+
+	u.lockHistory()
+
+	for itemID, item := range u.Map {
+		if item == nil || item.Path != path {
+			continue
+		}
+
+		item.HookFail++
+		u.maybeRecordHistory(itemID, item)
+
+		if u.hub != nil {
+			u.hub.notifyProgress(u.queueFromExtract(itemID, item))
+		}
+
+		u.unlockHistory()
+
+		return
+	}
+
+	u.unlockHistory()
+	u.bumpHistoryHookFail(path)
+}
+
+func (u *Unpackerr) bumpHistoryHookFail(path string) {
+	u.histMu.Lock()
+
+	var rec HistoryRecord
+
+	found := false
+
+	for _, row := range u.records {
+		if row.Path != path && row.ID != path {
+			continue
+		}
+
+		rec = row
+		rec.HookFail++
+		found = true
+
+		break
+	}
+
+	u.histMu.Unlock()
+
+	if found {
+		u.upsertHistory(rec)
+	}
+}
+
 func (u *Unpackerr) sampleWebhook(event extract.Status) error {
 	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", event)
 
@@ -176,7 +232,7 @@ func (u *Unpackerr) sampleWebhook(event extract.Status) error {
 	u.decorateSamplePayload(payload, event)
 
 	for _, hook := range instanceValues(u.Webhook) {
-		hooks.SendWithLog(u.Logger, hook, payload)
+		_ = hooks.SendWithLog(u.Logger, hook, payload)
 	}
 
 	return nil

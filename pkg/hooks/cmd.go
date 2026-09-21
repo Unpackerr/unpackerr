@@ -13,7 +13,7 @@ import (
 	"golift.io/cnfg"
 )
 
-func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) {
+func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) error {
 	out, err := runCmd(context.Background(), hook, payload)
 
 	hook.Lock() // we only lock for the integer increments.
@@ -30,6 +30,8 @@ func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) {
 		log.Printf("[Cmdhook] Queue: %d/%d. Ran command %s: %s",
 			qlen, qcap, hook.Name, strings.TrimSpace(out.String()))
 	}
+
+	return err
 }
 
 func runCmd(ctx context.Context, hook *Config, payload *Payload) (*bytes.Buffer, error) {

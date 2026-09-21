@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -133,5 +134,70 @@ func TestHookPayloadRetriesAndEventTitle(t *testing.T) {
 	plain := hookUnpackerr(HooksConfig{}).hookPayload(&Extract{Status: EXTRACTED})
 	if plain.EventTitle != EXTRACTED.Desc() {
 		t.Fatalf("default title %q", plain.EventTitle)
+	}
+}
+
+func TestRecordHookFailIncrementsLiveAndHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.Map["/dl/show"] = &Extract{
+		Path:    "/dl/show",
+		App:     starr.Sonarr,
+		Status:  EXTRACTING,
+		Updated: time.Now(),
+	}
+
+	unpack.recordHookFail("/dl/show")
+
+	if unpack.Map["/dl/show"].HookFail != 1 {
+		t.Fatalf("live %d", unpack.Map["/dl/show"].HookFail)
+	}
+
+	queue := unpack.queueFromExtract("/dl/show", unpack.Map["/dl/show"])
+	if queue.HookFail != 1 {
+		t.Fatalf("queue %d", queue.HookFail)
+	}
+
+	unpack.recordHookFail("/dl/show")
+
+	if unpack.Map["/dl/show"].HookFail != 2 {
+		t.Fatalf("live 2: %d", unpack.Map["/dl/show"].HookFail)
+	}
+
+	found := false
+
+	for _, rec := range unpack.records {
+		if rec.Path == "/dl/show" && rec.HookFail == 2 {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("history checkpoint %+v", unpack.records)
+	}
+
+	unpack.upsertHistory(HistoryRecord{ID: "/dl/old", Path: "/dl/old", Status: IMPORTED, HookFail: 1})
+	delete(unpack.Map, "/dl/show")
+	unpack.recordHookFail("/dl/old")
+
+	snap := unpack.historySnapshot()
+	if len(snap) == 0 || snap[0].Path != "/dl/old" || snap[0].HookFail != 2 {
+		t.Fatalf("finished history %+v", snap)
+	}
+}
+
+func TestRecordHookFailIgnoresEmptyPath(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Map["/dl"] = &Extract{Path: "/dl"}
+	unpack.recordHookFail("")
+
+	if unpack.Map["/dl"].HookFail != 0 {
+		t.Fatal("empty path must not bump")
 	}
 }

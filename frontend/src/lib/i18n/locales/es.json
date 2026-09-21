@@ -273,6 +273,7 @@
       "Archive": "Archivo",
       "Queue": "Cola de extracción",
       "Retries": "Reintentos",
+      "HookFail": "Fallos de hook",
       "Note": "Nota",
       "Error": "Error",
       "ExtractedFiles": "Archivos extraídos",

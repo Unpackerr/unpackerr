@@ -398,6 +398,19 @@ func (u *Unpackerr) ensureHookWorker() {
 
 // queueHook publishes a hook and counts it in flight. See queueDelete.
 func (u *Unpackerr) queueHook(item *hooks.Item) {
+	if item != nil {
+		path := ""
+		if item.Payload != nil {
+			path = item.Path
+		}
+
+		item.Done = func(err error) {
+			if err != nil {
+				u.recordHookFail(path)
+			}
+		}
+	}
+
 	u.inFlight.Add(1)
 
 	u.hookWorker.Enqueue(item)

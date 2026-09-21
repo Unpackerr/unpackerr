@@ -56,3 +56,19 @@ func TestDetectNamedBeatsTemplatePath(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestDetectTransportIgnoresTemplatePath(t *testing.T) {
+	t.Parallel()
+
+	if got := Detect("", "https://ntfy.sh/unpackerr", "/tmp/custom.tmpl"); got.Name != ProfileCustom {
+		t.Fatalf("body %q", got.Name)
+	}
+
+	if got := DetectTransport("", "https://ntfy.sh/unpackerr"); got.Name != ProfileNtfy {
+		t.Fatalf("transport %q", got.Name)
+	}
+
+	if got := DetectTransport("discord", "https://ntfy.sh/unpackerr"); got.Name != ProfileDiscord {
+		t.Fatalf("named %q", got.Name)
+	}
+}

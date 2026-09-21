@@ -309,8 +309,8 @@ const WebhookTemplateApprise = `{
 
 // WebhookTemplateMattermost is an incoming-webhook payload for homelab Mattermost.
 const WebhookTemplateMattermost = `{
-  "username": "{{nickname}}",
-  {{if channel}}"channel": "{{channel}}",{{end}}
+  "username": {{encode (nickname)}},
+  {{if channel}}"channel": {{encode (channel)}},{{end}}
   "icon_url": "https://unpackerr.zip/img/icon.png",
   "text": "#### Unpackerr: {{rawencode .Title}}  \n` +
 	`**{{rawencode (index .IDs "title")}}**  \n*App*: {{rawencode .App}}  \n*Path*: {{rawencode .Path -}}

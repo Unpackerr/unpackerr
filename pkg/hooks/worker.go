@@ -35,7 +35,9 @@ func (w *Worker) Cap() int { return cap(w.queue) }
 // Run delivers queued hooks until the queue is closed. after runs after each item.
 func (w *Worker) Run(log Logger, after func()) {
 	for item := range w.queue {
-		item.run(log, w)
+		if item != nil {
+			item.run(log, w)
+		}
 
 		if after != nil {
 			after()

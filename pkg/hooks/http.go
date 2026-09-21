@@ -59,7 +59,7 @@ func (w *Config) send(ctx context.Context, body io.Reader) ([]byte, error) {
 func (w *Config) setRequestHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", w.CType)
 
-	if Detect(w.TempName, w.URL, w.TmplPath).Name != ProfileNtfy {
+	if DetectTransport(w.TempName, w.URL).Name != ProfileNtfy {
 		return
 	}
 

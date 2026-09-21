@@ -63,3 +63,11 @@ func (h *History) rLockHistory() {
 func (h *History) rUnlockHistory() {
 	h.mu.RUnlock()
 }
+
+// deleteExtract removes a live extract and drops its worker message-id cache.
+// Caller must hold History.mu.
+func (u *Unpackerr) deleteExtract(itemID string) {
+	live := u.Map[itemID]
+	delete(u.Map, itemID)
+	u.dropHookMessages(itemID, live)
+}

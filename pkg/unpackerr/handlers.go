@@ -84,7 +84,7 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 			switch elapsed := now.Sub(data.Updated); {
 			case data.Status == WAITING:
 				// A waiting item just fell out of the queue. We never extracted it. Remove it and move on.
-				delete(u.Map, name)
+				u.deleteExtract(name)
 				u.Printf("[%v] Imported: %v (not extracted, removing from history)", data.Label(), name)
 				u.notifyQueueLocked()
 			case data.Status > IMPORTED:
@@ -279,7 +279,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 		case item.Status == DELETED && elapsed >= item.DeleteDelay:
 			// Remove the item from history some time after it's deleted.
 			u.Finished++
-			delete(u.Map, name)
+			u.deleteExtract(name)
 			u.Printf("[%s] Finished, Removed History: %v", item.Label(), name)
 			u.notifyQueueLocked()
 		case item.App == FolderString:

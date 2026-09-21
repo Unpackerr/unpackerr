@@ -419,9 +419,9 @@ func TestStoreHookMessageWaitsForDrain(t *testing.T) {
 	unpack := New()
 	live := &Extract{Path: "/dl/show", App: starr.Sonarr, Status: EXTRACTING}
 	unpack.Map["/dl/show"] = live
-	unpack.seedHookMessages("/dl/show", map[string]string{"discord-1": "old"})
+	unpack.seedHookMessages("/dl/show", map[string]string{"discord-1": "old"}, live)
 
-	if unpack.lookupHookMessage("/dl/show", "discord-1") != "old" {
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "old" {
 		t.Fatal("seed")
 	}
 
@@ -431,7 +431,7 @@ func TestStoreHookMessageWaitsForDrain(t *testing.T) {
 		t.Fatal("worker must not persist")
 	}
 
-	if unpack.lookupHookMessage("/dl/show", "discord-1") != "msg-1" {
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "msg-1" {
 		t.Fatal("fifo lookup")
 	}
 
@@ -445,7 +445,7 @@ func TestStoreHookMessageWaitsForDrain(t *testing.T) {
 		t.Fatalf("drained %+v", live.HookMessages)
 	}
 
-	if unpack.lookupHookMessage("/dl/show", "discord-1") != "msg-1" {
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "msg-1" {
 		t.Fatal("cache after drain")
 	}
 }
@@ -481,7 +481,7 @@ func TestQueueHookUsesInstanceSlug(t *testing.T) {
 		t.Fatal("worker must not persist")
 	}
 
-	if unpack.lookupHookMessage("Show", "discord-1") != "msg-1" {
+	if unpack.lookupHookMessage("Show", "discord-1", live) != "msg-1" {
 		t.Fatal("fifo lookup")
 	}
 
@@ -493,5 +493,57 @@ func TestQueueHookUsesInstanceSlug(t *testing.T) {
 
 	if _, ok := live.HookMessages[hookURL]; ok {
 		t.Fatal("url must not be the key")
+	}
+}
+
+func TestHookMsgsDoesNotReuseStaleID(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	old := &Extract{Path: "/dl/show"}
+	unpack.Map["Show"] = old
+	unpack.storeHookMessage("Show", "discord-1", "old-msg", old)
+	unpack.drainHookMessages()
+	unpack.deleteExtract("Show")
+
+	if unpack.lookupHookMessage("Show", "discord-1", old) != "" {
+		t.Fatal("finished extract must evict the cache")
+	}
+
+	newer := &Extract{Path: "/dl/show"}
+	unpack.Map["Show"] = newer
+	unpack.seedHookMessages("Show", nil, newer)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("new extract must not edit the previous message")
+	}
+
+	unpack.storeHookMessage("Show", "discord-1", "late", old)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("late save must not overwrite the new extract")
+	}
+
+	if newer.HookMessages["discord-1"] == "late" {
+		t.Fatal("late save must not persist onto the new extract")
+	}
+}
+
+func TestSeedReplacesMismatchedHookMsgOwner(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	old := &Extract{Path: "/dl/show"}
+	newer := &Extract{Path: "/dl/show"}
+
+	unpack.storeHookMessage("Show", "discord-1", "old-msg", old)
+	unpack.seedHookMessages("Show", nil, newer)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("seed must drop a stale owner even without deleteExtract")
+	}
+
+	if unpack.lookupHookMessage("Show", "discord-1", old) != "" {
+		t.Fatal("old extract must not keep the replaced cache")
 	}
 }

@@ -17,7 +17,7 @@ func (u *Unpackerr) runAllHooks(itemID string, item, live *Extract) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
-	u.seedHookMessages(itemID, item.HookMessages)
+	u.seedHookMessages(itemID, item.HookMessages, live)
 
 	payload := u.hookPayload(item)
 
@@ -278,10 +278,30 @@ type hookMsgSave struct {
 	live               *Extract
 }
 
-// seedHookMessages copies restored ids into the worker-visible cache.
-// Existing keys win so a FIFO SaveID is not overwritten by a stale snapshot.
-func (u *Unpackerr) seedHookMessages(itemID string, msgs map[string]string) {
-	if itemID == "" || len(msgs) == 0 {
+type hookMsgCache struct {
+	live *Extract
+	msgs map[string]string
+}
+
+func hookMsgsMap(msgs map[string]string) map[string]string {
+	cloned := maps.Clone(msgs)
+	if cloned == nil {
+		return map[string]string{}
+	}
+
+	return cloned
+}
+
+func (c *hookMsgCache) ownedBy(live *Extract) bool {
+	return c != nil && (live == nil || c.live == nil || c.live == live)
+}
+
+// seedHookMessages copies restored ids into the worker-visible cache for live.
+// A different live extract replaces the cache so a reused title/path cannot
+// edit the previous extract's Discord/Telegram message. Existing keys win so a
+// FIFO SaveID is not overwritten by a stale snapshot of the same extract.
+func (u *Unpackerr) seedHookMessages(itemID string, msgs map[string]string, live *Extract) {
+	if itemID == "" {
 		return
 	}
 
@@ -289,13 +309,22 @@ func (u *Unpackerr) seedHookMessages(itemID string, msgs map[string]string) {
 	defer u.hookMsgMu.Unlock()
 
 	if u.hookMsgs == nil {
-		u.hookMsgs = map[string]map[string]string{}
+		u.hookMsgs = map[string]*hookMsgCache{}
 	}
 
-	if u.hookMsgs[itemID] == nil {
-		u.hookMsgs[itemID] = maps.Clone(msgs)
+	cache := u.hookMsgs[itemID]
+	if !cache.ownedBy(live) {
+		u.hookMsgs[itemID] = &hookMsgCache{live: live, msgs: hookMsgsMap(msgs)}
 
 		return
+	}
+
+	if cache.live == nil {
+		cache.live = live
+	}
+
+	if cache.msgs == nil {
+		cache.msgs = map[string]string{}
 	}
 
 	for key, msgID := range msgs {
@@ -303,13 +332,13 @@ func (u *Unpackerr) seedHookMessages(itemID string, msgs map[string]string) {
 			continue
 		}
 
-		if _, ok := u.hookMsgs[itemID][key]; !ok {
-			u.hookMsgs[itemID][key] = msgID
+		if _, ok := cache.msgs[key]; !ok {
+			cache.msgs[key] = msgID
 		}
 	}
 }
 
-func (u *Unpackerr) lookupHookMessage(itemID, key string) string {
+func (u *Unpackerr) lookupHookMessage(itemID, key string, live *Extract) string {
 	if itemID == "" || key == "" {
 		return ""
 	}
@@ -317,11 +346,12 @@ func (u *Unpackerr) lookupHookMessage(itemID, key string) string {
 	u.hookMsgMu.Lock()
 	defer u.hookMsgMu.Unlock()
 
-	if msgs := u.hookMsgs[itemID]; msgs != nil {
-		return msgs[key]
+	cache := u.hookMsgs[itemID]
+	if !cache.ownedBy(live) || cache.msgs == nil {
+		return ""
 	}
 
-	return ""
+	return cache.msgs[key]
 }
 
 // storeHookMessage records an id for the next FIFO LookupID, then wakes the
@@ -334,14 +364,28 @@ func (u *Unpackerr) storeHookMessage(itemID, key, msgID string, live *Extract) {
 	u.hookMsgMu.Lock()
 
 	if u.hookMsgs == nil {
-		u.hookMsgs = map[string]map[string]string{}
+		u.hookMsgs = map[string]*hookMsgCache{}
 	}
 
-	if u.hookMsgs[itemID] == nil {
-		u.hookMsgs[itemID] = map[string]string{}
+	cache := u.hookMsgs[itemID]
+	if cache != nil && !cache.ownedBy(live) {
+		u.hookMsgMu.Unlock()
+
+		return
 	}
 
-	u.hookMsgs[itemID][key] = msgID
+	if cache == nil {
+		cache = &hookMsgCache{live: live, msgs: map[string]string{}}
+		u.hookMsgs[itemID] = cache
+	} else if cache.live == nil {
+		cache.live = live
+	}
+
+	if cache.msgs == nil {
+		cache.msgs = map[string]string{}
+	}
+
+	cache.msgs[key] = msgID
 	u.hookMsgSaves = append(u.hookMsgSaves, hookMsgSave{
 		itemID: itemID, key: key, msgID: msgID, live: live,
 	})
@@ -350,6 +394,19 @@ func (u *Unpackerr) storeHookMessage(itemID, key, msgID string, live *Extract) {
 	select {
 	case u.hookMsgWake <- struct{}{}:
 	default:
+	}
+}
+
+func (u *Unpackerr) dropHookMessages(itemID string, live *Extract) {
+	if itemID == "" {
+		return
+	}
+
+	u.hookMsgMu.Lock()
+	defer u.hookMsgMu.Unlock()
+
+	if cache := u.hookMsgs[itemID]; cache.ownedBy(live) {
+		delete(u.hookMsgs, itemID)
 	}
 }
 

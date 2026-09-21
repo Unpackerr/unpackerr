@@ -76,9 +76,9 @@ type Unpackerr struct {
 	hookFails    []string      // item IDs from the hook worker; drained in Run().
 	hookFailWake chan struct{} // coalesced wake so Done never blocks on a full hook queue.
 	hookFailMu   sync.Mutex
-	hookMsgs     map[string]map[string]string // worker-visible message ids; keyed itemID then slug.
-	hookMsgSaves []hookMsgSave                // persist queue; drained in Run().
-	hookMsgWake  chan struct{}                // coalesced wake; SaveID must not block on Enqueue.
+	hookMsgs     map[string]*hookMsgCache // worker-visible ids; keyed itemID, owned by live extract.
+	hookMsgSaves []hookMsgSave            // persist queue; drained in Run().
+	hookMsgWake  chan struct{}            // coalesced wake; SaveID must not block on Enqueue.
 	hookMsgMu    sync.Mutex
 	delChan      chan *fileDeleteReq
 	taskChan     chan *mainTask // HTTP hands config applies and queue actions to Run().
@@ -422,7 +422,7 @@ func (u *Unpackerr) queueHook(itemID, slug string, live *Extract, item *hooks.It
 
 	if slug != "" {
 		item.LookupID = func() string {
-			return u.lookupHookMessage(itemID, slug)
+			return u.lookupHookMessage(itemID, slug, live)
 		}
 
 		item.SaveID = func(msgID string) {

@@ -319,7 +319,7 @@ func (u *Unpackerr) seedFolderTracker() {
 			continue
 		}
 
-		delete(u.Map, itemID)
+		u.deleteExtract(itemID)
 
 		dropped = true
 	}

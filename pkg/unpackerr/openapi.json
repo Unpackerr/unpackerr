@@ -495,7 +495,7 @@
         "required": ["path", "template"],
         "properties": {
           "path": {"type": "string", "description": "Destination file; basename must be unpackerr-webhook-<template>.tmpl"},
-          "template": {"type": "string", "enum": ["notifiarr", "discord", "telegram", "slack", "pushover", "gotify"]}
+          "template": {"type": "string", "enum": ["notifiarr", "discord", "telegram", "slack", "pushover", "gotify", "ntfy", "apprise", "mattermost"]}
         }
       },
       "BrowseTemplateResult": {

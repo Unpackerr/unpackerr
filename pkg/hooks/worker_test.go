@@ -211,3 +211,83 @@ func readFile(t *testing.T, path string) []byte {
 
 	return data
 }
+
+func TestNtfySendsBearerToken(t *testing.T) {
+	t.Parallel()
+
+	var gotAuth, gotType string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+		gotAuth = req.Header.Get("Authorization")
+		gotType = req.Header.Get("Content-Type")
+
+		writer.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	hook := &Config{
+		Name:     "ntfy",
+		URL:      srv.URL,
+		TempName: ProfileNtfy,
+		Token:    "secret",
+		CType:    "application/json",
+		Timeout:  cnfg.Duration{Duration: time.Second},
+		Silent:   true,
+	}
+	if err := ValidateWebhooks([]*Config{hook}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := hook.Send(strings.NewReader(`{"title":"hi"}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	if gotAuth != "Bearer secret" {
+		t.Fatalf("Authorization %q", gotAuth)
+	}
+
+	if gotType != "application/json" {
+		t.Fatalf("Content-Type %q", gotType)
+	}
+}
+
+func TestNtfyCustomTemplateSendsBearerToken(t *testing.T) {
+	t.Parallel()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://ntfy.sh/unpackerr", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hook := &Config{
+		URL:      "https://ntfy.sh/unpackerr",
+		TmplPath: "/tmp/custom.tmpl",
+		Token:    "secret",
+		CType:    "application/json",
+	}
+	hook.setRequestHeaders(req)
+
+	if got := req.Header.Get("Authorization"); got != "Bearer secret" {
+		t.Fatalf("Authorization %q", got)
+	}
+}
+
+func TestPushoverCustomTemplateKeepsFormContentType(t *testing.T) {
+	t.Parallel()
+
+	hook := &Config{
+		URL:      "https://api.pushover.net/1/messages.json",
+		TmplPath: "/tmp/custom.tmpl",
+	}
+	if err := ValidateWebhooks([]*Config{hook}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if hook.CType != "application/x-www-form-urlencoded" {
+		t.Fatalf("CType %q", hook.CType)
+	}
+
+	if hook.Nickname != "" {
+		t.Fatalf("nickname %q", hook.Nickname)
+	}
+}

@@ -275,13 +275,82 @@ const WebhookTemplateSlack = `
 }
 `
 
+// WebhookTemplateNtfy POSTs JSON at a topic URL (ntfy.sh or a self-hosted ntfy).
+const WebhookTemplateNtfy = `{
+  "title": {{encode (print (or (nickname) "Unpackerr") ": " .Title)}},
+  "message": "**App**: {{rawencode .App}}  \n` +
+	`**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
+    {{ if .Data }}{{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives }}  \n**Archives**: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files }}  \n**Files**: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes }}  \n**Size**: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5) }}  \n**Queue**: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}  \n**ERROR**: {{rawencode .Data.Error}}{{end}}{{end}}",
+  "priority": {{ if or (eq 3 .Event) (eq 7 .Event) }}5{{ else }}3{{ end }},
+  "tags": ["unpackerr"{{ if or (eq 3 .Event) (eq 7 .Event) }},"warning"{{ else }},"white_check_mark"{{ end }}]
+}
+`
+
+// WebhookTemplateApprise POSTs {title, body, type} at apprise-api /notify.
+const WebhookTemplateApprise = `{
+  "title": {{encode (print (or (nickname) "Unpackerr") ": " .Title)}},
+  "body": "**App**: {{rawencode .App}}  \n` +
+	`**Name**: {{rawencode (index .IDs "title")}}  \n**Path**: {{rawencode .Path -}}
+    {{ if .Data }}{{ if .Data.Elapsed.Duration }}  \n**Elapsed**: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives }}  \n**Archives**: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files }}  \n**Files**: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes }}  \n**Size**: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5) }}  \n**Queue**: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}  \n**ERROR**: {{rawencode .Data.Error}}{{end}}{{end}}",
+  "type": {{ if or (eq 3 .Event) (eq 7 .Event) }}"failure"` +
+	`{{ else if or (eq 4 .Event) (eq 5 .Event) (eq 8 .Event) }}"success"{{ else }}"info"{{ end }}
+}
+`
+
+// WebhookTemplateMattermost is an incoming-webhook payload for homelab Mattermost.
+const WebhookTemplateMattermost = `{
+  "username": {{encode (nickname)}},
+  {{if channel}}"channel": {{encode (channel)}},{{end}}
+  "icon_url": "https://unpackerr.zip/img/icon.png",
+  "text": "#### Unpackerr: {{rawencode .Title}}  \n` +
+	`**{{rawencode (index .IDs "title")}}**  \n*App*: {{rawencode .App}}  \n*Path*: {{rawencode .Path -}}
+    {{ if .Data }}{{ if .Data.Elapsed.Duration }}  \n*Elapsed*: {{.Data.Elapsed}}{{end -}}
+    {{ if .Data.Archives }}  \n*Archives*: {{len .Data.Archives}}{{end -}}
+    {{ if .Data.Files }}  \n*Files*: {{len .Data.Files}}{{end -}}
+    {{ if .Data.Bytes }}  \n*Size*: {{humanbytes .Data.Bytes}}{{end -}}
+    {{ if and (gt .Event 1) (lt .Event 5) }}  \n*Queue*: {{.Data.Queue}}{{end -}}
+    {{ if .Data.Error}}  \n**Error**: {{rawencode .Data.Error}}{{end}}{{end}}"
+}
+`
+
 // Template returns a template specific to this webhook.
 //
 //nolint:wrapcheck
 func (w *Config) Template() (*template.Template, error) {
-	template := template.New("webhook").Funcs(template.FuncMap{
+	tmpl := template.New("webhook").Funcs(w.templateFuncs())
+	profile := Detect(w.TempName, w.URL, w.TmplPath)
+
+	if profile.Name == ProfileCustom {
+		body, err := os.ReadFile(w.TmplPath)
+		if err != nil {
+			return nil, fmt.Errorf("template file: %w", err)
+		}
+
+		return tmpl.Parse(string(body))
+	}
+
+	body, ok := BuiltinWebhookTemplate(profile.Name)
+	if !ok {
+		body = WebhookTemplateNotifiarr
+	}
+
+	return tmpl.Parse(body)
+}
+
+func (w *Config) templateFuncs() template.FuncMap {
+	return template.FuncMap{
 		"encode":     func(v any) string { b, _ := json.Marshal(v); return string(b) },
-		"rawencode":  func(v any) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) }, // yuck
+		"rawencode":  func(v any) string { b, _ := json.Marshal(v); return strings.Trim(string(b), `"`) },
 		"formencode": func(v any) string { return url.QueryEscape(fmt.Sprint(v)) },
 		"htmlencode": func(v any) string { return html.EscapeString(fmt.Sprint(v)) },
 		"separator":  separator,
@@ -291,43 +360,6 @@ func (w *Config) Template() (*template.Template, error) {
 		"token":      func() string { return w.Token },
 		"timestamp":  func(t time.Time) string { return t.Format(time.RFC3339) },
 		"name":       func() string { return w.Name },
-	})
-
-	// Providing a template name that exists overrides template_path.
-	// Unknown names fall through to template_path, then URL detection.
-	name := strings.ToLower(w.TempName)
-	if name == "default" {
-		name = "notifiarr"
-	}
-
-	if body, ok := BuiltinWebhookTemplate(name); ok {
-		return template.Parse(body)
-	}
-
-	if w.TmplPath != "" {
-		s, err := os.ReadFile(w.TmplPath)
-		if err != nil {
-			return nil, fmt.Errorf("template file: %w", err)
-		}
-
-		return template.Parse(string(s))
-	}
-
-	switch url := strings.ToLower(w.URL); {
-	default:
-		fallthrough
-	case strings.Contains(url, "discordnotifier.com"), strings.Contains(url, "notifiarr.com"):
-		return template.Parse(WebhookTemplateNotifiarr)
-	case strings.Contains(url, "discord.com"), strings.Contains(url, "discordapp.com"):
-		return template.Parse(WebhookTemplateDiscord)
-	case strings.Contains(url, "api.telegram.org"):
-		return template.Parse(WebhookTemplateTelegram)
-	case strings.Contains(url, "hooks.slack.com"):
-		return template.Parse(WebhookTemplateSlack)
-	case strings.Contains(url, "pushover.net"):
-		return template.Parse(WebhookTemplatePushover)
-	case strings.Contains(url, "gotify"):
-		return template.Parse(WebhookTemplateGotify)
 	}
 }
 
@@ -337,21 +369,26 @@ const (
 )
 
 // BuiltinWebhookTemplate returns a built-in webhook template body.
-// Name is one of notifiarr, discord, telegram, slack, pushover, gotify.
 func BuiltinWebhookTemplate(name string) (string, bool) {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "notifiarr":
+	case ProfileNotifiarr:
 		return WebhookTemplateNotifiarr, true
-	case "discord":
+	case ProfileDiscord:
 		return WebhookTemplateDiscord, true
-	case "telegram":
+	case ProfileTelegram:
 		return WebhookTemplateTelegram, true
-	case "slack":
+	case ProfileSlack:
 		return WebhookTemplateSlack, true
-	case "pushover":
+	case ProfilePushover:
 		return WebhookTemplatePushover, true
-	case "gotify":
+	case ProfileGotify:
 		return WebhookTemplateGotify, true
+	case ProfileNtfy:
+		return WebhookTemplateNtfy, true
+	case ProfileApprise:
+		return WebhookTemplateApprise, true
+	case ProfileMattermost:
+		return WebhookTemplateMattermost, true
 	default:
 		return "", false
 	}

@@ -1009,7 +1009,7 @@ sections:
       ################
       # Sends a webhook when an extraction queues, starts, finishes, and/or is deleted.
       # Created to integrate with notifiarr.com.
-      # Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
+      # Also works natively with Discord.com, Telegram.org, Slack.com, ntfy, Apprise, and Mattermost webhooks.
       # Can possibly be used with other services by providing a custom template_path.
       ###### Don't forget to uncomment [webhook.0] and url at a minimum !!!!
     docs: |
@@ -1019,10 +1019,10 @@ sections:
       [requestbin.com](https://requestbin.com/r/) to test and _see_ the payload.
     notes: |
       - _`Nickname` should equal the `chat_id` value in Telegram webhooks._
-      - _`Channel` is used as destination channel for Slack. It's not used in others._
+      - _`Channel` is used as destination channel for Slack and Mattermost, and as the Pushover user key._
       - _`Nickname` and `Channel` may be used as custom values in custom templates._
       - _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
-      - Built-In Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`.
+      - Built-In Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`, `ntfy`, `apprise`, `mattermost`.
     envvar_prefix: WEBHOOK_
     kind: named
     params:
@@ -1061,20 +1061,21 @@ sections:
       - name: nickname
         envvar: NICKNAME
         default: 'Unpackerr'
-        short: Passed into templates for telegram, discord and slack hooks.
+        short: Discord/Slack/Mattermost username, Telegram chat_id, or ntfy/Gotify/Apprise title prefix.
         desc: |
           ===> Advanced Optional Webhook Configuration <===
-          Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+          Discord, Slack, and Mattermost: bot/display name. Telegram: chat_id.
+          Gotify, ntfy, and Apprise: optional title prefix. Unused by Notifiarr JSON.
       - name: channel
         envvar: CHANNEL
         default: ''
-        short: Passed into templates for slack.com webhooks.
-        desc: Also passed into templates. Used in Slack templates for destination channel.
+        short: Slack/Mattermost channel override, or Pushover user key.
+        desc: Also passed into templates. Slack and Mattermost optional channel. Pushover user key.
       - name: token
         envvar: TOKEN
         default: ''
-        short: Bot token for Discord, Telegram, Slack, and similar templates.
-        desc: Passed into webhook templates. Used by Discord, Telegram, and Slack.
+        short: Pushover app token, or optional ntfy Bearer token.
+        desc: 'Passed into webhook templates. Pushover requires the application token. ntfy sends Authorization Bearer when set. Unused by Discord, Telegram, and Slack incoming webhooks.'
       - name: exclude
         envvar: EXCLUDE_
         default: []
@@ -1098,8 +1099,11 @@ sections:
           - value: 'gotify'
           - value: 'pushover'
           - value: 'slack'
+          - value: 'ntfy'
+          - value: 'apprise'
+          - value: 'mattermost'
         short: Force a built-in template instead of the URL or template file.
-        desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack. Empty uses the URL or template_path.'
+        desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise, mattermost. Empty uses the URL or template_path.'
       - name: ignore_ssl
         envvar: IGNORE_SSL
         default: false

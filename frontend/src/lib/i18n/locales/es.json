@@ -877,17 +877,17 @@
       },
       "nickname": {
         "label": "Apodo",
-        "description": "Nombre del bot para Discord y Slack. ID de chat para Telegram.",
+        "description": "Nombre del bot para Discord, Slack y Mattermost. ID de chat para Telegram. Prefijo de título para Gotify, ntfy y Apprise.",
         "tooltip": "Se pasa a las plantillas integradas. Telegram necesita el chat_id aquí."
       },
       "channel": {
         "label": "Canal",
-        "description": "Canal de destino para webhooks de Slack.",
+        "description": "Canal de destino para Slack y Mattermost. Clave de usuario de Pushover.",
         "tooltip": "Lo ignoran Discord y Telegram. Las plantillas personalizadas aún pueden usarlo."
       },
       "token": {
         "label": "Token",
-        "description": "Token de bot para Discord, Telegram, Slack y plantillas similares.",
+        "description": "Token de aplicación de Pushover, o token Bearer opcional de ntfy.",
         "tooltip": "Se pasa a las plantillas del webhook. Déjalo vacío salvo que la plantilla lo necesite."
       },
       "exclude": {
@@ -898,7 +898,7 @@
       "template": {
         "label": "Plantilla",
         "description": "Plantilla integrada. Vacío elige una a partir de la URL o el archivo de plantilla.",
-        "tooltip": "Fuerza notifiarr, discord, telegram, gotify, pushover o slack. Deja automático para usar la URL o el archivo de plantilla.",
+        "tooltip": "Fuerza notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise o mattermost. Deja automático para usar la URL o el archivo de plantilla.",
         "auto": "Automático (desde la URL o el archivo)"
       },
       "templatePath": {

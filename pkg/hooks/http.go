@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -37,7 +38,7 @@ func (w *Config) send(ctx context.Context, body io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", w.CType)
+	w.setRequestHeaders(req)
 
 	res, err := w.client.Do(req)
 	if err != nil {
@@ -54,6 +55,18 @@ func (w *Config) send(ctx context.Context, body io.Reader) ([]byte, error) {
 	}
 
 	return reply, nil
+}
+
+func (w *Config) setRequestHeaders(req *http.Request) {
+	req.Header.Set("Content-Type", w.CType)
+
+	if DetectTransport(w.TempName, w.URL).Name != ProfileNtfy {
+		return
+	}
+
+	if token := strings.TrimSpace(w.Token); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 }
 
 // SendWithLog renders and POSTs a webhook payload.

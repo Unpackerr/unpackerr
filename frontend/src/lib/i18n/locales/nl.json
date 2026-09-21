@@ -877,17 +877,17 @@
       },
       "nickname": {
         "label": "Bijnaam",
-        "description": "Botnaam voor Discord en Slack. Chat-ID voor Telegram.",
+        "description": "Botnaam voor Discord, Slack en Mattermost. Chat-ID voor Telegram. Titelvoorvoegsel voor Gotify, ntfy en Apprise.",
         "tooltip": "Gaat mee in de ingebouwde sjablonen. Telegram heeft hier de chat_id nodig."
       },
       "channel": {
         "label": "Kanaal",
-        "description": "Bestemmingskanaal voor Slack-webhooks.",
+        "description": "Bestemmingskanaal voor Slack en Mattermost. Pushover-gebruikerssleutel.",
         "tooltip": "Wordt genegeerd door Discord en Telegram. Aangepaste sjablonen kunnen het nog gebruiken."
       },
       "token": {
         "label": "Token",
-        "description": "Bot-token voor Discord, Telegram, Slack en vergelijkbare sjablonen.",
+        "description": "Pushover-app-token, of optioneel ntfy Bearer-token.",
         "tooltip": "Gaat mee in webhook-sjablonen. Laat leeg tenzij het sjabloon het nodig heeft."
       },
       "exclude": {
@@ -898,7 +898,7 @@
       "template": {
         "label": "Sjabloon",
         "description": "Ingebouwd sjabloon. Leeg kiest er een uit de URL of het sjabloonbestand.",
-        "tooltip": "Dwing notifiarr, discord, telegram, gotify, pushover of slack af. Laat automatisch om de URL of het sjabloonbestand te gebruiken.",
+        "tooltip": "Dwing notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise of mattermost af. Laat automatisch om de URL of het sjabloonbestand te gebruiken.",
         "auto": "Automatisch (uit de URL of het bestand)"
       },
       "templatePath": {

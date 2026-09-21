@@ -327,7 +327,7 @@
       },
       "webhooks": {
         "label": "Webhooks",
-        "intro": "HTTP callbacks when an extract changes status. Point these at Discord, Slack, Notifiarr, or any URL that accepts a POST."
+        "intro": "HTTP callbacks when an extract changes status. Paste a Discord, Slack, Telegram, ntfy, Apprise, or Notifiarr URL and the form follows that template."
       },
       "cmdhooks": {
         "label": "Command Hooks",
@@ -839,7 +839,7 @@
       "url": {
         "label": "URL",
         "description": "URL to POST when an extract changes status.",
-        "tooltip": "Works with Notifiarr, Discord, Slack, Telegram, and any URL that accepts the payload. Built-in templates are picked from the URL unless you force one in the config file."
+        "tooltip": "Paste a Discord, Slack, Telegram, ntfy, Apprise, Mattermost, Gotify, Pushover, or Notifiarr URL. The form picks a template from the URL unless you force one under Advanced."
       },
       "command": {
         "label": "Command",
@@ -883,17 +883,97 @@
       "nickname": {
         "label": "Nickname",
         "description": "Bot name for Discord, Slack, and Mattermost. Chat ID for Telegram. Title prefix for Gotify, ntfy, and Apprise.",
-        "tooltip": "Passed into the built-in templates. Telegram needs the chat_id here."
+        "tooltip": "Passed into the built-in templates. Telegram needs the chat_id here.",
+        "discord": {
+          "label": "Bot name",
+          "description": "Display name for the Discord webhook.",
+          "tooltip": "Optional. Discord uses this as the username on the message."
+        },
+        "telegram": {
+          "label": "Chat ID",
+          "description": "Numeric Telegram chat or group ID.",
+          "tooltip": "Required for Telegram. Use a bot such as @userinfobot to find it."
+        },
+        "slack": {
+          "label": "Username",
+          "description": "Display name for the Slack incoming webhook.",
+          "tooltip": "Optional. Slack may ignore this depending on the webhook settings."
+        },
+        "mattermost": {
+          "label": "Username",
+          "description": "Display name for the Mattermost incoming webhook.",
+          "tooltip": "Optional override for the webhook username."
+        },
+        "pushover": {
+          "label": "Device",
+          "description": "Optional Pushover device name.",
+          "tooltip": "Leave empty to notify every device on the user key."
+        },
+        "gotify": {
+          "label": "Title prefix",
+          "description": "Optional prefix on the Gotify message title.",
+          "tooltip": "Leave empty to use the event title alone."
+        },
+        "ntfy": {
+          "label": "Title prefix",
+          "description": "Optional prefix on the ntfy message title.",
+          "tooltip": "Leave empty to use the event title alone."
+        },
+        "apprise": {
+          "label": "Title prefix",
+          "description": "Optional prefix on the Apprise notification title.",
+          "tooltip": "Leave empty to use the event title alone."
+        },
+        "custom": {
+          "label": "Nickname",
+          "description": "Available to the custom template as nickname.",
+          "tooltip": "Use this however your template expects."
+        }
       },
       "channel": {
         "label": "Channel",
         "description": "Destination channel for Slack and Mattermost. Pushover user key.",
-        "tooltip": "Ignored by Discord and Telegram. Custom templates can still use it."
+        "tooltip": "Ignored by Discord and Telegram. Custom templates can still use it.",
+        "slack": {
+          "label": "Channel",
+          "description": "Optional Slack channel override.",
+          "tooltip": "Incoming webhooks often lock the channel at create time. Set this only if Slack allows an override."
+        },
+        "mattermost": {
+          "label": "Channel",
+          "description": "Optional Mattermost channel override.",
+          "tooltip": "Leave empty to use the channel bound to the incoming webhook."
+        },
+        "pushover": {
+          "label": "User key",
+          "description": "Pushover user or group key.",
+          "tooltip": "Required for Pushover. This is not the application token."
+        },
+        "custom": {
+          "label": "Channel",
+          "description": "Available to the custom template as channel.",
+          "tooltip": "Use this however your template expects."
+        }
       },
       "token": {
         "label": "Token",
         "description": "Pushover application token, or optional ntfy Bearer token.",
-        "tooltip": "Passed into webhook templates. Leave empty unless the template needs it."
+        "tooltip": "Passed into webhook templates. Leave empty unless the template needs it.",
+        "pushover": {
+          "label": "App token",
+          "description": "Pushover application API token.",
+          "tooltip": "Required. Create an application at pushover.net to get this token."
+        },
+        "ntfy": {
+          "label": "Bearer token",
+          "description": "Optional ntfy access token for private topics.",
+          "tooltip": "Sent as Authorization Bearer. Leave empty for public topics."
+        },
+        "custom": {
+          "label": "Token",
+          "description": "Available to the custom template as token.",
+          "tooltip": "Use this however your template expects."
+        }
       },
       "exclude": {
         "label": "Exclude apps",
@@ -910,6 +990,40 @@
         "label": "Template file",
         "description": "Custom Go template file instead of a built-in template.",
         "tooltip": "Used when Template is Automatic. A named Template ignores this file."
+      },
+      "advanced": "Advanced",
+      "chip": {
+        "named": "Using {name}",
+        "fromURL": "Using {name} (from URL)",
+        "custom": "Using a custom template",
+        "default": "Using Notifiarr JSON (default)"
+      },
+      "profile": {
+        "notifiarr": "Notifiarr",
+        "discord": "Discord",
+        "telegram": "Telegram",
+        "slack": "Slack",
+        "pushover": "Pushover",
+        "gotify": "Gotify",
+        "ntfy": "ntfy",
+        "apprise": "Apprise",
+        "mattermost": "Mattermost",
+        "custom": "custom template"
+      },
+      "guide": {
+        "button": "Setup guide",
+        "title": "Setup guide: {name}",
+        "test": "After you save, click Test on the URL field to send a sample payload.",
+        "notifiarr": "On notifiarr.com open Integrations → Unpackerr and copy the webhook URL.\n\nPaste it here. Nickname, channel, and token are unused.\n\nEach extract event is a new JSON payload. Unknown URLs also use this template.",
+        "discord": "In Discord: Channel → Integrations → Webhooks → New Webhook. Copy the URL (`discord.com/api/webhooks/...`).\n\nBot name is the optional display name.\n\nMessages update in place by default (one message per extract). Turn Update messages off to stack a new message per event.",
+        "telegram": "Create a bot with @BotFather and copy the token. The URL is `https://api.telegram.org/botTOKEN/sendMessage`.\n\nChat ID is the numeric chat or group id. A bot such as @userinfobot can show it.\n\nMessages update in place by default. Turn Update messages off to send a new message per event.",
+        "slack": "Create an Incoming Webhook in Slack and paste the `hooks.slack.com` URL.\n\nUsername is the display name. Channel is an optional override when Slack allows it.\n\nIncoming webhooks cannot update a previous message; each extract event is a new message.",
+        "pushover": "The URL is `https://api.pushover.net/1/messages.json`.\n\nApp token is your Pushover application token. User key is the user or group key. Device is optional.\n\nEach extract event is a new notification.",
+        "gotify": "Paste your Gotify message URL, including the token query (`https://gotify.example/message?token=...`).\n\nTitle prefix is optional.\n\nEach extract event is a new message.",
+        "ntfy": "Paste the topic URL (`https://ntfy.sh/mytopic` or your own server).\n\nBearer token is optional for private topics. Title prefix is optional.\n\nEach extract event is a new message.",
+        "apprise": "Point the URL at an Apprise API `/notify` or `/notify/KEY` endpoint. Unpackerr POSTs JSON with title, body, and type.\n\nTitle prefix is optional. Run Apprise as a sidecar; it is not bundled.\n\nEach extract event is a new notification.",
+        "mattermost": "Create an incoming webhook in Mattermost and paste the `/hooks/...` URL.\n\nUsername is the display name. Channel is an optional override.\n\nEach extract event is a new message.",
+        "custom": "Template file is a Go `text/template`. Nickname, channel, token, and content type are available to that file.\n\nA named Template under Advanced ignores this file.\n\nMessages are not updated; each extract event is a new POST."
       }
     },
     "payload": {

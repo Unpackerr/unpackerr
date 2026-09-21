@@ -327,7 +327,7 @@
       },
       "webhooks": {
         "label": "Webhooks",
-        "intro": "HTTP-callbacks wanneer een uitpakstatus verandert. Richt ze op Discord, Slack, Notifiarr of elke URL die een POST accepteert."
+        "intro": "HTTP-callbacks wanneer een uitpakstatus verandert. Plak een Discord-, Slack-, Telegram-, ntfy-, Apprise- of Notifiarr-URL en het formulier volgt dat sjabloon."
       },
       "cmdhooks": {
         "label": "Opdracht-hooks",
@@ -839,7 +839,7 @@
       "url": {
         "label": "URL",
         "description": "URL om naar te POSTen wanneer een uitpakstatus verandert.",
-        "tooltip": "Werkt met Notifiarr, Discord, Slack, Telegram en elke URL die de payload accepteert. Ingebouwde sjablonen worden uit de URL gekozen tenzij je er een in het configuratiebestand afdwingt."
+        "tooltip": "Plak een Discord-, Slack-, Telegram-, ntfy-, Apprise-, Mattermost-, Gotify-, Pushover- of Notifiarr-URL. Het formulier kiest een sjabloon uit de URL tenzij je er onder Geavanceerd een afdwingt."
       },
       "command": {
         "label": "Opdracht",
@@ -883,17 +883,97 @@
       "nickname": {
         "label": "Bijnaam",
         "description": "Botnaam voor Discord, Slack en Mattermost. Chat-ID voor Telegram. Titelvoorvoegsel voor Gotify, ntfy en Apprise.",
-        "tooltip": "Gaat mee in de ingebouwde sjablonen. Telegram heeft hier de chat_id nodig."
+        "tooltip": "Gaat mee in de ingebouwde sjablonen. Telegram heeft hier de chat_id nodig.",
+        "discord": {
+          "label": "Botnaam",
+          "description": "Weergavenaam van de Discord-webhook.",
+          "tooltip": "Optioneel. Discord gebruikt dit als gebruikersnaam van het bericht."
+        },
+        "telegram": {
+          "label": "Chat-ID",
+          "description": "Numeriek Telegram-chat- of groeps-ID.",
+          "tooltip": "Verplicht voor Telegram. Een bot zoals @userinfobot kan het tonen."
+        },
+        "slack": {
+          "label": "Gebruikersnaam",
+          "description": "Weergavenaam van de Slack incoming webhook.",
+          "tooltip": "Optioneel. Slack kan dit negeren, afhankelijk van de webhookinstellingen."
+        },
+        "mattermost": {
+          "label": "Gebruikersnaam",
+          "description": "Weergavenaam van de Mattermost incoming webhook.",
+          "tooltip": "Optionele override voor de webhook-gebruikersnaam."
+        },
+        "pushover": {
+          "label": "Apparaat",
+          "description": "Optionele Pushover-apparaatnaam.",
+          "tooltip": "Laat leeg om elk apparaat op de gebruikerssleutel te waarschuwen."
+        },
+        "gotify": {
+          "label": "Titelvoorvoegsel",
+          "description": "Optioneel voorvoegsel op de Gotify-berichttitel.",
+          "tooltip": "Laat leeg om alleen de gebeurtenistitel te gebruiken."
+        },
+        "ntfy": {
+          "label": "Titelvoorvoegsel",
+          "description": "Optioneel voorvoegsel op de ntfy-berichttitel.",
+          "tooltip": "Laat leeg om alleen de gebeurtenistitel te gebruiken."
+        },
+        "apprise": {
+          "label": "Titelvoorvoegsel",
+          "description": "Optioneel voorvoegsel op de Apprise-notificatietitel.",
+          "tooltip": "Laat leeg om alleen de gebeurtenistitel te gebruiken."
+        },
+        "custom": {
+          "label": "Bijnaam",
+          "description": "Beschikbaar in het aangepaste sjabloon als nickname.",
+          "tooltip": "Gebruik dit zoals je sjabloon verwacht."
+        }
       },
       "channel": {
         "label": "Kanaal",
         "description": "Bestemmingskanaal voor Slack en Mattermost. Pushover-gebruikerssleutel.",
-        "tooltip": "Wordt genegeerd door Discord en Telegram. Aangepaste sjablonen kunnen het nog gebruiken."
+        "tooltip": "Wordt genegeerd door Discord en Telegram. Aangepaste sjablonen kunnen het nog gebruiken.",
+        "slack": {
+          "label": "Kanaal",
+          "description": "Optionele Slack-kanaaloverride.",
+          "tooltip": "Incoming webhooks vergrendelen het kanaal vaak bij aanmaken. Zet dit alleen als Slack een override toestaat."
+        },
+        "mattermost": {
+          "label": "Kanaal",
+          "description": "Optionele Mattermost-kanaaloverride.",
+          "tooltip": "Laat leeg om het kanaal van de incoming webhook te gebruiken."
+        },
+        "pushover": {
+          "label": "Gebruikerssleutel",
+          "description": "Pushover-gebruikers- of groepsleutel.",
+          "tooltip": "Verplicht voor Pushover. Dit is niet het applicatietoken."
+        },
+        "custom": {
+          "label": "Kanaal",
+          "description": "Beschikbaar in het aangepaste sjabloon als channel.",
+          "tooltip": "Gebruik dit zoals je sjabloon verwacht."
+        }
       },
       "token": {
         "label": "Token",
         "description": "Pushover-app-token, of optioneel ntfy Bearer-token.",
-        "tooltip": "Gaat mee in webhook-sjablonen. Laat leeg tenzij het sjabloon het nodig heeft."
+        "tooltip": "Gaat mee in webhook-sjablonen. Laat leeg tenzij het sjabloon het nodig heeft.",
+        "pushover": {
+          "label": "App-token",
+          "description": "Pushover-applicatie-API-token.",
+          "tooltip": "Verplicht. Maak een applicatie op pushover.net om dit token te krijgen."
+        },
+        "ntfy": {
+          "label": "Bearer-token",
+          "description": "Optioneel ntfy-toegangstoken voor privé-topics.",
+          "tooltip": "Wordt als Authorization Bearer meegestuurd. Laat leeg voor openbare topics."
+        },
+        "custom": {
+          "label": "Token",
+          "description": "Beschikbaar in het aangepaste sjabloon als token.",
+          "tooltip": "Gebruik dit zoals je sjabloon verwacht."
+        }
       },
       "exclude": {
         "label": "Apps uitsluiten",
@@ -910,6 +990,40 @@
         "label": "Sjabloonbestand",
         "description": "Aangepast Go-sjabloonbestand in plaats van een ingebouwd sjabloon.",
         "tooltip": "Gebruikt als Sjabloon op Automatisch staat. Een gekozen sjabloon negeert dit bestand."
+      },
+      "advanced": "Geavanceerd",
+      "chip": {
+        "named": "{name} in gebruik",
+        "fromURL": "{name} in gebruik (uit URL)",
+        "custom": "Aangepast sjabloon in gebruik",
+        "default": "Notifiarr-JSON in gebruik (standaard)"
+      },
+      "profile": {
+        "notifiarr": "Notifiarr",
+        "discord": "Discord",
+        "telegram": "Telegram",
+        "slack": "Slack",
+        "pushover": "Pushover",
+        "gotify": "Gotify",
+        "ntfy": "ntfy",
+        "apprise": "Apprise",
+        "mattermost": "Mattermost",
+        "custom": "aangepast sjabloon"
+      },
+      "guide": {
+        "button": "Installatiegids",
+        "title": "Installatiegids: {name}",
+        "test": "Klik na het opslaan op Testen bij het URL-veld om een voorbeeldpayload te sturen.",
+        "notifiarr": "Open op notifiarr.com Integraties → Unpackerr en kopieer de webhook-URL.\n\nPlak die hier. Bijnaam, kanaal en token worden niet gebruikt.\n\nElke extract-gebeurtenis is een nieuwe JSON-payload. Onbekende URL's gebruiken dit sjabloon ook.",
+        "discord": "In Discord: Kanaal → Integraties → Webhooks → Nieuwe webhook. Kopieer de URL (`discord.com/api/webhooks/...`).\n\nBotnaam is de optionele weergavenaam.\n\nBerichten worden standaard ter plaatse bijgewerkt (één bericht per extract). Zet Berichten bijwerken uit om per gebeurtenis een nieuw bericht te stapelen.",
+        "telegram": "Maak een bot met @BotFather en kopieer het token. De URL is `https://api.telegram.org/botTOKEN/sendMessage`.\n\nChat-ID is het numerieke chat- of groeps-id. Een bot zoals @userinfobot kan het tonen.\n\nBerichten worden standaard ter plaatse bijgewerkt. Zet Berichten bijwerken uit om per gebeurtenis een nieuw bericht te sturen.",
+        "slack": "Maak een Incoming Webhook in Slack en plak de `hooks.slack.com`-URL.\n\nGebruikersnaam is de weergavenaam. Kanaal is een optionele override als Slack dat toestaat.\n\nIncoming webhooks kunnen een eerder bericht niet bijwerken; elke extract-gebeurtenis is een nieuw bericht.",
+        "pushover": "De URL is `https://api.pushover.net/1/messages.json`.\n\nApp-token is je Pushover-applicatietoken. Gebruikerssleutel is de gebruikers- of groepsleutel. Apparaat is optioneel.\n\nElke extract-gebeurtenis is een nieuwe notificatie.",
+        "gotify": "Plak je Gotify-bericht-URL, inclusief de tokenquery (`https://gotify.example/message?token=...`).\n\nTitelvoorvoegsel is optioneel.\n\nElke extract-gebeurtenis is een nieuw bericht.",
+        "ntfy": "Plak de topic-URL (`https://ntfy.sh/mytopic` of je eigen server).\n\nBearer-token is optioneel voor privé-topics. Titelvoorvoegsel is optioneel.\n\nElke extract-gebeurtenis is een nieuw bericht.",
+        "apprise": "Richt de URL op een Apprise API `/notify`- of `/notify/KEY`-eindpunt. Unpackerr POSTet JSON met title, body en type.\n\nTitelvoorvoegsel is optioneel. Draai Apprise als sidecar; het zit niet in Unpackerr.\n\nElke extract-gebeurtenis is een nieuwe notificatie.",
+        "mattermost": "Maak een incoming webhook in Mattermost en plak de `/hooks/...`-URL.\n\nGebruikersnaam is de weergavenaam. Kanaal is een optionele override.\n\nElke extract-gebeurtenis is een nieuw bericht.",
+        "custom": "Het sjabloonbestand is een Go-`text/template`. Bijnaam, kanaal, token en contenttype zijn daarin beschikbaar.\n\nEen gekozen sjabloon onder Geavanceerd negeert dit bestand.\n\nBerichten worden niet bijgewerkt; elke extract-gebeurtenis is een nieuwe POST."
       }
     },
     "payload": {

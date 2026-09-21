@@ -23,6 +23,7 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 		}
 
 		profile := Detect(list[idx].TempName, list[idx].URL, list[idx].TmplPath)
+		transport := DetectTransport(list[idx].TempName, list[idx].URL)
 
 		if list[idx].Nickname == "" && profile.Name != ProfilePushover && profile.Name != ProfileCustom {
 			list[idx].Nickname = "Unpackerr"
@@ -30,7 +31,7 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 
 		if list[idx].CType == "" {
 			list[idx].CType = "application/json"
-			if profile.Name == ProfilePushover {
+			if transport.Name == ProfilePushover {
 				list[idx].CType = "application/x-www-form-urlencoded"
 			}
 		}

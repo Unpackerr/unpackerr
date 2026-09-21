@@ -442,3 +442,30 @@ func TestTemplateSniffsNtfyAndMattermostURLs(t *testing.T) {
 		t.Fatalf("mattermost template:\n%s", buf.String())
 	}
 }
+
+func TestMattermostEncodesNicknameAndChannel(t *testing.T) {
+	t.Parallel()
+
+	tmpl, err := (&Config{
+		URL:      "https://chat.home.lan/hooks/abc",
+		Nickname: `Unpackerr "bot"`,
+		Channel:  `town-square`,
+	}).Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, &Payload{Event: extract.QUEUED, IDs: map[string]any{"title": "Show"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &payload); err != nil {
+		t.Fatalf("json: %v\n%s", err, buf.String())
+	}
+
+	if payload["username"] != `Unpackerr "bot"` || payload["channel"] != "town-square" {
+		t.Fatalf("%+v", payload)
+	}
+}

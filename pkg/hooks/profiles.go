@@ -45,6 +45,12 @@ func Detect(name, rawURL, tmplPath string) Profile {
 	return sniffURL(rawURL)
 }
 
+// DetectTransport picks headers and content-type from the named template or URL.
+// A custom template file still uses the destination (ntfy Bearer, Pushover form).
+func DetectTransport(name, rawURL string) Profile {
+	return Detect(name, rawURL, "")
+}
+
 func namedProfile(name string) (Profile, bool) {
 	switch name {
 	case ProfileNotifiarr:

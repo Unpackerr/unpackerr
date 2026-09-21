@@ -282,6 +282,40 @@ func TestPendingHooksFlushAfterUnlock(t *testing.T) {
 	}
 }
 
+func TestReportHookFailWaitsForDrain(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.Map["Show A"] = &Extract{Path: "/shared", App: starr.Sonarr, Status: EXTRACTING}
+
+	unpack.reportHookFail("Show A")
+
+	if unpack.Map["Show A"].HookFail != 0 {
+		t.Fatal("worker must not increment")
+	}
+
+	unpack.drainHookFails()
+
+	if unpack.Map["Show A"].HookFail != 1 {
+		t.Fatalf("drained %d", unpack.Map["Show A"].HookFail)
+	}
+}
+
+func TestBumpHistoryHookFailSkipsWhenHistoryOff(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 0
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.upsertHistory(HistoryRecord{ID: "old", Path: "/dl/old", Status: IMPORTED, HookFail: 1})
+
+	unpack.recordHookFail("old")
+
+	if unpack.records[0].HookFail != 1 {
+		t.Fatalf("history off wrote %d", unpack.records[0].HookFail)
+	}
+}
+
 func TestQueueHookIgnoresNil(t *testing.T) {
 	t.Parallel()
 

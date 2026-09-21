@@ -165,8 +165,37 @@ func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	return hooks.CountAll(u.cmdhookList())
 }
 
+// reportHookFail queues a failure for the main loop. Done runs on the hook
+// worker and must not read live Config or mutate Map.
+func (u *Unpackerr) reportHookFail(itemID string) {
+	if itemID == "" {
+		return
+	}
+
+	u.hookFailMu.Lock()
+	u.hookFails = append(u.hookFails, itemID)
+	u.hookFailMu.Unlock()
+
+	select {
+	case u.hookFailWake <- struct{}{}:
+	default:
+	}
+}
+
+func (u *Unpackerr) drainHookFails() {
+	u.hookFailMu.Lock()
+	ids := u.hookFails
+	u.hookFails = nil
+	u.hookFailMu.Unlock()
+
+	for _, itemID := range ids {
+		u.recordHookFail(itemID)
+	}
+}
+
 // recordHookFail increments the per-extract hook-failure counter.
 // itemID is the Map key and history record ID (Starr title or folder path).
+// Call from the main loop only.
 func (u *Unpackerr) recordHookFail(itemID string) {
 	if itemID == "" {
 		return
@@ -183,16 +212,20 @@ func (u *Unpackerr) recordHookFail(itemID string) {
 			u.hub.notifyProgress(u.queueFromExtract(itemID, item))
 		}
 
-		u.unlockHistory()
+		u.History.unlockHistory()
 
 		return
 	}
 
-	u.unlockHistory()
+	u.History.unlockHistory()
 	u.bumpHistoryHookFail(itemID)
 }
 
 func (u *Unpackerr) bumpHistoryHookFail(itemID string) {
+	if u.KeepHistory == 0 {
+		return
+	}
+
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 

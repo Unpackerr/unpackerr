@@ -73,6 +73,9 @@ type Unpackerr struct {
 	progChan     chan *ExtractProgress
 	hookWorker   *hooks.Worker
 	pendingHooks []pendingHook // filled under History.mu; flushed in unlockHistory.
+	hookFails    []string      // item IDs from the hook worker; drained in Run().
+	hookFailWake chan struct{} // coalesced wake so Done never blocks on a full hook queue.
+	hookFailMu   sync.Mutex
 	delChan      chan *fileDeleteReq
 	taskChan     chan *mainTask // HTTP hands config applies and queue actions to Run().
 	workChan     chan []func()
@@ -137,18 +140,19 @@ type Flags struct {
 // An empty struct will surely cause you pain, so use this!
 func New() *Unpackerr {
 	unpackerr := &Unpackerr{
-		Flags:      &Flags{EnvPrefix: "UN"},
-		hookWorker: hooks.NewWorker(updateChanBuf),
-		delChan:    make(chan *fileDeleteReq, updateChanBuf),
-		taskChan:   make(chan *mainTask, updateChanBuf),
-		sigChan:    make(chan os.Signal, signalBuf),
-		workChan:   make(chan []func(), 1),
-		History:    &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
-		folders:    &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
-		updates:    make(chan *xtractr.Response, updateChanBuf),
-		progChan:   make(chan *ExtractProgress),
-		menu:       make(map[string]ui.MenuItem),
-		hub:        newLiveHub(),
+		Flags:        &Flags{EnvPrefix: "UN"},
+		hookWorker:   hooks.NewWorker(updateChanBuf),
+		hookFailWake: make(chan struct{}, 1),
+		delChan:      make(chan *fileDeleteReq, updateChanBuf),
+		taskChan:     make(chan *mainTask, updateChanBuf),
+		sigChan:      make(chan os.Signal, signalBuf),
+		workChan:     make(chan []func(), 1),
+		History:      &History{Map: make(map[string]*Extract), forgotten: make(map[string]struct{})},
+		folders:      &Folders{Folders: make(map[string]*Folder)}, // replaced by PollFolders when folders are configured.
+		updates:      make(chan *xtractr.Response, updateChanBuf),
+		progChan:     make(chan *ExtractProgress),
+		menu:         make(map[string]ui.MenuItem),
+		hub:          newLiveHub(),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
 			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
@@ -406,7 +410,7 @@ func (u *Unpackerr) queueHook(itemID string, item *hooks.Item) {
 
 	item.Done = func(err error) {
 		if err != nil {
-			u.recordHookFail(itemID)
+			u.reportHookFail(itemID)
 		}
 	}
 
@@ -500,6 +504,9 @@ func (u *Unpackerr) Run() {
 		case task := <-u.taskChan:
 			// HTTP config PUT and queue retry/forget mutate live state on this goroutine.
 			task.result <- task.fn()
+		case <-u.hookFailWake:
+			// Hook worker completions; recordHookFail reads live KeepHistory.
+			u.drainHookFails()
 		case now := <-u.tickers.logger.C:
 			// Log/print current queue counts once in a while, when something is configured.
 			if u.starrAppCount()+len(u.Folders) > 0 {

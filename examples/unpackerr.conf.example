@@ -471,7 +471,7 @@ passwords = []
 ################
 # Sends a webhook when an extraction queues, starts, finishes, and/or is deleted.
 # Created to integrate with notifiarr.com.
-# Also works natively with Discord.com, Telegram.org, and Slack.com webhooks.
+# Also works natively with Discord.com, Telegram.org, Slack.com, ntfy, Apprise, and Mattermost webhooks.
 # Can possibly be used with other services by providing a custom template_path.
 ###### Don't forget to uncomment [webhook.0] and url at a minimum !!!!
 #[webhook.0]
@@ -485,17 +485,18 @@ passwords = []
 ## The default is [0] and this is an example:
 # events = [1, 4, 6]
 ## ===> Advanced Optional Webhook Configuration <===
-## Used in Discord and Slack templates as bot name, in Telegram as chat_id.
+## Discord, Slack, and Mattermost: bot/display name. Telegram: chat_id.
+## Gotify, ntfy, and Apprise: optional title prefix. Unused by Notifiarr JSON.
 # nickname = "Unpackerr"
-## Also passed into templates. Used in Slack templates for destination channel.
+## Also passed into templates. Slack and Mattermost optional channel. Pushover user key.
 # channel = ""
-## Passed into webhook templates. Used by Discord, Telegram, and Slack.
+## Passed into webhook templates. Pushover requires the application token. ntfy sends Authorization Bearer when set. Unused by Discord, Telegram, and Slack incoming webhooks.
 # token = ""
 ## Dialect tokens skip every instance of that API. Any other value matches an instance name. None by default. This is an example:
 # exclude = ["readarr", "lidarr"]
 ## Used when template is empty (automatic). A named template ignores this file.
 # template_path = ''
-## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack. Empty uses the URL or template_path.
+## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise, mattermost. Empty uses the URL or template_path.
 # template = ""
 ## Set this to true to ignore the SSL certificate on the server.
 # ignore_ssl = false
@@ -528,4 +529,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 20 SEP 2026 18:03 UTC
+## => Content Auto Generated, 21 SEP 2026 01:19 UTC

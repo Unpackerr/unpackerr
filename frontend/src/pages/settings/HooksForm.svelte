@@ -46,6 +46,7 @@
   } from '../../lib/validate'
   import { failure } from '../../lib/toast'
   import { envHas } from '../../lib/env.svelte'
+  import { HOOK_TEMPLATE_NAMES } from '../../lib/hooktmpl'
   import {
     envField,
     HOOK_ENV_FIELDS,
@@ -161,12 +162,7 @@
 
   const templateChoices = $derived([
     { value: '', name: $_('config.hooks.template.auto') },
-    { value: 'notifiarr', name: 'notifiarr' },
-    { value: 'discord', name: 'discord' },
-    { value: 'gotify', name: 'gotify' },
-    { value: 'pushover', name: 'pushover' },
-    { value: 'slack', name: 'slack' },
-    { value: 'telegram', name: 'telegram' },
+    ...HOOK_TEMPLATE_NAMES.map((name) => ({ value: name, name })),
   ])
 
   function blank(): WebhookConfig {

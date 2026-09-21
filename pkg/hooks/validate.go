@@ -22,14 +22,15 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 			list[idx].Name = list[idx].URL
 		}
 
-		if list[idx].Nickname == "" && list[idx].TmplPath == "" &&
-			!strings.Contains(list[idx].URL, "pushover.net") {
+		profile := Detect(list[idx].TempName, list[idx].URL, list[idx].TmplPath)
+
+		if list[idx].Nickname == "" && profile.Name != ProfilePushover && profile.Name != ProfileCustom {
 			list[idx].Nickname = "Unpackerr"
 		}
 
 		if list[idx].CType == "" {
 			list[idx].CType = "application/json"
-			if strings.Contains(list[idx].URL, "pushover.net") {
+			if profile.Name == ProfilePushover {
 				list[idx].CType = "application/x-www-form-urlencoded"
 			}
 		}

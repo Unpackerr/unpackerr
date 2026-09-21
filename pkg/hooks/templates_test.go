@@ -73,7 +73,10 @@ func TestBuiltinTemplatesEncodeApp(t *testing.T) {
 		Data:  &XtractPayload{},
 	}
 
-	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "pushover", "gotify"} {
+	for _, name := range []string{
+		"notifiarr", "discord", "telegram", "slack", "pushover", "gotify",
+		"ntfy", "apprise", "mattermost",
+	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -100,7 +103,10 @@ func TestBuiltinTemplatesEncodeApp(t *testing.T) {
 func TestBuiltinWebhookTemplateNames(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "pushover", "gotify"} {
+	for _, name := range []string{
+		"notifiarr", "discord", "telegram", "slack", "pushover", "gotify",
+		"ntfy", "apprise", "mattermost",
+	} {
 		body, ok := BuiltinWebhookTemplate(name)
 		if !ok || body == "" {
 			t.Fatalf("%s missing", name)
@@ -209,7 +215,7 @@ func TestBuiltinTemplatesEncodeEventTitle(t *testing.T) {
 		Data:       &XtractPayload{},
 	}
 
-	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify"} {
+	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify", "ntfy", "apprise", "mattermost"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -257,7 +263,10 @@ func TestBuiltinTemplatesEmptyEventTitleFallsBack(t *testing.T) {
 		t.Fatalf("Title() %q", payload.Title())
 	}
 
-	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify", "pushover"} {
+	for _, name := range []string{
+		"notifiarr", "discord", "telegram", "slack", "gotify", "pushover",
+		"ntfy", "apprise", "mattermost",
+	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -293,7 +302,10 @@ func TestBuiltinTemplatesRenderDataBytes(t *testing.T) {
 
 	want := humanbytes(size)
 
-	for _, name := range []string{"notifiarr", "discord", "telegram", "slack", "gotify", "pushover"} {
+	for _, name := range []string{
+		"notifiarr", "discord", "telegram", "slack", "gotify", "pushover",
+		"ntfy", "apprise", "mattermost",
+	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -345,5 +357,88 @@ func assertJSONApp(t *testing.T, name, body, app string) {
 
 	if !strings.Contains(fmt.Sprint(parsed), app) {
 		t.Fatalf("%s missing app %q:\n%s", name, app, body)
+	}
+}
+
+func TestNtfyAndAppriseMapFailedEvents(t *testing.T) {
+	t.Parallel()
+
+	payload := &Payload{
+		Path:  "/dl",
+		App:   "Sonarr",
+		IDs:   map[string]any{"title": "Show"},
+		Event: extract.EXTRACTFAILED,
+		Time:  time.Unix(0, 0).UTC(),
+		Data:  &XtractPayload{Error: "boom"},
+	}
+
+	ntfy := renderHookTemplate(t, ProfileNtfy, payload)
+
+	var ntfyJSON map[string]any
+	if err := json.Unmarshal([]byte(ntfy), &ntfyJSON); err != nil {
+		t.Fatalf("ntfy json: %v\n%s", err, ntfy)
+	}
+
+	if ntfyJSON["priority"] != float64(5) {
+		t.Fatalf("ntfy priority %+v", ntfyJSON["priority"])
+	}
+
+	apprise := renderHookTemplate(t, ProfileApprise, payload)
+
+	var appriseJSON map[string]any
+	if err := json.Unmarshal([]byte(apprise), &appriseJSON); err != nil {
+		t.Fatalf("apprise json: %v\n%s", err, apprise)
+	}
+
+	if appriseJSON["type"] != "failure" {
+		t.Fatalf("apprise type %+v", appriseJSON["type"])
+	}
+
+	okPayload := *payload
+	okPayload.Event = extract.EXTRACTED
+	okPayload.Data = &XtractPayload{}
+
+	okApprise := renderHookTemplate(t, ProfileApprise, &okPayload)
+
+	var okJSON map[string]any
+	if err := json.Unmarshal([]byte(okApprise), &okJSON); err != nil {
+		t.Fatal(err)
+	}
+
+	if okJSON["type"] != "success" {
+		t.Fatalf("extracted type %+v", okJSON["type"])
+	}
+}
+
+func TestTemplateSniffsNtfyAndMattermostURLs(t *testing.T) {
+	t.Parallel()
+
+	ntfy, err := (&Config{URL: "https://ntfy.sh/unpackerr"}).Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := ntfy.Execute(&buf, &Payload{Event: extract.QUEUED, IDs: map[string]any{}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(buf.String(), `"priority"`) {
+		t.Fatalf("ntfy template:\n%s", buf.String())
+	}
+
+	mattermost, err := (&Config{URL: "https://chat.home.lan/hooks/abc", Nickname: "Unpackerr"}).Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf.Reset()
+
+	if err := mattermost.Execute(&buf, &Payload{Event: extract.QUEUED, IDs: map[string]any{"title": "Show"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(buf.String(), `"username"`) {
+		t.Fatalf("mattermost template:\n%s", buf.String())
 	}
 }

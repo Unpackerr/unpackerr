@@ -203,3 +203,42 @@ func readFile(t *testing.T, path string) []byte {
 
 	return data
 }
+
+func TestNtfySendsBearerToken(t *testing.T) {
+	t.Parallel()
+
+	var gotAuth, gotType string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+		gotAuth = req.Header.Get("Authorization")
+		gotType = req.Header.Get("Content-Type")
+
+		writer.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	hook := &Config{
+		Name:     "ntfy",
+		URL:      srv.URL,
+		TempName: ProfileNtfy,
+		Token:    "secret",
+		CType:    "application/json",
+		Timeout:  cnfg.Duration{Duration: time.Second},
+		Silent:   true,
+	}
+	if err := ValidateWebhooks([]*Config{hook}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := hook.Send(strings.NewReader(`{"title":"hi"}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	if gotAuth != "Bearer secret" {
+		t.Fatalf("Authorization %q", gotAuth)
+	}
+
+	if gotType != "application/json" {
+		t.Fatalf("Content-Type %q", gotType)
+	}
+}

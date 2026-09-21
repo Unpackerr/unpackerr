@@ -877,17 +877,17 @@
       },
       "nickname": {
         "label": "Ψευδώνυμο",
-        "description": "Όνομα bot για Discord και Slack. Chat ID για Telegram.",
+        "description": "Όνομα bot για Discord, Slack και Mattermost. Chat ID για Telegram. Πρόθεμα τίτλου για Gotify, ntfy και Apprise.",
         "tooltip": "Περνά στα ενσωματωμένα πρότυπα. Το Telegram θέλει εδώ το chat_id."
       },
       "channel": {
         "label": "Κανάλι",
-        "description": "Κανάλι προορισμού για webhook Slack.",
+        "description": "Κανάλι προορισμού για Slack και Mattermost. Κλειδί χρήστη Pushover.",
         "tooltip": "Αγνοείται από Discord και Telegram. Προσαρμοσμένα πρότυπα μπορούν ακόμα να το χρησιμοποιήσουν."
       },
       "token": {
         "label": "Διακριτικό",
-        "description": "Διακριτικό bot για Discord, Telegram, Slack και παρόμοια πρότυπα.",
+        "description": "Διακριτικό εφαρμογής Pushover, ή προαιρετικό Bearer διακριτικό ntfy.",
         "tooltip": "Περνά στα πρότυπα webhook. Αφήστε το κενό εκτός αν το πρότυπο το χρειάζεται."
       },
       "exclude": {
@@ -898,7 +898,7 @@
       "template": {
         "label": "Πρότυπο",
         "description": "Ενσωματωμένο πρότυπο. Κενό επιλέγει από το URL ή το αρχείο προτύπου.",
-        "tooltip": "Επιβάλετε notifiarr, discord, telegram, gotify, pushover ή slack. Αφήστε αυτόματο για χρήση του URL ή του αρχείου προτύπου.",
+        "tooltip": "Επιβάλετε notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise ή mattermost. Αφήστε αυτόματο για χρήση του URL ή του αρχείου προτύπου.",
         "auto": "Αυτόματο (από το URL ή το αρχείο)"
       },
       "templatePath": {

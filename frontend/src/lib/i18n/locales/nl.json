@@ -1024,7 +1024,7 @@
         "ntfy": "Plak de topic-URL (`https://ntfy.sh/mytopic` of je eigen server).\n\nBearer-token is optioneel voor privé-topics. Titelvoorvoegsel is optioneel.\n\nElke extract-gebeurtenis is een nieuw bericht.",
         "apprise": "Richt de URL op een Apprise API `/notify`- of `/notify/KEY`-eindpunt. Unpackerr POSTet JSON met title, body en type.\n\nTitelvoorvoegsel is optioneel. Draai Apprise als sidecar; het zit niet in Unpackerr.\n\nElke extract-gebeurtenis is een nieuwe notificatie.",
         "mattermost": "Maak een incoming webhook in Mattermost en plak de `/hooks/...`-URL.\n\nGebruikersnaam is de weergavenaam. Kanaal is een optionele override.\n\nElke extract-gebeurtenis is een nieuw bericht.",
-        "custom": "Het sjabloonbestand is een Go-`text/template`. Bijnaam, kanaal, token en contenttype zijn daarin beschikbaar.\n\nEen gekozen sjabloon onder Geavanceerd negeert dit bestand.\n\nBerichten worden niet bijgewerkt; elke extract-gebeurtenis is een nieuwe POST."
+        "custom": "Het sjabloonbestand is een Go-`text/template`. Bijnaam, kanaal en token zijn daarin beschikbaar. Het contenttype stelt de HTTP-header in.\n\nEen gekozen sjabloon onder Geavanceerd negeert dit bestand.\n\nBerichten worden niet bijgewerkt; elke extract-gebeurtenis is een nieuwe POST."
       }
     },
     "payload": {

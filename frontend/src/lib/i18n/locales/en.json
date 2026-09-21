@@ -1024,7 +1024,7 @@
         "ntfy": "Paste the topic URL (`https://ntfy.sh/mytopic` or your own server).\n\nBearer token is optional for private topics. Title prefix is optional.\n\nEach extract event is a new message.",
         "apprise": "Point the URL at an Apprise API `/notify` or `/notify/KEY` endpoint. Unpackerr POSTs JSON with title, body, and type.\n\nTitle prefix is optional. Run Apprise as a sidecar; it is not bundled.\n\nEach extract event is a new notification.",
         "mattermost": "Create an incoming webhook in Mattermost and paste the `/hooks/...` URL.\n\nUsername is the display name. Channel is an optional override.\n\nEach extract event is a new message.",
-        "custom": "Template file is a Go `text/template`. Nickname, channel, token, and content type are available to that file.\n\nA named Template under Advanced ignores this file.\n\nMessages are not updated; each extract event is a new POST."
+        "custom": "Template file is a Go `text/template`. Nickname, channel, and token are available to that file. Content type sets the HTTP header.\n\nA named Template under Advanced ignores this file.\n\nMessages are not updated; each extract event is a new POST."
       }
     },
     "payload": {

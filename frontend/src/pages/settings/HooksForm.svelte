@@ -257,14 +257,18 @@
     const out: Record<string, WebhookConfig> = {}
     for (const row of rows) {
       if (row.envOnly || !row.slug) continue
-      out[row.slug] = omitEnvFields(
-        envPrefix,
-        row.slug,
-        row.value,
-        HOOK_ENV_FIELDS,
+      out[row.slug] = omitHiddenContentType(
+        omitEnvFields(envPrefix, row.slug, row.value, HOOK_ENV_FIELDS),
       )
     }
     return out
+  }
+
+  // Built-ins set Content-Type themselves. Sending the form's json default
+  // would skip the Pushover form-urlencoded default on save and test.
+  function omitHiddenContentType(hook: WebhookConfig): WebhookConfig {
+    if (isCmd || hookShowsField(profileOf(hook), 'contentType')) return hook
+    return { ...hook, contentType: '' }
   }
 
   function eventOn(
@@ -465,7 +469,7 @@
       url: hook.url,
       command: hook.command,
       token: hook.token,
-      contentType: hook.contentType,
+      contentType: omitHiddenContentType(hook).contentType,
       template: hook.template,
       templatePath: hook.templatePath,
       timeout: hook.timeout,
@@ -968,6 +972,7 @@
                 size="sm"
                 color="link"
                 class="px-0"
+                aria-expanded={isAdvancedOpen(row)}
                 on:click={() => toggleAdvanced(row)}
                 >{$_('config.hooks.advanced')}</Button
               >

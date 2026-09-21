@@ -1024,7 +1024,7 @@
         "ntfy": "Pega la URL del tema (`https://ntfy.sh/mytopic` o tu propio servidor).\n\nEl token Bearer es opcional en temas privados. El prefijo de título es opcional.\n\nCada evento de extracción es un mensaje nuevo.",
         "apprise": "Apunta la URL a un endpoint de Apprise API `/notify` o `/notify/KEY`. Unpackerr hace POST JSON con title, body y type.\n\nEl prefijo de título es opcional. Ejecuta Apprise como sidecar; no va incluido.\n\nCada evento de extracción es una notificación nueva.",
         "mattermost": "Crea un webhook entrante en Mattermost y pega la URL `/hooks/...`.\n\nEl nombre de usuario es el nombre visible. El canal es una sustitución opcional.\n\nCada evento de extracción es un mensaje nuevo.",
-        "custom": "El archivo de plantilla es un `text/template` de Go. Apodo, canal, token y tipo de contenido están disponibles en ese archivo.\n\nUna plantilla con nombre en Avanzado ignora este archivo.\n\nLos mensajes no se actualizan; cada evento de extracción es un POST nuevo."
+        "custom": "El archivo de plantilla es un `text/template` de Go. Apodo, canal y token están disponibles en ese archivo. El tipo de contenido configura la cabecera HTTP.\n\nUna plantilla con nombre en Avanzado ignora este archivo.\n\nLos mensajes no se actualizan; cada evento de extracción es un POST nuevo."
       }
     },
     "payload": {

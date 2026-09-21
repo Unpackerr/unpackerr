@@ -329,7 +329,7 @@ func (u *Unpackerr) hookTestConfig(
 	}
 
 	if hook.CType == "" {
-		hook.CType = "application/json"
+		hook.CType = hooks.DefaultContentType(hook.TempName, hook.URL)
 	}
 
 	event, err := parseTestEvent(body.Event)

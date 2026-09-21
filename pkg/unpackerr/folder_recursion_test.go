@@ -53,8 +53,7 @@ func TestFolderDisableRecursionFalseExtractsNested(t *testing.T) {
 func TestFolderExcludeSuffixesDirectoryDoesNotExcludeAllArchives(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	exclude := folderExcludeSuffixes(dir, &FolderConfig{DisableRecursion: true, ExtractISOs: false})
+	exclude := folderExcludeSuffixes(&FolderConfig{DisableRecursion: true, ExtractISOs: false})
 
 	if !containsString(exclude, ".iso") {
 		t.Fatalf("expected .iso exclusion when extract_isos=false; got: %v", exclude)
@@ -65,14 +64,18 @@ func TestFolderExcludeSuffixesDirectoryDoesNotExcludeAllArchives(t *testing.T) {
 	}
 }
 
-func TestFolderExcludeSuffixesArchiveExcludesAllWhenDisableRecursion(t *testing.T) {
+func TestFolderExcludeSuffixesArchiveStaysSearchableWhenDisableRecursion(t *testing.T) {
 	t.Parallel()
 
 	archivePath := makeNestedZipFixture(t)
-	exclude := folderExcludeSuffixes(archivePath, &FolderConfig{DisableRecursion: true, ExtractISOs: false})
+	exclude := folderExcludeSuffixes(&FolderConfig{DisableRecursion: true, ExtractISOs: false})
 
-	if !containsString(exclude, ".zip") {
-		t.Fatalf("expected archive suffix exclusions for watched archive file; got: %v", exclude)
+	if containsString(exclude, ".zip") {
+		t.Fatalf("watched archive suffix must stay searchable; got: %v", exclude)
+	}
+
+	if xtractr.FindCompressedFiles(xtractr.Filter{Path: archivePath, ExcludeSuffix: exclude}).Count() != 1 {
+		t.Fatal("expected FindCompressedFiles to return the watched archive")
 	}
 }
 
@@ -80,7 +83,7 @@ func runExtraction(t *testing.T, archivePath string, disableRecursion bool) *xtr
 	t.Helper()
 
 	cfg := &FolderConfig{DisableRecursion: disableRecursion, ExtractISOs: false}
-	exclude := folderExcludeSuffixes(archivePath, cfg)
+	exclude := folderExcludeSuffixes(cfg)
 
 	queue := xtractr.NewQueue(&xtractr.Config{
 		Parallel: 1,

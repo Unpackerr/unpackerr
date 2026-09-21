@@ -51,6 +51,15 @@ func DetectTransport(name, rawURL string) Profile {
 	return Detect(name, rawURL, "")
 }
 
+// DefaultContentType is JSON, except Pushover which posts a form body.
+func DefaultContentType(name, rawURL string) string {
+	if DetectTransport(name, rawURL).Name == ProfilePushover {
+		return "application/x-www-form-urlencoded"
+	}
+
+	return "application/json"
+}
+
 func namedProfile(name string) (Profile, bool) {
 	switch name {
 	case ProfileNotifiarr:

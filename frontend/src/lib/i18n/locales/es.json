@@ -327,7 +327,7 @@
       },
       "webhooks": {
         "label": "Webhooks",
-        "intro": "Devoluciones HTTP cuando una extracción cambia de estado. Apúntalos a Discord, Slack, Notifiarr o cualquier URL que acepte un POST."
+        "intro": "Devoluciones HTTP cuando una extracción cambia de estado. Pega una URL de Discord, Slack, Telegram, ntfy, Apprise o Notifiarr y el formulario sigue esa plantilla."
       },
       "cmdhooks": {
         "label": "Ganchos de comando",
@@ -343,7 +343,7 @@
       "AddSection": "Añadir {section}",
       "AddFolder": "Añadir carpeta",
       "Key": "Clave",
-      "KeyLocked": "Nombre de esta instancia en el archivo de configuración, como [sonarr.uhd] o [folder.tv]. Se bloquea tras el primer guardado.",
+      "KeyLocked": "Nombre único de esta instancia en el archivo de configuración. Se bloquea tras el primer guardado.",
       "KeyTooltip": "Hace única cada instancia. No se usa en los registros ni en nada visible. También es el slug de entorno, como UN_SONARR_uhd_URL. Las claves distinguen mayúsculas.",
       "AddWebhook": "Añadir webhook",
       "AddCmdhook": "Añadir gancho de comando"
@@ -839,7 +839,7 @@
       "url": {
         "label": "URL",
         "description": "URL a la que hacer POST cuando una extracción cambia de estado.",
-        "tooltip": "Funciona con Notifiarr, Discord, Slack, Telegram y cualquier URL que acepte el payload. Las plantillas integradas se eligen a partir de la URL salvo que fuerces una en el archivo de configuración."
+        "tooltip": "Pega una URL de Discord, Slack, Telegram, ntfy, Apprise, Mattermost, Gotify, Pushover o Notifiarr. El formulario elige la plantilla a partir de la URL salvo que fuerces una en Avanzado."
       },
       "command": {
         "label": "Comando",
@@ -883,17 +883,97 @@
       "nickname": {
         "label": "Apodo",
         "description": "Nombre del bot para Discord, Slack y Mattermost. ID de chat para Telegram. Prefijo de título para Gotify, ntfy y Apprise.",
-        "tooltip": "Se pasa a las plantillas integradas. Telegram necesita el chat_id aquí."
+        "tooltip": "Se pasa a las plantillas integradas. Telegram necesita el chat_id aquí.",
+        "discord": {
+          "label": "Nombre del bot",
+          "description": "Nombre visible del webhook de Discord.",
+          "tooltip": "Opcional. Discord lo usa como nombre de usuario del mensaje."
+        },
+        "telegram": {
+          "label": "ID de chat",
+          "description": "ID numérico de chat o grupo de Telegram.",
+          "tooltip": "Obligatorio para Telegram. Un bot como @userinfobot puede mostrarlo."
+        },
+        "slack": {
+          "label": "Nombre de usuario",
+          "description": "Nombre visible del webhook entrante de Slack.",
+          "tooltip": "Opcional. Slack puede ignorarlo según la configuración del webhook."
+        },
+        "mattermost": {
+          "label": "Nombre de usuario",
+          "description": "Nombre visible del webhook entrante de Mattermost.",
+          "tooltip": "Sustitución opcional del nombre de usuario del webhook."
+        },
+        "pushover": {
+          "label": "Dispositivo",
+          "description": "Nombre de dispositivo de Pushover, opcional.",
+          "tooltip": "Déjalo vacío para notificar todos los dispositivos de la clave de usuario."
+        },
+        "gotify": {
+          "label": "Prefijo de título",
+          "description": "Prefijo opcional del título del mensaje de Gotify.",
+          "tooltip": "Déjalo vacío para usar solo el título del evento."
+        },
+        "ntfy": {
+          "label": "Prefijo de título",
+          "description": "Prefijo opcional del título del mensaje de ntfy.",
+          "tooltip": "Déjalo vacío para usar solo el título del evento."
+        },
+        "apprise": {
+          "label": "Prefijo de título",
+          "description": "Prefijo opcional del título de la notificación de Apprise.",
+          "tooltip": "Déjalo vacío para usar solo el título del evento."
+        },
+        "custom": {
+          "label": "Apodo",
+          "description": "Disponible en la plantilla personalizada como nickname.",
+          "tooltip": "Úsalo como espere tu plantilla."
+        }
       },
       "channel": {
         "label": "Canal",
         "description": "Canal de destino para Slack y Mattermost. Clave de usuario de Pushover.",
-        "tooltip": "Lo ignoran Discord y Telegram. Las plantillas personalizadas aún pueden usarlo."
+        "tooltip": "Lo ignoran Discord y Telegram. Las plantillas personalizadas aún pueden usarlo.",
+        "slack": {
+          "label": "Canal",
+          "description": "Sustitución opcional del canal de Slack.",
+          "tooltip": "Los webhooks entrantes suelen fijar el canal al crearlos. Ponlo solo si Slack permite sustituirlo."
+        },
+        "mattermost": {
+          "label": "Canal",
+          "description": "Sustitución opcional del canal de Mattermost.",
+          "tooltip": "Déjalo vacío para usar el canal vinculado al webhook entrante."
+        },
+        "pushover": {
+          "label": "Clave de usuario",
+          "description": "Clave de usuario o grupo de Pushover.",
+          "tooltip": "Obligatorio para Pushover. No es el token de aplicación."
+        },
+        "custom": {
+          "label": "Canal",
+          "description": "Disponible en la plantilla personalizada como channel.",
+          "tooltip": "Úsalo como espere tu plantilla."
+        }
       },
       "token": {
         "label": "Token",
         "description": "Token de aplicación de Pushover, o token Bearer opcional de ntfy.",
-        "tooltip": "Se pasa a las plantillas del webhook. Déjalo vacío salvo que la plantilla lo necesite."
+        "tooltip": "Se pasa a las plantillas del webhook. Déjalo vacío salvo que la plantilla lo necesite.",
+        "pushover": {
+          "label": "Token de aplicación",
+          "description": "Token de API de la aplicación Pushover.",
+          "tooltip": "Obligatorio. Crea una aplicación en pushover.net para obtenerlo."
+        },
+        "ntfy": {
+          "label": "Token Bearer",
+          "description": "Token de acceso ntfy opcional para temas privados.",
+          "tooltip": "Se envía como Authorization Bearer. Déjalo vacío en temas públicos."
+        },
+        "custom": {
+          "label": "Token",
+          "description": "Disponible en la plantilla personalizada como token.",
+          "tooltip": "Úsalo como espere tu plantilla."
+        }
       },
       "exclude": {
         "label": "Excluir apps",
@@ -910,6 +990,41 @@
         "label": "Archivo de plantilla",
         "description": "Archivo de plantilla Go personalizado en lugar de una integrada.",
         "tooltip": "Se usa cuando Plantilla es Automático. Una plantilla con nombre ignora este archivo."
+      },
+      "advanced": "Avanzado",
+      "chip": {
+        "named": "Usando {name}",
+        "fromURL": "Usando {name} (desde la URL)",
+        "custom": "Usando una plantilla personalizada",
+        "default": "Usando JSON de Notifiarr (predeterminado)"
+      },
+      "profile": {
+        "notifiarr": "Notifiarr",
+        "discord": "Discord",
+        "telegram": "Telegram",
+        "slack": "Slack",
+        "pushover": "Pushover",
+        "gotify": "Gotify",
+        "ntfy": "ntfy",
+        "apprise": "Apprise",
+        "mattermost": "Mattermost",
+        "custom": "plantilla personalizada"
+      },
+      "guide": {
+        "button": "Guía de configuración",
+        "pick": "Servicio",
+        "title": "Guía de configuración: {name}",
+        "test": "Después de guardar, pulsa Probar en el campo URL para enviar un payload de muestra.",
+        "notifiarr": "En notifiarr.com abre Integraciones → Unpackerr y copia la URL del webhook.\n\nPégala aquí. Apodo, canal y token no se usan.\n\nCada evento de extracción es un payload JSON nuevo. Las URL desconocidas también usan esta plantilla.",
+        "discord": "En Discord: Canal → Integraciones → Webhooks → Nuevo webhook. Copia la URL (`discord.com/api/webhooks/...`).\n\nEl nombre del bot es el nombre visible, opcional.\n\nLos mensajes se actualizan in situ por defecto (un mensaje por extracción). Desactiva Actualizar mensajes para apilar uno nuevo en cada evento.",
+        "telegram": "Crea un bot con @BotFather y copia el token. La URL es `https://api.telegram.org/botTOKEN/sendMessage`.\n\nEl ID de chat es el id numérico del chat o grupo. Un bot como @userinfobot puede mostrarlo.\n\nLos mensajes se actualizan in situ por defecto. Desactiva Actualizar mensajes para enviar uno nuevo en cada evento.",
+        "slack": "Crea un Incoming Webhook en Slack y pega la URL de `hooks.slack.com`.\n\nEl nombre de usuario es el nombre visible. El canal es una sustitución opcional si Slack lo permite.\n\nLos webhooks entrantes no pueden actualizar un mensaje anterior; cada evento de extracción es un mensaje nuevo.",
+        "pushover": "La URL es `https://api.pushover.net/1/messages.json`.\n\nEl token de aplicación es el de tu aplicación Pushover. La clave de usuario es la de usuario o grupo. El dispositivo es opcional.\n\nCada evento de extracción es una notificación nueva.",
+        "gotify": "Pega la URL de mensajes de Gotify, con el token en la consulta (`https://gotify.example/message?token=...`).\n\nEl prefijo de título es opcional.\n\nCada evento de extracción es un mensaje nuevo.",
+        "ntfy": "Pega la URL del tema (`https://ntfy.sh/mytopic` o tu propio servidor).\n\nEl token Bearer es opcional en temas privados. El prefijo de título es opcional.\n\nCada evento de extracción es un mensaje nuevo.",
+        "apprise": "Apunta la URL a un endpoint de Apprise API `/notify` o `/notify/KEY`. Unpackerr hace POST JSON con title, body y type.\n\nEl prefijo de título es opcional. Ejecuta Apprise como sidecar; no va incluido.\n\nCada evento de extracción es una notificación nueva.",
+        "mattermost": "Crea un webhook entrante en Mattermost y pega la URL `/hooks/...`.\n\nEl nombre de usuario es el nombre visible. El canal es una sustitución opcional.\n\nCada evento de extracción es un mensaje nuevo.",
+        "custom": "El archivo de plantilla es un `text/template` de Go. Apodo, canal y token están disponibles en ese archivo. El tipo de contenido configura la cabecera HTTP.\n\nUna plantilla con nombre en Avanzado ignora este archivo.\n\nLos mensajes no se actualizan; cada evento de extracción es un POST nuevo."
       }
     },
     "payload": {

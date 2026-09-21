@@ -72,3 +72,17 @@ func TestDetectTransportIgnoresTemplatePath(t *testing.T) {
 		t.Fatalf("named %q", got.Name)
 	}
 }
+
+func TestDefaultContentType(t *testing.T) {
+	t.Parallel()
+
+	got := DefaultContentType("", "https://api.pushover.net/1/messages.json")
+	if got != "application/x-www-form-urlencoded" {
+		t.Fatalf("pushover %q", got)
+	}
+
+	got = DefaultContentType("", "https://discord.com/api/webhooks/1/x")
+	if got != "application/json" {
+		t.Fatalf("discord %q", got)
+	}
+}

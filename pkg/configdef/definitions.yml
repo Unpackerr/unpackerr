@@ -1018,11 +1018,14 @@ sections:
       Works great with [notifiarr.com](https://notifiarr.com). You can use
       [requestbin.com](https://requestbin.com/r/) to test and _see_ the payload.
     notes: |
-      - _`Nickname` should equal the `chat_id` value in Telegram webhooks._
-      - _`Channel` is used as destination channel for Slack and Mattermost, and as the Pushover user key._
-      - _`Nickname` and `Channel` may be used as custom values in custom templates._
+      - Paste a Discord, Slack, Telegram, ntfy, Apprise, Mattermost, Gotify, Pushover, or Notifiarr URL; the template is detected unless you set `template`.
+      - Discord and Telegram can edit the previous message (`update`, default on). Slack incoming webhooks cannot update; each event is a new message.
+      - Telegram: `nickname` is the `chat_id`. Pushover: `token` is the app token, `channel` is the user key, `nickname` is an optional device.
+      - Slack and Mattermost: `nickname` is the display name; `channel` is an optional override.
+      - ntfy: optional `token` as Bearer. Gotify, ntfy, and Apprise: `nickname` is an optional title prefix.
+      - Empty or unknown URLs use the Notifiarr JSON payload. Set `template_path` for a custom Go template; a named `template` ignores that file.
       - _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
-      - Built-In Templates: `pushover`, `telegram`, `discord`, `notifiarr`, `slack`, `gotify`, `ntfy`, `apprise`, `mattermost`.
+      - Built-in templates: `notifiarr`, `discord`, `telegram`, `slack`, `pushover`, `gotify`, `ntfy`, `apprise`, `mattermost`.
     envvar_prefix: WEBHOOK_
     kind: named
     params:

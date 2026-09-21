@@ -856,6 +856,11 @@
         "description": "Content-Type header sent with the webhook.",
         "tooltip": "Leave application/json unless a custom template needs another MIME type."
       },
+      "headers": {
+        "label": "Headers",
+        "description": "Extra HTTP headers on the webhook POST.",
+        "tooltip": "Applied first. Content-Type and ntfy Bearer from token still win. Shown when you pick a template or use a custom file."
+      },
       "ignoreSsl": {
         "label": "Ignore SSL",
         "description": "Skip TLS certificate checks for this URL.",

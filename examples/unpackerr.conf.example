@@ -506,6 +506,11 @@ passwords = []
 # timeout = "10s"
 ## If your custom template uses another MIME type, set this.
 # content_type = "application/json"
+## Nested [webhook.0.headers] table. Header names are letters, digits, underscore, or hyphen.
+## Applied first; Content-Type and ntfy Authorization Bearer from token still win.
+## Env: UN_WEBHOOK_0_HEADERS_Authorization=Bearer token
+## [webhook.0.headers]
+## Authorization = "Bearer token"
 
 #####################
 ### Command Hooks ###

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -27,23 +28,24 @@ var errSectionNotTestable = errors.New("this section cannot be tested")
 // Starr uses url/apiKey/valid_ssl/timeout. Hooks use event/app and hook fields.
 // Hook shell/ignoreSsl are pointers so omitted JSON keeps the live values.
 type configTestRequest struct {
-	Slug         string        `json:"slug"`
-	URL          string        `json:"url"`
-	APIKey       string        `json:"apiKey"`
-	ValidSSL     bool          `json:"valid_ssl"`
-	Timeout      cnfg.Duration `json:"timeout"`
-	Event        string        `json:"event"`
-	App          string        `json:"app"`
-	Command      string        `json:"command"`
-	Token        string        `json:"token"`
-	ContentType  string        `json:"contentType"`
-	Template     string        `json:"template"`
-	TemplatePath string        `json:"templatePath"`
-	Shell        *bool         `json:"shell"`
-	IgnoreSSL    *bool         `json:"ignoreSsl"`
-	Nickname     string        `json:"nickname"`
-	Channel      string        `json:"channel"`
-	Name         string        `json:"name"`
+	Slug         string            `json:"slug"`
+	URL          string            `json:"url"`
+	APIKey       string            `json:"apiKey"`
+	ValidSSL     bool              `json:"valid_ssl"`
+	Timeout      cnfg.Duration     `json:"timeout"`
+	Event        string            `json:"event"`
+	App          string            `json:"app"`
+	Command      string            `json:"command"`
+	Token        string            `json:"token"`
+	ContentType  string            `json:"contentType"`
+	Template     string            `json:"template"`
+	TemplatePath string            `json:"templatePath"`
+	Shell        *bool             `json:"shell"`
+	IgnoreSSL    *bool             `json:"ignoreSsl"`
+	Nickname     string            `json:"nickname"`
+	Channel      string            `json:"channel"`
+	Name         string            `json:"name"`
+	Headers      map[string]string `json:"headers"`
 }
 
 type starrTestResult struct {
@@ -383,6 +385,10 @@ func overlayHook(hook *hooks.Config, body configTestRequest) {
 
 	if body.IgnoreSSL != nil {
 		hook.IgnoreSSL = *body.IgnoreSSL
+	}
+
+	if body.Headers != nil {
+		hook.Headers = maps.Clone(body.Headers)
 	}
 }
 

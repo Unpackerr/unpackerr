@@ -272,6 +272,50 @@ func TestNtfyCustomTemplateSendsBearerToken(t *testing.T) {
 	}
 }
 
+func TestCustomHeadersThenBuiltinsWin(t *testing.T) {
+	t.Parallel()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://ntfy.sh/unpackerr", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hook := &Config{
+		URL:      "https://ntfy.sh/unpackerr",
+		TempName: ProfileNtfy,
+		Token:    "secret",
+		CType:    "application/json",
+		Headers: map[string]string{
+			"Authorization":       "Bearer ignored",
+			"Content-Type":        "text/plain",
+			"Host":                "evil.example",
+			"X-Api-Key":           "key",
+			"CF-Access-Client-Id": "cf",
+		},
+	}
+	hook.setRequestHeaders(req)
+
+	if got := req.Header.Get("Authorization"); got != "Bearer secret" {
+		t.Fatalf("Authorization %q", got)
+	}
+
+	if got := req.Header.Get("Content-Type"); got != "application/json" {
+		t.Fatalf("Content-Type %q", got)
+	}
+
+	if got := req.Header.Get("X-Api-Key"); got != "key" {
+		t.Fatalf("X-Api-Key %q", got)
+	}
+
+	if got := req.Header.Get("Cf-Access-Client-Id"); got != "cf" {
+		t.Fatalf("CF-Access-Client-Id %q", got)
+	}
+
+	if got := req.Header.Get("Host"); got != "" {
+		t.Fatalf("Host %q", got)
+	}
+}
+
 func TestPushoverCustomTemplateKeepsFormContentType(t *testing.T) {
 	t.Parallel()
 

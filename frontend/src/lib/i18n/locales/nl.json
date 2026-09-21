@@ -856,6 +856,11 @@
         "description": "Content-Type-header die met de webhook meegaat.",
         "tooltip": "Laat application/json tenzij een aangepast sjabloon een ander MIME-type nodig heeft."
       },
+      "headers": {
+        "label": "Headers",
+        "description": "Extra HTTP-headers op de webhook-POST.",
+        "tooltip": "Eerst toegepast. Content-Type en ntfy-Bearer uit token winnen daarna. Zichtbaar als je een sjabloon kiest of een aangepast bestand gebruikt."
+      },
       "ignoreSsl": {
         "label": "SSL negeren",
         "description": "TLS-certificaatcontroles voor deze URL overslaan.",

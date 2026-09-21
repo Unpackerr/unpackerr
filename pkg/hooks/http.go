@@ -57,6 +57,16 @@ func (w *Config) send(ctx context.Context, body io.Reader) ([]byte, error) {
 }
 
 func (w *Config) setRequestHeaders(req *http.Request) {
+	for name, value := range w.Headers {
+		name = strings.TrimSpace(name)
+		if name == "" || skipRequestHeader(name) ||
+			strings.ContainsAny(name, "\r\n") || strings.ContainsAny(value, "\r\n") {
+			continue
+		}
+
+		req.Header.Set(name, value)
+	}
+
 	req.Header.Set("Content-Type", w.CType)
 
 	if DetectTransport(w.TempName, w.URL).Name != ProfileNtfy {

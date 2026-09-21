@@ -192,20 +192,20 @@ func (h *Header) makeSectionLive(
 	}
 
 	live = derefValue(live)
-	h.writeLiveParams(&buf, name, space, live, persist)
+	h.writeLiveParams(&buf, name, key, space, live, persist)
 
 	return buf.String()
 }
 
 func (h *Header) writeLiveParams(
-	buf *bytes.Buffer, name section, space string, live reflect.Value, persist persistSet,
+	buf *bytes.Buffer, name section, instanceKey, space string, live reflect.Value, persist persistSet,
 ) {
 	for _, param := range h.Params {
 		writeLiveParam(buf, name, space, live, persist, h.NoHeader, param)
 	}
 
 	buf.WriteString("\n")
-	buf.WriteString(h.renderNestedLive(name, live))
+	buf.WriteString(h.renderNestedLive(name, instanceKey, live))
 }
 
 func writeLiveParam(
@@ -252,7 +252,7 @@ func writeLiveParam(
 	fmt.Fprintf(buf, "%s%s%s = %s\n", comment, space, param.Name, text)
 }
 
-func (h *Header) renderNestedLive(section section, live reflect.Value) string {
+func (h *Header) renderNestedLive(section section, instanceKey string, live reflect.Value) string {
 	live = derefValue(live)
 	if !live.IsValid() {
 		return ""
@@ -270,13 +270,13 @@ func (h *Header) renderNestedLive(section section, live reflect.Value) string {
 			continue
 		}
 
-		buf.WriteString(renderNestedValue(section, param.Name, param.Kind, derefValue(field)))
+		buf.WriteString(renderNestedValue(section, instanceKey, param.Name, param.Kind, derefValue(field)))
 	}
 
 	return buf.String()
 }
 
-func renderNestedValue(section section, name, kind string, value reflect.Value) string {
+func renderNestedValue(section section, instanceKey, name, kind string, value reflect.Value) string {
 	if !value.IsValid() || isNilish(value) {
 		return ""
 	}
@@ -296,7 +296,7 @@ func renderNestedValue(section section, name, kind string, value reflect.Value) 
 	case tables:
 		return renderNestedTables(section, name, value)
 	case "map":
-		return renderNestedMap(section, name, value)
+		return renderNestedMap(section, instanceKey, name, value)
 	default:
 		return ""
 	}
@@ -318,7 +318,7 @@ func renderNestedTables(section section, name string, value reflect.Value) strin
 	return buf.String()
 }
 
-func renderNestedMap(section section, name string, value reflect.Value) string {
+func renderNestedMap(section section, instanceKey, name string, value reflect.Value) string {
 	if value.Kind() == reflect.Struct {
 		var fields bytes.Buffer
 
@@ -330,7 +330,7 @@ func renderNestedMap(section section, name string, value reflect.Value) string {
 
 		var buf bytes.Buffer
 
-		fmt.Fprintf(&buf, "[%s.%s]\n", section, name)
+		fmt.Fprintf(&buf, "[%s]\n", nestedTableName(section, instanceKey, name))
 		buf.Write(fields.Bytes())
 		buf.WriteByte('\n')
 
@@ -347,7 +347,7 @@ func renderNestedMap(section section, name string, value reflect.Value) string {
 	}
 
 	if elem.Kind() != reflect.Struct {
-		return renderNestedKVMap(section, name, value)
+		return renderNestedKVMap(section, instanceKey, name, value)
 	}
 
 	keys := value.MapKeys()
@@ -366,7 +366,7 @@ func renderNestedMap(section section, name string, value reflect.Value) string {
 	return buf.String()
 }
 
-func renderNestedKVMap(section section, name string, value reflect.Value) string {
+func renderNestedKVMap(section section, instanceKey, name string, value reflect.Value) string {
 	keys := sortedMapStringKeys(value)
 	if len(keys) == 0 {
 		return ""
@@ -374,7 +374,7 @@ func renderNestedKVMap(section section, name string, value reflect.Value) string
 
 	var buf strings.Builder
 
-	fmt.Fprintf(&buf, "[%s.%s]\n", section, name)
+	fmt.Fprintf(&buf, "[%s]\n", nestedTableName(section, instanceKey, name))
 
 	for _, key := range keys {
 		fmt.Fprintf(&buf, " %s = %s\n", tomlKey(key), formatTOML("", value.MapIndex(reflect.ValueOf(key)).Interface()))
@@ -383,6 +383,14 @@ func renderNestedKVMap(section section, name string, value reflect.Value) string
 	buf.WriteByte('\n')
 
 	return buf.String()
+}
+
+func nestedTableName(section section, instanceKey, param string) string {
+	if instanceKey == "" {
+		return string(section) + "." + param
+	}
+
+	return string(section) + "." + instanceKey + "." + param
 }
 
 func sortedMapStringKeys(value reflect.Value) []string {

@@ -315,7 +315,8 @@
           "ignoreSsl": {"type": "boolean", "description": "When present, overrides the live hook; omitted keeps live"},
           "nickname": {"type": "string"},
           "channel": {"type": "string"},
-          "name": {"type": "string"}
+          "name": {"type": "string"},
+          "headers": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Extra request headers. Applied before Content-Type and ntfy Bearer. Omitted keeps live headers."}
         }
       },
       "StarrTestResult": {
@@ -420,7 +421,8 @@
           "nickname": {"type": "string"},
           "token": {"type": "string"},
           "channel": {"type": "string"},
-          "update": {"type": "boolean", "description": "Edit the previous Discord or Telegram message. Default on for those templates."}
+          "update": {"type": "boolean", "description": "Edit the previous Discord or Telegram message. Default on for those templates."},
+          "headers": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Extra HTTP headers. Content-Type and ntfy Bearer from token are set after these."}
         }
       },
       "HookMap": {

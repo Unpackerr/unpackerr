@@ -128,3 +128,12 @@ export function hookShowsField(
 ): boolean {
   return profile.fields.includes(field)
 }
+
+/** Extra headers when a named template or custom file is set, or headers already exist. */
+export function hookShowsHeaders(
+  profile: HookFormProfile,
+  headers?: Record<string, string> | null,
+): boolean {
+  if (Object.keys(headers ?? {}).length > 0) return true
+  return profile.source === 'named' || profile.source === 'file'
+}

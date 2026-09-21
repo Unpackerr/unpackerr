@@ -32,6 +32,10 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 			list[idx].CType = DefaultContentType(list[idx].TempName, list[idx].URL)
 		}
 
+		if err := validateHeaders(list[idx].Headers); err != nil {
+			return err
+		}
+
 		applyDefaults(list[idx], defaultTimeout)
 		list[idx].ensureClient()
 	}

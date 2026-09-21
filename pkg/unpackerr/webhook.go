@@ -255,81 +255,80 @@ func (u *Unpackerr) bumpHistoryHookFail(itemID string) {
 	}
 }
 
-func (u *Unpackerr) hookMessage(path, key string) string {
-	if path == "" || key == "" {
+func (u *Unpackerr) hookMessage(itemID, key string) string {
+	if itemID == "" || key == "" {
 		return ""
 	}
 
 	u.lockHistory()
 
-	for _, item := range u.Map {
-		if item != nil && item.Path == path && item.HookMessages != nil {
-			id := item.HookMessages[key]
+	item := u.Map[itemID]
+	if item != nil && item.HookMessages != nil {
+		id := item.HookMessages[key]
 
-			u.unlockHistory()
+		u.History.unlockHistory()
 
-			return id
-		}
+		return id
 	}
 
-	u.unlockHistory()
+	u.History.unlockHistory()
 
-	return u.historyHookMessage(path, key)
+	return u.historyHookMessage(itemID, key)
 }
 
-func (u *Unpackerr) historyHookMessage(path, key string) string {
+func (u *Unpackerr) historyHookMessage(itemID, key string) string {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
 	for _, row := range u.records {
-		if (row.Path == path || row.ID == path) && row.HookMessages != nil {
-			return row.HookMessages[key]
+		if row.ID != itemID || row.HookMessages == nil {
+			continue
 		}
+
+		return row.HookMessages[key]
 	}
 
 	return ""
 }
 
-func (u *Unpackerr) saveHookMessage(path, key, msgID string) {
-	if path == "" || key == "" || msgID == "" {
+func (u *Unpackerr) saveHookMessage(itemID, key, msgID string) {
+	if itemID == "" || key == "" || msgID == "" {
 		return
 	}
 
 	u.lockHistory()
 
-	for itemID, item := range u.Map {
-		if item == nil || item.Path != path {
-			continue
-		}
-
+	item := u.Map[itemID]
+	if item != nil {
 		if item.HookMessages == nil {
 			item.HookMessages = map[string]string{}
 		}
 
 		item.HookMessages[key] = msgID
 		u.maybeRecordHistory(itemID, item)
-		u.unlockHistory()
+		u.History.unlockHistory()
 
 		return
 	}
 
-	u.unlockHistory()
-	u.bumpHistoryHookMessage(path, key, msgID)
+	u.History.unlockHistory()
+	u.bumpHistoryHookMessage(itemID, key, msgID)
 }
 
-func (u *Unpackerr) bumpHistoryHookMessage(path, key, msgID string) {
+func (u *Unpackerr) bumpHistoryHookMessage(itemID, key, msgID string) {
+	if u.KeepHistory == 0 {
+		return
+	}
+
 	u.histMu.Lock()
-
-	var rec HistoryRecord
-
-	found := false
+	defer u.histMu.Unlock()
 
 	for _, row := range u.records {
-		if row.Path != path && row.ID != path {
+		if row.ID != itemID {
 			continue
 		}
 
-		rec = row
+		rec := row
 		if rec.HookMessages == nil {
 			rec.HookMessages = map[string]string{}
 		} else {
@@ -337,15 +336,9 @@ func (u *Unpackerr) bumpHistoryHookMessage(path, key, msgID string) {
 		}
 
 		rec.HookMessages[key] = msgID
-		found = true
+		u.upsertHistoryLocked(rec)
 
-		break
-	}
-
-	u.histMu.Unlock()
-
-	if found {
-		u.upsertHistory(rec)
+		return
 	}
 }
 

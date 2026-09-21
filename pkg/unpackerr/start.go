@@ -412,15 +412,15 @@ func (u *Unpackerr) queueHook(itemID string, item *hooks.Item) {
 		if err != nil {
 			u.reportHookFail(itemID)
 		}
+	}
 
-		key := item.Identity()
+	key := item.Identity()
 
-		item.LookupID = func() string {
-			return u.hookMessage(path, key)
-		}
-		item.SaveID = func(msgID string) {
-			u.saveHookMessage(path, key, msgID)
-		}
+	item.LookupID = func() string {
+		return u.hookMessage(itemID, key)
+	}
+	item.SaveID = func(msgID string) {
+		u.saveHookMessage(itemID, key, msgID)
 	}
 
 	u.inFlight.Add(1)

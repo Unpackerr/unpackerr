@@ -304,6 +304,13 @@ func (u *Unpackerr) hookTestConfig(
 	}
 
 	overlayHook(hook, body)
+	u.overlayEnvHookHeaders(section, strings.TrimSpace(body.Slug), hook)
+
+	if section != SectionCmdhooks {
+		if err := hooks.ValidateHeaders(hook.Headers); err != nil {
+			return nil, 0, "", fmt.Errorf("validating headers: %w", err)
+		}
+	}
 
 	if err := expandFilepaths(hook); err != nil {
 		return nil, 0, "", err
@@ -389,6 +396,40 @@ func overlayHook(hook *hooks.Config, body configTestRequest) {
 
 	if body.Headers != nil {
 		hook.Headers = maps.Clone(body.Headers)
+	}
+}
+
+// overlayEnvHookHeaders puts UN_WEBHOOK_<slug>_HEADERS_* (and cmdhook) children
+// back after a posted headers map replaced the live clone wholesale.
+func (u *Unpackerr) overlayEnvHookHeaders(section ConfigSection, slug string, hook *hooks.Config) {
+	if hook == nil || slug == "" {
+		return
+	}
+
+	var tag string
+
+	switch section {
+	case SectionWebhooks:
+		tag = "WEBHOOK"
+	case SectionCmdhooks:
+		tag = "CMDHOOK"
+	default:
+		return
+	}
+
+	prefix := tag + "_" + slug + "_HEADERS_"
+
+	for key, val := range u.envUsed {
+		name, ok := strings.CutPrefix(key, prefix)
+		if !ok || name == "" {
+			continue
+		}
+
+		if hook.Headers == nil {
+			hook.Headers = make(hooks.HeaderMap)
+		}
+
+		hook.Headers[name] = val
 	}
 }
 

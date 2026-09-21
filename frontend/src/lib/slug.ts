@@ -219,5 +219,4 @@ export const HOOK_ENV_FIELDS: Record<string, string> = {
   token: 'TOKEN',
   channel: 'CHANNEL',
   update: 'UPDATE',
-  headers: 'HEADERS',
 }

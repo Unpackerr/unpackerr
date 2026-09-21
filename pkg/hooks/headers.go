@@ -14,7 +14,8 @@ func skipRequestHeader(name string) bool {
 	}
 }
 
-func validateHeaders(headers map[string]string) error {
+// ValidateHeaders checks extra webhook header names and values.
+func ValidateHeaders(headers map[string]string) error {
 	seen := make(map[string]struct{}, len(headers))
 
 	for name, value := range headers {
@@ -55,7 +56,9 @@ func validHeaderName(name string) bool {
 	return true
 }
 
-func secretHeaderName(name string) bool {
+// SecretHeaderName reports whether a webhook header looks like a secret
+// (Authorization, tokens, API keys, cookies). Shared with env GET redaction.
+func SecretHeaderName(name string) bool {
 	lower := strings.ToLower(name)
 
 	for _, part := range []string{
@@ -73,7 +76,7 @@ func secretHeaderName(name string) bool {
 // RedactHeaderSecrets blanks Authorization and other secret-looking header values.
 func RedactHeaderSecrets(headers map[string]string) {
 	for name := range headers {
-		if secretHeaderName(name) {
+		if SecretHeaderName(name) {
 			headers[name] = ""
 		}
 	}

@@ -32,7 +32,7 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 			list[idx].CType = DefaultContentType(list[idx].TempName, list[idx].URL)
 		}
 
-		if err := validateHeaders(list[idx].Headers); err != nil {
+		if err := ValidateHeaders(list[idx].Headers); err != nil {
 			return err
 		}
 

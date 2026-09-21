@@ -266,7 +266,7 @@
       let hook = omitHiddenContentType(
         omitEnvFields(envPrefix, row.slug, row.value, HOOK_ENV_FIELDS),
       )
-      if (isCmd || envHas(envField(envPrefix, row.slug, 'HEADERS_*'))) {
+      if (isCmd) {
         hook = { ...hook, headers: undefined }
       }
       out[row.slug] = hook
@@ -488,9 +488,12 @@
       nickname: hook.nickname,
       channel: hook.channel,
       name: hook.name,
-      headers: hookShowsHeaders(profileOf(hook), hook.headers)
-        ? (hook.headers ?? {})
-        : undefined,
+      headers:
+        isCmd || envHas(envField(envPrefix, row.slug, 'HEADERS_*'))
+          ? undefined
+          : hookShowsHeaders(profileOf(hook), hook.headers)
+            ? (hook.headers ?? {})
+            : undefined,
       event: testEvent,
       app: testApp,
     })
@@ -1034,25 +1037,23 @@
                       {/snippet}
                     </Input>
                   </Col>
-                  {#if hookShowsHeaders(profile, hook.headers)}
-                    <Col md="12">
-                      <MapPairs
-                        bind:values={
-                          () => hook.headers ?? {},
-                          (v) => {
-                            hook.headers = v
-                          }
-                        }
-                        disabled={!canWrite || row.envOnly}
-                        idPrefix={`${section}-${row.id}-headers`}
-                        helpKey="config.hooks.headers"
-                        envVar={envField(envPrefix, slug, 'HEADERS_*')}
-                        label={$_('config.hooks.headers.label')}
-                        description={$_('config.hooks.headers.description')}
-                      />
-                    </Col>
-                  {/if}
                 </Row>
+                {#if hookShowsHeaders(profile, hook.headers)}
+                  <MapPairs
+                    bind:values={
+                      () => hook.headers ?? {},
+                      (v) => {
+                        hook.headers = v
+                      }
+                    }
+                    disabled={!canWrite || row.envOnly}
+                    idPrefix={`${section}-${row.id}-headers`}
+                    helpKey="config.hooks.headers"
+                    envVar={envField(envPrefix, slug, 'HEADERS_*')}
+                    label={$_('config.hooks.headers.label')}
+                    description={$_('config.hooks.headers.description')}
+                  />
+                {/if}
               </Collapse>
             </Col>
           {/if}

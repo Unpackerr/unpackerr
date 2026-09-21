@@ -8,23 +8,23 @@ import (
 func TestValidateHeaders(t *testing.T) {
 	t.Parallel()
 
-	if err := validateHeaders(nil); err != nil {
+	if err := ValidateHeaders(nil); err != nil {
 		t.Fatalf("nil %v", err)
 	}
 
-	if err := validateHeaders(map[string]string{"X-Api-Key": "k", "Authorization": "Bearer x"}); err != nil {
+	if err := ValidateHeaders(map[string]string{"X-Api-Key": "k", "Authorization": "Bearer x"}); err != nil {
 		t.Fatalf("ok %v", err)
 	}
 
-	if err := validateHeaders(map[string]string{"Bad Name": "x"}); !errors.Is(err, ErrHeaderName) {
+	if err := ValidateHeaders(map[string]string{"Bad Name": "x"}); !errors.Is(err, ErrHeaderName) {
 		t.Fatalf("space %v", err)
 	}
 
-	if err := validateHeaders(map[string]string{"X-Api-Key": "a\nb"}); !errors.Is(err, ErrHeaderValue) {
+	if err := ValidateHeaders(map[string]string{"X-Api-Key": "a\nb"}); !errors.Is(err, ErrHeaderValue) {
 		t.Fatalf("newline %v", err)
 	}
 
-	if err := validateHeaders(map[string]string{"X-Api-Key": "a", "x-api-key": "b"}); !errors.Is(err, ErrHeaderDup) {
+	if err := ValidateHeaders(map[string]string{"X-Api-Key": "a", "x-api-key": "b"}); !errors.Is(err, ErrHeaderDup) {
 		t.Fatalf("dup %v", err)
 	}
 }

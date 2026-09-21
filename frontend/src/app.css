@@ -57,6 +57,16 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+/* Title + help text (or checkboxes), not an input: drop Bootstrap's form-label gap. */
+.form-label:has(+ .form-text),
+.form-label:has(+ .form-check) {
+  margin-bottom: 0;
+}
+
+.form-label + .form-text {
+  margin-top: 0;
+}
+
 .stat-card .stat-value {
   font-size: 1.35rem;
   font-weight: 600;

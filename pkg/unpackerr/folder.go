@@ -86,7 +86,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		return
 	}
 
-	exclude := folderExcludeSuffixes(name, folder.Config)
+	exclude := folderExcludeSuffixes(folder.Config)
 
 	if folder.Config.MoveBack {
 		found := xtractr.FindCompressedFiles(xtractr.Filter{
@@ -155,24 +155,14 @@ func (u *Unpackerr) skipR00Extraction(name string, now time.Time) bool {
 }
 
 // folderExcludeSuffixes returns archive suffixes to ignore when scanning for items to extract.
-// For watched archive files with disable_recursion enabled, exclude all archive suffixes so
-// extracted nested archives are not picked up by follow-up scans in the extraction library.
-func folderExcludeSuffixes(path string, cfg *FolderConfig) []string {
-	exclude := []string{}
-	if !cfg.ExtractISOs {
-		exclude = append(exclude, ".iso")
+// xtractr applies this list even when the search path is the archive itself, so a watched
+// archive must stay searchable. Nested archives are skipped with DisableRecursion.
+func folderExcludeSuffixes(cfg *FolderConfig) []string {
+	if cfg.ExtractISOs {
+		return nil
 	}
 
-	if !cfg.DisableRecursion {
-		return exclude
-	}
-
-	stat, err := os.Stat(path)
-	if err != nil || stat.IsDir() || !xtractr.IsArchiveFile(path) {
-		return exclude
-	}
-
-	return append(exclude, xtractr.SupportedExtensions()...)
+	return []string{".iso"}
 }
 
 func getFileList(path string) []os.FileInfo {
@@ -660,7 +650,7 @@ func (u *Unpackerr) folderArchiveCount(name string, folder *Folder) int {
 
 	found := xtractr.FindCompressedFiles(xtractr.Filter{
 		Path:          name,
-		ExcludeSuffix: folderExcludeSuffixes(name, cfg),
+		ExcludeSuffix: folderExcludeSuffixes(cfg),
 		AllowSymlinks: cfg.AllowSymlinks,
 	})
 

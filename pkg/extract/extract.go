@@ -11,9 +11,11 @@ import (
 
 // Extract holds data for files being extracted.
 type Extract struct {
-	Syncthing  bool
-	SplitFlac  bool
-	Retries    uint
+	Syncthing bool
+	SplitFlac bool
+	Retries   uint
+	// HookFail is how many webhook or command-hook deliveries failed for this extract.
+	HookFail   uint
 	Path       string // Local path (resolved for extraction on this host).
 	OutputPath string // Original path from Starr app (may be UNC/remote — used for ManualImport).
 	App        starr.App

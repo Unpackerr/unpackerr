@@ -11,7 +11,13 @@ const restartShutdownTimeout = 5 * time.Second
 // maybeRestart re-executes the process once a config PUT asked for a restart
 // and nothing is mid-flight. Main loop only, from the cleaner tick.
 func (u *Unpackerr) maybeRestart() {
-	if !u.pendingRestart || !u.idle() {
+	if !u.pendingRestart {
+		return
+	}
+
+	u.drainHookFails()
+
+	if !u.idle() {
 		return
 	}
 
@@ -48,9 +54,13 @@ func (u *Unpackerr) maybeRestart() {
 // pending delete. WAITING and EXTRACTFAILED items are rediscovered from the
 // next Starr poll, so they do not block.
 func (u *Unpackerr) idle() bool {
-	// inFlight covers deletes and hooks from the send until the worker is
-	// done, so their channel depth is already accounted for.
+	// inFlight covers deletes and hooks until the worker finishes. Failed
+	// deliveries then sit in hookFails until Run drains them.
 	if u.inFlight.Load() > 0 {
+		return false
+	}
+
+	if u.hasPendingHookFails() {
 		return false
 	}
 

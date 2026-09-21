@@ -273,6 +273,7 @@
       "Archive": "Archief",
       "Queue": "Uitpakwachtrij",
       "Retries": "Pogingen",
+      "HookFail": "Hook-fouten",
       "Note": "Opmerking",
       "Error": "Fout",
       "ExtractedFiles": "Uitgepakte bestanden",

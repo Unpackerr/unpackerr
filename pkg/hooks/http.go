@@ -57,25 +57,35 @@ func (w *Config) send(ctx context.Context, body io.Reader) ([]byte, error) {
 }
 
 // SendWithLog renders and POSTs a webhook payload.
-func SendWithLog(log Logger, hook *Config, payload *Payload) {
+func SendWithLog(log Logger, hook *Config, payload *Payload) error {
 	var body bytes.Buffer
 
-	if tmpl, err := hook.Template(); err != nil {
+	tmpl, err := hook.Template()
+	if err != nil {
 		log.Errorf("Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
-		return
-	} else if err = tmpl.Execute(&body, payload); err != nil {
+		return fmt.Errorf("webhook template: %w", err)
+	}
+
+	if err = tmpl.Execute(&body, payload); err != nil {
 		log.Errorf("Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
-		return
+		return fmt.Errorf("webhook payload: %w", err)
 	}
 
 	bodyStr := body.String()
 
-	if reply, err := hook.Send(&body); err != nil {
+	reply, err := hook.Send(&body)
+	if err != nil {
 		log.Debugf("Webhook Payload: %s", bodyStr)
 		log.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
 		log.Debugf("Webhook Response: %s", string(reply))
-	} else if !hook.Silent {
+
+		return err
+	}
+
+	if !hook.Silent {
 		log.Debugf("Webhook Payload: %s", bodyStr)
 		log.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
 	}
+
+	return nil
 }

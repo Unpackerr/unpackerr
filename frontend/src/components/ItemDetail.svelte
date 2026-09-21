@@ -250,6 +250,10 @@
           <dt>{$_('pages.detail.Retries')}</dt>
           <dd>{item.retries}</dd>
         {/if}
+        {#if item.hookFail}
+          <dt>{$_('pages.detail.HookFail')}</dt>
+          <dd>{item.hookFail}</dd>
+        {/if}
         {#if 'note' in item && item.note}
           <dt>{$_('pages.detail.Note')}</dt>
           <dd>{item.note}</dd>

@@ -273,6 +273,7 @@
       "Archive": "Archive",
       "Queue": "Extract queue",
       "Retries": "Retries",
+      "HookFail": "Hook failures",
       "Note": "Note",
       "Error": "Error",
       "ExtractedFiles": "Extracted files",

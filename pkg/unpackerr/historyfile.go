@@ -42,6 +42,7 @@ type HistoryRecord struct {
 	OutputPath  string         `json:"outputPath,omitempty"`
 	Status      ExtractStatus  `json:"status"`
 	Retries     uint           `json:"retries"`
+	HookFail    uint           `json:"hookFail,omitempty"`
 	Started     time.Time      `json:"started"`
 	Updated     time.Time      `json:"updated"`
 	Finished    time.Time      `json:"finished,omitzero"`
@@ -78,6 +79,7 @@ type QueueItem struct {
 	OutputPath  string         `json:"outputPath,omitempty"`
 	Status      ExtractStatus  `json:"status"`
 	Retries     uint           `json:"retries"`
+	HookFail    uint           `json:"hookFail,omitempty"`
 	Updated     time.Time      `json:"updated"`
 	Progress    string         `json:"progress,omitempty"`
 	Error       string         `json:"error,omitempty"`
@@ -306,6 +308,7 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		OutputPath: item.OutputPath,
 		Status:     item.Status,
 		Retries:    item.Retries,
+		HookFail:   item.HookFail,
 		Started:    now,
 		Updated:    now,
 		DeleteOrig: item.DeleteOrig,
@@ -374,6 +377,10 @@ func (u *Unpackerr) upsertHistory(rec HistoryRecord) {
 	u.histMu.Lock()
 	defer u.histMu.Unlock()
 
+	u.upsertHistoryLocked(rec)
+}
+
+func (u *Unpackerr) upsertHistoryLocked(rec HistoryRecord) {
 	u.records = u.capHistoryLocked(mergeHistory(u.records, rec))
 	if len(u.records) == 0 {
 		return
@@ -491,6 +498,7 @@ func (u *Unpackerr) queueFromExtract(itemID string, item *Extract) QueueItem {
 		OutputPath: item.OutputPath,
 		Status:     item.Status,
 		Retries:    item.Retries,
+		HookFail:   item.HookFail,
 		Updated:    item.Updated,
 		Due:        item.Due,
 		DueKind:    item.DueKind,

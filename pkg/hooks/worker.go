@@ -4,6 +4,8 @@ package hooks
 type Item struct {
 	*Config
 	*Payload
+	// Done is called once per failed webhook POST or command-hook run.
+	Done func(error)
 }
 
 // Worker runs hook deliveries on a buffered channel.
@@ -30,7 +32,9 @@ func (w *Worker) Cap() int { return cap(w.queue) }
 // Run delivers queued hooks until the queue is closed. after runs after each item.
 func (w *Worker) Run(log Logger, after func()) {
 	for item := range w.queue {
-		item.run(log, w)
+		if item != nil {
+			item.run(log, w)
+		}
 
 		if after != nil {
 			after()
@@ -40,10 +44,20 @@ func (w *Worker) Run(log Logger, after func()) {
 
 func (item *Item) run(log Logger, worker *Worker) {
 	if item.URL != "" {
-		SendWithLog(log, item.Config, item.Payload)
+		if err := SendWithLog(log, item.Config, item.Payload); err != nil {
+			item.done(err)
+		}
 	}
 
 	if item.Command != "" {
-		runCmdWithLog(log, item.Config, item.Payload, worker.Len(), worker.Cap())
+		if err := runCmdWithLog(log, item.Config, item.Payload, worker.Len(), worker.Cap()); err != nil {
+			item.done(err)
+		}
+	}
+}
+
+func (item *Item) done(err error) {
+	if item != nil && item.Done != nil {
+		item.Done(err)
 	}
 }

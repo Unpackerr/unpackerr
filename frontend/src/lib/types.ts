@@ -100,6 +100,7 @@ export interface QueueItem {
   outputPath: string
   status: string
   retries: number
+  hookFail?: number
   updated: string
   progress: string
   error: string
@@ -140,6 +141,7 @@ export interface HistoryRecord {
   outputPath: string
   status: string
   retries: number
+  hookFail?: number
   started: string
   updated: string
   finished: string

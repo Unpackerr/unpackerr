@@ -12,8 +12,8 @@ import (
 	"golift.io/version"
 )
 
-func (u *Unpackerr) runAllHooks(item *Extract) {
-	if item.Status == IMPORTED && item.App == FolderString {
+func (u *Unpackerr) runAllHooks(itemID string, item *Extract) {
+	if item == nil || (item.Status == IMPORTED && item.App == FolderString) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
@@ -21,13 +21,13 @@ func (u *Unpackerr) runAllHooks(item *Extract) {
 
 	for _, hook := range u.hookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 
 	for _, hook := range u.cmdhookList() {
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(&hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 }
@@ -165,6 +165,96 @@ func (u *Unpackerr) CmdhookCounts() (uint, uint) {
 	return hooks.CountAll(u.cmdhookList())
 }
 
+// reportHookFail queues a failure for the main loop. Done runs on the hook
+// worker and must not read live Config or mutate Map.
+func (u *Unpackerr) reportHookFail(itemID string) {
+	if itemID == "" {
+		return
+	}
+
+	u.hookFailMu.Lock()
+	u.hookFails = append(u.hookFails, itemID)
+	u.hookFailMu.Unlock()
+
+	select {
+	case u.hookFailWake <- struct{}{}:
+	default:
+	}
+}
+
+func (u *Unpackerr) hasPendingHookFails() bool {
+	u.hookFailMu.Lock()
+	defer u.hookFailMu.Unlock()
+
+	return len(u.hookFails) > 0
+}
+
+func (u *Unpackerr) drainHookFails() {
+	u.hookFailMu.Lock()
+	ids := u.hookFails
+	u.hookFails = nil
+	u.hookFailMu.Unlock()
+
+	for _, itemID := range ids {
+		u.recordHookFail(itemID)
+	}
+}
+
+// recordHookFail increments the per-extract hook-failure counter.
+// itemID is the Map key and history record ID (Starr title or folder path).
+// Call from the main loop only.
+func (u *Unpackerr) recordHookFail(itemID string) {
+	if itemID == "" {
+		return
+	}
+
+	u.lockHistory()
+
+	item := u.Map[itemID]
+	if item != nil {
+		item.HookFail++
+		u.maybeRecordHistory(itemID, item)
+
+		if u.hub != nil {
+			u.hub.notifyProgress(u.queueFromExtract(itemID, item))
+		}
+
+		persistable := isPersistedHistory(item)
+
+		u.History.unlockHistory()
+
+		if !persistable {
+			u.bumpHistoryHookFail(itemID)
+		}
+
+		return
+	}
+
+	u.History.unlockHistory()
+	u.bumpHistoryHookFail(itemID)
+}
+
+func (u *Unpackerr) bumpHistoryHookFail(itemID string) {
+	if u.KeepHistory == 0 {
+		return
+	}
+
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	for _, row := range u.records {
+		if row.ID != itemID {
+			continue
+		}
+
+		rec := row
+		rec.HookFail++
+		u.upsertHistoryLocked(rec)
+
+		return
+	}
+}
+
 func (u *Unpackerr) sampleWebhook(event extract.Status) error {
 	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", event)
 
@@ -176,7 +266,7 @@ func (u *Unpackerr) sampleWebhook(event extract.Status) error {
 	u.decorateSamplePayload(payload, event)
 
 	for _, hook := range instanceValues(u.Webhook) {
-		hooks.SendWithLog(u.Logger, hook, payload)
+		_ = hooks.SendWithLog(u.Logger, hook, payload)
 	}
 
 	return nil

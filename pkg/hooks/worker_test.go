@@ -59,6 +59,58 @@ func TestWorkerAfterOnFailedWebhook(t *testing.T) {
 	}
 }
 
+func TestWorkerDoneOnFailedWebhook(t *testing.T) {
+	t.Parallel()
+
+	hook := mustWebhook(t, "http://127.0.0.1:1", 200*time.Millisecond)
+
+	var got error
+
+	item := &Item{
+		Config:  hook,
+		Payload: &Payload{Path: "/dl/fail", Event: extract.EXTRACTFAILED},
+		Done:    func(err error) { got = err },
+	}
+
+	if drainWorker(t, item) != 1 {
+		t.Fatal("after")
+	}
+
+	if got == nil {
+		t.Fatal("Done skipped a failed webhook")
+	}
+}
+
+func TestWorkerDoneOnFailedCommand(t *testing.T) {
+	t.Parallel()
+
+	hook := mustCmdhook(t, "definitely-not-a-command-"+t.Name(), 200*time.Millisecond)
+
+	var got error
+
+	item := &Item{
+		Config:  hook,
+		Payload: &Payload{Path: "/dl/fail", Event: extract.EXTRACTFAILED},
+		Done:    func(err error) { got = err },
+	}
+
+	if drainWorker(t, item) != 1 {
+		t.Fatal("after")
+	}
+
+	if got == nil {
+		t.Fatal("Done skipped a failed command hook")
+	}
+}
+
+func TestWorkerRunSkipsNil(t *testing.T) {
+	t.Parallel()
+
+	if drainWorker(t, nil) != 1 {
+		t.Fatal("after")
+	}
+}
+
 func drainWorker(t *testing.T, items ...*Item) int32 {
 	t.Helper()
 

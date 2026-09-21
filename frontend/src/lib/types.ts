@@ -142,6 +142,7 @@ export interface HistoryRecord {
   status: string
   retries: number
   hookFail?: number
+  hookMessages?: Record<string, string>
   started: string
   updated: string
   finished: string
@@ -322,6 +323,7 @@ export interface WebhookConfig {
   nickname: string
   token: string
   channel: string
+  update?: boolean
 }
 
 export interface HookTitles {

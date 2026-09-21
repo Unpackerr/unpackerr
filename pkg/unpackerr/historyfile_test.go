@@ -371,12 +371,13 @@ func TestHistoryFromExtractCopiesHookMeta(t *testing.T) {
 	t.Parallel()
 
 	rec := historyFromExtract("/dl/a", &Extract{
-		Path:     "/dl/a",
-		App:      "Sonarr",
-		HookFail: 4,
-		Event:    "fsnotify",
-		IDs:      map[string]any{"title": "Show"},
-		Resp:     &xtractr.Response{Queued: 3, Size: 9, NewFiles: []string{"a"}, Output: "/tmp/out"},
+		Path:         "/dl/a",
+		App:          "Sonarr",
+		HookFail:     4,
+		HookMessages: map[string]string{"discord": "msg-9"},
+		Event:        "fsnotify",
+		IDs:          map[string]any{"title": "Show"},
+		Resp:         &xtractr.Response{Queued: 3, Size: 9, NewFiles: []string{"a"}, Output: "/tmp/out"},
 	})
 	if rec.Event != "fsnotify" || rec.Queue != 3 || rec.Output != "/tmp/out" || rec.IDs["title"] != "Show" {
 		t.Fatalf("%+v", rec)
@@ -385,6 +386,10 @@ func TestHistoryFromExtractCopiesHookMeta(t *testing.T) {
 	if rec.HookFail != 4 {
 		t.Fatalf("hookFail %d", rec.HookFail)
 	}
+
+	if rec.HookMessages["discord"] != "msg-9" {
+		t.Fatalf("hookMessages %+v", rec.HookMessages)
+	}
 }
 
 func TestHistoryFromExtractKeepsRestoredElapsed(t *testing.T) {
@@ -392,7 +397,7 @@ func TestHistoryFromExtractKeepsRestoredElapsed(t *testing.T) {
 
 	item := New().extractFromHistoryRecord(HistoryRecord{
 		ID: "a", Path: "/dl/a", Status: EXTRACTED, Elapsed: "3s", Bytes: 1, NewFiles: []string{"a"},
-		HookFail: 7,
+		HookFail: 7, HookMessages: map[string]string{"telegram": "42"},
 	}, "Sonarr", EXTRACTED, "", time.Now(), time.Now())
 	item.Status = IMPORTED
 
@@ -403,5 +408,9 @@ func TestHistoryFromExtractKeepsRestoredElapsed(t *testing.T) {
 
 	if item.HookFail != 7 || got.HookFail != 7 {
 		t.Fatalf("hookFail item %d rec %d", item.HookFail, got.HookFail)
+	}
+
+	if item.HookMessages["telegram"] != "42" || got.HookMessages["telegram"] != "42" {
+		t.Fatalf("hookMessages item %+v rec %+v", item.HookMessages, got.HookMessages)
 	}
 }

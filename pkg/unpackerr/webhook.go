@@ -221,6 +221,100 @@ func (u *Unpackerr) bumpHistoryHookFail(path string) {
 	}
 }
 
+func (u *Unpackerr) hookMessage(path, key string) string {
+	if path == "" || key == "" {
+		return ""
+	}
+
+	u.lockHistory()
+
+	for _, item := range u.Map {
+		if item != nil && item.Path == path && item.HookMessages != nil {
+			id := item.HookMessages[key]
+
+			u.unlockHistory()
+
+			return id
+		}
+	}
+
+	u.unlockHistory()
+
+	return u.historyHookMessage(path, key)
+}
+
+func (u *Unpackerr) historyHookMessage(path, key string) string {
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	for _, row := range u.records {
+		if (row.Path == path || row.ID == path) && row.HookMessages != nil {
+			return row.HookMessages[key]
+		}
+	}
+
+	return ""
+}
+
+func (u *Unpackerr) saveHookMessage(path, key, msgID string) {
+	if path == "" || key == "" || msgID == "" {
+		return
+	}
+
+	u.lockHistory()
+
+	for itemID, item := range u.Map {
+		if item == nil || item.Path != path {
+			continue
+		}
+
+		if item.HookMessages == nil {
+			item.HookMessages = map[string]string{}
+		}
+
+		item.HookMessages[key] = msgID
+		u.maybeRecordHistory(itemID, item)
+		u.unlockHistory()
+
+		return
+	}
+
+	u.unlockHistory()
+	u.bumpHistoryHookMessage(path, key, msgID)
+}
+
+func (u *Unpackerr) bumpHistoryHookMessage(path, key, msgID string) {
+	u.histMu.Lock()
+
+	var rec HistoryRecord
+
+	found := false
+
+	for _, row := range u.records {
+		if row.Path != path && row.ID != path {
+			continue
+		}
+
+		rec = row
+		if rec.HookMessages == nil {
+			rec.HookMessages = map[string]string{}
+		} else {
+			rec.HookMessages = maps.Clone(rec.HookMessages)
+		}
+
+		rec.HookMessages[key] = msgID
+		found = true
+
+		break
+	}
+
+	u.histMu.Unlock()
+
+	if found {
+		u.upsertHistory(rec)
+	}
+}
+
 func (u *Unpackerr) sampleWebhook(event extract.Status) error {
 	u.Printf("Sending sample webhooks and exiting! (-w %d passed)", event)
 

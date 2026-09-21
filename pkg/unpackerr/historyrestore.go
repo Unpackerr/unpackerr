@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -134,22 +135,23 @@ func (u *Unpackerr) extractFromHistoryRecord(
 	stamp, now time.Time,
 ) *Extract {
 	item := &Extract{
-		Syncthing:  rec.Syncthing,
-		SplitFlac:  rec.SplitFlac,
-		Retries:    rec.Retries,
-		HookFail:   rec.HookFail,
-		Path:       rec.Path,
-		OutputPath: rec.OutputPath,
-		App:        starr.App(kind),
-		URL:        rec.URL,
-		Updated:    rec.Updated,
-		DeleteOrig: rec.DeleteOrig,
-		Status:     status,
-		NoRetry:    rec.NoRetry,
-		MaxBytes:   rec.MaxBytes,
-		PreFiles:   preFilesFromKeys(rec.PreFiles),
-		IDs:        cloneIDs(rec.IDs),
-		Event:      rec.Event,
+		Syncthing:    rec.Syncthing,
+		SplitFlac:    rec.SplitFlac,
+		Retries:      rec.Retries,
+		HookFail:     rec.HookFail,
+		HookMessages: maps.Clone(rec.HookMessages),
+		Path:         rec.Path,
+		OutputPath:   rec.OutputPath,
+		App:          starr.App(kind),
+		URL:          rec.URL,
+		Updated:      rec.Updated,
+		DeleteOrig:   rec.DeleteOrig,
+		Status:       status,
+		NoRetry:      rec.NoRetry,
+		MaxBytes:     rec.MaxBytes,
+		PreFiles:     preFilesFromKeys(rec.PreFiles),
+		IDs:          cloneIDs(rec.IDs),
+		Event:        rec.Event,
 	}
 
 	if rec.App != "" && rec.App != kind {

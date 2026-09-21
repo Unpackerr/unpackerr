@@ -871,6 +871,11 @@
         "description": "Geslaagde runs uit de logs verbergen.",
         "tooltip": "Mislukkingen worden nog steeds gelogd. Gebruik dit om ruis van een praatgrage Discord- of Slack-hook te minderen."
       },
+      "update": {
+        "label": "Berichten bijwerken",
+        "description": "Het vorige Discord- of Telegram-bericht bewerken in plaats van een nieuw te plaatsen.",
+        "tooltip": "Standaard aan voor Discord en Telegram. Andere sjablonen negeren dit. Zet uit om bij elke extract-gebeurtenis een nieuw bericht te stapelen."
+      },
       "events": {
         "label": "Gebeurtenissen",
         "description": "Leeg betekent alle gebeurtenissen."

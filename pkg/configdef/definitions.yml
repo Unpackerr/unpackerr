@@ -1104,6 +1104,12 @@ sections:
           - value: 'mattermost'
         short: Force a built-in template instead of the URL or template file.
         desc: 'Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise, mattermost. Empty uses the URL or template_path.'
+      - name: update
+        envvar: UPDATE
+        default: true
+        recommend: *BOOLEAN
+        short: Edit the previous Discord or Telegram message instead of posting a new one.
+        desc: Default on for Discord webhooks and Telegram sendMessage. Other templates ignore this. Set false to post a new message for every extract event.
       - name: ignore_ssl
         envvar: IGNORE_SSL
         default: false

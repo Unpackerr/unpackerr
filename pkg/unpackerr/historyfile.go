@@ -34,40 +34,41 @@ var (
 
 // HistoryRecord is one JSONL row (history API + restart resume).
 type HistoryRecord struct {
-	ID          string         `json:"id"`
-	App         string         `json:"app"`
-	Kind        string         `json:"kind,omitempty"` // Starr dialect or Folder; App is the instance label.
-	URL         string         `json:"url,omitempty"`
-	Path        string         `json:"path"`
-	OutputPath  string         `json:"outputPath,omitempty"`
-	Status      ExtractStatus  `json:"status"`
-	Retries     uint           `json:"retries"`
-	HookFail    uint           `json:"hookFail,omitempty"`
-	Started     time.Time      `json:"started"`
-	Updated     time.Time      `json:"updated"`
-	Finished    time.Time      `json:"finished,omitzero"`
-	Archives    int            `json:"archives,omitempty"`
-	Files       int            `json:"files,omitempty"`
-	Bytes       uint64         `json:"bytes,omitempty"`
-	Ratio       float64        `json:"ratio,omitempty"`
-	Elapsed     string         `json:"elapsed,omitempty"`
-	Error       string         `json:"error,omitempty"`
-	Progress    string         `json:"progress,omitempty"`
-	DeleteOrig  bool           `json:"deleteOrig,omitempty"`
-	DeleteDelay string         `json:"deleteDelay,omitempty"` // Go duration, e.g. 5m0s
-	Syncthing   bool           `json:"syncthing,omitempty"`
-	SplitFlac   bool           `json:"splitFlac,omitempty"`
-	MaxBytes    uint64         `json:"maxBytes,omitempty"`
-	NoRetry     bool           `json:"noRetry,omitempty"`
-	NewFiles    []string       `json:"newFiles,omitempty"`
-	OrigFiles   []string       `json:"origFiles,omitempty"`  // Archive paths; folder delete_orig after a restart.
-	ExtraFiles  []string       `json:"extraFiles,omitempty"` // Nested extras; display + restore Resp.Extras.
-	PreFiles    []string       `json:"preFiles,omitempty"`
-	Forgotten   bool           `json:"forgotten,omitempty"`
-	IDs         map[string]any `json:"ids,omitempty"` // Starr hook metadata (title, downloadId, …).
-	Event       string         `json:"event,omitempty"`
-	Queue       int            `json:"queue,omitempty"`  // xtractr waiting count when this extract started.
-	Output      string         `json:"output,omitempty"` // xtractr dest folder.
+	ID           string            `json:"id"`
+	App          string            `json:"app"`
+	Kind         string            `json:"kind,omitempty"` // Starr dialect or Folder; App is the instance label.
+	URL          string            `json:"url,omitempty"`
+	Path         string            `json:"path"`
+	OutputPath   string            `json:"outputPath,omitempty"`
+	Status       ExtractStatus     `json:"status"`
+	Retries      uint              `json:"retries"`
+	HookFail     uint              `json:"hookFail,omitempty"`
+	HookMessages map[string]string `json:"hookMessages,omitempty"`
+	Started      time.Time         `json:"started"`
+	Updated      time.Time         `json:"updated"`
+	Finished     time.Time         `json:"finished,omitzero"`
+	Archives     int               `json:"archives,omitempty"`
+	Files        int               `json:"files,omitempty"`
+	Bytes        uint64            `json:"bytes,omitempty"`
+	Ratio        float64           `json:"ratio,omitempty"`
+	Elapsed      string            `json:"elapsed,omitempty"`
+	Error        string            `json:"error,omitempty"`
+	Progress     string            `json:"progress,omitempty"`
+	DeleteOrig   bool              `json:"deleteOrig,omitempty"`
+	DeleteDelay  string            `json:"deleteDelay,omitempty"` // Go duration, e.g. 5m0s
+	Syncthing    bool              `json:"syncthing,omitempty"`
+	SplitFlac    bool              `json:"splitFlac,omitempty"`
+	MaxBytes     uint64            `json:"maxBytes,omitempty"`
+	NoRetry      bool              `json:"noRetry,omitempty"`
+	NewFiles     []string          `json:"newFiles,omitempty"`
+	OrigFiles    []string          `json:"origFiles,omitempty"`  // Archive paths; folder delete_orig after a restart.
+	ExtraFiles   []string          `json:"extraFiles,omitempty"` // Nested extras; display + restore Resp.Extras.
+	PreFiles     []string          `json:"preFiles,omitempty"`
+	Forgotten    bool              `json:"forgotten,omitempty"`
+	IDs          map[string]any    `json:"ids,omitempty"` // Starr hook metadata (title, downloadId, …).
+	Event        string            `json:"event,omitempty"`
+	Queue        int               `json:"queue,omitempty"`  // xtractr waiting count when this extract started.
+	Output       string            `json:"output,omitempty"` // xtractr dest folder.
 }
 
 // QueueItem is a live in-flight extract for GET /api/queue.
@@ -300,25 +301,26 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 	}
 
 	rec := HistoryRecord{
-		ID:         itemID,
-		App:        item.Label(),
-		Kind:       string(item.App),
-		URL:        item.URL,
-		Path:       item.Path,
-		OutputPath: item.OutputPath,
-		Status:     item.Status,
-		Retries:    item.Retries,
-		HookFail:   item.HookFail,
-		Started:    now,
-		Updated:    now,
-		DeleteOrig: item.DeleteOrig,
-		Syncthing:  item.Syncthing,
-		SplitFlac:  item.SplitFlac,
-		MaxBytes:   item.MaxBytes,
-		NoRetry:    item.NoRetry,
-		PreFiles:   preFileKeys(item.PreFiles),
-		IDs:        cloneIDs(item.IDs),
-		Event:      item.Event,
+		ID:           itemID,
+		App:          item.Label(),
+		Kind:         string(item.App),
+		URL:          item.URL,
+		Path:         item.Path,
+		OutputPath:   item.OutputPath,
+		Status:       item.Status,
+		Retries:      item.Retries,
+		HookFail:     item.HookFail,
+		HookMessages: maps.Clone(item.HookMessages),
+		Started:      now,
+		Updated:      now,
+		DeleteOrig:   item.DeleteOrig,
+		Syncthing:    item.Syncthing,
+		SplitFlac:    item.SplitFlac,
+		MaxBytes:     item.MaxBytes,
+		NoRetry:      item.NoRetry,
+		PreFiles:     preFileKeys(item.PreFiles),
+		IDs:          cloneIDs(item.IDs),
+		Event:        item.Event,
 	}
 
 	if item.DeleteDelay != 0 {

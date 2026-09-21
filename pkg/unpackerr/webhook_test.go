@@ -201,3 +201,53 @@ func TestRecordHookFailIgnoresEmptyPath(t *testing.T) {
 		t.Fatal("empty path must not bump")
 	}
 }
+
+func TestSaveHookMessageLiveAndHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.Map["/dl/show"] = &Extract{
+		Path:    "/dl/show",
+		App:     starr.Sonarr,
+		Status:  EXTRACTING,
+		Updated: time.Now(),
+	}
+
+	unpack.saveHookMessage("/dl/show", "discord", "msg-1")
+
+	if unpack.Map["/dl/show"].HookMessages["discord"] != "msg-1" {
+		t.Fatalf("live %+v", unpack.Map["/dl/show"].HookMessages)
+	}
+
+	if unpack.hookMessage("/dl/show", "discord") != "msg-1" {
+		t.Fatal("lookup live")
+	}
+
+	unpack.saveHookMessage("/dl/show", "discord", "msg-2")
+
+	found := false
+
+	for _, rec := range unpack.records {
+		if rec.Path == "/dl/show" && rec.HookMessages["discord"] == "msg-2" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("history checkpoint %+v", unpack.records)
+	}
+
+	unpack.upsertHistory(HistoryRecord{
+		ID: "/dl/old", Path: "/dl/old", Status: IMPORTED,
+		HookMessages: map[string]string{"discord": "stale"},
+	})
+	delete(unpack.Map, "/dl/show")
+	unpack.saveHookMessage("/dl/old", "discord", "fresh")
+
+	if unpack.hookMessage("/dl/old", "discord") != "fresh" {
+		t.Fatalf("history lookup %q", unpack.hookMessage("/dl/old", "discord"))
+	}
+}

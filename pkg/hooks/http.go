@@ -1,7 +1,6 @@
 package hooks
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -69,36 +68,7 @@ func (w *Config) setRequestHeaders(req *http.Request) {
 	}
 }
 
-// SendWithLog renders and POSTs a webhook payload.
+// SendWithLog renders and POSTs a webhook payload. Sample -w stays a create.
 func SendWithLog(log Logger, hook *Config, payload *Payload) error {
-	var body bytes.Buffer
-
-	tmpl, err := hook.Template()
-	if err != nil {
-		log.Errorf("Webhook Template (%s = %s): %v", payload.Path, payload.Event, err)
-		return fmt.Errorf("webhook template: %w", err)
-	}
-
-	if err = tmpl.Execute(&body, payload); err != nil {
-		log.Errorf("Webhook Payload (%s = %s): %v", payload.Path, payload.Event, err)
-		return fmt.Errorf("webhook payload: %w", err)
-	}
-
-	bodyStr := body.String()
-
-	reply, err := hook.Send(&body)
-	if err != nil {
-		log.Debugf("Webhook Payload: %s", bodyStr)
-		log.Errorf("Webhook (%s = %s): %s: %v", payload.Path, payload.Event, hook.Name, err)
-		log.Debugf("Webhook Response: %s", string(reply))
-
-		return err
-	}
-
-	if !hook.Silent {
-		log.Debugf("Webhook Payload: %s", bodyStr)
-		log.Printf("[Webhook] Posted Payload (%s = %s): %s: OK", payload.Path, payload.Event, hook.Name)
-	}
-
-	return nil
+	return deliverWebhook(log, hook, payload, "", nil)
 }

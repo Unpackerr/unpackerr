@@ -218,4 +218,5 @@ export const HOOK_ENV_FIELDS: Record<string, string> = {
   nickname: 'NICKNAME',
   token: 'TOKEN',
   channel: 'CHANNEL',
+  update: 'UPDATE',
 }

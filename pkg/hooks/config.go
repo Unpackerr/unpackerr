@@ -23,6 +23,7 @@ var (
 	ErrWebhookNoURL  = errors.New("webhook without a URL configured; fix it")
 	ErrCmdhookNoCmd  = errors.New("cmdhook without a command configured; fix it")
 	ErrNilConfig     = errors.New("nil config entry")
+	ErrMessageGone   = errors.New("previous message is gone")
 )
 
 // Logger is the logging surface hooks need from the daemon.
@@ -49,6 +50,7 @@ type Config struct {
 	Nickname   string        `json:"nickname"     toml:"nickname"      xml:"nickname,omitempty"      yaml:"nickname"`
 	Token      string        `json:"token"        toml:"token"         xml:"token,omitempty"         yaml:"token"`
 	Channel    string        `json:"channel"      toml:"channel"       xml:"channel,omitempty"       yaml:"channel"`
+	Update     *bool         `json:"update"       toml:"update"        xml:"update,omitempty"        yaml:"update"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -234,8 +236,32 @@ func CloneList(src []*Config) []*Config {
 			Nickname:  hook.Nickname,
 			Token:     hook.Token,
 			Channel:   hook.Channel,
+			Update:    cloneBool(hook.Update),
 		}
 	}
 
 	return out
+}
+
+// WantUpdate is true for Discord and Telegram unless the operator set update=false.
+func (w *Config) WantUpdate() bool {
+	if w == nil || !Detect(w.TempName, w.URL, w.TmplPath).CanUpdate {
+		return false
+	}
+
+	if w.Update != nil {
+		return *w.Update
+	}
+
+	return true
+}
+
+func cloneBool(v *bool) *bool {
+	if v == nil {
+		return nil
+	}
+
+	val := *v
+
+	return &val
 }

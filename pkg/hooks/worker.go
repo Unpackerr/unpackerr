@@ -6,6 +6,10 @@ type Item struct {
 	*Payload
 	// Done is called once per failed webhook POST or command-hook run.
 	Done func(error)
+	// LookupID/SaveID read and record Discord/Telegram message ids for later edits.
+	// Unpackerr wires these to a worker-local cache; the main loop persists Map.
+	LookupID func() string
+	SaveID   func(string)
 }
 
 // Worker runs hook deliveries on a buffered channel.
@@ -44,7 +48,7 @@ func (w *Worker) Run(log Logger, after func()) {
 
 func (item *Item) run(log Logger, worker *Worker) {
 	if item.URL != "" {
-		if err := SendWithLog(log, item.Config, item.Payload); err != nil {
+		if err := item.deliverHTTP(log); err != nil {
 			item.done(err)
 		}
 	}
@@ -54,6 +58,22 @@ func (item *Item) run(log Logger, worker *Worker) {
 			item.done(err)
 		}
 	}
+}
+
+func (item *Item) deliverHTTP(log Logger) error {
+	var (
+		msgID string
+		save  func(string)
+	)
+
+	if item.Config != nil && item.WantUpdate() {
+		save = item.SaveID
+		if item.LookupID != nil {
+			msgID = item.LookupID()
+		}
+	}
+
+	return deliverWebhook(log, item.Config, item.Payload, msgID, save)
 }
 
 func (item *Item) done(err error) {

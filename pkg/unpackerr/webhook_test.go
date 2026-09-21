@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/starr"
 	"golift.io/xtractr"
 )
@@ -339,7 +340,7 @@ func TestQueueHookIgnoresNil(t *testing.T) {
 	t.Parallel()
 
 	unpack := New()
-	unpack.queueHook("Show A", nil)
+	unpack.queueHook("Show A", "", nil, nil)
 
 	if unpack.inFlight.Load() != 0 {
 		t.Fatalf("in-flight %d", unpack.inFlight.Load())
@@ -359,5 +360,190 @@ func TestRecordHookFailIgnoresEmptyPath(t *testing.T) {
 
 	if unpack.Map["/dl"].HookFail != 0 {
 		t.Fatal("empty path must not bump")
+	}
+}
+
+func TestSaveHookMessageLiveAndHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.KeepHistory = 10
+	unpack.histPath = filepath.Join(t.TempDir(), historyFileName)
+	unpack.Map["/dl/show"] = &Extract{
+		Path:    "/dl/show",
+		App:     starr.Sonarr,
+		Status:  EXTRACTING,
+		Updated: time.Now(),
+	}
+
+	unpack.saveHookMessage("/dl/show", "discord", "msg-1", nil)
+
+	if unpack.Map["/dl/show"].HookMessages["discord"] != "msg-1" {
+		t.Fatalf("live %+v", unpack.Map["/dl/show"].HookMessages)
+	}
+
+	if unpack.hookMessage("/dl/show", "discord") != "msg-1" {
+		t.Fatal("lookup live")
+	}
+
+	unpack.saveHookMessage("/dl/show", "discord", "msg-2", nil)
+
+	found := false
+
+	for _, rec := range unpack.records {
+		if rec.Path == "/dl/show" && rec.HookMessages["discord"] == "msg-2" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("history checkpoint %+v", unpack.records)
+	}
+
+	unpack.upsertHistory(HistoryRecord{
+		ID: "/dl/old", Path: "/dl/old", Status: IMPORTED,
+		HookMessages: map[string]string{"discord": "stale"},
+	})
+	delete(unpack.Map, "/dl/show")
+	unpack.saveHookMessage("/dl/old", "discord", "fresh", nil)
+
+	if unpack.hookMessage("/dl/old", "discord") != "fresh" {
+		t.Fatalf("history lookup %q", unpack.hookMessage("/dl/old", "discord"))
+	}
+}
+
+func TestStoreHookMessageWaitsForDrain(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	live := &Extract{Path: "/dl/show", App: starr.Sonarr, Status: EXTRACTING}
+	unpack.Map["/dl/show"] = live
+	unpack.seedHookMessages("/dl/show", map[string]string{"discord-1": "old"}, live)
+
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "old" {
+		t.Fatal("seed")
+	}
+
+	unpack.storeHookMessage("/dl/show", "discord-1", "msg-1", live)
+
+	if live.HookMessages != nil {
+		t.Fatal("worker must not persist")
+	}
+
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "msg-1" {
+		t.Fatal("fifo lookup")
+	}
+
+	if unpack.idle() {
+		t.Fatal("queued message ids must block a restart")
+	}
+
+	unpack.drainHookMessages()
+
+	if live.HookMessages["discord-1"] != "msg-1" {
+		t.Fatalf("drained %+v", live.HookMessages)
+	}
+
+	if unpack.lookupHookMessage("/dl/show", "discord-1", live) != "msg-1" {
+		t.Fatal("cache after drain")
+	}
+}
+
+func TestSaveHookMessageSkipsReusedExtract(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	old := &Extract{Path: "/dl/show"}
+	newer := &Extract{Path: "/dl/show"}
+	unpack.Map["/dl/show"] = newer
+
+	unpack.saveHookMessage("/dl/show", "discord-1", "msg-1", old)
+
+	if newer.HookMessages["discord-1"] == "msg-1" {
+		t.Fatal("must not attach to a reused extract")
+	}
+}
+
+func TestQueueHookUsesInstanceSlug(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	live := &Extract{Path: "/dl/show", Status: QUEUED}
+	unpack.Map["Show"] = live
+	hookURL := "https://discord.com/api/webhooks/1/x"
+	item := &hooks.Item{Config: &hooks.Config{Name: hookURL, URL: hookURL}}
+
+	unpack.queueHook("Show", "discord-1", live, item)
+	item.SaveID("msg-1")
+
+	if live.HookMessages != nil {
+		t.Fatal("worker must not persist")
+	}
+
+	if unpack.lookupHookMessage("Show", "discord-1", live) != "msg-1" {
+		t.Fatal("fifo lookup")
+	}
+
+	unpack.drainHookMessages()
+
+	if live.HookMessages["discord-1"] != "msg-1" {
+		t.Fatalf("slug key %+v", live.HookMessages)
+	}
+
+	if _, ok := live.HookMessages[hookURL]; ok {
+		t.Fatal("url must not be the key")
+	}
+}
+
+func TestHookMsgsDoesNotReuseStaleID(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	old := &Extract{Path: "/dl/show"}
+	unpack.Map["Show"] = old
+	unpack.storeHookMessage("Show", "discord-1", "old-msg", old)
+	unpack.drainHookMessages()
+	unpack.deleteExtract("Show")
+
+	if unpack.lookupHookMessage("Show", "discord-1", old) != "" {
+		t.Fatal("finished extract must evict the cache")
+	}
+
+	newer := &Extract{Path: "/dl/show"}
+	unpack.Map["Show"] = newer
+	unpack.seedHookMessages("Show", nil, newer)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("new extract must not edit the previous message")
+	}
+
+	unpack.storeHookMessage("Show", "discord-1", "late", old)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("late save must not overwrite the new extract")
+	}
+
+	if newer.HookMessages["discord-1"] == "late" {
+		t.Fatal("late save must not persist onto the new extract")
+	}
+}
+
+func TestSeedReplacesMismatchedHookMsgOwner(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	old := &Extract{Path: "/dl/show"}
+	newer := &Extract{Path: "/dl/show"}
+
+	unpack.storeHookMessage("Show", "discord-1", "old-msg", old)
+	unpack.seedHookMessages("Show", nil, newer)
+
+	if unpack.lookupHookMessage("Show", "discord-1", newer) != "" {
+		t.Fatal("seed must drop a stale owner even without deleteExtract")
+	}
+
+	if unpack.lookupHookMessage("Show", "discord-1", old) != "" {
+		t.Fatal("old extract must not keep the replaced cache")
 	}
 }

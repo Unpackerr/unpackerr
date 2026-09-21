@@ -76,6 +76,10 @@ type Unpackerr struct {
 	hookFails    []string      // item IDs from the hook worker; drained in Run().
 	hookFailWake chan struct{} // coalesced wake so Done never blocks on a full hook queue.
 	hookFailMu   sync.Mutex
+	hookMsgs     map[string]*hookMsgCache // worker-visible ids; keyed itemID, owned by live extract.
+	hookMsgSaves []hookMsgSave            // persist queue; drained in Run().
+	hookMsgWake  chan struct{}            // coalesced wake; SaveID must not block on Enqueue.
+	hookMsgMu    sync.Mutex
 	delChan      chan *fileDeleteReq
 	taskChan     chan *mainTask // HTTP hands config applies and queue actions to Run().
 	workChan     chan []func()
@@ -143,6 +147,7 @@ func New() *Unpackerr {
 		Flags:        &Flags{EnvPrefix: "UN"},
 		hookWorker:   hooks.NewWorker(updateChanBuf),
 		hookFailWake: make(chan struct{}, 1),
+		hookMsgWake:  make(chan struct{}, 1),
 		delChan:      make(chan *fileDeleteReq, updateChanBuf),
 		taskChan:     make(chan *mainTask, updateChanBuf),
 		sigChan:      make(chan os.Signal, signalBuf),
@@ -403,7 +408,8 @@ func (u *Unpackerr) ensureHookWorker() {
 
 // queueHook publishes a hook and counts it in flight. See queueDelete.
 // itemID is the Map/history key (Starr title or folder path), not Payload.Path.
-func (u *Unpackerr) queueHook(itemID string, item *hooks.Item) {
+// slug is the webhook/cmdhook InstanceMap key stored in HookMessages.
+func (u *Unpackerr) queueHook(itemID, slug string, live *Extract, item *hooks.Item) {
 	if item == nil {
 		return
 	}
@@ -411,6 +417,16 @@ func (u *Unpackerr) queueHook(itemID string, item *hooks.Item) {
 	item.Done = func(err error) {
 		if err != nil {
 			u.reportHookFail(itemID)
+		}
+	}
+
+	if slug != "" {
+		item.LookupID = func() string {
+			return u.lookupHookMessage(itemID, slug, live)
+		}
+
+		item.SaveID = func(msgID string) {
+			u.storeHookMessage(itemID, slug, msgID, live)
 		}
 	}
 
@@ -507,6 +523,9 @@ func (u *Unpackerr) Run() {
 		case <-u.hookFailWake:
 			// Hook worker completions; recordHookFail reads live KeepHistory.
 			u.drainHookFails()
+		case <-u.hookMsgWake:
+			// Hook worker message ids; saveHookMessage mutates Map on this goroutine.
+			u.drainHookMessages()
 		case now := <-u.tickers.logger.C:
 			// Log/print current queue counts once in a while, when something is configured.
 			if u.starrAppCount()+len(u.Folders) > 0 {

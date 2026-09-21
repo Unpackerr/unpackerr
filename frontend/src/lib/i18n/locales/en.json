@@ -871,6 +871,11 @@
         "description": "Hide successful runs from the logs.",
         "tooltip": "Failures still log. Use this to cut noise from a chatty Discord or Slack hook."
       },
+      "update": {
+        "label": "Update messages",
+        "description": "Edit the previous Discord or Telegram message instead of posting a new one.",
+        "tooltip": "On by default for Discord and Telegram. Other templates ignore this. Turn off to stack a new message for every extract event."
+      },
       "events": {
         "label": "Events",
         "description": "Empty means all events."

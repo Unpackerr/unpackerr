@@ -498,6 +498,8 @@ passwords = []
 # template_path = ''
 ## Override automatic template detection. Values: notifiarr, discord, telegram, gotify, pushover, slack, ntfy, apprise, mattermost. Empty uses the URL or template_path.
 # template = ""
+## Default on for Discord webhooks and Telegram sendMessage. Other templates ignore this. Set false to post a new message for every extract event.
+# update = true
 ## Set this to true to ignore the SSL certificate on the server.
 # ignore_ssl = false
 ## You can adjust how long to wait for a server response.
@@ -529,4 +531,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 21 SEP 2026 01:19 UTC
+## => Content Auto Generated, 21 SEP 2026 01:31 UTC

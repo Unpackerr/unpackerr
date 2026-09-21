@@ -871,6 +871,11 @@
         "description": "Ocultar las ejecuciones correctas de los registros.",
         "tooltip": "Los fallos siguen registrándose. Úsalo para recortar ruido de un gancho de Discord o Slack parlanchín."
       },
+      "update": {
+        "label": "Actualizar mensajes",
+        "description": "Editar el mensaje anterior de Discord o Telegram en lugar de publicar uno nuevo.",
+        "tooltip": "Activado por defecto para Discord y Telegram. Las demás plantillas lo ignoran. Apágalo para apilar un mensaje nuevo en cada evento."
+      },
       "events": {
         "label": "Eventos",
         "description": "Vacío significa todos los eventos."

@@ -6,10 +6,10 @@ import (
 
 // History holds the history of extracted items.
 // mu guards Map, Finished, Retries, forgotten, per-item Status/Updated, Note,
-// HookFail, XProg progress, and the Starr poll snapshot (Queue, lastQueued,
-// lastRetrieved, lastPolled, lastPollErr) so HTTP stats, queue snapshots, and
-// Prometheus Collect cannot race poll workers. It is not reentrant; do not lock
-// inside a caller that already holds it.
+// HookFail, HookMessages, XProg progress, and the Starr poll snapshot (Queue,
+// lastQueued, lastRetrieved, lastPolled, lastPollErr) so HTTP stats, queue
+// snapshots, and Prometheus Collect cannot race poll workers. It is not
+// reentrant; do not lock inside a caller that already holds it.
 type History struct {
 	mu        sync.RWMutex
 	Finished  uint
@@ -30,7 +30,8 @@ func (h *History) unlockHistory() {
 
 type pendingHook struct {
 	itemID string
-	item   Extract // status snapshot; Map can move on after History.mu drops.
+	item   Extract  // status snapshot; Map can move on after History.mu drops.
+	live   *Extract // Map pointer at queue time; SaveID must not attach to a reused entry.
 }
 
 // queuePendingHook records a hook to fire after History.mu is dropped.
@@ -40,7 +41,7 @@ func (u *Unpackerr) queuePendingHook(itemID string, item *Extract) {
 		return
 	}
 
-	u.pendingHooks = append(u.pendingHooks, pendingHook{itemID: itemID, item: *item})
+	u.pendingHooks = append(u.pendingHooks, pendingHook{itemID: itemID, item: *item, live: item})
 }
 
 // unlockHistory drops History.mu then delivers any hooks queued while it was
@@ -51,7 +52,7 @@ func (u *Unpackerr) unlockHistory() {
 	u.History.unlockHistory()
 
 	for i := range pending {
-		u.runAllHooks(pending[i].itemID, &pending[i].item)
+		u.runAllHooks(pending[i].itemID, &pending[i].item, pending[i].live)
 	}
 }
 
@@ -61,4 +62,12 @@ func (h *History) rLockHistory() {
 
 func (h *History) rUnlockHistory() {
 	h.mu.RUnlock()
+}
+
+// deleteExtract removes a live extract and drops its worker message-id cache.
+// Caller must hold History.mu.
+func (u *Unpackerr) deleteExtract(itemID string) {
+	live := u.Map[itemID]
+	delete(u.Map, itemID)
+	u.dropHookMessages(itemID, live)
 }

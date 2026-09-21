@@ -182,6 +182,7 @@
       nickname: '',
       token: '',
       channel: '',
+      update: true,
     }
   }
 
@@ -194,6 +195,7 @@
       timeout: explicitTimeout(h?.timeout),
       events: Array.isArray(h?.events) ? [...h.events] : [],
       exclude: Array.isArray(h?.exclude) ? [...h.exclude] : [],
+      update: h?.update ?? true,
     }
   }
 
@@ -690,6 +692,18 @@
                 original={prev?.silent}
                 disabled={!canWrite || row.envOnly}
                 envVar={envField(envPrefix, slug, 'SILENT')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-update`}
+                helpKey="config.hooks.update"
+                type="select"
+                label={$_('config.hooks.update.label')}
+                bind:value={hook.update}
+                original={prev?.update}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'UPDATE')}
               />
             </Col>
           {/if}

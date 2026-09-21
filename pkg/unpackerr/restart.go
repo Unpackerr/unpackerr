@@ -16,6 +16,7 @@ func (u *Unpackerr) maybeRestart() {
 	}
 
 	u.drainHookFails()
+	u.drainHookMessages()
 
 	if !u.idle() {
 		return
@@ -55,12 +56,13 @@ func (u *Unpackerr) maybeRestart() {
 // next Starr poll, so they do not block.
 func (u *Unpackerr) idle() bool {
 	// inFlight covers deletes and hooks until the worker finishes. Failed
-	// deliveries then sit in hookFails until Run drains them.
+	// deliveries then sit in hookFails, and Discord/Telegram ids in hookMsgSaves,
+	// until Run drains them.
 	if u.inFlight.Load() > 0 {
 		return false
 	}
 
-	if u.hasPendingHookFails() {
+	if u.hasPendingHookFails() || u.hasPendingHookMessages() {
 		return false
 	}
 

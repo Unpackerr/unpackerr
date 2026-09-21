@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -89,8 +90,8 @@ func TestDiscordCreateThenEdit(t *testing.T) {
 		t.Fatalf("edit path %q", paths[1])
 	}
 
-	if ids[hook.Identity()] != "msg-1" {
-		t.Fatalf("saved %q", ids[hook.Identity()])
+	if ids[hook.Name] != "msg-1" {
+		t.Fatalf("saved %q", ids[hook.Name])
 	}
 }
 
@@ -171,28 +172,63 @@ func TestTelegramCreateThenEdit(t *testing.T) {
 		t.Fatalf("paths %v", paths)
 	}
 
-	if ids[hook.Identity()] != "42" {
-		t.Fatalf("saved %q", ids[hook.Identity()])
+	if ids[hook.Name] != "42" {
+		t.Fatalf("saved %q", ids[hook.Name])
 	}
 }
 
-func TestIdentity(t *testing.T) {
+func TestDiscordMessageURLKeepsThreadID(t *testing.T) {
 	t.Parallel()
 
-	if got := (*Config)(nil).Identity(); got != "" {
-		t.Fatalf("nil %q", got)
+	got := discordMessageURL("https://discord.com/api/webhooks/1/x?thread_id=99&wait=true", "msg-1")
+
+	parsed, err := url.Parse(got)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if got := (&Config{Name: " discord ", URL: "https://example"}).Identity(); got != "discord" {
-		t.Fatalf("name %q", got)
+	if !strings.HasSuffix(parsed.Path, "/messages/msg-1") {
+		t.Fatalf("path %q", parsed.Path)
 	}
 
-	if got := (&Config{URL: "https://example"}).Identity(); got != "https://example" {
-		t.Fatalf("url %q", got)
+	if parsed.Query().Get("thread_id") != "99" {
+		t.Fatalf("query %q", parsed.RawQuery)
 	}
 
-	if got := (&Config{Command: "/bin/hook"}).Identity(); got != "/bin/hook" {
-		t.Fatalf("command %q", got)
+	if parsed.Query().Get("wait") != "" {
+		t.Fatalf("wait %q", parsed.RawQuery)
+	}
+}
+
+func TestDiscordEditKeepsThreadID(t *testing.T) {
+	t.Parallel()
+
+	capture := &reqCapture{}
+	srv := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+		capture.add(req)
+		writer.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	ids := map[string]string{"hook": "msg-1"}
+	hook := updatingHook(t, srv.URL+"?thread_id=99&wait=true", ProfileDiscord)
+	item := updatingItem(hook, extract.EXTRACTING, ids)
+
+	if drainWorker(t, item) != 1 {
+		t.Fatal("edit")
+	}
+
+	methods, _, queries := capture.snapshot()
+	if len(methods) != 1 || methods[0] != http.MethodPatch {
+		t.Fatalf("methods %v", methods)
+	}
+
+	if !strings.Contains(queries[0], "thread_id=99") {
+		t.Fatalf("edit query %q", queries[0])
+	}
+
+	if strings.Contains(queries[0], "wait=") {
+		t.Fatalf("edit kept wait %q", queries[0])
 	}
 }
 
@@ -253,10 +289,10 @@ func updatingItem(hook *Config, event extract.Status, ids map[string]string) *It
 		Config:  hook,
 		Payload: &Payload{Path: "/dl/show", Event: event, IDs: map[string]any{"title": "Show"}},
 		LookupID: func() string {
-			return ids[hook.Identity()]
+			return ids[hook.Name]
 		},
 		SaveID: func(msgID string) {
-			ids[hook.Identity()] = msgID
+			ids[hook.Name] = msgID
 		},
 	}
 }

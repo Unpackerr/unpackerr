@@ -217,7 +217,10 @@ func discordMessageURL(raw, msgID string) string {
 	}
 
 	parsed.Path = strings.TrimSuffix(parsed.Path, "/") + "/messages/" + url.PathEscape(msgID)
-	parsed.RawQuery = ""
+
+	query := parsed.Query()
+	query.Del("wait")
+	parsed.RawQuery = query.Encode()
 
 	return parsed.String()
 }

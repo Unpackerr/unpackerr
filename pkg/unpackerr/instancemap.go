@@ -193,3 +193,21 @@ func instanceValues[T any](m InstanceMap[T]) []*T {
 
 	return out
 }
+
+type instanceEntry[T any] struct {
+	Key string
+	Val *T
+}
+
+func instanceEntries[T any](m InstanceMap[T]) []instanceEntry[T] {
+	keys := instanceKeys(m)
+	out := make([]instanceEntry[T], 0, len(keys))
+
+	for _, key := range keys {
+		if item := m[key]; item != nil {
+			out = append(out, instanceEntry[T]{Key: key, Val: item})
+		}
+	}
+
+	return out
+}

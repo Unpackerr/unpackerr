@@ -256,23 +256,6 @@ func (w *Config) WantUpdate() bool {
 	return true
 }
 
-// Identity is the stable key for stored message ids (name, else URL, else command).
-func (w *Config) Identity() string {
-	if w == nil {
-		return ""
-	}
-
-	if name := strings.TrimSpace(w.Name); name != "" {
-		return name
-	}
-
-	if w.URL != "" {
-		return w.URL
-	}
-
-	return w.Command
-}
-
 func cloneBool(v *bool) *bool {
 	if v == nil {
 		return nil

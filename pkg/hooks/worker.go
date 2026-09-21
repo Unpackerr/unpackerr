@@ -6,7 +6,8 @@ type Item struct {
 	*Payload
 	// Done is called once per failed webhook POST or command-hook run.
 	Done func(error)
-	// LookupID/SaveID persist Discord/Telegram message ids for later edits.
+	// LookupID/SaveID read and record Discord/Telegram message ids for later edits.
+	// Unpackerr wires these to a worker-local cache; the main loop persists Map.
 	LookupID func() string
 	SaveID   func(string)
 }

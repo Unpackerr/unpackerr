@@ -218,7 +218,7 @@
           "status": {"type": "string"},
           "retries": {"type": "integer"},
           "hookFail": {"type": "integer", "description": "Failed webhook or command-hook deliveries for this extract"},
-          "hookMessages": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Discord message id or Telegram message_id keyed by hook identity"},
+          "hookMessages": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Discord message id or Telegram message_id keyed by webhook or cmdhook instance slug"},
           "started": {"type": "string", "format": "date-time"},
           "updated": {"type": "string", "format": "date-time"},
           "finished": {"type": "string", "format": "date-time"},

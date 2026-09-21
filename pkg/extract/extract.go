@@ -16,7 +16,7 @@ type Extract struct {
 	Retries   uint
 	// HookFail is how many webhook or command-hook deliveries failed for this extract.
 	HookFail uint
-	// HookMessages maps hook identity to Discord message id or Telegram message_id.
+	// HookMessages maps webhook/cmdhook instance slug to Discord message id or Telegram message_id.
 	HookMessages map[string]string
 	Path         string // Local path (resolved for extraction on this host).
 	OutputPath   string // Original path from Starr app (may be UNC/remote — used for ManualImport).

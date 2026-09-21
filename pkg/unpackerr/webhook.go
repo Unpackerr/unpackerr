@@ -12,22 +12,26 @@ import (
 	"golift.io/version"
 )
 
-func (u *Unpackerr) runAllHooks(itemID string, item *Extract) {
+func (u *Unpackerr) runAllHooks(itemID string, item, live *Extract) {
 	if item == nil || (item.Status == IMPORTED && item.App == FolderString) {
 		return // This is an internal state change we don't need to fire on.
 	}
 
+	u.seedHookMessages(itemID, item.HookMessages)
+
 	payload := u.hookPayload(item)
 
-	for _, hook := range u.hookList() {
+	for _, entry := range u.hookEntries() {
+		hook := entry.Val
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, entry.Key, live, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 
-	for _, hook := range u.cmdhookList() {
+	for _, entry := range u.cmdhookEntries() {
+		hook := entry.Val
 		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(itemID, &hooks.Item{Config: hook, Payload: payload})
+			u.queueHook(itemID, entry.Key, live, &hooks.Item{Config: hook, Payload: payload})
 		}
 	}
 }
@@ -112,11 +116,25 @@ func (u *Unpackerr) hookList() []*hooks.Config {
 	return instanceValues(u.Webhook)
 }
 
+func (u *Unpackerr) hookEntries() []instanceEntry[WebhookConfig] {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	return instanceEntries(u.Webhook)
+}
+
 func (u *Unpackerr) cmdhookList() []*hooks.Config {
 	u.configMu.RLock()
 	defer u.configMu.RUnlock()
 
 	return instanceValues(u.Cmdhook)
+}
+
+func (u *Unpackerr) cmdhookEntries() []instanceEntry[WebhookConfig] {
+	u.configMu.RLock()
+	defer u.configMu.RUnlock()
+
+	return instanceEntries(u.Cmdhook)
 }
 
 func (u *Unpackerr) validateWebhook() error {
@@ -255,6 +273,104 @@ func (u *Unpackerr) bumpHistoryHookFail(itemID string) {
 	}
 }
 
+type hookMsgSave struct {
+	itemID, key, msgID string
+	live               *Extract
+}
+
+// seedHookMessages copies restored ids into the worker-visible cache.
+// Existing keys win so a FIFO SaveID is not overwritten by a stale snapshot.
+func (u *Unpackerr) seedHookMessages(itemID string, msgs map[string]string) {
+	if itemID == "" || len(msgs) == 0 {
+		return
+	}
+
+	u.hookMsgMu.Lock()
+	defer u.hookMsgMu.Unlock()
+
+	if u.hookMsgs == nil {
+		u.hookMsgs = map[string]map[string]string{}
+	}
+
+	if u.hookMsgs[itemID] == nil {
+		u.hookMsgs[itemID] = maps.Clone(msgs)
+
+		return
+	}
+
+	for key, msgID := range msgs {
+		if msgID == "" {
+			continue
+		}
+
+		if _, ok := u.hookMsgs[itemID][key]; !ok {
+			u.hookMsgs[itemID][key] = msgID
+		}
+	}
+}
+
+func (u *Unpackerr) lookupHookMessage(itemID, key string) string {
+	if itemID == "" || key == "" {
+		return ""
+	}
+
+	u.hookMsgMu.Lock()
+	defer u.hookMsgMu.Unlock()
+
+	if msgs := u.hookMsgs[itemID]; msgs != nil {
+		return msgs[key]
+	}
+
+	return ""
+}
+
+// storeHookMessage records an id for the next FIFO LookupID, then wakes the
+// main loop to persist Map/history. SaveID runs on the hook worker.
+func (u *Unpackerr) storeHookMessage(itemID, key, msgID string, live *Extract) {
+	if itemID == "" || key == "" || msgID == "" {
+		return
+	}
+
+	u.hookMsgMu.Lock()
+
+	if u.hookMsgs == nil {
+		u.hookMsgs = map[string]map[string]string{}
+	}
+
+	if u.hookMsgs[itemID] == nil {
+		u.hookMsgs[itemID] = map[string]string{}
+	}
+
+	u.hookMsgs[itemID][key] = msgID
+	u.hookMsgSaves = append(u.hookMsgSaves, hookMsgSave{
+		itemID: itemID, key: key, msgID: msgID, live: live,
+	})
+	u.hookMsgMu.Unlock()
+
+	select {
+	case u.hookMsgWake <- struct{}{}:
+	default:
+	}
+}
+
+func (u *Unpackerr) hasPendingHookMessages() bool {
+	u.hookMsgMu.Lock()
+	defer u.hookMsgMu.Unlock()
+
+	return len(u.hookMsgSaves) > 0
+}
+
+func (u *Unpackerr) drainHookMessages() {
+	u.hookMsgMu.Lock()
+	saves := u.hookMsgSaves
+	u.hookMsgSaves = nil
+	u.hookMsgMu.Unlock()
+
+	for _, save := range saves {
+		u.saveHookMessage(save.itemID, save.key, save.msgID, save.live)
+	}
+}
+
 func (u *Unpackerr) hookMessage(itemID, key string) string {
 	if itemID == "" || key == "" {
 		return ""
@@ -291,7 +407,7 @@ func (u *Unpackerr) historyHookMessage(itemID, key string) string {
 	return ""
 }
 
-func (u *Unpackerr) saveHookMessage(itemID, key, msgID string) {
+func (u *Unpackerr) saveHookMessage(itemID, key, msgID string, live *Extract) {
 	if itemID == "" || key == "" || msgID == "" {
 		return
 	}
@@ -299,19 +415,25 @@ func (u *Unpackerr) saveHookMessage(itemID, key, msgID string) {
 	u.lockHistory()
 
 	item := u.Map[itemID]
-	if item != nil {
+	if item != nil && (live == nil || item == live) {
 		if item.HookMessages == nil {
 			item.HookMessages = map[string]string{}
 		}
 
 		item.HookMessages[key] = msgID
 		u.maybeRecordHistory(itemID, item)
+
 		u.History.unlockHistory()
 
 		return
 	}
 
 	u.History.unlockHistory()
+
+	if live != nil && item != nil {
+		return // itemID was reused by a newer extract.
+	}
+
 	u.bumpHistoryHookMessage(itemID, key, msgID)
 }
 

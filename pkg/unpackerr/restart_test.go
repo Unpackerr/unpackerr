@@ -57,6 +57,23 @@ func TestIdleBlocksOnPendingHookFails(t *testing.T) {
 	}
 }
 
+func TestIdleBlocksOnPendingHookMessages(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	unpack.storeHookMessage("Show A", "discord-1", "msg-1", nil)
+
+	if unpack.idle() {
+		t.Fatal("queued hook message ids must block a restart")
+	}
+
+	unpack.drainHookMessages()
+
+	if !unpack.idle() {
+		t.Fatal("drained hook message ids must not block")
+	}
+}
+
 func TestMaybeRestartWaitsForIdle(t *testing.T) {
 	t.Parallel()
 

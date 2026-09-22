@@ -52,12 +52,7 @@ function sniffHookURL(raw: string): HookTemplateName {
     // substring checks still run on the raw URL
   }
 
-  if (
-    lower.includes('discordnotifier.com') ||
-    lower.includes('notifiarr.com')
-  ) {
-    return 'notifiarr'
-  }
+  if (lower.includes('notifiarr.com')) return 'notifiarr'
   if (lower.includes('discord.com') || lower.includes('discordapp.com')) {
     return 'discord'
   }
@@ -140,15 +135,10 @@ const NOTIFIARR_API_KEY_RE =
 
 function hostIsNotifiarr(host: string): boolean {
   const h = host.toLowerCase()
-  return (
-    h === 'notifiarr.com' ||
-    h.endsWith('.notifiarr.com') ||
-    h === 'discordnotifier.com' ||
-    h.endsWith('.discordnotifier.com')
-  )
+  return h === 'notifiarr.com' || h.endsWith('.notifiarr.com')
 }
 
-/** True for notifiarr.com / discordnotifier.com webhook URLs. */
+/** True for notifiarr.com webhook URLs. */
 export function isNotifiarrHost(raw: string): boolean {
   try {
     return hostIsNotifiarr(new URL(raw.trim()).hostname)
@@ -225,7 +215,10 @@ export function applyNotifiarrURL(
 ): { url: string; headers: Record<string, string> } {
   const { url, apiKey } = rewriteNotifiarrURL(raw)
   let next = { ...(headers ?? {}) }
-  if (apiKey) next = setHeader(next, NOTIFIARR_API_KEY_HEADER, apiKey)
+  // Match Go: a header already set wins over the key embedded in the path.
+  if (apiKey && headerValue(next, NOTIFIARR_API_KEY_HEADER).trim() === '') {
+    next = setHeader(next, NOTIFIARR_API_KEY_HEADER, apiKey)
+  }
   return { url, headers: next }
 }
 

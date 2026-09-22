@@ -59,6 +59,7 @@
     hookShowsField,
     hookShowsHeaders,
     omitHeader,
+    rewriteNotifiarrURL,
     setHeader,
     type DetectedHookTemplate,
     type HookFormProfile,
@@ -241,9 +242,17 @@
   }
 
   function setUrl(row: InstanceRow<WebhookConfig>, raw: string) {
-    const next = applyNotifiarrURL(raw, row.value.headers)
-    row.value.url = next.url
-    row.value.headers = next.headers
+    const wasNotifiarr = hookShowsApiKey(row.value.url)
+    const rewritten = rewriteNotifiarrURL(raw)
+    let headers = { ...(row.value.headers ?? {}) }
+    if (rewritten.apiKey) {
+      headers = setHeader(headers, NOTIFIARR_API_KEY_HEADER, rewritten.apiKey)
+    }
+    row.value.url = rewritten.url
+    row.value.headers = headers
+    if (wasNotifiarr && !hookShowsApiKey(rewritten.url)) {
+      row.value.headers = omitHeader(row.value.headers, NOTIFIARR_API_KEY_HEADER)
+    }
   }
 
   function apiKeyOf(hook: WebhookConfig): string {
@@ -534,9 +543,7 @@
       headers:
         isCmd || envHas(envField(envPrefix, row.slug, 'HEADERS_*'))
           ? undefined
-          : Object.keys(hook.headers ?? {}).length > 0
-            ? (hook.headers ?? {})
-            : undefined,
+          : (hook.headers ?? {}),
       event: testEvent,
       app: testApp,
     })
@@ -852,7 +859,7 @@
                   }
                   original={apiKeyOf(prev ?? blank())}
                   disabled={!canWrite || row.envOnly}
-                  envVar={envField(envPrefix, slug, 'HEADERS_*')}
+                  envVar={envField(envPrefix, slug, 'HEADERS_X-Api-Key')}
                 />
               </Col>
             {/if}

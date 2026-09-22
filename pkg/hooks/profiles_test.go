@@ -15,7 +15,6 @@ func TestDetectNamedAndURL(t *testing.T) {
 		{name: "default", url: "https://example.com", want: ProfileNotifiarr},
 		{name: "nope", path: "/tmp/custom.tmpl", want: ProfileCustom},
 		{url: "https://notifiarr.com/api/v1/notification/unpackerr", want: ProfileNotifiarr},
-		{url: "https://discordnotifier.com/api", want: ProfileNotifiarr},
 		{url: "https://discord.com/api/webhooks/1/token", want: ProfileDiscord, update: true},
 		{url: "https://discordapp.com/api/webhooks/1/token", want: ProfileDiscord, update: true},
 		{url: "https://api.telegram.org/bot123:abc/sendMessage", want: ProfileTelegram, update: true},

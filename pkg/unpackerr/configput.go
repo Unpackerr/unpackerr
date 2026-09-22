@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/cnfg"
 	"golift.io/cnfgfile"
 	"golift.io/starr"
@@ -100,10 +101,12 @@ func (u *Unpackerr) replaceConfigSection(section ConfigSection, raw json.RawMess
 		return false, u.putHooksConfig(raw)
 	case SectionWebhooks:
 		return false, u.putHooks(raw, u.validateWebhookList,
-			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Webhook })
+			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Webhook },
+			hooks.NormalizeNotifiarr)
 	case SectionCmdhooks:
 		return false, u.putHooks(raw, u.validateCmdhookList,
-			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Cmdhook })
+			func(c *Config) *InstanceMap[WebhookConfig] { return &c.Cmdhook },
+			nil)
 	default:
 		return false, fmt.Errorf("%w: %s", errUnknownSection, section)
 	}
@@ -750,10 +753,17 @@ func (u *Unpackerr) putHooks(
 	raw json.RawMessage,
 	validate func(InstanceMap[WebhookConfig]) error,
 	field func(*Config) *InstanceMap[WebhookConfig],
+	normalize func(*hooks.Config),
 ) error {
 	var list InstanceMap[WebhookConfig]
 	if err := unmarshalInstances(raw, &list); err != nil {
 		return err
+	}
+
+	if normalize != nil {
+		for _, hook := range list {
+			normalize(hook)
+		}
 	}
 
 	fileList := cloneHookMap(list)

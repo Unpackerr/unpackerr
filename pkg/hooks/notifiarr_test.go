@@ -9,7 +9,7 @@ import (
 func TestRewriteNotifiarrURL(t *testing.T) {
 	t.Parallel()
 
-	const key = "a10070c5-3b41-4206-b0e3-448f52a70918"
+	const key = "00000000-0000-4000-8000-000000000000"
 
 	tests := []struct {
 		in, url, key string
@@ -27,11 +27,6 @@ func TestRewriteNotifiarrURL(t *testing.T) {
 		{
 			in:  "https://www.notifiarr.com/api/v1/notification/unpackerr/" + key,
 			url: "https://www.notifiarr.com/api/v1/notification/unpackerr",
-			key: key,
-		},
-		{
-			in:  "https://discordnotifier.com/api/v1/notification/unpackerr/" + key,
-			url: "https://discordnotifier.com/api/v1/notification/unpackerr",
 			key: key,
 		},
 		{
@@ -72,7 +67,7 @@ func TestRewriteNotifiarrURL(t *testing.T) {
 func TestNormalizeNotifiarr(t *testing.T) {
 	t.Parallel()
 
-	const key = "a10070c5-3b41-4206-b0e3-448f52a70918"
+	const key = "00000000-0000-4000-8000-000000000000"
 
 	hook := &Config{
 		URL: "https://notifiarr.com/api/v1/notification/unpackerr/" + key,
@@ -98,7 +93,7 @@ func TestNormalizeNotifiarrKeepsExistingHeader(t *testing.T) {
 	t.Parallel()
 
 	hook := &Config{
-		URL: "https://notifiarr.com/api/v1/notification/unpackerr/a10070c5-3b41-4206-b0e3-448f52a70918",
+		URL: "https://notifiarr.com/api/v1/notification/unpackerr/00000000-0000-4000-8000-000000000000",
 		Headers: map[string]string{
 			"x-api-key": "already",
 		},

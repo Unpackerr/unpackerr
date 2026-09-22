@@ -59,6 +59,5 @@ func rewriteNotifiarrURL(raw string) (string, string) {
 func notifiarrHost(host string) bool {
 	host = strings.ToLower(host)
 
-	return host == "notifiarr.com" || strings.HasSuffix(host, ".notifiarr.com") ||
-		host == "discordnotifier.com" || strings.HasSuffix(host, ".discordnotifier.com")
+	return host == "notifiarr.com" || strings.HasSuffix(host, ".notifiarr.com")
 }

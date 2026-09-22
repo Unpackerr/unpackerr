@@ -488,6 +488,59 @@ func TestHookTestConfigReoverlaysEnvHeaders(t *testing.T) {
 	}
 }
 
+func TestHookTestConfigRewritesNotifiarrURL(t *testing.T) {
+	t.Parallel()
+
+	const key = "00000000-0000-4000-8000-000000000000"
+
+	unpack := New()
+
+	hook, _, _, err := unpack.hookTestConfig(SectionWebhooks, configTestRequest{
+		URL: "https://notifiarr.com/api/v1/notification/unpackerr/" + key,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hook.URL != "https://notifiarr.com/api/v1/notification/unpackerr" {
+		t.Fatalf("url %q", hook.URL)
+	}
+
+	if hook.Headers["X-Api-Key"] != key {
+		t.Fatalf("headers %+v", hook.Headers)
+	}
+}
+
+func TestHookTestConfigExpandsNotifiarrFilepath(t *testing.T) {
+	t.Parallel()
+
+	const key = "00000000-0000-4000-8000-000000000000"
+
+	urlFile := filepath.Join(t.TempDir(), "hook.url")
+	legacy := "https://notifiarr.com/api/v1/notification/unpackerr/" + key
+
+	if err := os.WriteFile(urlFile, []byte(legacy+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := New()
+
+	hook, _, _, err := unpack.hookTestConfig(SectionWebhooks, configTestRequest{
+		URL: filePrefix + urlFile,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hook.URL != "https://notifiarr.com/api/v1/notification/unpackerr" {
+		t.Fatalf("url %q", hook.URL)
+	}
+
+	if hook.Headers["X-Api-Key"] != key {
+		t.Fatalf("headers %+v", hook.Headers)
+	}
+}
+
 func TestConfigTestWebhookRejectsBadHeaders(t *testing.T) {
 	t.Parallel()
 

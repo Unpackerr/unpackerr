@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// HeaderAPIKey is the Notifiarr client API key request header.
+const HeaderAPIKey = "X-Api-Key" //nolint:gosec // HTTP header name, not a secret
+
 func skipRequestHeader(name string) bool {
 	switch strings.ToLower(name) {
 	case "content-length", "content-type", "host", "transfer-encoding", "connection", "upgrade":
@@ -80,4 +83,30 @@ func RedactHeaderSecrets(headers map[string]string) {
 			headers[name] = ""
 		}
 	}
+}
+
+func headerValue(headers map[string]string, name string) string {
+	for key, value := range headers {
+		if strings.EqualFold(key, name) {
+			return value
+		}
+	}
+
+	return ""
+}
+
+func setHeader(headers map[string]string, name, value string) map[string]string {
+	if headers == nil {
+		headers = make(map[string]string, 1)
+	}
+
+	for key := range headers {
+		if strings.EqualFold(key, name) {
+			delete(headers, key)
+		}
+	}
+
+	headers[name] = value
+
+	return headers
 }

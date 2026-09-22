@@ -51,9 +51,16 @@
   import { envHas } from '../../lib/env.svelte'
   import {
     HOOK_TEMPLATE_NAMES,
+    NOTIFIARR_API_KEY_HEADER,
+    applyNotifiarrURL,
+    headerValue,
     hookFormProfile,
+    hookShowsApiKey,
     hookShowsField,
     hookShowsHeaders,
+    omitHeader,
+    rewriteNotifiarrURL,
+    setHeader,
     type DetectedHookTemplate,
     type HookFormProfile,
   } from '../../lib/hooktmpl'
@@ -220,15 +227,60 @@
   function normalizeHook(
     h: Partial<WebhookConfig> | null | undefined,
   ): WebhookConfig {
+    const headers = { ...(h?.headers ?? {}) }
+    const applied = applyNotifiarrURL(h?.url ?? '', headers)
     return {
       ...blank(),
       ...h,
       timeout: explicitTimeout(h?.timeout),
       events: Array.isArray(h?.events) ? [...h.events] : [],
       exclude: Array.isArray(h?.exclude) ? [...h.exclude] : [],
-      headers: { ...(h?.headers ?? {}) },
+      url: applied.url,
+      headers: applied.headers,
       update: h?.update ?? true,
     }
+  }
+
+  function setUrl(row: InstanceRow<WebhookConfig>, raw: string) {
+    const wasNotifiarr = hookShowsApiKey(row.value.url)
+    const rewritten = rewriteNotifiarrURL(raw)
+    let headers = { ...(row.value.headers ?? {}) }
+    if (rewritten.apiKey) {
+      headers = setHeader(headers, NOTIFIARR_API_KEY_HEADER, rewritten.apiKey)
+    }
+    row.value.url = rewritten.url
+    row.value.headers = headers
+    if (wasNotifiarr && !hookShowsApiKey(rewritten.url)) {
+      row.value.headers = omitHeader(row.value.headers, NOTIFIARR_API_KEY_HEADER)
+    }
+  }
+
+  function apiKeyOf(hook: WebhookConfig): string {
+    return headerValue(hook.headers, NOTIFIARR_API_KEY_HEADER)
+  }
+
+  function setApiKey(hook: WebhookConfig, raw: string) {
+    const value = String(raw ?? '')
+    hook.headers = value
+      ? setHeader(hook.headers, NOTIFIARR_API_KEY_HEADER, value)
+      : omitHeader(hook.headers, NOTIFIARR_API_KEY_HEADER)
+  }
+
+  function extraHeaders(hook: WebhookConfig): Record<string, string> {
+    return hookShowsApiKey(hook.url)
+      ? omitHeader(hook.headers, NOTIFIARR_API_KEY_HEADER)
+      : (hook.headers ?? {})
+  }
+
+  function setExtraHeaders(hook: WebhookConfig, values: Record<string, string>) {
+    if (!hookShowsApiKey(hook.url)) {
+      hook.headers = values
+      return
+    }
+    const key = apiKeyOf(hook)
+    hook.headers = key
+      ? setHeader(values, NOTIFIARR_API_KEY_HEADER, key)
+      : omitHeader(values, NOTIFIARR_API_KEY_HEADER)
   }
 
   function taken(row: InstanceRow<WebhookConfig>): string[] {
@@ -491,9 +543,7 @@
       headers:
         isCmd || envHas(envField(envPrefix, row.slug, 'HEADERS_*'))
           ? undefined
-          : hookShowsHeaders(profileOf(hook), hook.headers)
-            ? (hook.headers ?? {})
-            : undefined,
+          : (hook.headers ?? {}),
       event: testEvent,
       app: testApp,
     })
@@ -583,7 +633,7 @@
     return (
       !!(hook.template ?? '').trim() ||
       !!(hook.templatePath ?? '').trim() ||
-      Object.keys(hook.headers ?? {}).length > 0
+      Object.keys(extraHeaders(hook)).length > 0
     )
   }
 
@@ -756,7 +806,7 @@
                 id={`${section}-${row.id}-url`}
                 helpKey="config.hooks.url"
                 label={$_('config.hooks.url.label')}
-                bind:value={hook.url}
+                bind:value={() => hook.url, (v) => setUrl(row, String(v ?? ''))}
                 original={prev?.url}
                 disabled={!canWrite || row.envOnly}
                 envVar={envField(envPrefix, slug, 'URL')}
@@ -791,6 +841,28 @@
                 envVar={envField(envPrefix, slug, 'TIMEOUT')}
               />
             </Col>
+            {#if hookShowsApiKey(hook.url)}
+              <Col md="6">
+                <Input
+                  id={`${section}-${row.id}-apikey`}
+                  type="password"
+                  label={hookFieldText('notifiarr', 'apiKey', 'label')}
+                  description={hookFieldText(
+                    'notifiarr',
+                    'apiKey',
+                    'description',
+                  )}
+                  tooltip={hookFieldText('notifiarr', 'apiKey', 'tooltip')}
+                  bind:value={
+                    () => apiKeyOf(hook),
+                    (v) => setApiKey(hook, String(v ?? ''))
+                  }
+                  original={apiKeyOf(prev ?? blank())}
+                  disabled={!canWrite || row.envOnly}
+                  envVar={envField(envPrefix, slug, 'HEADERS_X-Api-Key')}
+                />
+              </Col>
+            {/if}
             <Col md="12">
               <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                 <Badge color="info">{profileChip(profile)}</Badge>
@@ -1038,12 +1110,12 @@
                     </Input>
                   </Col>
                 </Row>
-                {#if hookShowsHeaders(profile, hook.headers)}
+                {#if hookShowsHeaders(profile, hook.headers, hook.url)}
                   <MapPairs
                     bind:values={
-                      () => hook.headers ?? {},
+                      () => extraHeaders(hook),
                       (v) => {
-                        hook.headers = v
+                        setExtraHeaders(hook, v)
                       }
                     }
                     disabled={!canWrite || row.envOnly}

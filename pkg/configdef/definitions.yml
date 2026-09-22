@@ -1024,6 +1024,7 @@ sections:
       - Slack and Mattermost: `nickname` is the display name; `channel` is an optional override.
       - ntfy: optional `token` as Bearer. Gotify, ntfy, and Apprise: `nickname` is an optional title prefix.
       - Extra `headers` are sent when set; the UI shows them for a named `template` or a custom `template_path`. Content-Type and ntfy Bearer still win after those headers.
+      - Notifiarr: use `https://notifiarr.com/api/v1/notification/unpackerr` plus `headers.X-Api-Key`. A path API key (`.../unpackerr/<uuid>`) is moved to that header on start, save, and test.
       - Empty or unknown URLs use the Notifiarr JSON payload. Set `template_path` for a custom Go template; a named `template` ignores that file.
       - _`Name` is only used in logs, but it's also available as a template value as `{{name}}`._
       - Built-in templates: `notifiarr`, `discord`, `telegram`, `slack`, `pushover`, `gotify`, `ntfy`, `apprise`, `mattermost`.
@@ -1033,8 +1034,11 @@ sections:
       - name: url
         envvar: URL
         default: ''
-        example: https://notifiarr.com/api/v1/notification/unpackerr/api_key_from_notifiarr_com
+        example: https://notifiarr.com/api/v1/notification/unpackerr
         short: URL to send POST webhook to.
+        desc: |
+          Notifiarr: https://notifiarr.com/api/v1/notification/unpackerr plus headers.X-Api-Key.
+          A path API key in a pasted URL is moved to that header.
       - name: name
         envvar: NAME
         default: ''
@@ -1145,9 +1149,9 @@ sections:
         desc: |
           Nested [webhook.0.headers] table. Header names are letters, digits, underscore, or hyphen.
           Applied first; Content-Type and ntfy Authorization Bearer from token still win.
-          Env: UN_WEBHOOK_0_HEADERS_Authorization=Bearer token
+          Notifiarr client key: X-Api-Key. Env: UN_WEBHOOK_0_HEADERS_X-Api-Key=api_key_from_notifiarr_com
           [webhook.0.headers]
-          Authorization = "Bearer token"
+          X-Api-Key = "api_key_from_notifiarr_com"
 
   cmdhook:
     title: Command Hooks

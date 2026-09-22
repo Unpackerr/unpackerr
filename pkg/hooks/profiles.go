@@ -90,7 +90,7 @@ func sniffURL(raw string) Profile {
 	host, path := hookHostPath(raw)
 
 	switch {
-	case strings.Contains(lower, "discordnotifier.com"), strings.Contains(lower, "notifiarr.com"):
+	case strings.Contains(lower, "notifiarr.com"):
 		return Profile{Name: ProfileNotifiarr}
 	case strings.Contains(lower, "discord.com"), strings.Contains(lower, "discordapp.com"):
 		return Profile{Name: ProfileDiscord, CanUpdate: true}

@@ -306,14 +306,16 @@ func (u *Unpackerr) hookTestConfig(
 	overlayHook(hook, body)
 	u.overlayEnvHookHeaders(section, strings.TrimSpace(body.Slug), hook)
 
+	if err := expandFilepaths(hook); err != nil {
+		return nil, 0, "", err
+	}
+
 	if section != SectionCmdhooks {
+		hooks.NormalizeNotifiarr(hook)
+
 		if err := hooks.ValidateHeaders(hook.Headers); err != nil {
 			return nil, 0, "", fmt.Errorf("validating headers: %w", err)
 		}
-	}
-
-	if err := expandFilepaths(hook); err != nil {
-		return nil, 0, "", err
 	}
 
 	timeout := clampTestTimeout(body.Timeout.Duration, hook.Timeout.Duration, global)

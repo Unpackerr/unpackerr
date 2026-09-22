@@ -499,6 +499,45 @@ func TestConfigPutWebhooksValidationDoesNotApply(t *testing.T) {
 	}
 }
 
+func TestConfigPutWebhookRewritesNotifiarrURL(t *testing.T) {
+	t.Parallel()
+
+	const key = "00000000-0000-4000-8000-000000000000"
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	legacy := "https://notifiarr.com/api/v1/notification/unpackerr/" + key
+	body := `{"notifiarr":{"name":"Notifiarr","url":"` + legacy + `"}}`
+
+	rec := doAuth(t, unpack, http.MethodPut, "/api/config/webhooks", body, putKey(unpack))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("put %d %s", rec.Code, rec.Body.String())
+	}
+
+	wantURL := "https://notifiarr.com/api/v1/notification/unpackerr"
+	check := func(got *WebhookConfig) {
+		t.Helper()
+
+		if got == nil || got.URL != wantURL || got.Headers["X-Api-Key"] != key {
+			t.Fatalf("webhook %+v", got)
+		}
+	}
+
+	check(unpack.fileConfig.Webhook["notifiarr"])
+	check(unpack.Webhook["notifiarr"])
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(written), "/unpackerr/"+key) {
+		t.Fatalf("path key written:\n%s", written)
+	}
+}
+
 func TestConfigPutSonarrPreservesQueueAndPath(t *testing.T) {
 	t.Parallel()
 

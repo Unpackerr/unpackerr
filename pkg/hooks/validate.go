@@ -18,6 +18,8 @@ func ValidateWebhooks(list []*Config, defaultTimeout time.Duration) error {
 			return ErrWebhookNoURL
 		}
 
+		NormalizeNotifiarr(list[idx])
+
 		if list[idx].Name == "" {
 			list[idx].Name = list[idx].URL
 		}

@@ -3,7 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.27.0
 
 require (
-	code.cloudfoundry.org/bytefmt v0.89.0
+	code.cloudfoundry.org/bytefmt v0.90.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/dromara/carbon/v2 v2.6.17
@@ -66,7 +66,7 @@ require (
 	github.com/ulikunitz/xz v0.5.16 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/image v0.45.0 // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golift.io/udf v0.0.1 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect

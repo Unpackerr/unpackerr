@@ -488,6 +488,29 @@ func TestHookTestConfigReoverlaysEnvHeaders(t *testing.T) {
 	}
 }
 
+func TestHookTestConfigRewritesNotifiarrURL(t *testing.T) {
+	t.Parallel()
+
+	const key = "a10070c5-3b41-4206-b0e3-448f52a70918"
+
+	unpack := New()
+
+	hook, _, _, err := unpack.hookTestConfig(SectionWebhooks, configTestRequest{
+		URL: "https://notifiarr.com/api/v1/notification/unpackerr/" + key,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hook.URL != "https://notifiarr.com/api/v1/notification/unpackerr" {
+		t.Fatalf("url %q", hook.URL)
+	}
+
+	if hook.Headers["X-Api-Key"] != key {
+		t.Fatalf("headers %+v", hook.Headers)
+	}
+}
+
 func TestConfigTestWebhookRejectsBadHeaders(t *testing.T) {
 	t.Parallel()
 

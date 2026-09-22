@@ -861,6 +861,13 @@
         "description": "Cabeceras HTTP extra en el POST del webhook.",
         "tooltip": "Se aplican primero. Content-Type y el Bearer de ntfy del token siguen ganando. Visible al elegir una plantilla o un archivo personalizado."
       },
+      "apiKey": {
+        "notifiarr": {
+          "label": "Clave API",
+          "description": "Se envía como cabecera X-Api-Key. Si pegas una URL de Notifiarr que incluye la clave, se rellena este campo y se quita de la URL.",
+          "tooltip": "En notifiarr.com: Integraciones → Unpackerr. Pega la URL completa del webhook o solo la clave."
+        }
+      },
       "ignoreSsl": {
         "label": "Ignorar SSL",
         "description": "Omitir las comprobaciones de certificado TLS de esta URL.",
@@ -1020,7 +1027,7 @@
         "pick": "Servicio",
         "title": "Guía de configuración: {name}",
         "test": "Después de guardar, pulsa Probar en el campo URL para enviar un payload de muestra.",
-        "notifiarr": "En notifiarr.com abre Integraciones → Unpackerr y copia la URL del webhook.\n\nPégala aquí. Apodo, canal y token no se usan.\n\nCada evento de extracción es un payload JSON nuevo. Las URL desconocidas también usan esta plantilla.",
+        "notifiarr": "En notifiarr.com abre Integraciones → Unpackerr y copia la URL del webhook.\n\nPégala aquí. Una URL que incluye la clave (`.../unpackerr/<uuid>`) se reescribe a `https://notifiarr.com/api/v1/notification/unpackerr` y la clave se guarda como X-Api-Key.\n\nApodo, canal y token no se usan. Cada evento de extracción es un payload JSON nuevo. Las URL desconocidas también usan esta plantilla.",
         "discord": "En Discord: Canal → Integraciones → Webhooks → Nuevo webhook. Copia la URL (`discord.com/api/webhooks/...`).\n\nEl nombre del bot es el nombre visible, opcional.\n\nLos mensajes se actualizan in situ por defecto (un mensaje por extracción). Desactiva Actualizar mensajes para apilar uno nuevo en cada evento.",
         "telegram": "Crea un bot con @BotFather y copia el token. La URL es `https://api.telegram.org/botTOKEN/sendMessage`.\n\nEl ID de chat es el id numérico del chat o grupo. Un bot como @userinfobot puede mostrarlo.\n\nLos mensajes se actualizan in situ por defecto. Desactiva Actualizar mensajes para enviar uno nuevo en cada evento.",
         "slack": "Crea un Incoming Webhook en Slack y pega la URL de `hooks.slack.com`.\n\nEl nombre de usuario es el nombre visible. El canal es una sustitución opcional si Slack lo permite.\n\nLos webhooks entrantes no pueden actualizar un mensaje anterior; cada evento de extracción es un mensaje nuevo.",

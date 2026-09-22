@@ -861,6 +861,13 @@
         "description": "Extra HTTP headers on the webhook POST.",
         "tooltip": "Applied first. Content-Type and ntfy Bearer from token still win. Shown when you pick a template or use a custom file."
       },
+      "apiKey": {
+        "notifiarr": {
+          "label": "API key",
+          "description": "Sent as the X-Api-Key header. Pasting a Notifiarr URL that includes the key fills this field and strips it from the URL.",
+          "tooltip": "On notifiarr.com: Integrations → Unpackerr. Paste the full webhook URL, or the key alone."
+        }
+      },
       "ignoreSsl": {
         "label": "Ignore SSL",
         "description": "Skip TLS certificate checks for this URL.",
@@ -1020,7 +1027,7 @@
         "pick": "Service",
         "title": "Setup guide: {name}",
         "test": "After you save, click Test on the URL field to send a sample payload.",
-        "notifiarr": "On notifiarr.com open Integrations → Unpackerr and copy the webhook URL.\n\nPaste it here. Nickname, channel, and token are unused.\n\nEach extract event is a new JSON payload. Unknown URLs also use this template.",
+        "notifiarr": "On notifiarr.com open Integrations → Unpackerr and copy the webhook URL.\n\nPaste it here. A URL that includes the key (`.../unpackerr/<uuid>`) is rewritten to `https://notifiarr.com/api/v1/notification/unpackerr` and the key is stored as X-Api-Key.\n\nNickname, channel, and token are unused. Each extract event is a new JSON payload. Unknown URLs also use this template.",
         "discord": "In Discord: Channel → Integrations → Webhooks → New Webhook. Copy the URL (`discord.com/api/webhooks/...`).\n\nBot name is the optional display name.\n\nMessages update in place by default (one message per extract). Turn Update messages off to stack a new message per event.",
         "telegram": "Create a bot with @BotFather and copy the token. The URL is `https://api.telegram.org/botTOKEN/sendMessage`.\n\nChat ID is the numeric chat or group id. A bot such as @userinfobot can show it.\n\nMessages update in place by default. Turn Update messages off to send a new message per event.",
         "slack": "Create an Incoming Webhook in Slack and paste the `hooks.slack.com` URL.\n\nUsername is the display name. Channel is an optional override when Slack allows it.\n\nIncoming webhooks cannot update a previous message; each extract event is a new message.",

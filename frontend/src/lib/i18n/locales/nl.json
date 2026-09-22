@@ -861,6 +861,13 @@
         "description": "Extra HTTP-headers op de webhook-POST.",
         "tooltip": "Eerst toegepast. Content-Type en ntfy-Bearer uit token winnen daarna. Zichtbaar als je een sjabloon kiest of een aangepast bestand gebruikt."
       },
+      "apiKey": {
+        "notifiarr": {
+          "label": "API-sleutel",
+          "description": "Verzonden als X-Api-Key-header. Als je een Notifiarr-URL met sleutel plakt, wordt dit veld ingevuld en de sleutel uit de URL gehaald.",
+          "tooltip": "Op notifiarr.com: Integraties → Unpackerr. Plak de volledige webhook-URL of alleen de sleutel."
+        }
+      },
       "ignoreSsl": {
         "label": "SSL negeren",
         "description": "TLS-certificaatcontroles voor deze URL overslaan.",
@@ -1020,7 +1027,7 @@
         "pick": "Dienst",
         "title": "Installatiegids: {name}",
         "test": "Klik na het opslaan op Testen bij het URL-veld om een voorbeeldpayload te sturen.",
-        "notifiarr": "Open op notifiarr.com Integraties → Unpackerr en kopieer de webhook-URL.\n\nPlak die hier. Bijnaam, kanaal en token worden niet gebruikt.\n\nElke extract-gebeurtenis is een nieuwe JSON-payload. Onbekende URL's gebruiken dit sjabloon ook.",
+        "notifiarr": "Open op notifiarr.com Integraties → Unpackerr en kopieer de webhook-URL.\n\nPlak die hier. Een URL met sleutel (`.../unpackerr/<uuid>`) wordt herschreven naar `https://notifiarr.com/api/v1/notification/unpackerr` en de sleutel wordt als X-Api-Key bewaard.\n\nBijnaam, kanaal en token worden niet gebruikt. Elke extract-gebeurtenis is een nieuwe JSON-payload. Onbekende URL's gebruiken dit sjabloon ook.",
         "discord": "In Discord: Kanaal → Integraties → Webhooks → Nieuwe webhook. Kopieer de URL (`discord.com/api/webhooks/...`).\n\nBotnaam is de optionele weergavenaam.\n\nBerichten worden standaard ter plaatse bijgewerkt (één bericht per extract). Zet Berichten bijwerken uit om per gebeurtenis een nieuw bericht te stapelen.",
         "telegram": "Maak een bot met @BotFather en kopieer het token. De URL is `https://api.telegram.org/botTOKEN/sendMessage`.\n\nChat-ID is het numerieke chat- of groeps-id. Een bot zoals @userinfobot kan het tonen.\n\nBerichten worden standaard ter plaatse bijgewerkt. Zet Berichten bijwerken uit om per gebeurtenis een nieuw bericht te sturen.",
         "slack": "Maak een Incoming Webhook in Slack en plak de `hooks.slack.com`-URL.\n\nGebruikersnaam is de weergavenaam. Kanaal is een optionele override als Slack dat toestaat.\n\nIncoming webhooks kunnen een eerder bericht niet bijwerken; elke extract-gebeurtenis is een nieuw bericht.",

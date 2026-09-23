@@ -3,7 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.27.0
 
 require (
-	code.cloudfoundry.org/bytefmt v0.90.0
+	code.cloudfoundry.org/bytefmt v0.91.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/dromara/carbon/v2 v2.6.17
@@ -24,7 +24,7 @@ require (
 	golift.io/rotatorr v0.0.0-20260908070935-a77ea24793b3
 	golift.io/starr v1.4.1
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.6.2-0.20260921190552-affc4312fc2c
+	golift.io/xtractr v0.6.2-0.20260922231041-fec876ff1836
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -52,10 +52,10 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode/v2 v2.4.1 // indirect
 	github.com/peterebden/ar v0.0.0-20241106141004-20dc11b778e8 // indirect
-	github.com/pierrec/lz4/v4 v4.1.29 // indirect
+	github.com/pierrec/lz4/v4 v4.1.30 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.70.1 // indirect
+	github.com/prometheus/client_model v0.6.3 // indirect
+	github.com/prometheus/common v0.71.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/randall77/makefat v0.0.0-20260406194835-1b91746796b7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
@@ -63,11 +63,11 @@ require (
 	github.com/sshaman1101/dcompress v0.0.0-20200109162717-50436a6332de // indirect
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
-	github.com/ulikunitz/xz v0.5.16 // indirect
+	github.com/ulikunitz/xz v0.5.17 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
-	golang.org/x/image v0.45.0 // indirect
+	golang.org/x/image v0.46.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golift.io/udf v0.0.1 // indirect
+	golift.io/udf v0.1.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )

@@ -40,7 +40,11 @@
     starrAPIKeyError,
   } from '../../lib/validate'
   import { failure } from '../../lib/toast'
-  import type { ConfigSection, StarrConfig, StarrTestResult } from '../../lib/types'
+  import type {
+    ConfigSection,
+    StarrConfig,
+    StarrTestResult,
+  } from '../../lib/types'
   import { envHas } from '../../lib/env.svelte'
   import { saveStarrPoll, starrPollDirty } from './starr-poll.svelte'
   import {
@@ -211,7 +215,10 @@
   }
 
   function taken(row: InstanceRow<StarrConfig>): string[] {
-    return rows.filter((r) => r.id !== row.id).map((r) => r.slug).filter(Boolean)
+    return rows
+      .filter((r) => r.id !== row.id)
+      .map((r) => r.slug)
+      .filter(Boolean)
   }
 
   function setName(row: InstanceRow<StarrConfig>, name: string) {
@@ -230,12 +237,7 @@
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
       if (row.envOnly || !row.slug) continue
-      const {
-        split_flac,
-        ape_format,
-        ape_compression,
-        ...rest
-      } = row.value
+      const { split_flac, ape_format, ape_compression, ...rest } = row.value
       const item: StarrConfig = {
         ...rest,
         delete_delay: explicitDeleteDelay(row.value.delete_delay),
@@ -245,12 +247,7 @@
         item.ape_format = ape_format || 'ape'
         item.ape_compression = ape_compression || 2000
       }
-      out[row.slug] = omitEnvFields(
-        envPrefix,
-        row.slug,
-        item,
-        STARR_ENV_FIELDS,
-      )
+      out[row.slug] = omitEnvFields(envPrefix, row.slug, item, STARR_ENV_FIELDS)
     }
     return out
   }
@@ -642,11 +639,26 @@
                 disabled={!canWrite || row.envOnly}
                 envVar={envField(envPrefix, slug, 'APE_COMPRESSION')}
                 options={[
-                  { value: 1000, name: $_('config.starr.ape_compression.fast') },
-                  { value: 2000, name: $_('config.starr.ape_compression.normal2000') },
-                  { value: 3000, name: $_('config.starr.ape_compression.high') },
-                  { value: 4000, name: $_('config.starr.ape_compression.extra') },
-                  { value: 5000, name: $_('config.starr.ape_compression.insane') },
+                  {
+                    value: 1000,
+                    name: $_('config.starr.ape_compression.fast'),
+                  },
+                  {
+                    value: 2000,
+                    name: $_('config.starr.ape_compression.normal2000'),
+                  },
+                  {
+                    value: 3000,
+                    name: $_('config.starr.ape_compression.high'),
+                  },
+                  {
+                    value: 4000,
+                    name: $_('config.starr.ape_compression.extra'),
+                  },
+                  {
+                    value: 5000,
+                    name: $_('config.starr.ape_compression.insane'),
+                  },
                 ]}
               />
             </Col>
@@ -685,9 +697,9 @@
     {:else if testError}
       <p class="text-danger mb-0">{testError}</p>
       {#if testElapsed}
-        <p class="text-muted mb-0 mt-2"
-          >{$_('phrases.TestDuration')}: {testElapsed}</p
-        >
+        <p class="text-muted mb-0 mt-2">
+          {$_('phrases.TestDuration')}: {testElapsed}
+        </p>
       {/if}
     {:else if testResult}
       <dl class="row mb-0">

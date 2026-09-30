@@ -607,9 +607,9 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 	starrConf := func(url string) StarrConfig {
 		secret := "filepath:/run/secrets/" + strings.TrimPrefix(url, "http://")
 
-		return StarrConfig{ //nolint:modernize // URL and APIKey are promoted; keeping Config explicit reads better.
-			Config: starr.Config{URL: url, APIKey: secret},
-			Paths:  StringSlice{"/downloads", "/mnt/dl"}, Protocols: "torrent",
+		return StarrConfig{
+			URL: url, APIKey: secret,
+			Paths: StringSlice{"/downloads", "/mnt/dl"}, Protocols: "torrent",
 			DeleteOrig: true, Syncthing: true, ValidSSL: true, MaxBytes: "10GB",
 			DeleteDelay: cnfg.Duration{Duration: 7 * time.Minute}, Timeout: cnfg.Duration{Duration: 42 * time.Second},
 		}

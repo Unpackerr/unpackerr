@@ -658,12 +658,12 @@ func profileHeaders(req *http.Request) http.Header {
 }
 
 func hostFromRemoteAddr(addr string) string {
-	idx := strings.LastIndex(addr, ":")
-	if idx < 0 {
+	before, _, ok := strings.CutLast(addr, ":")
+	if !ok {
 		return addr
 	}
 
-	return strings.Trim(addr[:idx], "[]")
+	return strings.Trim(before, "[]")
 }
 
 func (u *Unpackerr) writeUnauthorized(response http.ResponseWriter) {

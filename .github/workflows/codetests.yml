@@ -1,7 +1,13 @@
 name: test-and-lint
 on:
   push:
+    branches:
+      - main
+      - unstable
   pull_request:
+    branches:
+      - main
+      - unstable
 permissions:
   contents: read
 jobs:

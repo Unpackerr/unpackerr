@@ -5,13 +5,13 @@
 Unpackerr runs as a daemon on your download host or seedbox.
 It checks for completed downloads and extracts them so
 [Lidarr](http://lidarr.audio), [Radarr](http://radarr.video),
-[Readarr](http://readarr.com), and [Sonarr](http://sonarr.tv) may import them. 
+[Readarr](http://readarr.com), and [Sonarr](http://sonarr.tv) may import them.
 If your problem is rar files getting stuck in your activity queue, then this is your solution.
 
 Not a starr app user, and just need to extract files? We do that too.
 This application can run standalone and extract files found in a "watch" folder.
 In other words, you can configure this application to watch your download folder, and
-it will happily extract everything you download. 
+it will happily extract everything you download.
 
 Interested? Check out the website with installation instructions:
 
@@ -21,9 +21,11 @@ Interested? Check out the website with installation instructions:
 
 ## What's it extract?
 
-The absolute basics, just ask STaRDoGG. It also extracts recursively, meaning deep within folders, and archives within archives.
-**Tars, Rars, Zips, 7-Zips, Gzips, Tarred gzips and bzips; encrypted rars and 7zips. And ISO disc images.**
-Need something else? Ask. Does it do too much? Let me know what knobs you need. [Open a request!](https://github.com/Unpackerr/unpackerr/issues/new)
+Probably everything you care about. It also extracts recursively, meaning deep within folders, and archives within archives.
+**Tars, Rars, Zips, 7-Zips, Gzips, Tarred gzips and bzips; encrypted rars and 7zips. And ISO/UDF disc images.**
+It does a lot more; [check this list out](https://github.com/golift/xtractr/issues/44).
+It splits FLAC/APE files with a cue sheet and can convert those ape files to flac if desired.
+Need something else? Let me know what knobs you need. [Open a request!](https://github.com/Unpackerr/unpackerr/issues/new)
 
 ## Attribution
 

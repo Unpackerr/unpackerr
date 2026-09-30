@@ -179,17 +179,13 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	u.markItemQueued(name, item, snap, err, now)
 
 	// This queues the extraction. Which may start right away.
-	archiveTypes := []string{".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz", ".tar", ".tar.gz", ".bz2", ".tbz2"}
-	if item.SplitFlac {
-		archiveTypes = append(archiveTypes, ".cue")
-	}
-
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:       u.getPasswordFromPath(item.Path),
 		Passwords:      u.Passwords,
 		Name:           name,
 		Path:           item.Path,
-		ExcludeSuffix:  xtractr.AllExcept(archiveTypes...),
+		ExcludeSuffix:  xtractr.AllExcept(starrArchiveTypes(item)...),
+		APEOpts:        apeOpts(item),
 		MaxBytes:       item.MaxBytes,
 		MaxFiles:       defaultMaxFiles,
 		MaxRatio:       defaultMaxRatio,
@@ -225,6 +221,37 @@ func (u *Unpackerr) markItemQueued(
 	item.Note = ""
 	u.maybeRecordHistory(name, item)
 	u.notifyQueueLocked()
+}
+
+// starrArchiveTypes is what a Starr download may be extracted as.
+// xtractr recognizes more formats; watched folders use that wider set.
+// .cue is a FLAC or APE cue sheet.
+func starrArchiveTypes(item *Extract) []string {
+	types := []string{
+		".rar", ".r00", ".zip", ".7z", ".7z.001", ".gz", ".tgz",
+		".tar", ".tar.gz", ".bz2", ".tbz2",
+	}
+
+	if item != nil && item.SplitFlac {
+		types = append(types, ".cue")
+	}
+
+	return types
+}
+
+func apeOpts(item *Extract) xtractr.APEOpts {
+	if item == nil {
+		return xtractr.APEOpts{}
+	}
+
+	return xtractr.APEOpts{
+		Compression: item.APECompression,
+		Output:      item.APEFormat,
+	}
+}
+
+func lidarrImportsTracks(item *Extract) bool {
+	return item != nil && item.SplitFlac
 }
 
 func (u *Unpackerr) logQueuedDownload(queueSize int, item *Extract, files xtractr.ArchiveList) {
@@ -419,7 +446,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
 		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
 
-		if item.App == starr.Lidarr && item.SplitFlac && resp.Size > 0 {
+		if item.App == starr.Lidarr && lidarrImportsTracks(item) && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}

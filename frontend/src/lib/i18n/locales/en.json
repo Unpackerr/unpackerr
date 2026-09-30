@@ -728,9 +728,27 @@
         "label": "Valid SSL only"
       },
       "split_flac": {
-        "label": "Split FLAC cue sheets",
-        "description": "Split FLAC+CUE into individual tracks.",
-        "tooltip": "Lidarr only. When on, FLAC files with an embedded CUE sheet become one file per track."
+        "label": "Split cue sheets",
+        "description": "Split FLAC and APE cue sheets into individual tracks.",
+        "tooltip": "Lidarr only. When on, a FLAC or APE image with a CUE sheet becomes one file per track. Format and compression apply to APE images."
+      },
+      "ape_format": {
+        "label": "APE output format",
+        "description": "Container written when an APE cue sheet is split.",
+        "tooltip": "ape keeps Monkey's Audio. wav and flac decode the audio. FLAC cannot store 32-bit or float PCM.",
+        "ape": "APE",
+        "wav": "WAV",
+        "flac": "FLAC"
+      },
+      "ape_compression": {
+        "label": "APE compression",
+        "description": "Monkey's Audio level when the output format is APE.",
+        "tooltip": "Ignored for WAV and FLAC. A default of 0 is set to 2000.",
+        "fast": "Fast (1000)",
+        "normal2000": "Normal (2000)",
+        "high": "High (3000)",
+        "extra": "Extra high (4000)",
+        "insane": "Insane (5000)"
       }
     },
     "folders": {

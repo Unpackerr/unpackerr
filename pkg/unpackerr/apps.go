@@ -12,8 +12,8 @@ import (
 	"golift.io/starr"
 )
 
-/* Shared Starr poll/check/have lives in starrpoll.go. Lidarr SplitFlac is applied
-   via starrApp.tweakExtract so the other apps stay no-ops.
+/* Shared Starr poll/check/have lives in starrpoll.go. Lidarr cue and APE
+   settings are applied via starrApp.tweakExtract so the other apps stay no-ops.
 */
 
 // DefaultQueuePageSize is how many queue items we request from each Starr app.

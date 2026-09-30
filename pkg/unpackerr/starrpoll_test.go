@@ -75,9 +75,11 @@ func TestCheckStarrQueueLidarrTweak(t *testing.T) {
 
 	unpack := New()
 	unpack.Lidarr = instanceMap([]*LidarrConfig{{
-		Protocols: defaultProtocol,
-		Paths:     StringSlice{mappedRoot},
-		SplitFlac: true,
+		Protocols:      defaultProtocol,
+		Paths:          StringSlice{mappedRoot},
+		SplitFlac:      true,
+		APEFormat:      "wav",
+		APECompression: 1000,
 		Queue: &lidarr.Queue{Records: []*lidarr.QueueRecord{{
 			Title:      title,
 			Status:     "completed",
@@ -94,7 +96,11 @@ func TestCheckStarrQueueLidarrTweak(t *testing.T) {
 	}
 
 	if !item.SplitFlac {
-		t.Fatal("expected SplitFlac from Lidarr tweakExtract")
+		t.Fatal("lidarr split_flac was not copied onto the extract")
+	}
+
+	if item.APEFormat != "wav" || item.APECompression != 1000 {
+		t.Fatalf("ape opts %q %d", item.APEFormat, item.APECompression)
 	}
 
 	if item.OutputPath != outputPath {

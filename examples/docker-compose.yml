@@ -107,6 +107,8 @@ services:
     - UN_LIDARR_0_VALID_SSL=false
     - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
+    - UN_LIDARR_0_APE_FORMAT=ape
+    - UN_LIDARR_0_APE_COMPRESSION=0
     ## Readarr Settings
     - UN_READARR_0_NAME=
     - UN_READARR_0_URL=http://readarr:8787
@@ -172,4 +174,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 22 SEP 2026 01:44 UTC
+## => Content Auto Generated, 30 SEP 2026 07:06 UTC

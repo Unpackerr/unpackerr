@@ -12,8 +12,14 @@ import (
 // Extract holds data for files being extracted.
 type Extract struct {
 	Syncthing bool
+	// SplitFlac splits FLAC and APE images referenced by a CUE sheet.
 	SplitFlac bool
-	Retries   uint
+	// APEFormat is ape, wav, or flac. Empty means ape.
+	APEFormat xtractr.AudioFormat
+	// APECompression is the Monkey's Audio level used when APEFormat is ape.
+	// A default of 0 is set to 2000.
+	APECompression int
+	Retries        uint
 	// HookFail is how many webhook or command-hook deliveries failed for this extract.
 	HookFail uint
 	// HookMessages maps webhook/cmdhook instance slug to Discord message id or Telegram message_id.

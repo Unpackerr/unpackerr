@@ -728,9 +728,27 @@
         "label": "Solo SSL válido"
       },
       "split_flac": {
-        "label": "Dividir hojas CUE de FLAC",
-        "description": "Dividir FLAC+CUE en pistas individuales.",
-        "tooltip": "Solo Lidarr. Si está activado, los FLAC con una hoja CUE incrustada pasan a un archivo por pista."
+        "label": "Dividir hojas CUE",
+        "description": "Dividir hojas CUE de FLAC y APE en pistas individuales.",
+        "tooltip": "Solo Lidarr. Si está activado, un FLAC o APE con hoja CUE pasa a un archivo por pista. El formato y la compresión se aplican a las imágenes APE."
+      },
+      "ape_format": {
+        "label": "Formato de salida APE",
+        "description": "Contenedor cuando se divide una hoja CUE de APE.",
+        "tooltip": "ape conserva Monkey's Audio. wav y flac decodifican el audio. FLAC no puede guardar PCM de 32 bits ni float.",
+        "ape": "APE",
+        "wav": "WAV",
+        "flac": "FLAC"
+      },
+      "ape_compression": {
+        "label": "Compresión APE",
+        "description": "Nivel de Monkey's Audio cuando el formato de salida es APE.",
+        "tooltip": "Se ignora para WAV y FLAC. Un valor predeterminado de 0 se establece en 2000.",
+        "fast": "Fast (1000)",
+        "normal2000": "Normal (2000)",
+        "high": "High (3000)",
+        "extra": "Extra high (4000)",
+        "insane": "Insane (5000)"
       }
     },
     "folders": {

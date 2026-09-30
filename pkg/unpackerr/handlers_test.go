@@ -3,10 +3,12 @@ package unpackerr
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
 	"golift.io/starr"
+	"golift.io/xtractr"
 )
 
 func TestExtractCompletedDownloadNotesNoArchives(t *testing.T) {
@@ -113,5 +115,38 @@ func TestExtractCompletedDownloadNotesWaitingSyncthing(t *testing.T) {
 	got := unpack.queueFromExtract("Show.Name", item)
 	if got.Progress != noteWaitingSyncthing {
 		t.Fatalf("progress %q", got.Progress)
+	}
+}
+
+func TestStarrArchiveTypesAndAPEOpts(t *testing.T) {
+	t.Parallel()
+
+	plain := starrArchiveTypes(nil)
+	if slices.Contains(plain, ".cue") {
+		t.Fatalf("cue should stay off until a split flag is set: %v", plain)
+	}
+
+	withCue := &Extract{SplitFlac: true, APEFormat: "flac", APECompression: 3000}
+	if !slices.Contains(starrArchiveTypes(withCue), ".cue") {
+		t.Fatal("split_flac should include cue sheets")
+	}
+
+	opt := apeOpts(withCue)
+	if opt.Output != xtractr.AudioFormatFLAC || opt.Compression != 3000 {
+		t.Fatalf("opts %+v", opt)
+	}
+
+	if !lidarrImportsTracks(withCue) || lidarrImportsTracks(&Extract{}) {
+		t.Fatal("import gate")
+	}
+
+	for _, name := range []string{"01 - Song.flac", "02 - Song.ape", "003 - Song.WAV"} {
+		if !numberedTrackPattern.MatchString(name) {
+			t.Fatalf("pattern missed %s", name)
+		}
+	}
+
+	if numberedTrackPattern.MatchString("cover.jpg") {
+		t.Fatal("pattern matched a non-track")
 	}
 }

@@ -170,7 +170,11 @@
       timeout: '10s',
       maxBytes: defaultMaxBytes(section),
     }
-    if (section === 'lidarr') row.split_flac = false
+    if (section === 'lidarr') {
+      row.split_flac = false
+      row.ape_format = 'ape'
+      row.ape_compression = 2000
+    }
     return row
   }
 
@@ -185,7 +189,15 @@
       timeout: explicitTimeout(a.timeout),
       delete_delay: explicitDeleteDelay(a.delete_delay),
     }
-    if (section !== 'lidarr') delete row.split_flac
+    if (section === 'lidarr') {
+      row.split_flac = a.split_flac ?? false
+      row.ape_format = a.ape_format || 'ape'
+      row.ape_compression = a.ape_compression || 2000
+    } else {
+      delete row.split_flac
+      delete row.ape_format
+      delete row.ape_compression
+    }
     return row
   }
 
@@ -218,12 +230,21 @@
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
       if (row.envOnly || !row.slug) continue
-      const { split_flac, ...rest } = row.value
+      const {
+        split_flac,
+        ape_format,
+        ape_compression,
+        ...rest
+      } = row.value
       const item: StarrConfig = {
         ...rest,
         delete_delay: explicitDeleteDelay(row.value.delete_delay),
       }
-      if (section === 'lidarr') item.split_flac = split_flac ?? false
+      if (section === 'lidarr') {
+        item.split_flac = split_flac ?? false
+        item.ape_format = ape_format || 'ape'
+        item.ape_compression = ape_compression || 2000
+      }
       out[row.slug] = omitEnvFields(
         envPrefix,
         row.slug,
@@ -591,6 +612,42 @@
                 original={prev?.split_flac}
                 disabled={!canWrite || row.envOnly}
                 envVar={envField(envPrefix, slug, 'SPLIT_FLAC')}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-ape-format`}
+                helpKey="config.starr.ape_format"
+                type="select"
+                label={$_('config.starr.ape_format.label')}
+                bind:value={app.ape_format}
+                original={prev?.ape_format}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'APE_FORMAT')}
+                options={[
+                  { value: 'ape', name: $_('config.starr.ape_format.ape') },
+                  { value: 'wav', name: $_('config.starr.ape_format.wav') },
+                  { value: 'flac', name: $_('config.starr.ape_format.flac') },
+                ]}
+              />
+            </Col>
+            <Col md="6">
+              <Input
+                id={`${section}-${row.id}-ape-compression`}
+                helpKey="config.starr.ape_compression"
+                type="select"
+                label={$_('config.starr.ape_compression.label')}
+                bind:value={app.ape_compression}
+                original={prev?.ape_compression}
+                disabled={!canWrite || row.envOnly}
+                envVar={envField(envPrefix, slug, 'APE_COMPRESSION')}
+                options={[
+                  { value: 1000, name: $_('config.starr.ape_compression.fast') },
+                  { value: 2000, name: $_('config.starr.ape_compression.normal2000') },
+                  { value: 3000, name: $_('config.starr.ape_compression.high') },
+                  { value: 4000, name: $_('config.starr.ape_compression.extra') },
+                  { value: 5000, name: $_('config.starr.ape_compression.insane') },
+                ]}
               />
             </Col>
           {/if}

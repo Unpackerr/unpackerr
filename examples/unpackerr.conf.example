@@ -331,9 +331,18 @@ passwords = []
 ## Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB.
 ## `0` or `0B` disables the cap for this instance.
 # max_bytes = ""
-## When enabled, FLAC files with embedded CUE sheets are split into
-## individual track files.
+## When enabled, FLAC and APE files with CUE sheets are split into
+## individual track files. ape_format and ape_compression choose what
+## an APE image becomes.
 # split_flac = false
+## ape keeps Monkey's Audio. wav and flac decode the audio.
+## Empty means ape. FLAC cannot store 32-bit or float PCM.
+## Compression is ignored unless the format is ape.
+# ape_format = "ape"
+## Used only when ape_format is ape (or empty). A default of 0 is set
+## to 2000. Accepted values are 1000, 2000, 3000, 4000, and 5000.
+## WAV and FLAC ignore this.
+# ape_compression = 0
 
 #[readarr.0]
 ## Empty uses the app name (Sonarr, Radarr, and so on). Set this for a
@@ -538,4 +547,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 22 SEP 2026 01:44 UTC
+## => Content Auto Generated, 30 SEP 2026 07:06 UTC

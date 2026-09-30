@@ -728,9 +728,27 @@
         "label": "Μόνο έγκυρο SSL"
       },
       "split_flac": {
-        "label": "Διαχωρισμός φύλλων CUE FLAC",
-        "description": "Διαχωρισμός FLAC+CUE σε μεμονωμένα κομμάτια.",
-        "tooltip": "Μόνο Lidarr. Όταν είναι ενεργό, τα FLAC με ενσωματωμένο CUE γίνονται ένα αρχείο ανά κομμάτι."
+        "label": "Διαχωρισμός φύλλων CUE",
+        "description": "Διαχωρισμός φύλλων CUE FLAC και APE σε μεμονωμένα κομμάτια.",
+        "tooltip": "Μόνο Lidarr. Όταν είναι ενεργό, ένα FLAC ή APE με CUE γίνεται ένα αρχείο ανά κομμάτι. Η μορφή και η συμπίεση ισχύουν στις εικόνες APE."
+      },
+      "ape_format": {
+        "label": "Μορφή εξόδου APE",
+        "description": "Κοντέινερ όταν διαχωρίζεται ένα φύλλο CUE APE.",
+        "tooltip": "Το ape μένει Monkey's Audio. Τα wav και flac αποκωδικοποιούν τον ήχο. Το FLAC δεν αποθηκεύει PCM 32-bit ή float.",
+        "ape": "APE",
+        "wav": "WAV",
+        "flac": "FLAC"
+      },
+      "ape_compression": {
+        "label": "Συμπίεση APE",
+        "description": "Επίπεδο Monkey's Audio όταν η μορφή εξόδου είναι APE.",
+        "tooltip": "Αγνοείται για WAV και FLAC. Η προεπιλογή 0 ορίζεται σε 2000.",
+        "fast": "Fast (1000)",
+        "normal2000": "Normal (2000)",
+        "high": "High (3000)",
+        "extra": "Extra high (4000)",
+        "insane": "Insane (5000)"
       }
     },
     "folders": {

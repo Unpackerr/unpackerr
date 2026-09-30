@@ -234,6 +234,8 @@
           "deleteDelay": {"type": "string", "description": "Go duration, e.g. 5m0s"},
           "syncthing": {"type": "boolean"},
           "splitFlac": {"type": "boolean"},
+          "apeFormat": {"type": "string", "description": "ape, wav, or flac"},
+          "apeCompression": {"type": "integer", "description": "1000, 2000, 3000, 4000, or 5000. A default of 0 is set to 2000."},
           "maxBytes": {"type": "integer"},
           "noRetry": {"type": "boolean"},
           "newFiles": {"type": "array", "items": {"type": "string"}},
@@ -358,7 +360,9 @@
           "valid_ssl": {"type": "boolean"},
           "timeout": {"type": "string", "description": "Go duration"},
           "maxBytes": {"type": "string"},
-          "split_flac": {"type": "boolean", "description": "Lidarr only"}
+          "split_flac": {"type": "boolean", "description": "Lidarr only. Splits FLAC and APE cue sheets."},
+          "ape_format": {"type": "string", "enum": ["", "ape", "wav", "flac"], "description": "Lidarr only. Empty means ape."},
+          "ape_compression": {"type": "integer", "enum": [0, 1000, 2000, 3000, 4000, 5000], "description": "Lidarr only. A default of 0 is set to 2000. Ignored unless ape_format is ape."}
         }
       },
       "StarrMap": {

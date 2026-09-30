@@ -738,10 +738,47 @@ sections:
         default: false
         recommend: *BOOLEAN
         apps: [lidarr]
-        short: Split FLAC cue sheets into separate tracks.
+        short: Split FLAC and APE cue sheets into separate tracks.
         desc: |
-          When enabled, FLAC files with embedded CUE sheets are split into
-          individual track files.
+          When enabled, FLAC and APE files with CUE sheets are split into
+          individual track files. ape_format and ape_compression choose what
+          an APE image becomes.
+      - name: ape_format
+        envvar: APE_FORMAT
+        default: ape
+        recommend:
+          - name: APE
+            value: ape
+          - name: WAV
+            value: wav
+          - name: FLAC
+            value: flac
+        apps: [lidarr]
+        short: Container written when an APE cue sheet is split.
+        desc: |
+          ape keeps Monkey's Audio. wav and flac decode the audio.
+          Empty means ape. FLAC cannot store 32-bit or float PCM.
+          Compression is ignored unless the format is ape.
+      - name: ape_compression
+        envvar: APE_COMPRESSION
+        default: 0
+        recommend:
+          - name: Fast
+            value: 1000
+          - name: Normal
+            value: 2000
+          - name: High
+            value: 3000
+          - name: Extra high
+            value: 4000
+          - name: Insane
+            value: 5000
+        apps: [lidarr]
+        short: Monkey's Audio level when the output format is APE.
+        desc: |
+          Used only when ape_format is ape (or empty). A default of 0 is set
+          to 2000. Accepted values are 1000, 2000, 3000, 4000, and 5000.
+          WAV and FLAC ignore this.
 
   # Global folder configuration.
   folders:

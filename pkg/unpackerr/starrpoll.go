@@ -19,6 +19,15 @@ type queueView struct {
 	DebugExtra                  string
 }
 
+func validateStarrSettings(server any) error {
+	checker, ok := server.(interface{ validateSettings() error })
+	if !ok {
+		return nil
+	}
+
+	return checker.validateSettings()
+}
+
 func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T], app starr.App) error {
 	for key, item := range list {
 		if err := validateInstanceSlug(key); err != nil {
@@ -37,6 +46,10 @@ func validateStarrList[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap
 				continue
 			}
 
+			return fmt.Errorf("%s instance %q: %w", app, key, err)
+		}
+
+		if err := validateStarrSettings(server); err != nil {
 			return fmt.Errorf("%s instance %q: %w", app, key, err)
 		}
 

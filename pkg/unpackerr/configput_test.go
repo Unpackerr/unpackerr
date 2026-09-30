@@ -316,6 +316,60 @@ func TestConfigPutSonarrRejectsSplitFlac(t *testing.T) {
 	}
 }
 
+func TestConfigPutLidarrAPESettings(t *testing.T) {
+	t.Parallel()
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	withKey := func(req *http.Request) {
+		req.Header.Set(headerAPIKey, unpack.Webserver.adminAPIKey())
+	}
+
+	key := strings.Repeat("k", apiKeyMinLength)
+
+	bad := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://127.0.0.1:8686","apiKey":"`+key+`","ape_format":"aiff"}]`, withKey)
+	if bad.Code != http.StatusBadRequest || !strings.Contains(bad.Body.String(), "ape_format") {
+		t.Fatalf("format %d %s", bad.Code, bad.Body.String())
+	}
+
+	level := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://127.0.0.1:8686","apiKey":"`+key+`","ape_compression":2500}]`, withKey)
+	if level.Code != http.StatusBadRequest || !strings.Contains(level.Body.String(), "ape_compression") {
+		t.Fatalf("compression %d %s", level.Code, level.Body.String())
+	}
+
+	sonarr := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr",
+		`[{"url":"http://127.0.0.1:8989","apiKey":"`+key+`","ape_format":"flac"}]`, withKey)
+	if sonarr.Code != http.StatusBadRequest || !strings.Contains(sonarr.Body.String(), "ape_format") {
+		t.Fatalf("sonarr %d %s", sonarr.Code, sonarr.Body.String())
+	}
+
+	good := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://127.0.0.1:8686","apiKey":"`+key+
+			`","split_flac":true,"ape_format":"FLAC","ape_compression":3000}]`, withKey)
+	if good.Code != http.StatusOK {
+		t.Fatalf("lidarr %d %s", good.Code, good.Body.String())
+	}
+
+	got := unpack.Lidarr["0"]
+	if got == nil || !got.SplitFlac || got.APEFormat != "flac" || got.APECompression != 3000 {
+		t.Fatalf("stored %+v", got)
+	}
+
+	zero := doAuth(t, unpack, http.MethodPut, "/api/config/lidarr",
+		`[{"url":"http://127.0.0.1:8686","apiKey":"`+key+`","ape_compression":0}]`, withKey)
+	if zero.Code != http.StatusOK {
+		t.Fatalf("zero %d %s", zero.Code, zero.Body.String())
+	}
+
+	if got = unpack.Lidarr["0"]; got == nil || got.APECompression != 2000 {
+		t.Fatalf("zero stored %+v", got)
+	}
+}
+
 func TestConfigPutNeedsWritePerm(t *testing.T) {
 	t.Parallel()
 

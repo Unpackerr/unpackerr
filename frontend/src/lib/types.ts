@@ -158,6 +158,8 @@ export interface HistoryRecord {
   deleteDelay?: string
   syncthing?: boolean
   splitFlac?: boolean
+  apeFormat?: string
+  apeCompression?: number
   maxBytes?: number
   noRetry?: boolean
   newFiles?: string[]
@@ -278,6 +280,8 @@ export interface StarrConfig {
   timeout: string
   maxBytes: string
   split_flac?: boolean
+  ape_format?: string
+  ape_compression?: number
 }
 
 export interface FolderConfig {

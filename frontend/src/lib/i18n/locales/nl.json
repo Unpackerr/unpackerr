@@ -728,9 +728,27 @@
         "label": "Alleen geldige SSL"
       },
       "split_flac": {
-        "label": "FLAC-cuesheets splitsen",
-        "description": "FLAC+CUE in afzonderlijke tracks splitsen.",
-        "tooltip": "Alleen Lidarr. Als dit aan staat, worden FLAC-bestanden met een ingebed CUE-sheet één bestand per track."
+        "label": "Cuesheets splitsen",
+        "description": "FLAC- en APE-cuesheets in afzonderlijke tracks splitsen.",
+        "tooltip": "Alleen Lidarr. Als dit aan staat, wordt een FLAC of APE met CUE-sheet één bestand per track. Formaat en compressie gelden voor APE."
+      },
+      "ape_format": {
+        "label": "APE-uitvoerformaat",
+        "description": "Container wanneer een APE-cuesheet wordt gesplitst.",
+        "tooltip": "ape blijft Monkey's Audio. wav en flac decoderen de audio. FLAC kan geen 32-bit of float-PCM opslaan.",
+        "ape": "APE",
+        "wav": "WAV",
+        "flac": "FLAC"
+      },
+      "ape_compression": {
+        "label": "APE-compressie",
+        "description": "Monkey's Audio-niveau als het uitvoerformaat APE is.",
+        "tooltip": "Genegeerd voor WAV en FLAC. Een standaard van 0 wordt 2000.",
+        "fast": "Fast (1000)",
+        "normal2000": "Normal (2000)",
+        "high": "High (3000)",
+        "extra": "Extra high (4000)",
+        "insane": "Insane (5000)"
       }
     },
     "folders": {

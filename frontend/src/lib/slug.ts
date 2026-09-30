@@ -178,6 +178,8 @@ export const STARR_ENV_FIELDS: Record<string, string> = {
   timeout: 'TIMEOUT',
   maxBytes: 'MAX_BYTES',
   split_flac: 'SPLIT_FLAC',
+  ape_format: 'APE_FORMAT',
+  ape_compression: 'APE_COMPRESSION',
 }
 
 export const FOLDER_ENV_FIELDS: Record<string, string> = {

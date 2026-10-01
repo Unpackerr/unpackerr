@@ -1,11 +1,5 @@
 name: integration
 on:
-  workflow_dispatch:
-    inputs:
-      inttest_ref:
-        description: unpackerr-inttest branch, tag, or commit SHA (blank uses main)
-        required: false
-        type: string
   push:
     branches:
       - main
@@ -31,14 +25,7 @@ jobs:
       - name: Build unpackerr
         run: go build -o unpackerr .
       - name: Clone integration tests
-        env:
-          INTTEST_REF: ${{ inputs.inttest_ref }}
-        run: |
-          git clone --depth 1 https://github.com/Unpackerr/unpackerr-inttest.git inttest
-          if [ -n "$INTTEST_REF" ]; then
-            git -C inttest fetch --depth 1 origin "$INTTEST_REF"
-            git -C inttest checkout FETCH_HEAD
-          fi
+        run: git clone --depth 1 https://github.com/Unpackerr/unpackerr-inttest.git inttest
       - name: Integration tests
         working-directory: inttest
         env:

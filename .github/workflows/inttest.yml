@@ -1,0 +1,46 @@
+name: integration
+on:
+  workflow_dispatch:
+    inputs:
+      inttest_ref:
+        description: unpackerr-inttest branch, tag, or commit SHA (blank uses main)
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+      - unstable
+  pull_request:
+    branches:
+      - main
+      - unstable
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install archive tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rar p7zip-full zip unzip
+      - name: Build unpackerr
+        run: go build -o unpackerr .
+      - name: Clone integration tests
+        env:
+          INTTEST_REF: ${{ inputs.inttest_ref }}
+        run: |
+          git clone --depth 1 https://github.com/Unpackerr/unpackerr-inttest.git inttest
+          if [ -n "$INTTEST_REF" ]; then
+            git -C inttest fetch --depth 1 origin "$INTTEST_REF"
+            git -C inttest checkout FETCH_HEAD
+          fi
+      - name: Integration tests
+        working-directory: inttest
+        env:
+          UNPACKERR_BIN: ${{ github.workspace }}/unpackerr
+        run: go test -tags=integration -timeout 5m -count=1 -v ./test/...

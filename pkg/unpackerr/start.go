@@ -27,7 +27,7 @@ import (
 const (
 	defaultMaxRetries      = 2    // two retries after the first try (3 attempts).
 	defaultMaxFiles        = 1000 // Starr cap. Folders default to 0 (unlimited).
-	defaultMaxRatio        = 5.0  // Starr cap. Folders default to 0 (unlimited).
+	defaultMaxRatio        = 7.5  // Starr cap. Folders default to 0 (unlimited).
 	defaultSonarrMaxBytes  = "20GB"
 	defaultRadarrMaxBytes  = "75GB"
 	defaultLidarrMaxBytes  = "4GB"

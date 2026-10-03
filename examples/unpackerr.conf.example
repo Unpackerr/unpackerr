@@ -96,9 +96,18 @@ remnant_action = "rename"
 ## Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
-## Use these configurations to control the file modes used for newly extracted
-## files and folders. Recommend 0644/0755 or 0666/0777.
+## When an archive stores a file mode, the group and other bits from
+## this setting are added to it. Owner bits and the executable bit stay
+## with the archive. Entries that store no mode are created with this
+## mode. The process umask still applies, so 0666 becomes 0644 under
+## umask 0022. Use 0644, or 0660 or 0666 when another user must write
+## the extracted files.
 file_mode = "0644"
+
+## When an archive stores a directory mode, the group and other bits
+## from this setting are added to it. Owner rwx is always kept.
+## Directories that store no mode are created with this mode. The
+## process umask still applies.
 dir_mode = "0755"
 
 ## List of passwords to use for encrypted archives. Must be a list of strings.
@@ -185,7 +194,7 @@ passwords = []
 ## The following sections can be repeated if you have more than one Sonarr,  ##
 ## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
 ## Identify each instance with a short key: [sonarr.uhd], [folder.tv].       ##
-## Changed in v1.0.0 (September 2026): map keys, not [[array]] list rows.    ##
+## Changed in v1.0.0 (October 2026): map keys, not [[array]] list rows.    ##
 ## You MUST uncomment the [header.0], url and api_key for any Starr app.     ##
 ## Uncomment [sonarr.0], [radarr.0], [lidarr.0], and/or [readarr.0] plus the ##
 ## url and api_key if that app is in use.                                    ##
@@ -547,4 +556,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 SEP 2026 07:06 UTC
+## => Content Auto Generated, 03 OCT 2026 04:10 UTC

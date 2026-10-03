@@ -409,10 +409,14 @@ sections:
         envvar: FILE_MODE
         default: '0644'
         recommend: *FILE_MODES
-        short: Extracted files are written with this mode.
+        short: Group and other bits added to extracted files.
         desc: |
-          Use these configurations to control the file modes used for newly extracted
-          files and folders. Recommend 0644/0755 or 0666/0777.
+          When an archive stores a file mode, the group and other bits from
+          this setting are added to it. Owner bits and the executable bit stay
+          with the archive. Entries that store no mode are created with this
+          mode. The process umask still applies, so 0666 becomes 0644 under
+          umask 0022. Use 0644, or 0660 or 0666 when another user must write
+          the extracted files.
       - name: dir_mode
         envvar: DIR_MODE
         default: '0755'
@@ -423,7 +427,12 @@ sections:
           - value: '0770'
           - value: '0775'
           - value: '0777'
-        short: Extracted folders are written with this mode
+        short: Group and other bits added to extracted folders.
+        desc: |
+          When an archive stores a directory mode, the group and other bits
+          from this setting are added to it. Owner rwx is always kept.
+          Directories that store no mode are created with this mode. The
+          process umask still applies.
       - name: passwords
         envvar: PASSWORD_
         default: []

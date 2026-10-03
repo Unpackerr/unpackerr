@@ -523,13 +523,13 @@
       },
       "fileMode": {
         "label": "File mode",
-        "description": "Permissions for newly extracted files.",
-        "tooltip": "Unix only. Ignored on Windows."
+        "description": "Group and other bits added to extracted files.",
+        "tooltip": "Unix only. Added to a mode stored in the archive. Owner bits stay with the archive. The process umask still applies. Ignored on Windows."
       },
       "dirMode": {
         "label": "Dir mode",
-        "description": "Permissions for newly extracted folders.",
-        "tooltip": "Unix only. Ignored on Windows."
+        "description": "Group and other bits added to extracted folders.",
+        "tooltip": "Unix only. Added to a directory mode stored in the archive. Owner rwx is always kept. The process umask still applies. Ignored on Windows."
       },
       "logFile": {
         "label": "Log file",

@@ -96,18 +96,16 @@ remnant_action = "rename"
 ## Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
-## When an archive stores a file mode, the group and other bits from
-## this setting are added to it. Owner bits and the executable bit stay
-## with the archive. Entries that store no mode are created with this
-## mode. The process umask still applies, so 0666 becomes 0644 under
-## umask 0022. Use 0644, or 0660 or 0666 when another user must write
-## the extracted files.
+## Extracted files are created with this mode. An execute bit stored in
+## the archive is kept for owner, group, or other only when this mode
+## already grants that class access, so 0644 beside an archived 0755
+## stays executable and 0660 beside 0755 becomes 0770. The process
+## umask still applies, so 0666 becomes 0644 under umask 0022. Use
+## 0644, or 0660 or 0666 when another user must write the extracted files.
 file_mode = "0644"
 
-## When an archive stores a directory mode, the group and other bits
-## from this setting are added to it. Owner rwx is always kept.
-## Directories that store no mode are created with this mode. The
-## process umask still applies.
+## Extracted directories are created with this mode. The process umask
+## still applies.
 dir_mode = "0755"
 
 ## List of passwords to use for encrypted archives. Must be a list of strings.
@@ -556,4 +554,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 03 OCT 2026 04:10 UTC
+## => Content Auto Generated, 04 OCT 2026 01:51 UTC

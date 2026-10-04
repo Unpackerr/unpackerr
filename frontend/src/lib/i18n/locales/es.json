@@ -523,13 +523,13 @@
       },
       "fileMode": {
         "label": "Modo de archivo",
-        "description": "Bits de grupo y de otros que se añaden a los archivos extraídos.",
-        "tooltip": "Solo Unix. Se añaden a un modo guardado en el archivo. Los bits del propietario se quedan como en el archivo. La umask del proceso sigue aplicando. Se ignora en Windows."
+        "description": "Modo de los archivos extraídos. Se conservan los bits de ejecución del archivo.",
+        "tooltip": "Solo Unix. Un bit de ejecución guardado en el archivo se conserva para propietario, grupo u otros solo si este modo ya concede acceso a esa clase. La umask del proceso sigue aplicando. Se ignora en Windows."
       },
       "dirMode": {
         "label": "Modo de carpeta",
-        "description": "Bits de grupo y de otros que se añaden a las carpetas extraídas.",
-        "tooltip": "Solo Unix. Se añaden a un modo de carpeta guardado en el archivo. El propietario siempre conserva rwx. La umask del proceso sigue aplicando. Se ignora en Windows."
+        "description": "Modo de las carpetas extraídas.",
+        "tooltip": "Solo Unix. Las carpetas extraídas se crean con este modo. La umask del proceso sigue aplicando. Se ignora en Windows."
       },
       "logFile": {
         "label": "Archivo de registro",

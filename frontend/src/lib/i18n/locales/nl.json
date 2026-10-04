@@ -523,13 +523,13 @@
       },
       "fileMode": {
         "label": "Bestandsmodus",
-        "description": "Groeps- en overige bits die aan uitgepakte bestanden worden toegevoegd.",
-        "tooltip": "Alleen Unix. Worden toegevoegd aan een modus uit het archief. Eigenaarsbits blijven van het archief. De umask van het proces geldt nog. Wordt op Windows genegeerd."
+        "description": "Modus voor uitgepakte bestanden. Uitvoerbits uit het archief blijven behouden.",
+        "tooltip": "Alleen Unix. Een uitvoerbit uit het archief blijft alleen staan voor eigenaar, groep of anderen als deze modus die klasse al toegang geeft. De umask van het proces geldt nog. Wordt op Windows genegeerd."
       },
       "dirMode": {
         "label": "Mapmodus",
-        "description": "Groeps- en overige bits die aan uitgepakte mappen worden toegevoegd.",
-        "tooltip": "Alleen Unix. Worden toegevoegd aan een mapmodus uit het archief. De eigenaar houdt altijd rwx. De umask van het proces geldt nog. Wordt op Windows genegeerd."
+        "description": "Modus voor uitgepakte mappen.",
+        "tooltip": "Alleen Unix. Uitgepakte mappen krijgen deze modus. De umask van het proces geldt nog. Wordt op Windows genegeerd."
       },
       "logFile": {
         "label": "Logbestand",

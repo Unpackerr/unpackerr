@@ -409,14 +409,13 @@ sections:
         envvar: FILE_MODE
         default: '0644'
         recommend: *FILE_MODES
-        short: Mode for extracted files. Archive execute bits are kept.
+        short: Mode for extracted files.
         desc: |
-          Extracted files are created with this mode. An execute bit stored in
-          the archive is kept for owner, group, or other only when this mode
-          already grants that class access, so 0644 beside an archived 0755
-          stays executable and 0660 beside 0755 becomes 0770. The process
-          umask still applies, so 0666 becomes 0644 under umask 0022. Use
-          0644, or 0660 or 0666 when another user must write the extracted files.
+          Extracted files are created with this mode. The process umask still
+          applies, so 0666 becomes 0644 under umask 0022. Use 0644, or 0660 or
+          0666 when another user must write the extracted files. Archive
+          execute bits are kept only for a watched folder with preserve_exec
+          enabled.
       - name: dir_mode
         envvar: DIR_MODE
         default: '0755'
@@ -981,6 +980,17 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true enables .iso file extraction.
         desc: Set this to true if you want this app to extract ISO files with .iso extension.
+      - name: preserve_exec
+        envvar: PRESERVE_EXEC
+        default: false
+        recommend: *BOOLEAN
+        short: Keep execute bits stored in the archive.
+        desc: |
+          When true, an execute bit stored in the archive is kept for owner,
+          group, or other only when file_mode already grants that class access.
+          A 6 beside an archived 7 becomes 7, a 4 becomes 5, and a 0 stays 0.
+          Off, extracted files use file_mode only. Starr extracts stay off.
+          The process umask still applies.
       - name: wait_extensions
         envvar: WAIT_EXTENSION_
         default: []

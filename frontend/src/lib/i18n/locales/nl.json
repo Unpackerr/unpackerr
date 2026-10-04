@@ -523,8 +523,8 @@
       },
       "fileMode": {
         "label": "Bestandsmodus",
-        "description": "Modus voor uitgepakte bestanden. Uitvoerbits uit het archief blijven behouden.",
-        "tooltip": "Alleen Unix. Een uitvoerbit uit het archief blijft alleen staan voor eigenaar, groep of anderen als deze modus die klasse al toegang geeft. De umask van het proces geldt nog. Wordt op Windows genegeerd."
+        "description": "Modus voor uitgepakte bestanden.",
+        "tooltip": "Alleen Unix. Uitgepakte bestanden krijgen deze modus. De umask van het proces geldt nog. Wordt op Windows genegeerd."
       },
       "dirMode": {
         "label": "Mapmodus",
@@ -796,6 +796,11 @@
         "label": "ISO’s uitpakken",
         "description": ".iso-bestanden als archieven behandelen.",
         "tooltip": "Uit negeert ISO-images. Zet dit alleen aan als je ze echt wilt uitpakken."
+      },
+      "preserve_exec": {
+        "label": "Uitvoerbits behouden",
+        "description": "Uitvoerbits uit het archief behouden.",
+        "tooltip": "Uit krijgen uitgepakte bestanden alleen de bestandsmodus. Aan blijft een uitvoerbit uit het archief staan voor eigenaar, groep of anderen als de bestandsmodus die klasse al toegang geeft. Starr-extracties blijven uit."
       },
       "disableRecursion": {
         "label": "Recursie",

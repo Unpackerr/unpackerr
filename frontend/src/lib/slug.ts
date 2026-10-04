@@ -192,6 +192,7 @@ export const FOLDER_ENV_FIELDS: Record<string, string> = {
   move_back: 'MOVE_BACK',
   delete_after: 'DELETE_AFTER',
   extract_isos: 'EXTRACT_ISOS',
+  preserve_exec: 'PRESERVE_EXEC',
   disableRecursion: 'DISABLE_RECURSION',
   maxNested: 'MAX_NESTED',
   extrasMaxDepth: 'EXTRAS_MAX_DEPTH',

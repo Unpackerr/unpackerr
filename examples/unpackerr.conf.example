@@ -96,12 +96,11 @@ remnant_action = "rename"
 ## Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
-## Extracted files are created with this mode. An execute bit stored in
-## the archive is kept for owner, group, or other only when this mode
-## already grants that class access, so 0644 beside an archived 0755
-## stays executable and 0660 beside 0755 becomes 0770. The process
-## umask still applies, so 0666 becomes 0644 under umask 0022. Use
-## 0644, or 0660 or 0666 when another user must write the extracted files.
+## Extracted files are created with this mode. The process umask still
+## applies, so 0666 becomes 0644 under umask 0022. Use 0644, or 0660 or
+## 0666 when another user must write the extracted files. Archive
+## execute bits are kept only for a watched folder with preserve_exec
+## enabled.
 file_mode = "0644"
 
 ## Extracted directories are created with this mode. The process umask
@@ -450,6 +449,12 @@ passwords = []
 # move_back = false
 ## Set this to true if you want this app to extract ISO files with .iso extension.
 # extract_isos = false
+## When true, an execute bit stored in the archive is kept for owner,
+## group, or other only when file_mode already grants that class access.
+## A 6 beside an archived 7 becomes 7, a 4 becomes 5, and a 0 stays 0.
+## Off, extracted files use file_mode only. Starr extracts stay off.
+## The process umask still applies.
+# preserve_exec = false
 ## Incomplete-download suffixes such as `.part` or `.crdownload`. Extraction
 ## stays in waiting as long as any matching file is in the watched item's
 ## top folder. Subfolders are not scanned. The UI and config always store
@@ -554,4 +559,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 OCT 2026 01:51 UTC
+## => Content Auto Generated, 04 OCT 2026 06:03 UTC

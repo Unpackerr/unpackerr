@@ -523,13 +523,13 @@
       },
       "fileMode": {
         "label": "File mode",
-        "description": "Permissions for newly extracted files.",
-        "tooltip": "Unix only. Ignored on Windows."
+        "description": "Mode for extracted files.",
+        "tooltip": "Unix only. Extracted files are created with this mode. Umask still applies. Ignored on Windows."
       },
       "dirMode": {
         "label": "Dir mode",
-        "description": "Permissions for newly extracted folders.",
-        "tooltip": "Unix only. Ignored on Windows."
+        "description": "Mode for extracted folders.",
+        "tooltip": "Unix only. Extracted folders are created with this mode. Umask still applies. Ignored on Windows."
       },
       "logFile": {
         "label": "Log file",
@@ -796,6 +796,11 @@
         "label": "Extract ISOs",
         "description": "Treat .iso files as archives.",
         "tooltip": "Off ignores ISO images. Turn this on only if you really want them unpacked."
+      },
+      "preserve_exec": {
+        "label": "Keep execute bits",
+        "description": "Keep execute bits stored in the archive.",
+        "tooltip": "Off, extracted files use File mode only. On, an archived execute bit is kept for owner, group, or other when File mode already grants that class access. Starr extracts stay off."
       },
       "disableRecursion": {
         "label": "Recursion",

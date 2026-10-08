@@ -96,9 +96,15 @@ remnant_action = "rename"
 ## Do not wrap the number in quotes. Raise this only if you have fast disks and CPU.
 parallel = 1
 
-## Use these configurations to control the file modes used for newly extracted
-## files and folders. Recommend 0644/0755 or 0666/0777.
+## Extracted files are created with this mode. The process umask still
+## applies, so 0666 becomes 0644 under umask 0022. Use 0644, or 0660 or
+## 0666 when another user must write the extracted files. Archive
+## execute bits are kept only for a watched folder with preserve_exec
+## enabled.
 file_mode = "0644"
+
+## Extracted directories are created with this mode. The process umask
+## still applies.
 dir_mode = "0755"
 
 ## List of passwords to use for encrypted archives. Must be a list of strings.
@@ -185,7 +191,7 @@ passwords = []
 ## The following sections can be repeated if you have more than one Sonarr,  ##
 ## Radarr, Lidarr, Readarr, Folder, Webhook, and/or Command Hook.            ##
 ## Identify each instance with a short key: [sonarr.uhd], [folder.tv].       ##
-## Changed in v1.0.0 (September 2026): map keys, not [[array]] list rows.    ##
+## Changed in v1.0.0 (October 2026): map keys, not [[array]] list rows.    ##
 ## You MUST uncomment the [header.0], url and api_key for any Starr app.     ##
 ## Uncomment [sonarr.0], [radarr.0], [lidarr.0], and/or [readarr.0] plus the ##
 ## url and api_key if that app is in use.                                    ##
@@ -443,6 +449,12 @@ passwords = []
 # move_back = false
 ## Set this to true if you want this app to extract ISO files with .iso extension.
 # extract_isos = false
+## When true, an execute bit stored in the archive is kept for owner,
+## group, or other only when file_mode already grants that class access.
+## A 6 beside an archived 7 becomes 7, a 4 becomes 5, and a 0 stays 0.
+## Off, extracted files use file_mode only. Starr extracts stay off.
+## The process umask still applies.
+# preserve_exec = false
 ## Incomplete-download suffixes such as `.part` or `.crdownload`. Extraction
 ## stays in waiting as long as any matching file is in the watched item's
 ## top folder. Subfolders are not scanned. The UI and config always store
@@ -547,4 +559,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 30 SEP 2026 07:06 UTC
+## => Content Auto Generated, 04 OCT 2026 06:03 UTC

@@ -20,8 +20,8 @@ jobs:
           go-version-file: go.mod
       - name: Install archive tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y rar p7zip-full zip unzip
+          sudo apt update
+          sudo apt install -y rar p7zip-full zip unzip
       - name: Build unpackerr
         run: go build -o unpackerr .
       - name: Clone integration tests

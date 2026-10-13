@@ -1,5 +1,7 @@
 code.cloudfoundry.org/bytefmt v0.92.0 h1:5VOXItXohomt4H7dAm+RQ+EyjBM0qEecIydB19SID1c=
 code.cloudfoundry.org/bytefmt v0.92.0/go.mod h1:JmwVGQitcAS/+JGi8g/D6dxWsrsFwkzq3GuqJ6TxaTc=
+code.cloudfoundry.org/bytefmt v0.93.0 h1:HHWXh5mNTKbyv258p1gKVdiOzDwdtGTqNNkvmaBtHwk=
+code.cloudfoundry.org/bytefmt v0.93.0/go.mod h1:MhGqYY+7H7YiTjW9uu2H10qT3djJgd7dGCfrQtqHHbU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=

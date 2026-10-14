@@ -159,7 +159,7 @@ jobs:
         env:
           REVISION: ${{ needs.channel.outputs.revision }}
         run: bash .github/scripts/freebsd_txz.sh dist/freebsd
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist-${{ matrix.goos }}
           path: dist/${{ matrix.goos }}
@@ -222,7 +222,7 @@ jobs:
           CODESIGN_CLIENT_KEY: ${{ secrets.CODESIGN_CLIENT_KEY }}
           CODESIGN_NAME: Unpackerr
           CODESIGN_WEBSITE: https://unpackerr.zip
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist-windows
           path: dist/windows
@@ -289,7 +289,7 @@ jobs:
           du -sh dist/darwin dist/darwin/* 2>/dev/null || true
           tar -C dist/darwin -cf dist-darwin.tar .
           ls -lh dist-darwin.tar
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist-darwin
           path: dist-darwin.tar

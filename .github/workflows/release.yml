@@ -351,15 +351,15 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Enable Docker Hub publish
         run: echo DOCKERHUB_PUBLISH=1 >> "$GITHUB_ENV"
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist-linux
           path: dist/linux
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist-windows
           path: dist/windows
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist-freebsd
           path: dist/freebsd
@@ -370,7 +370,7 @@ jobs:
           for arch in amd64 i386 armhf arm64; do
             ls dist/freebsd/unpackerr-*."${arch}".txz
           done
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: needs.split-darwin.result == 'success'
         with:
           name: dist-darwin

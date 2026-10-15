@@ -13,7 +13,7 @@ require (
 	github.com/lestrrat-go/apache-logformat/v2 v2.0.6
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/ncruces/zenity v0.10.15
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/client_golang v1.25.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/crypto v0.57.0

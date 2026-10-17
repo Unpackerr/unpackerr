@@ -3,7 +3,7 @@ module github.com/Unpackerr/unpackerr
 go 1.27.1
 
 require (
-	code.cloudfoundry.org/bytefmt v0.92.0
+	code.cloudfoundry.org/bytefmt v0.93.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/dromara/carbon/v2 v2.6.18
@@ -13,12 +13,12 @@ require (
 	github.com/lestrrat-go/apache-logformat/v2 v2.0.6
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/ncruces/zenity v0.10.15
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/client_golang v1.25.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.0.10
-	golang.org/x/crypto v0.57.0
-	golang.org/x/mod v0.41.0
-	golang.org/x/sys v0.48.0
+	golang.org/x/crypto v0.58.0
+	golang.org/x/mod v0.42.0
+	golang.org/x/sys v0.49.0
 	golift.io/cnfg v0.5.0
 	golift.io/cnfgfile v0.1.0
 	golift.io/rotatorr v0.1.0
@@ -66,8 +66,8 @@ require (
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golift.io/ape v0.2.0 // indirect
 	golift.io/asar v0.1.0 // indirect
 	golift.io/udf v0.1.0 // indirect

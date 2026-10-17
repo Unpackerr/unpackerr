@@ -3,7 +3,7 @@
 # Official Unpackerr/unpackerr releases copy a prebuilt binary via
 # init/docker/Dockerfile.goreleaser.
 
-FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS builder
 
 # Node is required: go generate ./frontend runs npm ci + vite (embedded SPA).
 RUN apk add --no-cache git nodejs npm

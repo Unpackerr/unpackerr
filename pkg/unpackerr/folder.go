@@ -116,6 +116,7 @@ func (u *Unpackerr) extractTrackedItem(name string, folder *Folder, now time.Tim
 		Path:             name,
 		ExcludeSuffix:    exclude,
 		AllowSymlinks:    folder.Config.AllowSymlinks,
+		PreserveExec:     folder.Config.PreserveExec,
 		MaxBytes:         folder.Config.ResolvedMaxBytes,
 		MaxFiles:         folder.Config.MaxFiles,
 		MaxRatio:         folder.Config.MaxRatio,

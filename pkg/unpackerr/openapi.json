@@ -382,6 +382,7 @@
           "move_back": {"type": "boolean"},
           "delete_after": {"type": "string", "nullable": true, "description": "Go duration; null omits"},
           "extract_isos": {"type": "boolean"},
+          "preserve_exec": {"type": "boolean", "description": "Keep archive execute bits. Off, files use file_mode only."},
           "disableRecursion": {"type": "boolean"},
           "maxNested": {"type": "integer"},
           "extrasMaxDepth": {"type": "integer"},

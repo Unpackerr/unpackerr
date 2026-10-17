@@ -30,6 +30,7 @@ type FolderConfig struct {
 	DeleteAfter      *cnfg.Duration `json:"delete_after"     toml:"delete_after"      xml:"delete_after"      yaml:"delete_after"`
 	ExtractPath      string         `json:"extract_path"     toml:"extract_path"      xml:"extract_path"      yaml:"extract_path"`
 	ExtractISOs      bool           `json:"extract_isos"     toml:"extract_isos"      xml:"extract_isos"      yaml:"extract_isos"`
+	PreserveExec     bool           `json:"preserve_exec"    toml:"preserve_exec"     xml:"preserve_exec"     yaml:"preserve_exec"`
 	DisableRecursion bool           `json:"disableRecursion" toml:"disable_recursion" xml:"disable_recursion" yaml:"disableRecursion"`
 	MaxNested        int            `json:"maxNested"        toml:"max_nested"        xml:"max_nested"        yaml:"maxNested"`
 	ExtrasMaxDepth   int            `json:"extrasMaxDepth"   toml:"extras_max_depth"  xml:"extras_max_depth"  yaml:"extrasMaxDepth"`

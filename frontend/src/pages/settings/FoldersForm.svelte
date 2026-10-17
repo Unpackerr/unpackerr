@@ -80,6 +80,7 @@
       move_back: false,
       delete_after: '',
       extract_isos: false,
+      preserve_exec: false,
       disableRecursion: false,
       maxNested: 0,
       extrasMaxDepth: 0,
@@ -467,6 +468,18 @@
               original={prev?.extract_isos}
               disabled={!canWrite || row.envOnly}
               envVar={envField(envPrefix, slug, 'EXTRACT_ISOS')}
+            />
+          </Col>
+          <Col md="4">
+            <Input
+              id={`folder-${row.id}-preserve-exec`}
+              helpKey="config.folders.preserve_exec"
+              type="select"
+              label={$_('config.folders.preserve_exec.label')}
+              bind:value={folder.preserve_exec}
+              original={prev?.preserve_exec}
+              disabled={!canWrite || row.envOnly}
+              envVar={envField(envPrefix, slug, 'PRESERVE_EXEC')}
             />
           </Col>
           <Col md="4">

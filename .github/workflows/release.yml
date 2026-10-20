@@ -138,7 +138,7 @@ jobs:
             /nfpm-release:/ { print "    release: " r }
           ' .goreleaser.yaml > .goreleaser.yaml.nfpm
           mv .goreleaser.yaml.nfpm .goreleaser.yaml
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser-pro
           version: "~> v2"
@@ -204,7 +204,7 @@ jobs:
           go install golift.io/codesign/cmd/codesign@v1.0.3
           echo "${GOBIN}" >> "${GITHUB_PATH}"
           echo "CODESIGN_BIN=${GOBIN}/codesign" >> "${GITHUB_ENV}"
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser-pro
           version: "~> v2"
@@ -263,7 +263,7 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
         run: bash .github/scripts/macos_keychain.sh
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser-pro
           version: "~> v2"
@@ -395,7 +395,7 @@ jobs:
           fi
           chmod 0755 "${bins[@]}"
           ls -l "${bins[@]}"
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser-pro
           version: "~> v2"

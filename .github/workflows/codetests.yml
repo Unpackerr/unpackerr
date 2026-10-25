@@ -30,10 +30,6 @@ jobs:
       - name: go-generate
         shell: bash
         run: go generate ./...
-      - name: npm-check
-        if: matrix.os == 'ubuntu'
-        working-directory: frontend
-        run: npm run check
       - name: go-test
         run: |
           go test ./...
@@ -89,3 +85,24 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci
+        run: npm ci
+      - name: svelte-check
+        run: npm run check
+      - name: vitest
+        run: npm test
+      - name: vite build
+        run: npm run build

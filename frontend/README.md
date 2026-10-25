@@ -44,6 +44,7 @@ To try the embedded UI instead of Vite: `go generate ./frontend` (or
 - `npm run build` – production bundle into `dist/`
 - `go generate ./frontend` / `./generate.sh` – `npm ci` (skipped if `node_modules` exists) + `npm run build`
 - `npm run check` – svelte-check / TypeScript
+- `npm test` – Vitest once (component and library tests)
 - `npm run preview` – serve the built bundle
 
 ## Notes

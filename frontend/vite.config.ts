@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs'
-import { defineConfig } from 'vite'
+import { svelteTesting } from '@testing-library/svelte/vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { defineConfig } from 'vitest/config'
 
 // Where the running unpackerr HTTP server is, for `npm run dev`.
 // Override with UN_BACKEND=http://host:port npm run dev
@@ -22,7 +23,13 @@ function keepEmbedStub() {
 export default defineConfig({
   // Relative base so the built assets work under any urlbase when embedded.
   base: './',
-  plugins: [svelte(), keepEmbedStub()],
+  plugins: [svelte(), svelteTesting(), keepEmbedStub()],
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,ts}'],
+    setupFiles: ['./src/test-setup.ts'],
+    expect: { requireAssertions: true },
+  },
   server: {
     proxy: {
       '/api': { target: backend, changeOrigin: true },

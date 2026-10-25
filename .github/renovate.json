@@ -29,6 +29,11 @@
       "matchDatasources": ["docker"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
+    },
+    {
+      "description": "Automerge npm updates, including majors, when the frontend job passes",
+      "matchManagers": ["npm"],
+      "automerge": true
     }
   ]
 }

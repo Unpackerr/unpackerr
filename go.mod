@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/bytefmt v0.94.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/coder/websocket v1.8.15
-	github.com/dromara/carbon/v2 v2.6.18
+	github.com/dromara/carbon/v2 v2.7.0
 	github.com/energye/systray v1.0.3
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gorilla/securecookie v1.1.2

@@ -274,15 +274,13 @@
     }
 
     saving = true
-    const payload: FoldersSection = {
-      buffer,
-      folder: saveFolderMap(),
-    }
+    const folder = saveFolderMap()
+    const payload: FoldersSection = { buffer, folder }
 
     const ok = await saveSection('folders', payload)
     if (ok) {
       for (const row of rows) {
-        if (row.slug && payload.folder[row.slug]) row.envOnly = false
+        if (row.slug && folder[row.slug]) row.envOnly = false
         if (row.slug) {
           row.locked = true
           row.autoSlug = false

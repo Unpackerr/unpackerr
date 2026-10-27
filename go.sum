@@ -2,6 +2,8 @@ code.cloudfoundry.org/bytefmt v0.93.0 h1:HHWXh5mNTKbyv258p1gKVdiOzDwdtGTqNNkvmaB
 code.cloudfoundry.org/bytefmt v0.93.0/go.mod h1:MhGqYY+7H7YiTjW9uu2H10qT3djJgd7dGCfrQtqHHbU=
 code.cloudfoundry.org/bytefmt v0.94.0 h1:6LksVfeamQAHVXDCXYUxFClGzMRvLQ7eXK3+wLG7pGQ=
 code.cloudfoundry.org/bytefmt v0.94.0/go.mod h1:jAPIvBZNuFu4V8YC+8XpeyOmqI1URNTlkX9aRL+QmQQ=
+code.cloudfoundry.org/bytefmt v0.95.0 h1:kvNsgNynDcyfilMkcCYlsX5auJCZ7jaJNCgPbMTwWyU=
+code.cloudfoundry.org/bytefmt v0.95.0/go.mod h1:r9knDHdLE4JX4gE2ySV4oMu2SIByYwuTD+8DcxhIHOI=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=

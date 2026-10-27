@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -77,6 +76,7 @@ func (u *Unpackerr) unmarshalConfig() (uint64, uint64, string, error) {
 	}
 
 	u.envUsed = envSuffixes(res.Used, u.EnvPrefix)
+	recordBareStarrPaths(u.EnvPrefix, u.Config, u.envUsed)
 
 	u.snapshotLivePasswords()
 
@@ -324,6 +324,73 @@ func (u *Unpackerr) snapshotFileConfig() {
 	u.fileConfig = cloneConfig(u.Config)
 }
 
+// recordBareStarrPaths restores UN_SONARR_0_PATHS=/a,/b. cnfg only walks
+// PATHS_0 on a plain slice, so the comma form never reaches the field.
+// Indexed PATHS_0 wins when both are set. noted may be nil.
+func recordBareStarrPaths(prefix string, cfg *Config, noted map[string]string) {
+	if cfg == nil || prefix == "" {
+		return
+	}
+
+	note := func(suffix, val string) {
+		if noted != nil {
+			noted[suffix] = val
+		}
+	}
+	applyBarePathMap[SonarrConfig](prefix, "SONARR", cfg.Sonarr, note)
+	applyBarePathMap[RadarrConfig](prefix, "RADARR", cfg.Radarr, note)
+	applyBarePathMap[LidarrConfig](prefix, "LIDARR", cfg.Lidarr, note)
+	applyBarePathMap[ReadarrConfig](prefix, "READARR", cfg.Readarr, note)
+}
+
+func applyBarePathMap[T any, P starrApp[T]](
+	prefix, app string, list InstanceMap[T], note func(suffix, val string),
+) {
+	for slug, item := range list {
+		if item == nil || slug == "" || indexedPathEnv(prefix, app, slug) {
+			continue
+		}
+
+		suffix := app + "_" + slug + "_PATHS"
+		bare := os.Getenv(prefix + "_" + suffix)
+
+		if bare == "" {
+			continue
+		}
+
+		asStarr[T, P](item).conf().Paths = splitCommaList(bare)
+
+		if note != nil {
+			note(suffix, bare)
+		}
+	}
+}
+
+func indexedPathEnv(prefix, app, slug string) bool {
+	head := prefix + "_" + app + "_" + slug + "_PATHS_"
+
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+
+		rest, ok := strings.CutPrefix(name, head)
+		if ok && rest != "" && digitsOnly(rest) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func digitsOnly(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
+}
+
 // envSuffixes strips the parser prefix so the UI matches envVar="DEBUG" against UN_DEBUG.
 // cnfg joins prefix + "_" + tag, so a prefix that already ends in "_" (APP_)
 // produces APP__DEBUG; we strip that exact prefix and keep the rest as stored
@@ -468,6 +535,18 @@ func expandHomedir(filePath string) string {
 	return expanded
 }
 
+func dropBlankPaths(paths []string) []string {
+	out := make([]string, 0, len(paths))
+
+	for _, path := range paths {
+		if path != "" {
+			out = append(out, path)
+		}
+	}
+
+	return out
+}
+
 func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) error {
 	conf.Name = strings.TrimSpace(conf.Name)
 
@@ -489,13 +568,11 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
 	}
 
-	if conf.Path != "" && !slices.Contains(conf.Paths, conf.Path) {
-		conf.Paths = append(conf.Paths, conf.Path)
+	for idx, path := range conf.Paths {
+		conf.Paths[idx] = strings.TrimSpace(expandHomedir(path))
 	}
 
-	for idx, path := range conf.Paths {
-		conf.Paths[idx] = expandHomedir(path)
-	}
+	conf.Paths = dropBlankPaths(conf.Paths)
 
 	if len(conf.Paths) == 0 {
 		conf.Paths = []string{defaultSavePath}

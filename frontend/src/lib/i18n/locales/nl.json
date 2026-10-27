@@ -685,11 +685,11 @@
         "description": "API-sleutel uit Instellingen → Algemeen in de Starr-app.",
         "tooltip": "32 of meer tekens. Een filepath:/pad-waarde wordt ook geaccepteerd. Laat het veld ongewijzigd om de huidige sleutel te houden."
       },
-      "path": {
-        "label": "Pad",
-        "description": "Map waaruit Unpackerr de downloads van deze app leest.",
-        "tooltip": "Terugval als het pad dat Starr meldt ontbreekt of voor Unpackerr niet zichtbaar is.",
-        "config": "In het configuratiebestand is dit een lijst genaamd paths."
+      "paths": {
+        "label": "Paden",
+        "description": "Mappen waaruit Unpackerr de downloads van deze app leest. Eén pad per regel.",
+        "tooltip": "Terugval als het pad dat Starr meldt ontbreekt of voor Unpackerr niet zichtbaar is. De eerste omgevingsvariabele is UN_*_PATHS_0.",
+        "config": "Opgeslagen als de lijst paths."
       },
       "protocols": {
         "label": "Protocollen",

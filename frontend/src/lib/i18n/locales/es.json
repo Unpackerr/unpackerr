@@ -685,11 +685,11 @@
         "description": "Clave API de Ajustes → General en la app Starr.",
         "tooltip": "32 caracteres o más. También se acepta un valor filepath:/ruta. Deja el campo igual para conservar la clave actual."
       },
-      "path": {
-        "label": "Ruta",
-        "description": "Carpeta de la que Unpackerr lee las descargas de esta app.",
-        "tooltip": "Reserva si la ruta que informa Starr falta o Unpackerr no la ve.",
-        "config": "En el archivo de configuración esto es una lista llamada paths."
+      "paths": {
+        "label": "Rutas",
+        "description": "Carpetas de las que Unpackerr lee las descargas de esta app. Una ruta por línea.",
+        "tooltip": "Reserva si la ruta que informa Starr falta o Unpackerr no la ve. La primera variable de entorno es UN_*_PATHS_0.",
+        "config": "Se guarda como la lista paths."
       },
       "protocols": {
         "label": "Protocolos",

@@ -71,14 +71,6 @@ func (c *Config) UIHelp() map[string]FieldHelp {
 			if alias != "" {
 				addHelp(out, alias, param.Name, help, true)
 			}
-
-			if param.Name == "paths" {
-				addHelp(out, section, "path", help, false)
-
-				if alias != "" {
-					addHelp(out, alias, "path", help, true)
-				}
-			}
 		}
 	}
 

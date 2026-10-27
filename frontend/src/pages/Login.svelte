@@ -17,7 +17,7 @@
   import { login, profile } from '../lib/auth.svelte'
   import icon from '../assets/icon.png'
 
-  let username = $state('admin')
+  let username = $state('')
   let password = $state('')
   let loading = $state(false)
   let error = $state('')

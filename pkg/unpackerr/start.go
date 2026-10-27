@@ -160,7 +160,7 @@ func New() *Unpackerr {
 		hub:          newLiveHub(),
 		Config: &Config{
 			KeepHistory:   defaultHistory,
-			LogQueues:     cnfg.Duration{Duration: time.Minute + time.Second},
+			LogQueues:     cnfg.Duration{Duration: time.Minute},
 			MaxRetries:    defaultMaxRetries,
 			RemnantAction: remnantAction(""),
 			LogFiles:      defaultLogFiles,

@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { env } from './env.svelte'
 import {
   instanceMap,
   mapFromPairs,
   mapKeysInvalid,
   mergeEnvOnlyRows,
+  newRow,
   omitEnvFields,
   slugify,
   slugifyPath,
@@ -15,6 +16,7 @@ import {
 describe('slugs', () => {
   afterEach(() => {
     env.pairs = {}
+    vi.unstubAllGlobals()
   })
 
   it('slugifies names and the last path segment', () => {
@@ -59,5 +61,32 @@ describe('slugs', () => {
     })
     expect(mapKeysInvalid({ Ab: '1', ab: '2' })).toBe(true)
     expect(mapKeysInvalid({ ok: '1' })).toBe(false)
+  })
+
+  // Insecure contexts (http://<lan-ip>:5656) have no randomUUID or subtle;
+  // getRandomValues is the only usable Crypto member. Issue #831 item 1:
+  // clicking Add threw "crypto.randomUUID is not a function".
+  it('newRow generates a v4 UUID without randomUUID', () => {
+    const real = globalThis.crypto
+    vi.stubGlobal('crypto', {
+      getRandomValues: real.getRandomValues.bind(real),
+    })
+    expect(globalThis.crypto.randomUUID).toBeUndefined()
+
+    const row = newRow({})
+    const other = newRow({})
+    const v4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    expect(row.id).toMatch(v4)
+    expect(other.id).toMatch(v4)
+    expect(row.id).not.toBe(other.id)
+  })
+
+  it('newRow uses the native randomUUID when available', () => {
+    const row = newRow({})
+    const other = newRow({})
+    const v4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    expect(row.id).toMatch(v4)
+    expect(other.id).toMatch(v4)
+    expect(row.id).not.toBe(other.id)
   })
 })

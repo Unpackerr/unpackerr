@@ -79,7 +79,6 @@
   const envPrefix = $derived(section.toUpperCase())
   const invalid = $derived(
     rows.some((row) => {
-      if (row.envOnly) return false
       const others = rows
         .filter((r) => r.id !== row.id)
         .map((r) => r.slug)
@@ -208,7 +207,6 @@
   function currentMap(): Record<string, StarrConfig> {
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
-      if (row.envOnly) continue
       out[row.slug || row.id] = row.value
     }
     return out
@@ -236,7 +234,8 @@
   function savePayload(): Record<string, StarrConfig> {
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
-      if (row.envOnly || !row.slug) continue
+      if (!row.slug) continue
+      if (row.envOnly && deepEqual(row.value, orig[row.slug])) continue
       const { split_flac, ape_format, ape_compression, ...rest } = row.value
       const item: StarrConfig = {
         ...rest,
@@ -267,7 +266,6 @@
       for (const [slug, app] of Object.entries(map)) {
         normalized[slug] = normalizeOne(app)
       }
-      orig = deepCopy(normalized)
       let next = rowsFromMap(normalized)
       const live = await loadSectionLive<unknown>(section)
       if (live.data != null) {
@@ -278,6 +276,7 @@
         )
       }
       rows = next
+      orig = deepCopy(currentMap())
     }
 
     loading = false
@@ -304,9 +303,11 @@
     }
 
     if (canWrite) {
-      const ok = await saveSection(section, savePayload())
+      const payload = savePayload()
+      const ok = await saveSection(section, payload)
       if (ok) {
         for (const row of rows) {
+          if (row.slug && payload[row.slug]) row.envOnly = false
           if (row.slug) {
             row.locked = true
             row.autoSlug = false
@@ -429,7 +430,7 @@
               label={$_('config.starr.name.label')}
               bind:value={() => app.name, (v) => setName(row, v)}
               original={prev?.name}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'NAME')}
             />
           </Col>
@@ -441,7 +442,7 @@
               placeholder={$_('config.starr.url.placeholder')}
               bind:value={app.url}
               original={prev?.url}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'URL')}
               validate={(_id, v) => httpURLError(v)}
             >
@@ -457,7 +458,6 @@
                       : 'ssl-addon'}
                     style="width:44px;"
                     disabled={!canWrite ||
-                      row.envOnly ||
                       envHas(envField(envPrefix, slug, 'VALID_SSL'))}
                     on:click={() => (app.valid_ssl = !app.valid_ssl)}
                   >
@@ -493,7 +493,7 @@
               label={$_('config.starr.apiKey.label')}
               bind:value={app.apiKey}
               original={prev?.apiKey}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'API_KEY')}
               validate={(_id, v) => starrAPIKeyError(v, prev?.apiKey)}
             />
@@ -505,7 +505,7 @@
               label={$_('config.starr.path.label')}
               bind:value={app.path}
               original={prev?.path}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'PATH')}
               browse="dir"
             />
@@ -518,7 +518,7 @@
               label={$_('config.starr.protocols.label')}
               bind:value={app.protocols}
               original={prev?.protocols}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'PROTOCOLS')}
               options={[
                 {
@@ -545,7 +545,7 @@
               label={$_('config.starr.timeout.label')}
               bind:value={app.timeout}
               original={prev?.timeout}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'TIMEOUT')}
             />
           </Col>
@@ -557,7 +557,7 @@
               label={$_('config.starr.delete_delay.label')}
               bind:value={app.delete_delay}
               original={prev?.delete_delay}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_DELAY')}
             />
           </Col>
@@ -569,7 +569,7 @@
               label={$_('config.starr.maxBytes.label')}
               bind:value={app.maxBytes}
               original={prev?.maxBytes ?? maxBytesDefault}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MAX_BYTES')}
               options={maxBytesChoices}
             />
@@ -582,7 +582,7 @@
               label={$_('config.starr.delete_orig.label')}
               bind:value={app.delete_orig}
               original={prev?.delete_orig}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_ORIG')}
             />
           </Col>
@@ -594,7 +594,7 @@
               label={$_('config.starr.syncthing.label')}
               bind:value={app.syncthing}
               original={prev?.syncthing}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'SYNCTHING')}
             />
           </Col>
@@ -607,7 +607,7 @@
                 label={$_('config.starr.split_flac.label')}
                 bind:value={app.split_flac}
                 original={prev?.split_flac}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'SPLIT_FLAC')}
               />
             </Col>
@@ -619,7 +619,7 @@
                 label={$_('config.starr.ape_format.label')}
                 bind:value={app.ape_format}
                 original={prev?.ape_format}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'APE_FORMAT')}
                 options={[
                   { value: 'ape', name: $_('config.starr.ape_format.ape') },
@@ -636,7 +636,7 @@
                 label={$_('config.starr.ape_compression.label')}
                 bind:value={app.ape_compression}
                 original={prev?.ape_compression}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'APE_COMPRESSION')}
                 options={[
                   {

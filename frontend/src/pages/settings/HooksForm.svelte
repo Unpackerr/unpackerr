@@ -106,7 +106,6 @@
   const idField = $derived(isCmd ? 'COMMAND' : 'URL')
   const invalid = $derived(
     rows.some((row) => {
-      if (row.envOnly) return false
       const others = rows
         .filter((r) => r.id !== row.id)
         .map((r) => r.slug)
@@ -305,7 +304,6 @@
   function currentMap(): Record<string, WebhookConfig> {
     const out: Record<string, WebhookConfig> = {}
     for (const row of rows) {
-      if (row.envOnly) continue
       out[row.slug || row.id] = row.value
     }
     return out
@@ -314,7 +312,8 @@
   function savePayload(): Record<string, WebhookConfig> {
     const out: Record<string, WebhookConfig> = {}
     for (const row of rows) {
-      if (row.envOnly || !row.slug) continue
+      if (!row.slug) continue
+      if (row.envOnly && deepEqual(row.value, orig[row.slug])) continue
       let hook = omitHiddenContentType(
         omitEnvFields(envPrefix, row.slug, row.value, HOOK_ENV_FIELDS),
       )
@@ -373,7 +372,6 @@
         for (const [slug, h] of Object.entries(map)) {
           normalized[slug] = normalizeHook(h)
         }
-        orig = deepCopy(normalized)
         let next = rowsFromMap(normalized)
         const live = await loadSectionLive<unknown>(section)
         if (live.data != null) {
@@ -384,6 +382,7 @@
           )
         }
         rows = next
+        orig = deepCopy(currentMap())
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -468,9 +467,11 @@
       return
     }
     saving = true
-    const ok = await saveSection(section, savePayload())
+    const payload = savePayload()
+    const ok = await saveSection(section, payload)
     if (ok) {
       for (const row of rows) {
+        if (row.slug && payload[row.slug]) row.envOnly = false
         if (row.slug) {
           row.locked = true
           row.autoSlug = false
@@ -719,7 +720,7 @@
                 label={$_('config.hooks.name.label')}
                 bind:value={() => hook.name, (v) => setName(row, v)}
                 original={prev?.name}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'NAME')}
               />
             </Col>
@@ -730,7 +731,7 @@
                 label={$_('config.hooks.command.label')}
                 bind:value={hook.command}
                 original={prev?.command}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'COMMAND')}
                 browse="file"
                 disableMkdir
@@ -761,7 +762,7 @@
                 label={$_('config.hooks.timeout.label')}
                 bind:value={hook.timeout}
                 original={prev?.timeout}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'TIMEOUT')}
               />
             </Col>
@@ -773,7 +774,7 @@
                 label={$_('config.hooks.shell.label')}
                 bind:value={hook.shell}
                 original={prev?.shell}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'SHELL')}
               />
             </Col>
@@ -785,7 +786,7 @@
                 label={$_('config.hooks.silent.label')}
                 bind:value={hook.silent}
                 original={prev?.silent}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'SILENT')}
               />
             </Col>
@@ -797,7 +798,7 @@
                 label={$_('config.hooks.name.label')}
                 bind:value={() => hook.name, (v) => setName(row, v)}
                 original={prev?.name}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'NAME')}
               />
             </Col>
@@ -808,7 +809,7 @@
                 label={$_('config.hooks.url.label')}
                 bind:value={() => hook.url, (v) => setUrl(row, String(v ?? ''))}
                 original={prev?.url}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'URL')}
                 validate={(_id, v) => httpURLError(v)}
               >
@@ -837,7 +838,7 @@
                 label={$_('config.hooks.timeout.label')}
                 bind:value={hook.timeout}
                 original={prev?.timeout}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'TIMEOUT')}
               />
             </Col>
@@ -858,7 +859,7 @@
                     (v) => setApiKey(hook, String(v ?? ''))
                   }
                   original={apiKeyOf(prev ?? blank())}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'HEADERS_X-Api-Key')}
                 />
               </Col>
@@ -884,7 +885,7 @@
                 label={$_('config.hooks.ignoreSsl.label')}
                 bind:value={hook.ignoreSsl}
                 original={prev?.ignoreSsl}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'IGNORE_SSL')}
               />
             </Col>
@@ -896,7 +897,7 @@
                 label={$_('config.hooks.silent.label')}
                 bind:value={hook.silent}
                 original={prev?.silent}
-                disabled={!canWrite || row.envOnly}
+                disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'SILENT')}
               />
             </Col>
@@ -909,7 +910,7 @@
                   label={$_('config.hooks.update.label')}
                   bind:value={hook.update}
                   original={prev?.update}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'UPDATE')}
                 />
               </Col>
@@ -928,7 +929,7 @@
                   tooltip={hookFieldText(profile.template, 'nickname', 'tooltip')}
                   bind:value={hook.nickname}
                   original={prev?.nickname}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'NICKNAME')}
                 />
               </Col>
@@ -947,7 +948,7 @@
                   tooltip={hookFieldText(profile.template, 'channel', 'tooltip')}
                   bind:value={hook.channel}
                   original={prev?.channel}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'CHANNEL')}
                 />
               </Col>
@@ -967,7 +968,7 @@
                   tooltip={hookFieldText(profile.template, 'token', 'tooltip')}
                   bind:value={hook.token}
                   original={prev?.token}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'TOKEN')}
                 />
               </Col>
@@ -980,7 +981,7 @@
                   label={$_('config.hooks.contentType.label')}
                   bind:value={hook.contentType}
                   original={prev?.contentType}
-                  disabled={!canWrite || row.envOnly}
+                  disabled={!canWrite}
                   envVar={envField(envPrefix, slug, 'CONTENT_TYPE')}
                 />
               </Col>
@@ -999,7 +1000,6 @@
                   label={$_('status.' + (statusKeys[si] ?? st.label))}
                   checked={eventOn(hook, st)}
                   disabled={!canWrite ||
-                    row.envOnly ||
                     envHas(envField(envPrefix, slug, 'EVENTS'))}
                   on:change={(e) =>
                     toggleEvent(
@@ -1025,7 +1025,6 @@
                   label={app.name}
                   checked={dialectOn(hook, app.value)}
                   disabled={!canWrite ||
-                    row.envOnly ||
                     envHas(envField(envPrefix, slug, 'EXCLUDE'))}
                   on:change={(e) =>
                     toggleDialect(
@@ -1042,7 +1041,6 @@
                     label={inst}
                     checked={nameOn(hook, app.value, inst)}
                     disabled={!canWrite ||
-                      row.envOnly ||
                       envHas(envField(envPrefix, slug, 'EXCLUDE'))}
                     on:change={(e) =>
                       toggleName(
@@ -1078,7 +1076,7 @@
                       label={$_('config.hooks.template.label')}
                       bind:value={hook.template}
                       original={prev?.template}
-                      disabled={!canWrite || row.envOnly}
+                      disabled={!canWrite}
                       envVar={envField(envPrefix, slug, 'TEMPLATE')}
                       options={templateChoices}
                     />
@@ -1090,13 +1088,13 @@
                       label={$_('config.hooks.templatePath.label')}
                       bind:value={hook.templatePath}
                       original={prev?.templatePath}
-                      disabled={!canWrite || row.envOnly}
+                      disabled={!canWrite}
                       envVar={envField(envPrefix, slug, 'TEMPLATE_PATH')}
                       browse="file"
                       disableMkdir
                     >
                       {#snippet post()}
-                        {#if canCreateTemplate && !row.envOnly && !envHas(envField(envPrefix, slug, 'TEMPLATE_PATH'))}
+                        {#if canCreateTemplate && !envHas(envField(envPrefix, slug, 'TEMPLATE_PATH'))}
                           <Button
                             type="button"
                             color="primary"
@@ -1118,7 +1116,7 @@
                         setExtraHeaders(hook, v)
                       }
                     }
-                    disabled={!canWrite || row.envOnly}
+                    disabled={!canWrite}
                     idPrefix={`${section}-${row.id}-headers`}
                     helpKey="config.hooks.headers"
                     envVar={envField(envPrefix, slug, 'HEADERS_*')}

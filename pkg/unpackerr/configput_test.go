@@ -2377,6 +2377,61 @@ func TestConfigPutSonarrKeepsFileAPIKeyWhenURLIsEnv(t *testing.T) {
 	}
 }
 
+// An env-only instance can gain file fields without copying the env URL or API key.
+func TestConfigPutEnvOnlySonarrAcceptsFileFields(t *testing.T) {
+	secret := strings.Repeat("E", apiKeyMinLength)
+
+	t.Setenv("UN_SONARR_0_URL", "http://127.0.0.1:8989")
+	t.Setenv("UN_SONARR_0_API_KEY", secret)
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(t.TempDir(), "unpackerr.conf")
+	unpack.snapshotFileConfig()
+
+	res, err := cnfg.ParseENV(unpack.Config, unpack.EnvPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.envUsed = envSuffixes(res.Used, unpack.EnvPrefix)
+
+	body, err := json.Marshal(map[string]any{
+		"0": map[string]any{
+			"name":    "tv",
+			"timeout": "30s",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", string(body), putKey(unpack))
+	if put.Code != http.StatusOK {
+		t.Fatalf("put %d %s", put.Code, put.Body.String())
+	}
+
+	live := unpack.Sonarr["0"]
+	if live == nil || live.URL != "http://127.0.0.1:8989" || live.APIKey != secret || live.Name != "tv" ||
+		live.Timeout.Duration != 30*time.Second {
+		t.Fatalf("live after PUT %+v", live)
+	}
+
+	file := unpack.fileConfig.Sonarr["0"]
+	if file == nil || file.URL != "" || file.APIKey != "" || file.Name != "tv" ||
+		file.Timeout.Duration != 30*time.Second {
+		t.Fatalf("file after PUT %+v", file)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(written), "http://127.0.0.1:8989") || strings.Contains(string(written), secret) {
+		t.Fatalf("env values written:\n%s", written)
+	}
+}
+
 func envSonarrAPIKeyUnpackerr(t *testing.T, secret string) *Unpackerr {
 	t.Helper()
 

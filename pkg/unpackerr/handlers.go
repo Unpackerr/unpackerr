@@ -21,10 +21,13 @@ const (
 // StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
 	starr.Config
-	Name        string        `json:"name"         toml:"name"         xml:"name"         yaml:"name"`
-	Path        string        `json:"path"         toml:"path"         xml:"path"         yaml:"path"`
-	Paths       StringSlice   `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
-	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
+	Name string `json:"name" toml:"name" xml:"name" yaml:"name"`
+	// Path is deprecated. Configs used to set one download directory; Paths is
+	// the list. validateApp still appends a non-empty Path that is not already
+	// in Paths. The web UI edits Paths and does not show Path.
+	Path        string        `json:"path,omitempty" toml:"path"  xml:"path"  yaml:"path"`
+	Paths       []string      `json:"paths"          toml:"paths" xml:"paths" yaml:"paths"`
+	Protocols   string        `json:"protocols"      toml:"protocols" xml:"protocols" yaml:"protocols"`
 	DeleteOrig  bool          `json:"delete_orig"  toml:"delete_orig"  xml:"delete_orig"  yaml:"delete_orig"`
 	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
 	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`

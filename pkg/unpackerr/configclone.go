@@ -143,7 +143,7 @@ func cloneStarrMap[T any, P starrApp[T]](src InstanceMap[T]) InstanceMap[T] {
 		cloned := *app
 		item := asStarr[T, P](&cloned)
 		srcConf := asStarr[T, P](app).conf()
-		item.conf().Paths = append(StringSlice(nil), srcConf.Paths...)
+		item.conf().Paths = append([]string(nil), srcConf.Paths...)
 		item.stripRuntime()
 
 		out[key] = &cloned

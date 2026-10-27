@@ -64,6 +64,7 @@
 
   let rows = $state<InstanceRow<StarrConfig>[]>([])
   let orig = $state<Record<string, StarrConfig>>({})
+  let pathsText = $state<Record<string, string>>({})
   let loading = $state(true)
   let saving = $state(false)
   let error = $state('')
@@ -159,6 +160,21 @@
     return $_('pages.settings.AddSection', { values: { section } })
   }
 
+  function pathLines(text: string): string[] {
+    return text
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+
+  /** paths is the list the UI edits. A legacy path is shown in that list. */
+  function starrPaths(a: StarrConfig): string[] {
+    const paths = [...(a.paths ?? [])]
+    const legacy = (a.path ?? '').trim()
+    if (legacy && !paths.includes(legacy)) paths.push(legacy)
+    return paths
+  }
+
   function blank(): StarrConfig {
     const row: StarrConfig = {
       name: '',
@@ -187,7 +203,8 @@
     const row = {
       ...a,
       name: a.name ?? '',
-      paths: a.paths ?? [],
+      path: '',
+      paths: starrPaths(a),
       protocols: canonicalizeProtocols(a.protocols),
       maxBytes,
       timeout: explicitTimeout(a.timeout),
@@ -209,7 +226,11 @@
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
       if (row.envOnly) continue
-      out[row.slug || row.id] = row.value
+      out[row.slug || row.id] = {
+        ...row.value,
+        path: '',
+        paths: pathLines(pathsText[row.id] ?? ''),
+      }
     }
     return out
   }
@@ -240,6 +261,8 @@
       const { split_flac, ape_format, ape_compression, ...rest } = row.value
       const item: StarrConfig = {
         ...rest,
+        path: '',
+        paths: pathLines(pathsText[row.id] ?? ''),
         delete_delay: explicitDeleteDelay(row.value.delete_delay),
       }
       if (section === 'lidarr') {
@@ -268,6 +291,10 @@
         normalized[slug] = normalizeOne(app)
       }
       orig = deepCopy(normalized)
+      const text: Record<string, string> = {}
+      for (const [slug, app] of Object.entries(normalized)) {
+        text[slug] = app.paths.join('\n')
+      }
       let next = rowsFromMap(normalized)
       const live = await loadSectionLive<unknown>(section)
       if (live.data != null) {
@@ -278,13 +305,18 @@
         )
       }
       rows = next
+      pathsText = Object.fromEntries(
+        rows.map((r) => [r.id, text[r.slug] ?? '']),
+      )
     }
 
     loading = false
   }
 
   function add() {
-    rows = [...rows, newRow(blank())]
+    const row = newRow(blank())
+    pathsText = { ...pathsText, [row.id]: '' }
+    rows = [...rows, row]
   }
 
   function remove(id: string) {
@@ -500,14 +532,15 @@
           </Col>
           <Col md="12">
             <Input
-              id={`${section}-${row.id}-path`}
+              id={`${section}-${row.id}-paths`}
               helpKey="config.starr.path"
+              type="textarea"
+              rows={2}
               label={$_('config.starr.path.label')}
-              bind:value={app.path}
-              original={prev?.path}
+              bind:value={pathsText[row.id]}
+              original={(prev?.paths ?? []).join('\n')}
               disabled={!canWrite || row.envOnly}
-              envVar={envField(envPrefix, slug, 'PATH')}
-              browse="dir"
+              envVar={envField(envPrefix, slug, 'PATHS')}
             />
           </Col>
           <Col md="6">

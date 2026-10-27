@@ -2328,7 +2328,7 @@ func envSonarrURLUnpackerr(t *testing.T, secret string) *Unpackerr {
 	app.URL = "http://file.invalid:8989"
 	app.APIKey = secret
 	app.Name = "uhd"
-	app.Paths = StringSlice{"/downloads/tv"}
+	app.Paths = []string{"/downloads/tv"}
 	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
 	unpack.snapshotFileConfig()
 
@@ -2388,7 +2388,7 @@ func envSonarrAPIKeyUnpackerr(t *testing.T, secret string) *Unpackerr {
 	app := &SonarrConfig{}
 	app.URL = "http://file.invalid:8989"
 	app.Name = "uhd"
-	app.Paths = StringSlice{"/downloads/tv"}
+	app.Paths = []string{"/downloads/tv"}
 	unpack.Sonarr = InstanceMap[SonarrConfig]{"0": app}
 	unpack.snapshotFileConfig()
 

@@ -294,6 +294,24 @@ func TestUnmarshalIndexedStarrPaths(t *testing.T) {
 	}
 }
 
+// An empty PATHS_0 used to be ignored. A blank entry must not block the default path.
+func TestEmptyIndexedStarrPathUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	conf := &StarrConfig{Paths: []string{"", "  "}}
+	conf.URL = "http://sonarr:8989"
+	conf.APIKey = strings.Repeat("a", 32)
+
+	if err := unpack.validateApp(conf, starr.Sonarr, "0"); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(conf.Paths) != 1 || conf.Paths[0] != defaultSavePath {
+		t.Fatalf("paths %+v", conf.Paths)
+	}
+}
+
 // UN_SONARR_0_PATHS=/a,/b is the pre-index form, still accepted when PATHS_0 is unset.
 func TestUnmarshalCommaStarrPaths(t *testing.T) {
 	dir := t.TempDir()

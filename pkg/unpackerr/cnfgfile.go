@@ -535,6 +535,18 @@ func expandHomedir(filePath string) string {
 	return expanded
 }
 
+func dropBlankPaths(paths []string) []string {
+	out := make([]string, 0, len(paths))
+
+	for _, path := range paths {
+		if path != "" {
+			out = append(out, path)
+		}
+	}
+
+	return out
+}
+
 func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) error {
 	conf.Name = strings.TrimSpace(conf.Name)
 
@@ -557,8 +569,10 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 	}
 
 	for idx, path := range conf.Paths {
-		conf.Paths[idx] = expandHomedir(path)
+		conf.Paths[idx] = strings.TrimSpace(expandHomedir(path))
 	}
+
+	conf.Paths = dropBlankPaths(conf.Paths)
 
 	if len(conf.Paths) == 0 {
 		conf.Paths = []string{defaultSavePath}

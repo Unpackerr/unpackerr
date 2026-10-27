@@ -309,6 +309,9 @@
 
   function remove(id: string) {
     rows = rows.filter((r) => r.id !== id)
+    const next = { ...pathsText }
+    delete next[id]
+    pathsText = next
   }
 
   async function save() {

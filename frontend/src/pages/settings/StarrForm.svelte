@@ -64,6 +64,7 @@
 
   let rows = $state<InstanceRow<StarrConfig>[]>([])
   let orig = $state<Record<string, StarrConfig>>({})
+  let pathsText = $state<Record<string, string>>({})
   let loading = $state(true)
   let saving = $state(false)
   let error = $state('')
@@ -158,12 +159,18 @@
     return $_('pages.settings.AddSection', { values: { section } })
   }
 
+  function pathLines(text: string): string[] {
+    return text
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+
   function blank(): StarrConfig {
     const row: StarrConfig = {
       name: '',
       url: '',
       apiKey: '',
-      path: '',
       paths: [],
       protocols: PROTOCOL_TORRENT,
       delete_orig: false,
@@ -207,7 +214,10 @@
   function currentMap(): Record<string, StarrConfig> {
     const out: Record<string, StarrConfig> = {}
     for (const row of rows) {
-      out[row.slug || row.id] = row.value
+      out[row.slug || row.id] = {
+        ...row.value,
+        paths: pathLines(pathsText[row.id] ?? ''),
+      }
     }
     return out
   }
@@ -233,13 +243,17 @@
 
   function savePayload(): Record<string, StarrConfig> {
     const out: Record<string, StarrConfig> = {}
+    const current = currentMap()
     for (const row of rows) {
       if (!row.slug) continue
-      if (row.envOnly && deepEqual(row.value, orig[row.slug])) continue
-      const { split_flac, ape_format, ape_compression, ...rest } = row.value
+      if (row.envOnly && deepEqual(current[row.slug], orig[row.slug])) continue
+      const value = current[row.slug]
+      if (!value) continue
+      const { split_flac, ape_format, ape_compression, ...rest } = value
       const item: StarrConfig = {
         ...rest,
-        delete_delay: explicitDeleteDelay(row.value.delete_delay),
+        paths: pathLines(pathsText[row.id] ?? ''),
+        delete_delay: explicitDeleteDelay(value.delete_delay),
       }
       if (section === 'lidarr') {
         item.split_flac = split_flac ?? false
@@ -266,6 +280,10 @@
       for (const [slug, app] of Object.entries(map)) {
         normalized[slug] = normalizeOne(app)
       }
+      const text: Record<string, string> = {}
+      for (const [slug, app] of Object.entries(normalized)) {
+        text[slug] = app.paths.join('\n')
+      }
       let next = rowsFromMap(normalized)
       const live = await loadSectionLive<unknown>(section)
       if (live.data != null) {
@@ -276,6 +294,9 @@
         )
       }
       rows = next
+      pathsText = Object.fromEntries(
+        rows.map((r) => [r.id, text[r.slug] ?? '']),
+      )
       orig = deepCopy(currentMap())
     }
 
@@ -283,11 +304,16 @@
   }
 
   function add() {
-    rows = [...rows, newRow(blank())]
+    const row = newRow(blank())
+    pathsText = { ...pathsText, [row.id]: '' }
+    rows = [...rows, row]
   }
 
   function remove(id: string) {
     rows = rows.filter((r) => r.id !== id)
+    const next = { ...pathsText }
+    delete next[id]
+    pathsText = next
   }
 
   async function save() {
@@ -502,14 +528,15 @@
           </Col>
           <Col md="12">
             <Input
-              id={`${section}-${row.id}-path`}
-              helpKey="config.starr.path"
-              label={$_('config.starr.path.label')}
-              bind:value={app.path}
-              original={prev?.path}
+              id={`${section}-${row.id}-paths`}
+              helpKey="config.starr.paths"
+              type="textarea"
+              rows={2}
+              label={$_('config.starr.paths.label')}
+              bind:value={pathsText[row.id]}
+              original={(prev?.paths ?? []).join('\n')}
               disabled={!canWrite}
-              envVar={envField(envPrefix, slug, 'PATH')}
-              browse="dir"
+              envVar={envField(envPrefix, slug, 'PATHS')}
             />
           </Col>
           <Col md="6">

@@ -8,7 +8,7 @@ export type InstanceRow<T> = {
   slug: string
   locked: boolean
   autoSlug: boolean
-  /** Live/env slug with no file document. Read-only; omitted from PUT. */
+  /** Slug exists only because of UN_*. Env-owned fields stay locked; other fields can be saved. */
   envOnly?: boolean
   value: T
 }
@@ -120,7 +120,7 @@ export function omitEnvFields<T extends object>(
   return out
 }
 
-/** Live slugs missing from the file document: locked stubs, no live values copied. */
+/** Live slugs missing from the file document. Values stay blank so env is not copied into the file. */
 export function mergeEnvOnlyRows<T>(
   fileRows: InstanceRow<T>[],
   liveSlugs: Iterable<string>,

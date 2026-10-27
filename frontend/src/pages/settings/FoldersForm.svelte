@@ -55,7 +55,6 @@
   const envPrefix = 'FOLDER'
   const invalid = $derived(
     rows.some((row) => {
-      if (row.envOnly) return false
       const others = rows
         .filter((r) => r.id !== row.id)
         .map((r) => r.slug)
@@ -169,7 +168,6 @@
   function currentFolderMap(): Record<string, FolderConfig> {
     const out: Record<string, FolderConfig> = {}
     for (const row of rows) {
-      if (row.envOnly) continue
       out[row.slug || row.id] = {
         ...row.value,
         exclude_paths: (excludeText[row.id] ?? '')
@@ -183,17 +181,17 @@
   }
 
   function saveFolderMap(): Record<string, FolderConfig> {
+    const current = currentFolderMap()
     const out: Record<string, FolderConfig> = {}
     for (const row of rows) {
-      if (row.envOnly || !row.slug) continue
+      if (!row.slug) continue
+      if (row.envOnly && deepEqual(current[row.slug], origFolder[row.slug]))
+        continue
+      const base = current[row.slug]
+      if (!base) continue
       const item: FolderConfig = {
-        ...row.value,
-        delete_after: row.value.delete_after || null,
-        exclude_paths: (excludeText[row.id] ?? '')
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        wait_extensions: parseWaitExtensions(waitText[row.id] ?? ''),
+        ...base,
+        delete_after: base.delete_after || null,
       }
       out[row.slug] = omitEnvFields(
         envPrefix,
@@ -276,14 +274,13 @@
     }
 
     saving = true
-    const payload: FoldersSection = {
-      buffer,
-      folder: saveFolderMap(),
-    }
+    const folder = saveFolderMap()
+    const payload: FoldersSection = { buffer, folder }
 
     const ok = await saveSection('folders', payload)
     if (ok) {
       for (const row of rows) {
+        if (row.slug && folder[row.slug]) row.envOnly = false
         if (row.slug) {
           row.locked = true
           row.autoSlug = false
@@ -378,7 +375,7 @@
               label={$_('config.folders.path.label')}
               bind:value={() => folder.path, (v) => setPath(row, v)}
               original={prev?.path}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'PATH')}
               browse="dir"
               validate={(_id, v) => requiredPathError(v)}
@@ -392,7 +389,7 @@
               label={$_('config.folders.interval.label')}
               bind:value={folder.interval}
               original={prev?.interval}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'INTERVAL')}
             />
           </Col>
@@ -403,7 +400,7 @@
               label={$_('config.folders.extract_path.label')}
               bind:value={folder.extract_path}
               original={prev?.extract_path}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'EXTRACT_PATH')}
               browse="dir"
             />
@@ -417,7 +414,7 @@
               label={$_('config.folders.delete_after.label')}
               bind:value={folder.delete_after}
               original={prev?.delete_after ?? ''}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_AFTER')}
             />
           </Col>
@@ -429,7 +426,7 @@
               label={$_('config.folders.delete_original.label')}
               bind:value={folder.delete_original}
               original={prev?.delete_original}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_ORIGINAL')}
             />
           </Col>
@@ -441,7 +438,7 @@
               label={$_('config.folders.delete_files.label')}
               bind:value={folder.delete_files}
               original={prev?.delete_files}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_FILES')}
             />
           </Col>
@@ -453,7 +450,7 @@
               label={$_('config.folders.move_back.label')}
               bind:value={folder.move_back}
               original={prev?.move_back}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MOVE_BACK')}
             />
           </Col>
@@ -466,7 +463,7 @@
               label={$_('config.folders.extract_isos.label')}
               bind:value={folder.extract_isos}
               original={prev?.extract_isos}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'EXTRACT_ISOS')}
             />
           </Col>
@@ -478,7 +475,7 @@
               label={$_('config.folders.preserve_exec.label')}
               bind:value={folder.preserve_exec}
               original={prev?.preserve_exec}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'PRESERVE_EXEC')}
             />
           </Col>
@@ -490,7 +487,7 @@
               label={$_('config.folders.skip_empty.label')}
               bind:value={folder.skip_empty}
               original={prev?.skip_empty}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'SKIP_EMPTY')}
             />
           </Col>
@@ -503,7 +500,7 @@
               label={$_('config.folders.disableRecursion.label')}
               bind:value={folder.disableRecursion}
               original={prev?.disableRecursion}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DISABLE_RECURSION')}
             />
           </Col>
@@ -516,7 +513,7 @@
               label={$_('config.folders.exclude_paths.label')}
               bind:value={excludeText[row.id]}
               original={(prev?.exclude_paths ?? []).join('\n')}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'EXCLUDE_PATH_')}
             />
           </Col>
@@ -534,7 +531,7 @@
                 }
               }
               original={formatWaitExtensions(prev?.wait_extensions)}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'WAIT_EXTENSION_')}
             />
           </Col>
@@ -547,7 +544,7 @@
               label={$_('config.folders.allowSymlinks.label')}
               bind:value={folder.allowSymlinks}
               original={prev?.allowSymlinks}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'ALLOW_SYMLINKS')}
             />
           </Col>
@@ -559,7 +556,7 @@
               label={$_('config.folders.maxNested.label')}
               bind:value={folder.maxNested}
               original={prev?.maxNested}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MAX_NESTED')}
             />
           </Col>
@@ -571,7 +568,7 @@
               label={$_('config.folders.extrasMaxDepth.label')}
               bind:value={folder.extrasMaxDepth}
               original={prev?.extrasMaxDepth}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'EXTRAS_MAX_DEPTH')}
             />
           </Col>
@@ -583,7 +580,7 @@
               label={$_('config.folders.maxBytes.label')}
               bind:value={folder.maxBytes}
               original={prev?.maxBytes ?? '0'}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MAX_BYTES')}
             />
           </Col>
@@ -595,7 +592,7 @@
               label={$_('config.folders.maxFiles.label')}
               bind:value={folder.maxFiles}
               original={prev?.maxFiles}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MAX_FILES')}
             />
           </Col>
@@ -608,7 +605,7 @@
               label={$_('config.folders.maxRatio.label')}
               bind:value={folder.maxRatio}
               original={prev?.maxRatio}
-              disabled={!canWrite || row.envOnly}
+              disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'MAX_RATIO')}
             />
           </Col>

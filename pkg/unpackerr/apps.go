@@ -229,15 +229,23 @@ func (slice *StringSlice) UnmarshalENV(_, envval string) error {
 		return nil
 	}
 
-	envval = strings.Trim(envval, `["',] `)
-	vals := strings.Split(envval, ",")
-	*slice = make(StringSlice, len(vals))
-
-	for idx, val := range vals {
-		(*slice)[idx] = strings.TrimSpace(val)
-	}
+	*slice = splitCommaList(envval)
 
 	return nil
+}
+
+// splitCommaList is the Starr paths form from before indexed PATHS_0 names:
+// UN_SONARR_0_PATHS=/downloads,/mnt/tv.
+func splitCommaList(envval string) []string {
+	envval = strings.Trim(envval, `["',] `)
+	vals := strings.Split(envval, ",")
+	out := make([]string, len(vals))
+
+	for idx, val := range vals {
+		out[idx] = strings.TrimSpace(val)
+	}
+
+	return out
 }
 
 func (slice *StringSlice) MarshalENV(tag string) (map[string]string, error) {

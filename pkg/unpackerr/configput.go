@@ -255,6 +255,8 @@ func (u *Unpackerr) overlayEnv(cfg *Config) error {
 		return fmt.Errorf("environment variables: %w", err)
 	}
 
+	recordBareStarrPaths(u.EnvPrefix, cfg, nil)
+
 	return nil
 }
 

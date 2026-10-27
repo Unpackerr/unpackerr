@@ -48,7 +48,7 @@
     slugError,
   } from '../../lib/validate'
   import { failure } from '../../lib/toast'
-  import { envHas } from '../../lib/env.svelte'
+  import { envHas, envLiveValue } from '../../lib/env.svelte'
   import {
     HOOK_TEMPLATE_NAMES,
     NOTIFIARR_API_KEY_HEADER,
@@ -106,6 +106,7 @@
   const idField = $derived(isCmd ? 'COMMAND' : 'URL')
   const invalid = $derived(
     rows.some((row) => {
+      if (row.envOnly && deepEqual(row.value, orig[row.slug])) return false
       const others = rows
         .filter((r) => r.id !== row.id)
         .map((r) => r.slug)
@@ -316,6 +317,7 @@
       if (row.envOnly && deepEqual(row.value, orig[row.slug])) continue
       let hook = omitHiddenContentType(
         omitEnvFields(envPrefix, row.slug, row.value, HOOK_ENV_FIELDS),
+        row.slug,
       )
       if (isCmd) {
         hook = { ...hook, headers: undefined }
@@ -327,8 +329,11 @@
 
   // Built-ins set Content-Type themselves. Sending the form's json default
   // would skip the Pushover form-urlencoded default on save and test.
-  function omitHiddenContentType(hook: WebhookConfig): WebhookConfig {
-    if (isCmd || hookShowsField(profileOf(hook), 'contentType')) return hook
+  function omitHiddenContentType(
+    hook: WebhookConfig,
+    slug: string,
+  ): WebhookConfig {
+    if (isCmd || hookShowsField(profileOf(hook, slug), 'contentType')) return hook
     return { ...hook, contentType: '' }
   }
 
@@ -532,7 +537,7 @@
       url: hook.url,
       command: hook.command,
       token: hook.token,
-      contentType: omitHiddenContentType(hook).contentType,
+      contentType: omitHiddenContentType(hook, row.slug).contentType,
       template: hook.template,
       templatePath: hook.templatePath,
       timeout: hook.timeout,
@@ -570,8 +575,18 @@
     createRow = null
   }
 
-  function profileOf(hook: WebhookConfig): HookFormProfile {
-    return hookFormProfile(hook.template, hook.url, hook.templatePath)
+  /** Display profile. Env-owned URL and template are not copied onto the hook. */
+  function profileOf(hook: WebhookConfig, slug: string): HookFormProfile {
+    const field = (name: string, fileValue: string | undefined) => {
+      const pattern = envField(envPrefix, slug, name)
+      if (envHas(pattern)) return envLiveValue(pattern) ?? fileValue
+      return fileValue
+    }
+    return hookFormProfile(
+      field('TEMPLATE', hook.template),
+      field('URL', hook.url),
+      field('TEMPLATE_PATH', hook.templatePath),
+    )
   }
 
   function i18nOr(key: string, fallback: string): string {
@@ -651,7 +666,7 @@
   }
 
   function openGuide(row: InstanceRow<WebhookConfig>) {
-    guidePick = profileOf(row.value).template
+    guidePick = profileOf(row.value, row.slug).template
     guideOpen = true
   }
 </script>
@@ -672,7 +687,7 @@
     {@const slug = row.slug}
     {@const prev = orig[slug]}
     {@const envOnly = row.envOnly}
-    {@const profile = profileOf(hook)}
+    {@const profile = profileOf(hook, slug)}
     <Card class="mb-3">
       <CardHeader>
         <Row class="align-items-center">

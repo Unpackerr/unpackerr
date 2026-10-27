@@ -45,7 +45,7 @@
     StarrConfig,
     StarrTestResult,
   } from '../../lib/types'
-  import { envHas } from '../../lib/env.svelte'
+  import { envHas, envLiveValue } from '../../lib/env.svelte'
   import { saveStarrPoll, starrPollDirty } from './starr-poll.svelte'
   import {
     envField,
@@ -447,7 +447,9 @@
               validate={(_id, v) => httpURLError(v)}
             >
               {#snippet post()}
-                {#if app.url.startsWith('https://')}
+                {#if (
+                  envLiveValue(envField(envPrefix, slug, 'URL')) ?? app.url
+                ).startsWith('https://')}
                   <Button
                     type="button"
                     outline

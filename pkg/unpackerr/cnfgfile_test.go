@@ -259,13 +259,12 @@ func TestUnmarshalConfigDoesNotPersistEnvSecrets(t *testing.T) {
 	}
 }
 
-// Indexed UN_SONARR_0_PATHS_0 fills the list. A deprecated path is appended once.
-func TestUnmarshalIndexedStarrPathsAndLegacyPath(t *testing.T) {
+// Indexed UN_SONARR_0_PATHS_0 fills the download list.
+func TestUnmarshalIndexedStarrPaths(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "unpackerr.conf")
 	body := "[webserver]\nlisten_addr = \"127.0.0.1:0\"\nui_password = \"\"\n" +
-		"[sonarr.0]\nurl = \"http://sonarr:8989\"\napi_key = \"" + strings.Repeat("a", 32) + "\"\n" +
-		"path = \"/legacy\"\n"
+		"[sonarr.0]\nurl = \"http://sonarr:8989\"\napi_key = \"" + strings.Repeat("a", 32) + "\"\n"
 
 	if err := os.WriteFile(conf, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
@@ -281,32 +280,12 @@ func TestUnmarshalIndexedStarrPathsAndLegacyPath(t *testing.T) {
 	}
 
 	got := unpack.Sonarr["0"]
-	if got == nil {
-		t.Fatal("live sonarr.0 missing")
-	}
-
-	if len(got.Paths) != 1 || got.Paths[0] != "/from/env" || got.Path != "/legacy" {
-		t.Fatalf("live paths %+v path %q", got.Paths, got.Path)
-	}
-
-	if err := unpack.validateApp(&got.StarrConfig, starr.Sonarr, "0"); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(got.Paths) != 2 || got.Paths[0] != "/from/env" || got.Paths[1] != "/legacy" {
-		t.Fatalf("path was not appended once: %+v", got.Paths)
-	}
-
-	if err := unpack.validateApp(&got.StarrConfig, starr.Sonarr, "0"); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(got.Paths) != 2 {
-		t.Fatalf("path appended again: %+v", got.Paths)
+	if got == nil || len(got.Paths) != 1 || got.Paths[0] != "/from/env" {
+		t.Fatalf("live paths %+v", got)
 	}
 
 	file := unpack.fileConfig.Sonarr["0"]
-	if file == nil || file.Path != "/legacy" || len(file.Paths) != 0 {
+	if file == nil || len(file.Paths) != 0 {
 		t.Fatalf("file snapshot %+v", file)
 	}
 }
@@ -465,8 +444,7 @@ func TestConfigTOMLTagsInSchema(t *testing.T) {
 	}
 
 	skip := map[string]struct{}{
-		"path": {}, // legacy StarrConfig alias for paths
-		"key":  {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
+		"key": {}, // nested [[webserver.api_keys]]; parent api_keys is in the schema
 		// nested [hooks.titles]; parent titles is in the schema
 		"waiting":          {},
 		"queued":           {},

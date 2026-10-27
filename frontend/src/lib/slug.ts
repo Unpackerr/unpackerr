@@ -184,7 +184,6 @@ export const STARR_ENV_FIELDS: Record<string, string> = {
   httpUser: 'HTTP_USER',
   username: 'USERNAME',
   password: 'PASSWORD',
-  path: 'PATH',
   paths: 'PATHS',
   protocols: 'PROTOCOLS',
   delete_orig: 'DELETE_ORIG',

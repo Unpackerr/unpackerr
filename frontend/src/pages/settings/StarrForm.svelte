@@ -167,20 +167,11 @@
       .filter(Boolean)
   }
 
-  /** paths is the list the UI edits. A legacy path is shown in that list. */
-  function starrPaths(a: StarrConfig): string[] {
-    const paths = [...(a.paths ?? [])]
-    const legacy = (a.path ?? '').trim()
-    if (legacy && !paths.includes(legacy)) paths.push(legacy)
-    return paths
-  }
-
   function blank(): StarrConfig {
     const row: StarrConfig = {
       name: '',
       url: '',
       apiKey: '',
-      path: '',
       paths: [],
       protocols: PROTOCOL_TORRENT,
       delete_orig: false,
@@ -203,8 +194,7 @@
     const row = {
       ...a,
       name: a.name ?? '',
-      path: '',
-      paths: starrPaths(a),
+      paths: a.paths ?? [],
       protocols: canonicalizeProtocols(a.protocols),
       maxBytes,
       timeout: explicitTimeout(a.timeout),
@@ -228,7 +218,6 @@
       if (row.envOnly) continue
       out[row.slug || row.id] = {
         ...row.value,
-        path: '',
         paths: pathLines(pathsText[row.id] ?? ''),
       }
     }
@@ -261,7 +250,6 @@
       const { split_flac, ape_format, ape_compression, ...rest } = row.value
       const item: StarrConfig = {
         ...rest,
-        path: '',
         paths: pathLines(pathsText[row.id] ?? ''),
         delete_delay: explicitDeleteDelay(row.value.delete_delay),
       }
@@ -533,10 +521,10 @@
           <Col md="12">
             <Input
               id={`${section}-${row.id}-paths`}
-              helpKey="config.starr.path"
+              helpKey="config.starr.paths"
               type="textarea"
               rows={2}
-              label={$_('config.starr.path.label')}
+              label={$_('config.starr.paths.label')}
               bind:value={pathsText[row.id]}
               original={(prev?.paths ?? []).join('\n')}
               disabled={!canWrite || row.envOnly}

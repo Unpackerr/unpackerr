@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -487,10 +486,6 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 
 	if conf.DeleteDelay.Duration == 0 {
 		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
-	}
-
-	if conf.Path != "" && !slices.Contains(conf.Paths, conf.Path) {
-		conf.Paths = append(conf.Paths, conf.Path)
 	}
 
 	for idx, path := range conf.Paths {

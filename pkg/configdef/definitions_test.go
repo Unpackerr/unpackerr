@@ -820,7 +820,7 @@ func TestUIHelpKeys(t *testing.T) {
 		"config.webserver.listenAddr",
 		"config.starr.url",
 		"config.starr.apiKey",
-		"config.starr.path",
+		"config.starr.paths",
 		"config.folders.buffer",
 		"config.folders.delete_after",
 		"config.payload.custom_ids",

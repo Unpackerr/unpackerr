@@ -224,7 +224,7 @@ func TestConfigPutSonarrValidates(t *testing.T) {
 	}
 
 	good := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr",
-		`[{"url":"http://127.0.0.1:8989","apiKey":"`+strings.Repeat("k", apiKeyMinLength)+`","path":"/dl"}]`, withKey)
+		`[{"url":"http://127.0.0.1:8989","apiKey":"`+strings.Repeat("k", apiKeyMinLength)+`","paths":["/dl"]}]`, withKey)
 	if good.Code != http.StatusOK {
 		t.Fatalf("good %d %s", good.Code, good.Body.String())
 	}
@@ -606,7 +606,7 @@ func TestConfigPutSonarrPreservesQueueAndPath(t *testing.T) {
 	app.APIKey = strings.Repeat("k", apiKeyMinLength)
 	unpack.Sonarr = instanceMap([]*SonarrConfig{app})
 
-	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `","path":"/dl"}]`
+	body := `[{"url":"http://127.0.0.1:8989","apiKey":"` + strings.Repeat("k", apiKeyMinLength) + `","paths":["/dl"]}]`
 	if rec := doAuth(t, unpack, http.MethodPut, "/api/config/sonarr", body, key); rec.Code != http.StatusOK {
 		t.Fatalf("first put %d %s", rec.Code, rec.Body.String())
 	}

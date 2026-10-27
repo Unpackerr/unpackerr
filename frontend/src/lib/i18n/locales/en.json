@@ -685,11 +685,11 @@
         "description": "API key from Settings → General in the Starr app.",
         "tooltip": "32 or more characters. A filepath:/path value is also accepted. Leave the field unchanged to keep the current key."
       },
-      "path": {
+      "paths": {
         "label": "Paths",
         "description": "Folders Unpackerr reads this app's downloads from. One path per line.",
         "tooltip": "Fallback if the path Starr reports is missing or not visible to Unpackerr. The first environment variable is UN_*_PATHS_0.",
-        "config": "Saved as the paths list. A leftover path value is still added to that list."
+        "config": "Saved as the paths list."
       },
       "protocols": {
         "label": "Protocols",

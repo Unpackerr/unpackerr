@@ -24,7 +24,7 @@ describe('env overlays', () => {
     expect(envLiveValue('FOLDER_tv_EXCLUDE_PATH_')).toBe('/skip')
   })
 
-  it('matches Starr paths indexes and not the deprecated path name', () => {
+  it('matches Starr paths indexes and not a singular PATH name', () => {
     env.pairs = { SONARR_0_PATHS_0: '/downloads', SONARR_0_PATHS_1: '/mnt/tv' }
     expect(envHas('SONARR_0_PATHS')).toBe(true)
     expect(envLiveValue('SONARR_0_PATHS')).toBe('/downloads\n/mnt/tv')

@@ -357,6 +357,14 @@
     )
   }
 
+  /** Running certificate check when VALID_SSL is env-owned. The file value stays put. */
+  function sslShown(app: StarrConfig, slug: string): boolean {
+    const pattern = envField(envPrefix, slug, 'VALID_SSL')
+    if (!envHas(pattern)) return !!app.valid_ssl
+    const live = envLiveValue(pattern) ?? ''
+    return live === 'true' || live === '1'
+  }
+
   function closeTest() {
     testRow = null
     testBusy = false
@@ -480,7 +488,7 @@
                     type="button"
                     outline
                     title={$_('phrases.ValidSSL')}
-                    aria-pressed={!!app.valid_ssl}
+                    aria-pressed={sslShown(app, slug)}
                     class={app.valid_ssl !== prev?.valid_ssl
                       ? 'ssl-addon changed'
                       : 'ssl-addon'}
@@ -491,7 +499,7 @@
                   >
                     <Box
                       type="checkbox"
-                      checked={!!app.valid_ssl}
+                      checked={sslShown(app, slug)}
                       tabindex={-1}
                       class="ssl-check"
                     />

@@ -266,14 +266,21 @@
       : omitHeader(hook.headers, NOTIFIARR_API_KEY_HEADER)
   }
 
-  function extraHeaders(hook: WebhookConfig): Record<string, string> {
-    return hookShowsApiKey(hook.url)
+  function extraHeaders(
+    hook: WebhookConfig,
+    slug: string,
+  ): Record<string, string> {
+    return hookShowsApiKey(hookURL(hook, slug))
       ? omitHeader(hook.headers, NOTIFIARR_API_KEY_HEADER)
       : (hook.headers ?? {})
   }
 
-  function setExtraHeaders(hook: WebhookConfig, values: Record<string, string>) {
-    if (!hookShowsApiKey(hook.url)) {
+  function setExtraHeaders(
+    hook: WebhookConfig,
+    slug: string,
+    values: Record<string, string>,
+  ) {
+    if (!hookShowsApiKey(hookURL(hook, slug))) {
       hook.headers = values
       return
     }
@@ -575,17 +582,27 @@
     createRow = null
   }
 
+  /** Env value when that field is owned by the environment. Not written onto the hook. */
+  function envOrFile(
+    slug: string,
+    name: string,
+    fileValue: string | undefined,
+  ): string {
+    const pattern = envField(envPrefix, slug, name)
+    if (envHas(pattern)) return envLiveValue(pattern) ?? fileValue ?? ''
+    return fileValue ?? ''
+  }
+
+  function hookURL(hook: WebhookConfig, slug: string): string {
+    return envOrFile(slug, 'URL', hook.url)
+  }
+
   /** Display profile. Env-owned URL and template are not copied onto the hook. */
   function profileOf(hook: WebhookConfig, slug: string): HookFormProfile {
-    const field = (name: string, fileValue: string | undefined) => {
-      const pattern = envField(envPrefix, slug, name)
-      if (envHas(pattern)) return envLiveValue(pattern) ?? fileValue
-      return fileValue
-    }
     return hookFormProfile(
-      field('TEMPLATE', hook.template),
-      field('URL', hook.url),
-      field('TEMPLATE_PATH', hook.templatePath),
+      envOrFile(slug, 'TEMPLATE', hook.template),
+      envOrFile(slug, 'URL', hook.url),
+      envOrFile(slug, 'TEMPLATE_PATH', hook.templatePath),
     )
   }
 
@@ -645,16 +662,16 @@
     return $_('config.hooks.chip.default')
   }
 
-  function advancedDefault(hook: WebhookConfig): boolean {
+  function advancedDefault(hook: WebhookConfig, slug: string): boolean {
     return (
       !!(hook.template ?? '').trim() ||
       !!(hook.templatePath ?? '').trim() ||
-      Object.keys(extraHeaders(hook)).length > 0
+      Object.keys(extraHeaders(hook, slug)).length > 0
     )
   }
 
   function isAdvancedOpen(row: InstanceRow<WebhookConfig>): boolean {
-    return advancedOpen[row.id] ?? advancedDefault(row.value)
+    return advancedOpen[row.id] ?? advancedDefault(row.value, row.slug)
   }
 
   function toggleAdvanced(row: InstanceRow<WebhookConfig>) {
@@ -857,7 +874,7 @@
                 envVar={envField(envPrefix, slug, 'TIMEOUT')}
               />
             </Col>
-            {#if hookShowsApiKey(hook.url)}
+            {#if hookShowsApiKey(hookURL(hook, slug))}
               <Col md="6">
                 <Input
                   id={`${section}-${row.id}-apikey`}
@@ -1123,12 +1140,12 @@
                     </Input>
                   </Col>
                 </Row>
-                {#if hookShowsHeaders(profile, hook.headers, hook.url)}
+                {#if hookShowsHeaders(profile, hook.headers, hookURL(hook, slug))}
                   <MapPairs
                     bind:values={
-                      () => extraHeaders(hook),
+                      () => extraHeaders(hook, slug),
                       (v) => {
-                        setExtraHeaders(hook, v)
+                        setExtraHeaders(hook, slug, v)
                       }
                     }
                     disabled={!canWrite}

@@ -239,6 +239,11 @@ func Start() error {
 		return fmt.Errorf("parsing filepaths: %w", err)
 	}
 
+	// Resolve filepath: secrets before validating webserver API keys, as for Starr API keys.
+	if err := unpackerr.Webserver.validateAuth(); err != nil {
+		return err
+	}
+
 	if err := unpackerr.validateApps(); err != nil {
 		return err
 	}

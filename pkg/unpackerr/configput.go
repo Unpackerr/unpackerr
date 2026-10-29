@@ -400,12 +400,7 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 		next.UIPassword = liveSnap.UIPassword
 	}
 
-	if err := next.validateAuth(); err != nil {
-		return false, err
-	}
-
-	next.allow = MakeIPs(next.Upstreams)
-
+	// Preserve filepath: references for persistence before expanding the live copy.
 	fileWeb := cloneWebserver(&next.WebServer)
 	fileWeb.APIKeys = fileOnly.APIKeys
 
@@ -416,7 +411,24 @@ func (u *Unpackerr) putWebserver(raw json.RawMessage) (bool, error) {
 		fileWeb.UIPassword = submitted
 	}
 
-	if err := fileWeb.validateAuth(); err != nil {
+	// Resolve secrets using the same expansion as Starr API keys.
+	if err := expandFilepaths(&next.WebServer); err != nil {
+		return false, err
+	}
+
+	if err := next.validateAuth(); err != nil {
+		return false, err
+	}
+
+	next.allow = MakeIPs(next.Upstreams)
+
+	// Validate expanded secrets without changing what gets written to disk.
+	fileCheck := cloneWebserver(fileWeb)
+	if err := expandFilepaths(fileCheck); err != nil {
+		return false, err
+	}
+
+	if err := fileCheck.validateAuth(); err != nil {
 		return false, err
 	}
 

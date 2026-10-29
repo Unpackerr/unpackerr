@@ -157,12 +157,12 @@ func TestConfigPutCmdhookRejectsWhitespaceCommand(t *testing.T) {
 }
 
 func TestConfigPutWebserverFilepathAPIKey(t *testing.T) {
-	t.Parallel()
-
+	// t.Chdir requires this test to run non-parallel.
 	dir := t.TempDir()
 	secret := strings.Repeat("k", apiKeyMinLen)
-	secretFile := filepath.Join(dir, "metrics.key")
-	if err := os.WriteFile(secretFile, []byte(secret), 0o600); err != nil {
+
+	secretFile := "metrics.key"
+	if err := os.WriteFile(filepath.Join(dir, secretFile), []byte(secret), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -172,12 +172,15 @@ func TestConfigPutWebserverFilepathAPIKey(t *testing.T) {
 	unpack.Webserver.Roles = map[string]Role{
 		"metrics": {Permissions: []string{PermReadSystemStats}},
 	}
+
 	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
 		Name: "prometheus", Key: secret, Roles: []string{"metrics"},
 	})
 	if err := unpack.Webserver.validateAuth(); err != nil {
 		t.Fatal(err)
 	}
+
+	t.Chdir(dir)
 
 	unpack.snapshotFileConfig()
 	unpack.fileConfig.Webserver.APIKeys[len(unpack.fileConfig.Webserver.APIKeys)-1].Key = "filepath:" + secretFile

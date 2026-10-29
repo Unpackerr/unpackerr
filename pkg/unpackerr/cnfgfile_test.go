@@ -551,6 +551,11 @@ func TestUnmarshalConfigENVFilepathAPIKey(t *testing.T) {
 		t.Fatalf("loading environment config before expansion: %v", err)
 	}
 
+	// Startup must not validate the unexpanded filepath reference.
+	if unpack.Webserver.keyPerms != nil {
+		t.Fatal("webserver permissions were built before filepath expansion")
+	}
+
 	if unpack.Webserver.APIKeys[0].Key != "filepath:"+secretPath {
 		t.Fatal("environment API key should remain a filepath reference before parsing")
 	}

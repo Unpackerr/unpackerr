@@ -534,6 +534,7 @@ func TestUnmarshalConfigENVFilepathAPIKey(t *testing.T) {
 	if err := os.WriteFile(conf, []byte("[webserver]\nlisten_addr = \"127.0.0.1:0\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(secretPath, []byte(key), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -545,26 +546,31 @@ func TestUnmarshalConfigENVFilepathAPIKey(t *testing.T) {
 
 	unpack := New()
 	unpack.ConfigFile = conf
+
 	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
 		t.Fatalf("loading environment config before expansion: %v", err)
 	}
+
 	if unpack.Webserver.APIKeys[0].Key != "filepath:"+secretPath {
 		t.Fatal("environment API key should remain a filepath reference before parsing")
 	}
 
 	// Use the same generic filepath expansion used by Sonarr/Radarr API keys.
 	if _, err := cnfgfile.Parse(unpack.Config, &cnfgfile.Opts{
-		Prefix: filePrefix,
+		Prefix:        filePrefix,
 		TransformPath: expandHomedir,
 	}); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := unpack.Webserver.validateAuth(); err != nil {
 		t.Fatalf("validating expanded API key: %v", err)
 	}
+
 	if !unpack.Webserver.HasPermission(key, PermReadSystemStats) {
 		t.Fatal("expanded API key missing configured permission")
 	}
+
 	if got := unpack.fileConfig.Webserver.APIKeys; len(got) != 0 {
 		t.Fatalf("environment API key leaked into config snapshot: %+v", got)
 	}

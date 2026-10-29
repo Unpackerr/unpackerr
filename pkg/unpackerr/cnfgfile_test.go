@@ -491,6 +491,11 @@ func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Startup validates API keys after filepath: expansion.
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
 	if unpack.envUsed["WEBSERVER_ROLES_stats_PERMISSIONS_0"] != PermReadSystemStats {
 		t.Fatalf("env used mixed-case role key: %+v", unpack.envUsed)
 	}
@@ -517,6 +522,62 @@ func TestUnmarshalConfigENVRolesAndAPIKeys(t *testing.T) {
 		strings.Contains(text, "[webserver.roles.env_only]") ||
 		strings.Contains(text, key) || strings.Contains(text, "envhome") {
 		t.Fatalf("env auth leaked into the config file:\n%s", text)
+	}
+}
+
+func TestUnmarshalConfigENVFilepathAPIKey(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "unpackerr.conf")
+	secretPath := filepath.Join(dir, "metrics-key")
+	key := strings.Repeat("a", 96)
+
+	if err := os.WriteFile(conf, []byte("[webserver]\nlisten_addr = \"127.0.0.1:0\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(secretPath, []byte(key), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("UN_WEBSERVER_ROLES_metrics_PERMISSIONS_0", PermReadSystemStats)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_NAME", "prometheus")
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_KEY", "filepath:"+secretPath)
+	t.Setenv("UN_WEBSERVER_API_KEYS_0_ROLES_0", "metrics")
+
+	unpack := New()
+	unpack.ConfigFile = conf
+
+	if _, _, _, err := unpack.unmarshalConfig(); err != nil {
+		t.Fatalf("loading environment config before expansion: %v", err)
+	}
+
+	// Startup must not validate the unexpanded filepath reference.
+	if unpack.Webserver.keyPerms != nil {
+		t.Fatal("webserver permissions were built before filepath expansion")
+	}
+
+	if unpack.Webserver.APIKeys[0].Key != "filepath:"+secretPath {
+		t.Fatal("environment API key should remain a filepath reference before parsing")
+	}
+
+	// Use the same generic filepath expansion used by Sonarr/Radarr API keys.
+	if _, err := cnfgfile.Parse(unpack.Config, &cnfgfile.Opts{
+		Prefix:        filePrefix,
+		TransformPath: expandHomedir,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatalf("validating expanded API key: %v", err)
+	}
+
+	if !unpack.Webserver.HasPermission(key, PermReadSystemStats) {
+		t.Fatal("expanded API key missing configured permission")
+	}
+
+	if got := unpack.fileConfig.Webserver.APIKeys; len(got) != 0 {
+		t.Fatalf("environment API key leaked into config snapshot: %+v", got)
 	}
 }
 

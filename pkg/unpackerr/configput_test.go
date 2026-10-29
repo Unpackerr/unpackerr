@@ -156,6 +156,68 @@ func TestConfigPutCmdhookRejectsWhitespaceCommand(t *testing.T) {
 	}
 }
 
+func TestConfigPutWebserverFilepathAPIKey(t *testing.T) {
+	// t.Chdir requires this test to run non-parallel.
+	dir := t.TempDir()
+	secret := strings.Repeat("k", apiKeyMinLen)
+
+	secretFile := "metrics.key"
+	if err := os.WriteFile(filepath.Join(dir, secretFile), []byte(secret), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack := testAuthUnpackerr(t)
+	unpack.ConfigFile = filepath.Join(dir, "unpackerr.conf")
+	adminKey := unpack.Webserver.adminAPIKey()
+	unpack.Webserver.Roles = map[string]Role{
+		"metrics": {Permissions: []string{PermReadSystemStats}},
+	}
+
+	unpack.Webserver.APIKeys = append(unpack.Webserver.APIKeys, APIKey{
+		Name: "prometheus", Key: secret, Roles: []string{"metrics"},
+	})
+	if err := unpack.Webserver.validateAuth(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(dir)
+
+	unpack.snapshotFileConfig()
+	unpack.fileConfig.Webserver.APIKeys[len(unpack.fileConfig.Webserver.APIKeys)-1].Key = "filepath:" + secretFile
+
+	got := doAuth(t, unpack, http.MethodGet, "/api/config/webserver", "", func(req *http.Request) {
+		req.Header.Set(headerAPIKey, adminKey)
+	})
+	if got.Code != http.StatusOK {
+		t.Fatalf("get %d %s", got.Code, got.Body.String())
+	}
+
+	put := doAuth(t, unpack, http.MethodPut, "/api/config/webserver", got.Body.String(), func(req *http.Request) {
+		req.Header.Set(headerAPIKey, adminKey)
+	})
+	if put.Code != http.StatusOK {
+		t.Fatalf("filepath API key put %d %s", put.Code, put.Body.String())
+	}
+
+	if !unpack.Webserver.HasPermission(secret, PermReadSystemStats) {
+		t.Fatal("expanded metrics API key lost permissions")
+	}
+
+	stored := unpack.fileConfig.Webserver.APIKeys[len(unpack.fileConfig.Webserver.APIKeys)-1].Key
+	if stored != "filepath:"+secretFile {
+		t.Fatalf("file snapshot must retain filepath reference, got %q", stored)
+	}
+
+	written, err := os.ReadFile(unpack.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(written), "filepath:"+secretFile) || strings.Contains(string(written), secret) {
+		t.Fatal("config must persist filepath reference, not secret contents")
+	}
+}
+
 func TestConfigPutWebserverRejectsFileKeyCollision(t *testing.T) {
 	t.Parallel()
 

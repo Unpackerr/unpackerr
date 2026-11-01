@@ -73,3 +73,5 @@ require (
 	golift.io/udf v0.1.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
+
+godebug multipathtcp=0

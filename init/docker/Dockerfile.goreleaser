@@ -11,4 +11,6 @@ COPY --chmod=755 ${TARGETPLATFORM}/unpackerr /unpackerr
 
 ENV TZ=UTC
 
+# Default web UI listen address (listen_addr).
+EXPOSE 5656
 ENTRYPOINT ["/unpackerr"]

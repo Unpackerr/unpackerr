@@ -74,4 +74,6 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
+// Go 1.24 and later opens Linux listen sockets with Multipath TCP, the
+// socket type used by the published CVE-2026-98432 exploit.
 godebug multipathtcp=0

@@ -118,6 +118,37 @@ func TestExtractCompletedDownloadNotesWaitingSyncthing(t *testing.T) {
 	}
 }
 
+func TestHasSyncThingFileFindsTempFileInSubfolder(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	episode := filepath.Join(dir, "Show.S01E02")
+
+	if err := os.MkdirAll(episode, defaultDirMode); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"show.s01e01.rar", filepath.Join("Show.S01E02", "show.s01e02.rar")} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), defaultFileMode); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	unpack := New()
+	if got := unpack.hasSyncThingFile(dir); got != "" {
+		t.Fatalf("no temp files yet, found %q", got)
+	}
+
+	tmpFile := filepath.Join(episode, ".syncthing.show.s01e02.r00.tmp")
+	if err := os.WriteFile(tmpFile, []byte("x"), defaultFileMode); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := unpack.hasSyncThingFile(dir); got != tmpFile {
+		t.Fatalf("got %q, want %q", got, tmpFile)
+	}
+}
+
 func TestStarrArchiveTypesAndAPEOpts(t *testing.T) {
 	t.Parallel()
 

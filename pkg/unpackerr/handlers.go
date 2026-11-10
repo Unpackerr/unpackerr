@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -499,13 +500,22 @@ func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []str
 }
 
 // added for https://github.com/Unpackerr/unpackerr/issues/235
+// It walks subfolders because season packs often keep each episode in its own folder.
 func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
-	files, _ := u.GetFileList(dirPath)
-	for _, file := range files {
-		if strings.HasSuffix(file, ".tmp") {
-			return file
-		}
-	}
+	var found string
 
-	return ""
+	_ = filepath.WalkDir(dirPath, func(path string, entry fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			// Syncthing renames and removes temp files while we walk. Skip anything that vanished.
+			return nil //nolint:nilerr
+		case !entry.IsDir() && strings.HasSuffix(path, ".tmp"):
+			found = path
+			return fs.SkipAll
+		default:
+			return nil
+		}
+	})
+
+	return found
 }

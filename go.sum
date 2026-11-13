@@ -42,6 +42,8 @@ github.com/dromara/carbon/v2 v2.6.18 h1:ts3UByLjdN+r5YnPGsrtRpJWE7paKph+OHURyAw+
 github.com/dromara/carbon/v2 v2.6.18/go.mod h1:GHBwozp4XxEhCri2PaInUwMi7C2QwqulfFjxC0qx6TA=
 github.com/dromara/carbon/v2 v2.7.0 h1:AIROgPOmhpJgwtHM9FYv0s/a3HI4x8UBBWxJ1uo+QFM=
 github.com/dromara/carbon/v2 v2.7.0/go.mod h1:GHBwozp4XxEhCri2PaInUwMi7C2QwqulfFjxC0qx6TA=
+github.com/dromara/carbon/v2 v2.7.1 h1:cSwhxTOfzVyQYO2NUuEJJ8/uS7ynbJKDVnr38OGCfAU=
+github.com/dromara/carbon/v2 v2.7.1/go.mod h1:GHBwozp4XxEhCri2PaInUwMi7C2QwqulfFjxC0qx6TA=
 github.com/dsnet/compress v0.0.1 h1:PlZu0n3Tuv04TzpfPbrnI0HW/YwodEXDS+oPKahKF0Q=
 github.com/dsnet/compress v0.0.1/go.mod h1:Aw8dCMJ7RioblQeTqt88akK31OvO8Dhf5JflhBbQEHo=
 github.com/energye/systray v1.0.3 h1:XnyjJCeRU5z00bpNOic2fGTKz/7yHZMZjWiGIVXDS+4=

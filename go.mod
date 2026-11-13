@@ -15,7 +15,7 @@ require (
 	github.com/ncruces/zenity v0.10.15
 	github.com/prometheus/client_golang v1.25.0
 	github.com/radovskyb/watcher v1.0.7
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.42.0
 	golang.org/x/sys v0.49.0

@@ -159,6 +159,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 			item, found := unpack.Map[rec.Title]
 			if found && item.App == app && item.URL == cfg.URL {
 				item.Name = cfg.Name
+				item.Size = uint64(max(rec.Size, 0))
 			}
 
 			switch {
@@ -175,6 +176,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 					DeleteDelay: cfg.DeleteDelay.Duration,
 					Syncthing:   cfg.Syncthing,
 					MaxBytes:    cfg.maxBytes,
+					Size:        uint64(max(rec.Size, 0)),
 					Path:        unpack.getDownloadPath(rec.OutputPath, cfg.Label(app), rec.Title, cfg.Paths),
 					IDs:         rec.IDs,
 				}

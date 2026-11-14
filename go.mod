@@ -18,7 +18,7 @@ require (
 	github.com/spf13/pflag v1.1.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.42.0
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 	golift.io/cnfg v0.5.0
 	golift.io/cnfgfile v0.1.0
 	golift.io/rotatorr v0.1.0

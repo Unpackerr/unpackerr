@@ -250,6 +250,7 @@ func redactLiveStarr[T any, P starrApp[T]](items InstanceMap[T]) {
 		conf.APIKey = ""
 		conf.Password = ""
 		conf.HTTPPass = ""
+		conf.QbitPass = ""
 	}
 }
 

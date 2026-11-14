@@ -582,6 +582,13 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 		return fmt.Errorf("%s (%s) %w", label, conf.URL, err)
 	}
 
+	qbitURL, err := normalizeQbitURL(conf.QbitURL)
+	if err != nil {
+		return fmt.Errorf("%s (%s) %w", label, conf.URL, err)
+	}
+
+	conf.QbitURL = qbitURL
+
 	conf.Client = &http.Client{
 		Timeout: conf.Timeout.Duration,
 		Transport: &http.Transport{

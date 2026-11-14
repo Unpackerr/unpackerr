@@ -68,6 +68,8 @@ type Extract struct {
 	SyncSeen   uint64
 	SyncActive time.Time
 	SyncSeenAt time.Time
+	// QbitLogAt is when the qBittorrent file check last logged for this item.
+	QbitLogAt time.Time
 }
 
 // Label is the human-facing instance name, or the dialect when Name is empty.

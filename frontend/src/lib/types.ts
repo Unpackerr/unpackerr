@@ -275,6 +275,9 @@ export interface StarrConfig {
   delete_orig: boolean
   delete_delay: string
   syncthing: boolean
+  qbitUrl?: string
+  qbitUser?: string
+  qbitPass?: string
   valid_ssl: boolean
   timeout: string
   maxBytes: string

@@ -699,6 +699,31 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: qbit_url
+        envvar: QBIT_URL
+        default: ''
+        short: Optional qBittorrent Web UI URL, to wait until every torrent file is on disk.
+        desc: |
+          The qBittorrent that downloads this app's torrents, including any URL base path.
+          When set, a completed torrent is extracted only after every file selected for
+          download in qBittorrent exists in the download folder at its exact size, and no
+          Syncthing temp file remains anywhere under it. This helps when a sync or copy tool
+          moves finished downloads from another host. There is no timeout while files are
+          missing. If qBittorrent cannot be reached or does not know the torrent, the
+          syncthing checks above apply instead. Only the Web API is used, read-only.
+      - name: qbit_user
+        envvar: QBIT_USER
+        default: ''
+        short: qBittorrent Web UI username.
+        desc: Username for the qBittorrent Web UI in qbit_url.
+      - name: qbit_pass
+        envvar: QBIT_PASS
+        default: ''
+        short: qBittorrent Web UI password.
+        desc: |
+          Password for the qBittorrent Web UI in qbit_url. Supports filepath:/path/to/file.
+          A rejected login is not retried until the config changes, so a wrong password
+          cannot trigger qBittorrent's ban on repeated failed logins.
       - name: valid_ssl
         envvar: VALID_SSL
         default: false

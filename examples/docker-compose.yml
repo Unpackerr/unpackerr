@@ -72,6 +72,9 @@ services:
     - UN_SONARR_0_DELETE_DELAY=5m
     - UN_SONARR_0_DELETE_ORIG=false
     - UN_SONARR_0_SYNCTHING=false
+    - UN_SONARR_0_QBIT_URL=
+    - UN_SONARR_0_QBIT_USER=
+    - UN_SONARR_0_QBIT_PASS=
     - UN_SONARR_0_VALID_SSL=false
     - UN_SONARR_0_MAX_BYTES=
     ## Radarr Settings
@@ -88,6 +91,9 @@ services:
     - UN_RADARR_0_DELETE_DELAY=5m
     - UN_RADARR_0_DELETE_ORIG=false
     - UN_RADARR_0_SYNCTHING=false
+    - UN_RADARR_0_QBIT_URL=
+    - UN_RADARR_0_QBIT_USER=
+    - UN_RADARR_0_QBIT_PASS=
     - UN_RADARR_0_VALID_SSL=false
     - UN_RADARR_0_MAX_BYTES=
     ## Lidarr Settings
@@ -104,6 +110,9 @@ services:
     - UN_LIDARR_0_DELETE_DELAY=5m
     - UN_LIDARR_0_DELETE_ORIG=false
     - UN_LIDARR_0_SYNCTHING=false
+    - UN_LIDARR_0_QBIT_URL=
+    - UN_LIDARR_0_QBIT_USER=
+    - UN_LIDARR_0_QBIT_PASS=
     - UN_LIDARR_0_VALID_SSL=false
     - UN_LIDARR_0_MAX_BYTES=
     - UN_LIDARR_0_SPLIT_FLAC=false
@@ -123,6 +132,9 @@ services:
     - UN_READARR_0_DELETE_DELAY=5m
     - UN_READARR_0_DELETE_ORIG=false
     - UN_READARR_0_SYNCTHING=false
+    - UN_READARR_0_QBIT_URL=
+    - UN_READARR_0_QBIT_USER=
+    - UN_READARR_0_QBIT_PASS=
     - UN_READARR_0_VALID_SSL=false
     - UN_READARR_0_MAX_BYTES=
     ## Watch Folders
@@ -175,4 +187,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 04 OCT 2026 06:03 UTC
+## => Content Auto Generated, 14 NOV 2026 19:22 UTC

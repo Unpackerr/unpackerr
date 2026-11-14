@@ -33,6 +33,12 @@ type StarrConfig struct {
 	// Empty uses that default. `0` or `0B` is unlimited.
 	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`
 	maxBytes uint64
+	// QbitURL is the qBittorrent Web UI address (with any URL base) that downloads this
+	// app's torrents. When set, extraction waits until every file of the torrent is on disk.
+	QbitURL  string `json:"qbitUrl"  toml:"qbit_url"  xml:"qbit_url"  yaml:"qbitUrl"`
+	QbitUser string `json:"qbitUser" toml:"qbit_user" xml:"qbit_user" yaml:"qbitUser"`
+	QbitPass string `json:"qbitPass" toml:"qbit_pass" xml:"qbit_pass" yaml:"qbitPass"`
+	qbit     *qbitClient
 	// Last poll snapshot for GET /api/stats starrQueues. Published under History.mu.
 	lastQueued    int
 	lastRetrieved int
@@ -163,17 +169,8 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
-	if item.Syncthing {
-		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
-			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, tmpFile)
-			u.setItemNote(name, item, noteWaitingSyncthing)
-
-			return
-		}
-
-		if u.syncthingIncomplete(name, item, now) {
-			return
-		}
+	if u.waitForDelivery(name, item, now) {
+		return
 	}
 
 	// Snapshot once per queue item: retries must not recapture leftovers that

@@ -240,6 +240,20 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## The qBittorrent that downloads this app's torrents, including any URL base path.
+## When set, a completed torrent is extracted only after every file selected for
+## download in qBittorrent exists in the download folder at its exact size, and no
+## Syncthing temp file remains anywhere under it. This helps when a sync or copy tool
+## moves finished downloads from another host. There is no timeout while files are
+## missing. If qBittorrent cannot be reached or does not know the torrent, the
+## syncthing checks above apply instead. Only the Web API is used, read-only.
+# qbit_url = ""
+## Username for the qBittorrent Web UI in qbit_url.
+# qbit_user = ""
+## Password for the qBittorrent Web UI in qbit_url. Supports filepath:/path/to/file.
+## A rejected login is not retried until the config changes, so a wrong password
+## cannot trigger qBittorrent's ban on repeated failed logins.
+# qbit_pass = ""
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -285,6 +299,20 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## The qBittorrent that downloads this app's torrents, including any URL base path.
+## When set, a completed torrent is extracted only after every file selected for
+## download in qBittorrent exists in the download folder at its exact size, and no
+## Syncthing temp file remains anywhere under it. This helps when a sync or copy tool
+## moves finished downloads from another host. There is no timeout while files are
+## missing. If qBittorrent cannot be reached or does not know the torrent, the
+## syncthing checks above apply instead. Only the Web API is used, read-only.
+# qbit_url = ""
+## Username for the qBittorrent Web UI in qbit_url.
+# qbit_user = ""
+## Password for the qBittorrent Web UI in qbit_url. Supports filepath:/path/to/file.
+## A rejected login is not retried until the config changes, so a wrong password
+## cannot trigger qBittorrent's ban on repeated failed logins.
+# qbit_pass = ""
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -330,6 +358,20 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## The qBittorrent that downloads this app's torrents, including any URL base path.
+## When set, a completed torrent is extracted only after every file selected for
+## download in qBittorrent exists in the download folder at its exact size, and no
+## Syncthing temp file remains anywhere under it. This helps when a sync or copy tool
+## moves finished downloads from another host. There is no timeout while files are
+## missing. If qBittorrent cannot be reached or does not know the torrent, the
+## syncthing checks above apply instead. Only the Web API is used, read-only.
+# qbit_url = ""
+## Username for the qBittorrent Web UI in qbit_url.
+# qbit_user = ""
+## Password for the qBittorrent Web UI in qbit_url. Supports filepath:/path/to/file.
+## A rejected login is not retried until the config changes, so a wrong password
+## cannot trigger qBittorrent's ban on repeated failed logins.
+# qbit_pass = ""
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -387,6 +429,20 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## The qBittorrent that downloads this app's torrents, including any URL base path.
+## When set, a completed torrent is extracted only after every file selected for
+## download in qBittorrent exists in the download folder at its exact size, and no
+## Syncthing temp file remains anywhere under it. This helps when a sync or copy tool
+## moves finished downloads from another host. There is no timeout while files are
+## missing. If qBittorrent cannot be reached or does not know the torrent, the
+## syncthing checks above apply instead. Only the Web API is used, read-only.
+# qbit_url = ""
+## Username for the qBittorrent Web UI in qbit_url.
+# qbit_user = ""
+## Password for the qBittorrent Web UI in qbit_url. Supports filepath:/path/to/file.
+## A rejected login is not retried until the config changes, so a wrong password
+## cannot trigger qBittorrent's ban on repeated failed logins.
+# qbit_pass = ""
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -559,4 +615,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 OCT 2026 06:03 UTC
+## => Content Auto Generated, 14 NOV 2026 19:22 UTC

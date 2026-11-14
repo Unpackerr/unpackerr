@@ -170,6 +170,10 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 
 			return
 		}
+
+		if u.syncthingIncomplete(name, item, now) {
+			return
+		}
 	}
 
 	// Snapshot once per queue item: retries must not recapture leftovers that

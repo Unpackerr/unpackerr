@@ -8,6 +8,8 @@ code.cloudfoundry.org/bytefmt v0.96.0 h1:5N1q+e5OI3tbKE69jqDTBNQx4HqeO6YQtLtIVao
 code.cloudfoundry.org/bytefmt v0.96.0/go.mod h1:3han47dKyNfal3tzzrMYWtJM9HULc+XKSfPEC9PkvLI=
 code.cloudfoundry.org/bytefmt v0.97.0 h1:nV88i6TalKpQcaYGLNUduHwQYp99NfQiGcXtqWUfWu0=
 code.cloudfoundry.org/bytefmt v0.97.0/go.mod h1:S2lpJZTx7RMt3X91h3D29f5WX+9dEl/rzCakBl6pFeI=
+code.cloudfoundry.org/bytefmt v0.98.0 h1:px6HFPVKTzTVGZwNKZeK/2iLVghvksygJZB7KQHakps=
+code.cloudfoundry.org/bytefmt v0.98.0/go.mod h1:kXmN7r3ZtQkvRn+EsOasRqLGlwqyk5c1akTzNAtVh9o=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
@@ -184,6 +186,8 @@ golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
 golang.org/x/sys v0.50.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
 golang.org/x/text v0.43.0 h1:1QivrlhwAsnMOcqgOdl9my7s9OyZl8O5/UGUTJVXoWc=
 golang.org/x/text v0.43.0/go.mod h1:hbSIYA/amXcRXTFSZqh8tWHEoqRvvbKPJ2uz/KU+a+s=
+golang.org/x/text v0.44.0 h1:YItdp/mQNGnsmrgpcdA5yQ3bnRxCfo/Tj/iByGW9GGo=
+golang.org/x/text v0.44.0/go.mod h1:S4FR1waQ9LbjQTls97SyRjDaUUVkaM+cXwwuG/G+MwY=
 golang.org/x/tools v0.51.0 h1:k4Xc/1Om9jwkBJBo4NVLMSARBoWtK10mx+W5BnXCeAI=
 golang.org/x/tools v0.51.0/go.mod h1:9eEncMayCV6zRMGhR5eZEC2iBx98qWcF1HZ9Z7wJOoA=
 golift.io/ape v0.2.0 h1:qlXRe5+fLmWwNRFBJR9re8pBYw5xOUsVZMcTcVfh/HQ=

@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.25.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/pflag v1.1.0
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.59.0
 	golang.org/x/mod v0.43.0
 	golang.org/x/sys v0.50.0
 	golift.io/cnfg v0.5.0
@@ -65,6 +65,7 @@ require (
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
+	golang.org/x/crypto/openpgp v0.1.0-deprecated // indirect
 	golang.org/x/image v0.46.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/text v0.44.0 // indirect

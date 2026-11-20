@@ -148,7 +148,14 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
-	files := xtractr.FindCompressedFiles(xtractr.Filter{Path: item.Path})
+	filter := xtractr.Filter{Path: item.Path}
+	scan := &syncScan{}
+
+	if item.Syncthing {
+		filter.Observe = scan.observe // fills the scan during the archive search; no second walk.
+	}
+
+	files := xtractr.FindCompressedFiles(filter)
 	if len(files) == 0 {
 		if _, err := os.Stat(item.Path); err != nil {
 			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
@@ -163,13 +170,8 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
-	if item.Syncthing {
-		if tmpFile := u.hasSyncThingFile(item.Path); tmpFile != "" {
-			u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, tmpFile)
-			u.setItemNote(name, item, noteWaitingSyncthing)
-
-			return
-		}
+	if item.Syncthing && u.syncthingWait(name, item, scan, now) {
+		return
 	}
 
 	// Snapshot once per queue item: retries must not recapture leftovers that
@@ -496,16 +498,4 @@ func (u *Unpackerr) getDownloadPath(outputPath, label, title string, paths []str
 	u.Debugf("%s: Configured paths do not exist and 'outputPath' is empty for: %s", label, title)
 
 	return filepath.Join(paths[0], title) // useless, but return something. :(
-}
-
-// added for https://github.com/Unpackerr/unpackerr/issues/235
-func (u *Unpackerr) hasSyncThingFile(dirPath string) string {
-	files, _ := u.GetFileList(dirPath)
-	for _, file := range files {
-		if strings.HasSuffix(file, ".tmp") {
-			return file
-		}
-	}
-
-	return ""
 }

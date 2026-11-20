@@ -793,9 +793,9 @@
         "tooltip": "Off leaves them in an _unpackerred folder beside the archive. On also classifies leftover files with Remnant action."
       },
       "extract_isos": {
-        "label": "Extract ISOs",
-        "description": "Treat .iso files as archives.",
-        "tooltip": "Off ignores ISO images. Turn this on only if you really want them unpacked."
+        "label": "Extract disc images",
+        "description": "Treat .iso and .img files as archives.",
+        "tooltip": "Off ignores disc images. Turn this on only if you really want them unpacked."
       },
       "preserve_exec": {
         "label": "Keep execute bits",

@@ -978,8 +978,8 @@ sections:
         envvar: EXTRACT_ISOS
         default: false
         recommend: *BOOLEAN
-        short: Setting this to true enables .iso file extraction.
-        desc: Set this to true if you want this app to extract ISO files with .iso extension.
+        short: Setting this to true enables .iso and .img disc extraction.
+        desc: Set this to true to extract disc images with a .iso or .img extension.
       - name: preserve_exec
         envvar: PRESERVE_EXEC
         default: false

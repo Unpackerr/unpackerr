@@ -55,12 +55,16 @@ func TestFolderExcludeSuffixesDirectoryDoesNotExcludeAllArchives(t *testing.T) {
 
 	exclude := folderExcludeSuffixes(&FolderConfig{DisableRecursion: true, ExtractISOs: false})
 
-	if !containsString(exclude, ".iso") {
-		t.Fatalf("expected .iso exclusion when extract_isos=false; got: %v", exclude)
+	if !containsString(exclude, ".iso") || !containsString(exclude, ".img") {
+		t.Fatalf("expected .iso and .img exclusion when extract_isos=false; got: %v", exclude)
 	}
 
 	if containsString(exclude, ".zip") {
 		t.Fatalf("did not expect all archive suffixes for watched folders; got: %v", exclude)
+	}
+
+	if got := folderExcludeSuffixes(&FolderConfig{ExtractISOs: true}); got != nil {
+		t.Fatalf("extract_isos=true excludes %v", got)
 	}
 }
 

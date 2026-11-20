@@ -163,7 +163,8 @@ func folderExcludeSuffixes(cfg *FolderConfig) []string {
 		return nil
 	}
 
-	return []string{".iso"}
+	// .img is a disc image too. Leave it packed with .iso until extract_isos is set.
+	return []string{".iso", ".img"}
 }
 
 func getFileList(path string) []os.FileInfo {

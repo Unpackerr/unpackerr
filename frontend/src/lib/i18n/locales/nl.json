@@ -793,9 +793,9 @@
         "tooltip": "Uit laat ze in een _unpackerred-map naast het archief. Aan classificeert restanten ook met Restactie."
       },
       "extract_isos": {
-        "label": "ISO’s uitpakken",
-        "description": ".iso-bestanden als archieven behandelen.",
-        "tooltip": "Uit negeert ISO-images. Zet dit alleen aan als je ze echt wilt uitpakken."
+        "label": "Schijfimages uitpakken",
+        "description": ".iso- en .img-bestanden als archieven behandelen.",
+        "tooltip": "Uit negeert schijfimages. Zet dit alleen aan als je ze echt wilt uitpakken."
       },
       "preserve_exec": {
         "label": "Uitvoerbits behouden",

@@ -85,7 +85,7 @@ func TestExtractCompletedDownloadNotesWaitingSyncthing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, "syncthing.tmp"), []byte("tmp"), defaultFileMode); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".syncthing.show.r00.tmp"), []byte("tmp"), defaultFileMode); err != nil {
 		t.Fatal(err)
 	}
 

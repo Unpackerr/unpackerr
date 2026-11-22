@@ -65,6 +65,47 @@ func TestSyncthingTempNames(t *testing.T) {
 	}
 }
 
+func TestIsSyncthingTemp(t *testing.T) {
+	t.Parallel()
+
+	// Every name syncthingTempNames builds must be recognized, hashed or not.
+	for _, base := range []string{"show.r01", strings.Repeat("a", 145), strings.Repeat("a", 146)} {
+		for _, temp := range syncthingTempNames(filepath.Join("dir", base)) {
+			if !isSyncthingTemp(filepath.Base(temp)) {
+				t.Errorf("Syncthing temp name not recognized: %q", filepath.Base(temp))
+			}
+		}
+	}
+
+	for _, name := range []string{
+		"sample.tmp",             // plain .tmp content shipped with a download.
+		"show.syncthing.r01.tmp", // prefix not at the start.
+		".syncthing..tmp",        // empty name.
+		"~syncthing~.tmp",        // empty name.
+		".syncthing.show.r01",    // no suffix.
+		".syncthing." + strings.Repeat("a", 146) + ".tmp", // too long: Syncthing would have hashed it.
+	} {
+		if isSyncthingTemp(name) {
+			t.Errorf("not a Syncthing temp name, but recognized: %q", name)
+		}
+	}
+}
+
+func TestSyncthingPlainTmpIsContent(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "a.rar"), 100)
+	writeSized(t, filepath.Join(dir, "Sub", "notes.tmp"), 50) // part of the release, not a sync in progress.
+
+	scan := scanFor(dir)
+	item := &Extract{Path: dir, Size: 150}
+
+	if state := syncthingProgress(item, scan, time.Now()); state != syncDone || scan.temp != "" || scan.have != 150 {
+		t.Fatalf("plain .tmp file: have %d temp %q state %d, want 150, none, done", scan.have, scan.temp, state)
+	}
+}
+
 func TestSyncthingProgress(t *testing.T) {
 	t.Parallel()
 

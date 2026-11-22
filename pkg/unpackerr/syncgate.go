@@ -30,12 +30,23 @@ const (
 	syncthingMaxTempBase   = 160 - len(syncthingUnixPrefix) - len(syncthingTempSuffix)
 )
 
-// isSyncthingTemp reports whether a file name is a temp file of a sync in
-// progress. Every Syncthing temp name ends in .tmp; the check stays as broad as
-// the original one (https://github.com/Unpackerr/unpackerr/issues/235), so other
-// copy tools that use a .tmp suffix are still waited for.
+// isSyncthingTemp reports whether a file name is a Syncthing temp file: one of
+// the two prefixes, then a name of 1 to syncthingMaxTempBase bytes (a longer
+// name is replaced by its 64 byte hash), then the .tmp suffix. Any other .tmp
+// file is ordinary download content, so it counts as data and never holds the
+// item back.
 func isSyncthingTemp(name string) bool {
-	return strings.HasSuffix(name, syncthingTempSuffix)
+	for _, prefix := range []string{syncthingUnixPrefix, syncthingWindowsPrefix} {
+		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, syncthingTempSuffix) {
+			continue
+		}
+
+		if base := len(name) - len(prefix) - len(syncthingTempSuffix); base > 0 && base <= syncthingMaxTempBase {
+			return true
+		}
+	}
+
+	return false
 }
 
 // syncthingTempNames returns the two temp file names Syncthing may use, beside
@@ -119,7 +130,7 @@ const (
 func (u *Unpackerr) syncthingWait(name string, item *Extract, scan *syncScan, now time.Time) bool {
 	scan.singleFile(item.Path)
 
-	switch state := syncthingProgress(item, scan, now); state {
+	switch state := u.lockedSyncthingProgress(item, scan, now); state {
 	case syncTemp:
 		u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, scan.temp)
 	case syncWaiting:
@@ -139,8 +150,18 @@ func (u *Unpackerr) syncthingWait(name string, item *Extract, scan *syncScan, no
 	return true
 }
 
+// lockedSyncthingProgress runs syncthingProgress under History.mu.
+// checkStarrQueue updates item.Size under that lock, and the Sync* fields are
+// item state like any other that a queue snapshot may read.
+func (u *Unpackerr) lockedSyncthingProgress(item *Extract, scan *syncScan, now time.Time) syncState {
+	u.lockHistory()
+	defer u.unlockHistory()
+
+	return syncthingProgress(item, scan, now)
+}
+
 // syncthingProgress turns a scan into one wait decision.
-// Only the main loop calls this; it owns item.Size and the Sync* fields.
+// Caller must hold History.mu: this reads item.Size and writes the Sync* fields.
 func syncthingProgress(item *Extract, scan *syncScan, now time.Time) syncState {
 	// A temp file or a change in finished bytes is progress: restart the stall clock.
 	if scan.temp != "" || item.SyncSeenAt.IsZero() || scan.have != item.SyncSeen {

@@ -168,6 +168,7 @@ func (u *Unpackerr) extractFromHistoryRecord(
 	applyHistoryRestoreDelay(item, rec.DeleteDelay, u.DeleteDelay.Duration)
 	applyHistoryRestoreResp(item, rec, errMsg)
 	applyHistoryRestoreUnpacked(item, rec)
+	applyHistoryRestoreOutputFiles(item)
 	applyHistoryRestoreClock(item, rec.Status, now, stamp, u.RetryDelay.Duration)
 	item.XProg = &ExtractProgress{Extract: item}
 
@@ -189,6 +190,19 @@ func applyHistoryRestoreUnpacked(item *Extract, rec HistoryRecord) {
 
 	item.Unpacked = appendUnique(nil, rec.OrigFiles)
 	item.PreFiles = nil
+}
+
+// applyHistoryRestoreOutputFiles lists the files in a restored item's
+// extracted folders when its row has no such list. The row was written before
+// the list existed. What those folders hold now is taken for output, the way
+// the release that wrote the row treated it. Anything that arrives after this
+// is a delivery.
+func applyHistoryRestoreOutputFiles(item *Extract) {
+	if !hasUnpacked(item) || len(item.OutputFiles) > 0 || item.Resp == nil {
+		return
+	}
+
+	item.OutputFiles = outputFiles(item.Resp, true, nil)
 }
 
 func applyHistoryRestoreDelay(item *Extract, delay string, fallback time.Duration) {

@@ -31,7 +31,10 @@ type Progress struct {
 	// AvgSpeedBps is (completed archive bytes + current have) / extract duration.
 	AvgSpeedBps uint64
 	// ETA is when the current archive should finish, based on AvgSpeedBps.
-	ETA         time.Time
+	ETA time.Time
+	// TempFiles is what a Syncthing extract had in its temp folder each time
+	// an archive finished, relative to that folder. It is nil until then.
+	TempFiles   map[string]struct{}
 	startedAt   time.Time
 	sampleAt    time.Time
 	sampleBytes uint64

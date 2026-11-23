@@ -15,10 +15,12 @@ import (
 )
 
 // syncthingStall is how long a Syncthing item may show no progress, while it is
-// still smaller than the size the Starr app reports, before we stop waiting and
-// extract anyway. Progress is a change in the bytes of finished files, or any
-// Syncthing temp file being present. This keeps a download whose reported size
-// is never reached (ignored or skipped files) from waiting forever.
+// still smaller than the size the Starr app reports, before we extract the files
+// already on disk. Progress is a change in the bytes of finished files, or any
+// Syncthing temp file being present. That covers a download whose reported size
+// is never reached, such as ignored or skipped files. An incomplete archive set
+// the finder can see is not cut off here: it keeps waiting until the volumes
+// arrive or the Starr app drops the download.
 const syncthingStall = 30 * time.Minute
 
 // Syncthing writes each file it is receiving to a temp file next to it and
@@ -132,8 +134,9 @@ const (
 // So wait while any temp file exists, at any depth, and while the bytes on
 // disk are short of the size the Starr app reports. An incomplete archive
 // set also waits when that size is unknown, the stall window has run out,
-// or a retry already has every reported byte. A first attempt that has
-// every reported byte queues without reading headers.
+// or a retry already has every reported byte. That wait has no time limit of
+// its own. A first attempt that has every reported byte queues without
+// reading headers.
 func (u *Unpackerr) syncthingWait(
 	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, now time.Time,
 ) bool {
@@ -144,9 +147,15 @@ func (u *Unpackerr) syncthingWait(
 	switch state {
 	case syncTemp:
 		u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, scan.temp)
+		u.setItemNote(name, item, noteWaitingSyncthing)
+
+		return true
 	case syncWaiting:
 		u.Printf("[%s] Completed item still syncing: %s, %sB of %sB on disk",
 			item.Label(), name, bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size))
+		u.setItemNote(name, item, noteWaitingSyncthing)
+
+		return true
 	case syncStalled, syncUnknown, syncReached:
 		if u.syncthingSetShort(name, item, files, state) {
 			u.setItemNote(name, item, noteWaitingSyncthing)
@@ -162,9 +171,8 @@ func (u *Unpackerr) syncthingWait(
 		return false
 	}
 
-	u.setItemNote(name, item, noteWaitingSyncthing)
-
-	return true
+	// Every named state returns above. A state added later queues.
+	return false
 }
 
 // syncthingSetShort reports whether this wait state must look at archive headers,

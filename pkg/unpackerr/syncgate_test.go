@@ -1,11 +1,13 @@
 package unpackerr
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"hash/crc32"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -198,8 +200,31 @@ func newSyncthingTestItem(t *testing.T, size uint64) (*Unpackerr, *Extract) {
 	dir := t.TempDir()
 	writeSized(t, filepath.Join(dir, "show.rar"), 100) // first volume here, later ones are not.
 
+	return newSyncthingItem(t, dir, size)
+}
+
+func newSyncthingItem(t *testing.T, dir string, size uint64) (*Unpackerr, *Extract) {
+	t.Helper()
+
 	unpack := New()
 	unpack.StartDelay.Duration = 0
+	// A finished archive reports progress on an unbuffered channel. Drain it so
+	// the queue worker can finish and Stop can return.
+	done := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-unpack.progChan:
+			case <-unpack.updates:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	t.Cleanup(func() { close(done) })
+
 	unpack.Xtractr = xtractr.NewQueue(&xtractr.Config{
 		Parallel: 1,
 		Suffix:   suffix,
@@ -441,5 +466,81 @@ func TestExtractCompletedDownloadSyncthingOffQueuesIncompleteSet(t *testing.T) {
 
 	if item.Status != QUEUED {
 		t.Fatalf("syncthing off: status %s, want queued", item.Status)
+	}
+}
+
+// xtractrDir is the module cache copy of golift.io/xtractr, which ships the
+// multivol RAR fixtures CheckVolumes was written against.
+func xtractrDir(t *testing.T) string {
+	t.Helper()
+
+	out, err := exec.CommandContext(context.Background(),
+		"go", "list", "-m", "-f", "{{.Dir}}", "golift.io/xtractr").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := strings.TrimSpace(string(out))
+	if dir == "" {
+		t.Fatal("golift.io/xtractr module dir is empty")
+	}
+
+	return dir
+}
+
+func copyXtractrFixture(t *testing.T, dir, name string) uint64 {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Join(xtractrDir(t), "test_data", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = os.WriteFile(filepath.Join(dir, name), data, defaultFileMode) //nolint:gosec // name is a fixture from this test.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return uint64(len(data))
+}
+
+func TestExtractCompletedDownloadRetryWaitsOnShortRAR(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	size := copyXtractrFixture(t, dir, "multivol.part1.rar")
+	unpack, item := newSyncthingItem(t, dir, size)
+	item.Retries = 1
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("retry with a short RAR set: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+}
+
+func TestExtractCompletedDownloadRetryQueuesWholeRAR(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	var size uint64
+
+	for _, name := range []string{
+		"multivol.part1.rar",
+		"multivol.part2.rar",
+		"multivol.part3.rar",
+		"multivol.part4.rar",
+	} {
+		size += copyXtractrFixture(t, dir, name)
+	}
+
+	unpack, item := newSyncthingItem(t, dir, size)
+	item.Retries = 1
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("retry with a whole RAR set: status %s, want queued", item.Status)
 	}
 }

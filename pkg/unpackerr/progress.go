@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"maps"
 	"time"
 
 	"golift.io/xtractr"
@@ -24,11 +25,24 @@ func resetExtractProgress(item *Extract, archives int) {
 	item.XProg.Extracted = 0
 	item.XProg.Progress = nil
 	item.XProg.Archives = archives
+	item.XProg.TempFiles = nil
 }
 
+// progressUpdateCallback runs in the extract's own goroutine. For a Syncthing
+// item, the last update of each archive also lists the temp folder. The
+// files are still there: they move into the download after the last archive.
+// That list is how the files an extract wrote into a folder are told apart
+// from a file Syncthing adds to that folder right after the move.
 func (u *Unpackerr) progressUpdateCallback(item *Extract) func(xtractr.Progress) {
+	syncthing := item.Syncthing
+
 	return func(prog xtractr.Progress) { // sends update to u.handleProgress() (below)
-		u.progChan <- &ExtractProgress{Progress: &prog, Extract: item}
+		exp := &ExtractProgress{Progress: &prog, Extract: item}
+		if syncthing && prog.Done && prog.XFile != nil {
+			exp.TempFiles = tempFiles(prog.XFile.OutputDir)
+		}
+
+		u.progChan <- exp
 	}
 }
 
@@ -50,6 +64,16 @@ func (u *Unpackerr) handleProgress(exp *ExtractProgress) {
 
 	exp.XProg.Progress = exp.Progress
 	exp.XProg.NoteSpeed(time.Now())
+
+	if exp.TempFiles != nil {
+		// Each source folder is extracted and moved in turn, so the temp
+		// folder starts over. Keep every list.
+		if exp.XProg.TempFiles == nil {
+			exp.XProg.TempFiles = make(map[string]struct{}, len(exp.TempFiles))
+		}
+
+		maps.Copy(exp.XProg.TempFiles, exp.TempFiles)
+	}
 
 	if u.hub != nil && exp.Extract != nil {
 		itemID := exp.Path

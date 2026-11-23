@@ -115,7 +115,12 @@ type Unpackerr struct {
 }
 
 type fileDeleteReq struct {
-	Paths            []string
+	Paths []string
+	// Exact keeps a folder in Paths from being removed with everything in it.
+	// The files in Files that are inside such a folder are deleted, then every
+	// folder in it that is left empty. Anything else in there stays.
+	Exact            bool
+	Files            []string
 	PurgeEmptyParent bool
 	// PurgeEmptyRoot, when set with PurgeEmptyParent, allows purging empty parent dirs
 	// up to and including this path (e.g. the Starr app download folder). Stops above this root.
@@ -314,7 +319,14 @@ func (u *Unpackerr) deleteRequest(input *fileDeleteReq) {
 	}
 
 	u.Debugf("Deleting files: %s", strings.Join(fileList(input.Paths...), ", "))
-	u.DeleteFiles(input.Paths...)
+
+	if input.Exact {
+		paths, folders := exactDeletePaths(input.Paths, input.Files)
+		u.DeleteFiles(paths...)
+		u.removeEmptyFolders(folders)
+	} else {
+		u.DeleteFiles(input.Paths...)
+	}
 
 	if !input.PurgeEmptyParent {
 		return

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -611,5 +612,361 @@ func TestExtractCompletedDownloadRetryQueuesWholeRAR(t *testing.T) {
 
 	if item.Status != QUEUED {
 		t.Fatalf("retry with a whole RAR set: status %s, want queued", item.Status)
+	}
+}
+
+func TestContinuationVolumeHeads(t *testing.T) {
+	t.Parallel()
+
+	tail, isCont := continuationVolume(filepath.Join("dl", "movie.r01"))
+	if !isCont || tail.head != filepath.Join("dl", "movie.rar") || tail.alt != filepath.Join("dl", "movie.r00") {
+		t.Fatalf("r01: continuation %v head %q alt %q", isCont, tail.head, tail.alt)
+	}
+
+	for _, name := range []string{"movie.r00", "movie.part01.rar", "movie.part1.rar", "movie.7z.001", "movie.7z.1000"} {
+		if _, isCont := continuationVolume(filepath.Join("dl", name)); isCont {
+			t.Errorf("%s is a head or not a volume, but was treated as a continuation", name)
+		}
+	}
+
+	tail, isCont = continuationVolume(filepath.Join("dl", "movie.part02.rar"))
+	if !isCont || tail.head != filepath.Join("dl", "movie.part01.rar") {
+		t.Fatalf("part02: continuation %v head %q", isCont, tail.head)
+	}
+
+	tail, isCont = continuationVolume(filepath.Join("dl", "movie.part2.rar"))
+	if !isCont || tail.head != filepath.Join("dl", "movie.part1.rar") {
+		t.Fatalf("part2: continuation %v head %q", isCont, tail.head)
+	}
+
+	tail, isCont = continuationVolume(filepath.Join("dl", "movie.7z.002"))
+	if !isCont || tail.head != filepath.Join("dl", "movie.7z.001") {
+		t.Fatalf("7z.002: continuation %v head %q", isCont, tail.head)
+	}
+}
+
+func TestMissingVolumeHeadSeesAnyPartOneWidth(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	tail, ok := continuationVolume(filepath.Join(dir, "movie.part02.rar"))
+
+	if !ok {
+		t.Fatal("part02 was not a continuation")
+	}
+
+	scan := &syncScan{tails: []volumeTail{tail}}
+	files := xtractr.ArchiveList{dir: {filepath.Join(dir, "movie.part1.rar")}}
+
+	if got, head := missingVolumeHead(scan, files); got != "" || head != "" {
+		t.Fatalf("part1 present: missing %q head %q", got, head)
+	}
+
+	scan.unpacked = newUnpackedSet(&Extract{
+		Syncthing: true,
+		Path:      dir,
+		Unpacked:  []string{filepath.Join(dir, "movie.part1.rar")},
+	})
+	files = nil
+
+	if got, head := missingVolumeHead(scan, files); got != "" || head != "" {
+		t.Fatalf("part1 already extracted: missing %q head %q", got, head)
+	}
+}
+
+// A later volume whose first volume is not on disk holds the item while the
+// download is still changing. After the stall window with no change the
+// archives that are whole get extracted: a release that shipped without its
+// first volume must not wait forever. A first volume that arrives after that
+// is found by the rescan.
+func TestExtractCompletedDownloadWaitsForLaterVolume(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"movie.r01", "movie.part02.rar", "movie.7z.002"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+			writeSized(t, filepath.Join(dir, name), 10)
+
+			// No reported size: only the missing first volume can hold this item.
+			unpack, item := newSyncthingItem(t, dir, 0)
+			now := time.Now()
+			unpack.extractCompletedDownload("Show.Name", now, item)
+			unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall-time.Second), item)
+
+			if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+				t.Fatalf("later volume without its head: status %s note %q, want waiting", item.Status, item.Note)
+			}
+
+			unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+			if item.Status != QUEUED {
+				t.Fatalf("no change for the stall window: status %s note %q, want queued", item.Status, item.Note)
+			}
+		})
+	}
+}
+
+// Every reported byte on disk does not end the wait for a first volume. The
+// folder can hold files the Starr app did not count, and the check reads
+// names only.
+func TestExtractCompletedDownloadWaitsForFirstVolumeWithEveryByte(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+	writeSized(t, filepath.Join(dir, "movie.r01"), 10)
+
+	unpack, item := newSyncthingItem(t, dir, 20)
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("first attempt, later volume without its head: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("no change for the stall window: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
+// A change on disk restarts the wait for a first volume, the same as it
+// restarts the wait for the reported size.
+func TestExtractCompletedDownloadLaterVolumeWaitRestartsOnChange(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+	writeSized(t, filepath.Join(dir, "movie.r01"), 10)
+
+	unpack, item := newSyncthingItem(t, dir, 0)
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	writeSized(t, filepath.Join(dir, "movie.r02"), 10)
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall-time.Second), item)
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("another volume arrived: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(2*syncthingStall-time.Second), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("stall window after the last change: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
+// A retry with every reported byte on disk reads headers, so it also waits
+// for a first volume, and for no longer than the stall window.
+func TestExtractCompletedDownloadRetryWaitsForLaterVolume(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+	writeSized(t, filepath.Join(dir, "movie.r01"), 10)
+
+	unpack, item := newSyncthingItem(t, dir, 20)
+	item.Retries = 1
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("retry, later volume without its head: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("retry, no change for the stall window: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
+// The movie set shows up one volume at a time after subs.zip. Once the first
+// volume is present the volume check takes over. That wait has no cutoff, and
+// the item queues when the set is whole.
+func TestExtractCompletedDownloadQueuesWhenRARSetCompletes(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+	copyXtractrFixture(t, dir, "multivol.part2.rar")
+
+	unpack, item := newSyncthingItem(t, dir, 1<<30)
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("part 2 only: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	copyXtractrFixture(t, dir, "multivol.part1.rar")
+	// Adding the head changes the byte count, so the stall clock starts over.
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Minute), item)
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Minute+2*syncthingStall), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("head present, set still short: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	copyXtractrFixture(t, dir, "multivol.part3.rar")
+	copyXtractrFixture(t, dir, "multivol.part4.rar")
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Minute+2*syncthingStall), item)
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Minute+3*syncthingStall), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("whole set: status %s, want queued", item.Status)
+	}
+}
+
+func TestExtractCompletedDownloadRescansLateArchive(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	zip := filepath.Join(dir, "subs.zip")
+	writeSized(t, zip, 20)
+
+	unpack, item := newSyncthingItem(t, dir, 40)
+	item.Status = EXTRACTED
+	item.Unpacked = []string{zip}
+	item.Resp = &xtractr.Response{
+		NewFiles: []string{filepath.Join(dir, "subs.srt")},
+		Archives: xtractr.ArchiveList{dir: {zip}},
+		Size:     8,
+	}
+
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != EXTRACTED {
+		t.Fatalf("nothing new yet: status %s, want extracted", item.Status)
+	}
+
+	movie := filepath.Join(dir, "movie.zip")
+	writeSized(t, movie, 20)
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("late archive: status %s, want queued", item.Status)
+	}
+
+	assertLateExtractMerged(t, unpack, item, dir, movie, now)
+}
+
+func assertLateExtractMerged(t *testing.T, unpack *Unpackerr, item *Extract, dir, movie string, now time.Time) {
+	t.Helper()
+
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:     false,
+		X:        &xtractr.Xtract{Name: "Show.Name", Path: dir},
+		Archives: xtractr.ArchiveList{dir: {movie}},
+		Started:  now,
+	})
+
+	if item.Status != EXTRACTING || len(item.Resp.NewFiles) != 1 {
+		t.Fatalf("start of the second extract: status %s files %v", item.Status, item.Resp.NewFiles)
+	}
+
+	movieFile := filepath.Join(dir, "movie.mkv")
+	unpack.handleXtractrCallback(&xtractr.Response{
+		Done:     true,
+		X:        &xtractr.Xtract{Name: "Show.Name", Path: dir},
+		NewFiles: []string{movieFile},
+		Archives: xtractr.ArchiveList{dir: {movie}},
+		Size:     11,
+		Started:  now,
+	})
+
+	subs := filepath.Join(dir, "subs.srt")
+	if item.Status != EXTRACTED || item.Resp == nil || item.Resp.Size != 19 || len(item.Resp.NewFiles) != 2 ||
+		item.Resp.NewFiles[0] != subs || item.Resp.NewFiles[1] != movieFile || item.Resp.Archives.Count() != 2 {
+		t.Fatalf("merged response: status %s resp %+v", item.Status, item.Resp)
+	}
+
+	if want := []string{filepath.Join(dir, "subs.zip"), movie}; !slices.Equal(item.Unpacked, want) {
+		t.Fatalf("unpacked archives: %v, want %v", item.Unpacked, want)
+	}
+}
+
+func TestRescanDoesNotWaitForExtractedVolumeHead(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	head := filepath.Join(dir, "movie.part01.rar")
+	writeSized(t, head, 10)
+	writeSized(t, filepath.Join(dir, "movie.part02.rar"), 10)
+	writeSized(t, filepath.Join(dir, "extras.zip"), 10)
+
+	unpack, item := newSyncthingItem(t, dir, 0)
+	item.Status = EXTRACTED
+	item.Unpacked = []string{head}
+	item.Resp = &xtractr.Response{
+		Archives: xtractr.ArchiveList{dir: {head}},
+		NewFiles: []string{filepath.Join(dir, "movie.mkv")},
+	}
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("new zip beside an already extracted set: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
+func TestExtractCompletedDownloadsRescansWhileStillQueued(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	dir := t.TempDir()
+	zip := filepath.Join(dir, "subs.zip")
+	writeSized(t, zip, 20)
+
+	unpack, item := newSyncthingItem(t, dir, 40)
+	item.URL = url
+	item.Status = EXTRACTED
+	item.Unpacked = []string{zip}
+	item.Resp = &xtractr.Response{
+		NewFiles: []string{filepath.Join(dir, "subs.srt")},
+		Archives: xtractr.ArchiveList{dir: {zip}},
+	}
+
+	server := &SonarrConfig{
+		URL:       url,
+		Protocols: defaultProtocol,
+		Queue:     &sonarr.Queue{},
+	}
+	unpack.Sonarr = instanceMap([]*SonarrConfig{server})
+	unpack.Sonarr["0"].polled = true
+
+	now := time.Now()
+	unpack.extractCompletedDownloads(now)
+
+	if item.Status != EXTRACTED {
+		t.Fatalf("imported item: status %s, want extracted", item.Status)
+	}
+
+	item.Syncthing = false
+	server.Queue.Records = []*sonarr.QueueRecord{{
+		Title: "Show.Name", Status: "completed", Protocol: starr.Protocol("torrent"),
+	}}
+
+	writeSized(t, filepath.Join(dir, "movie.zip"), 20)
+	unpack.extractCompletedDownloads(now)
+
+	if item.Status != EXTRACTED {
+		t.Fatalf("syncthing off: status %s, want extracted", item.Status)
+	}
+
+	item.Syncthing = true
+
+	unpack.extractCompletedDownloads(now)
+
+	if item.Status != QUEUED {
+		t.Fatalf("still in the Starr queue: status %s, want queued", item.Status)
 	}
 }

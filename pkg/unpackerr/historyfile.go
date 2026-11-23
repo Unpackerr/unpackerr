@@ -68,6 +68,8 @@ type HistoryRecord struct {
 	OrigFiles      []string            `json:"origFiles,omitempty"`  // Archive paths; folder delete_orig after a restart.
 	ExtraFiles     []string            `json:"extraFiles,omitempty"` // Nested extras; display + restore Resp.Extras.
 	PreFiles       []string            `json:"preFiles,omitempty"`
+	Unpacked       []string            `json:"unpacked,omitempty"`    // Unpacked archives; a Syncthing rescan skips them.
+	OutputFiles    []string            `json:"outputFiles,omitempty"` // Files in extracted folders; skipped the same way.
 	Forgotten      bool                `json:"forgotten,omitempty"`
 	IDs            map[string]any      `json:"ids,omitempty"` // Starr hook metadata (title, downloadId, …).
 	Event          string              `json:"event,omitempty"`
@@ -325,6 +327,8 @@ func historyFromExtract(itemID string, item *Extract) HistoryRecord {
 		MaxBytes:       item.MaxBytes,
 		NoRetry:        item.NoRetry,
 		PreFiles:       preFileKeys(item.PreFiles),
+		Unpacked:       slices.Clone(item.Unpacked),
+		OutputFiles:    slices.Clone(item.OutputFiles),
 		IDs:            cloneIDs(item.IDs),
 		Event:          item.Event,
 	}

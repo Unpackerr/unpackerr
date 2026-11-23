@@ -38,6 +38,32 @@ func TestExtractCompletedDownloadNotesNoArchives(t *testing.T) {
 	}
 }
 
+// The search that decides whether to queue leaves out the types the extract
+// leaves out. A download that holds only those is not queued for an extract
+// that would find nothing and fail.
+func TestExtractCompletedDownloadSkipsExcludedTypes(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "album.cue"), 20)
+	writeSized(t, filepath.Join(dir, "disc.iso"), 20)
+
+	unpack, item := newSyncthingItem(t, dir, 0)
+	item.Syncthing = false
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != WAITING || item.Note != noteNoExtractable {
+		t.Fatalf("cue sheet and disc image: status %s note %q, want waiting with a note", item.Status, item.Note)
+	}
+
+	item.SplitFlac = true
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("cue sheet with split_flac: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
 func TestExtractCompletedDownloadKeepsStartDelayQuiet(t *testing.T) {
 	t.Parallel()
 

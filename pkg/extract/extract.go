@@ -50,8 +50,20 @@ type Extract struct {
 	// extraction to their Lstat info (nil when the stat failed). Dest folders
 	// come from FindCompressedFiles so nested archive dirs are included.
 	// Snapshot once per queue item; retries must not fold in leftovers that
-	// failed to clear.
+	// failed to clear. A finished Syncthing extract drops it: the item may be
+	// extracted again for a late archive, and that extract needs a snapshot
+	// that holds this one's output.
 	PreFiles map[string]os.FileInfo
+	// Unpacked lists the archives that finished extracts already unpacked for
+	// a Syncthing item: cleaned paths, every volume. A later search skips
+	// them in every status, so a retry or a late archive never unpacks one
+	// twice. It is emptied when the extracted files are deleted.
+	Unpacked []string
+	// OutputFiles lists the files inside the folders those extracts moved
+	// into the download, as they were when each extract ended. Resp.NewFiles
+	// names such a folder once. A file Syncthing adds to it later is not
+	// listed here, so it still counts as delivered and can be extracted.
+	OutputFiles []string
 	// NoRetry is set for limit errors, remnant_action=off, or exhausted retries.
 	// EXTRACTFAILED must not re-enter the retry loop or be promoted to DELETED
 	// (that bounces a still-completed Starr item back to WAITING).

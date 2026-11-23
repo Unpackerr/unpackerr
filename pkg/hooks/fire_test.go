@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -58,8 +58,9 @@ func TestFireWebhook(t *testing.T) {
 func TestFireCmdhook(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
+	echo, err := exec.LookPath("echo")
+	if err != nil {
+		t.Skip("echo not found in PATH")
 	}
 
 	payload := SamplePayload()
@@ -69,7 +70,7 @@ func TestFireCmdhook(t *testing.T) {
 
 	hook := &Config{
 		Name:    "echo",
-		Command: "/bin/echo ok",
+		Command: echo + " ok",
 		Timeout: cnfg.Duration{Duration: 2 * time.Second},
 	}
 

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -666,17 +666,32 @@ func TestConfigTestWebhookUnknownEvent(t *testing.T) {
 	}
 }
 
+func echoPath(t *testing.T) string {
+	t.Helper()
+
+	echo, err := exec.LookPath("echo")
+	if err != nil {
+		t.Skip("echo not found in PATH")
+	}
+
+	return echo
+}
+
 func TestConfigTestCmdhook(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
+	unpack := testAuthUnpackerr(t)
+
+	body, err := json.Marshal(map[string]string{
+		"command": echoPath(t),
+		"event":   "waiting",
+		"timeout": "2s",
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	unpack := testAuthUnpackerr(t)
-	body := `{"command":"/bin/echo","event":"waiting","timeout":"2s"}`
-
-	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", body, putKey(unpack))
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", string(body), putKey(unpack))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("cmdhook %d %s", rec.Code, rec.Body.String())
 	}
@@ -687,12 +702,8 @@ func TestConfigTestCmdhook(t *testing.T) {
 func TestConfigTestCmdhookFilepathCommand(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
-	}
-
 	cmdFile := filepath.Join(t.TempDir(), "hook.cmd")
-	if err := os.WriteFile(cmdFile, []byte("/bin/echo\n"), 0o600); err != nil {
+	if err := os.WriteFile(cmdFile, []byte(echoPath(t)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

@@ -1,9 +1,9 @@
 module github.com/Unpackerr/unpackerr
 
-go 1.27.1
+go 1.27.4
 
 require (
-	code.cloudfoundry.org/bytefmt v0.98.0
+	code.cloudfoundry.org/bytefmt v0.99.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/coder/websocket v1.8.15
 	github.com/dromara/carbon/v2 v2.7.1
@@ -24,7 +24,7 @@ require (
 	golift.io/rotatorr v0.1.0
 	golift.io/starr v1.4.1
 	golift.io/version v0.0.2
-	golift.io/xtractr v0.9.0
+	golift.io/xtractr v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -40,23 +40,24 @@ require (
 	github.com/cavaliergopher/rpm v1.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dchest/jsmin v1.0.0 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/icza/bitio v1.1.0 // indirect
 	github.com/josephspurrier/goversioninfo v1.7.0 // indirect
-	github.com/klauspost/compress v1.20.4 // indirect
-	github.com/lestrrat-go/strftime v1.2.0 // indirect
+	github.com/klauspost/compress v1.20.5 // indirect
+	github.com/lestrrat-go/strftime v1.2.1 // indirect
 	github.com/mewkiz/flac v1.0.14 // indirect
 	github.com/mewkiz/pkg v0.0.0-20260703220044-4fb89b18cc87 // indirect
 	github.com/mewpkg/term v0.0.0-20241026122259-37a80af23985 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode/v2 v2.4.6 // indirect
+	github.com/pandatix/go-abnf v0.5.5 // indirect
 	github.com/peterebden/ar v0.0.0-20241106141004-20dc11b778e8 // indirect
-	github.com/pierrec/lz4/v4 v4.1.33 // indirect
+	github.com/pierrec/lz4/v4 v4.1.34 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.72.0 // indirect
-	github.com/prometheus/procfs v0.22.0 // indirect
+	github.com/prometheus/common v0.74.0 // indirect
+	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/randall77/makefat v0.0.0-20260406194835-1b91746796b7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -64,14 +65,14 @@ require (
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
-	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
+	go4.org v0.0.0-20261028031214-ed6929a230fe // indirect
 	golang.org/x/crypto/openpgp v0.1.0-deprecated // indirect
-	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/image v0.48.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/text v0.44.0 // indirect
 	golift.io/ape v0.2.0 // indirect
 	golift.io/asar v0.1.0 // indirect
-	golift.io/udf v0.2.0 // indirect
+	golift.io/udf v0.2.1 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 

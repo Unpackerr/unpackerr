@@ -2,7 +2,9 @@ package unpackerr
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
+	"hash/crc32"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,7 +103,7 @@ func TestSyncthingPlainTmpIsContent(t *testing.T) {
 	scan := scanFor(dir)
 	item := &Extract{Path: dir, Size: 150}
 
-	if state := syncthingProgress(item, scan, time.Now()); state != syncDone || scan.temp != "" || scan.have != 150 {
+	if state := syncthingProgress(item, scan, time.Now()); state != syncReached || scan.temp != "" || scan.have != 150 {
 		t.Fatalf("plain .tmp file: have %d temp %q state %d, want 150, none, done", scan.have, scan.temp, state)
 	}
 }
@@ -147,12 +149,12 @@ func TestSyncthingProgress(t *testing.T) {
 	writeSized(t, filepath.Join(dir, "Sub", "a.r01"), 100)
 
 	scan = scanFor(dir)
-	if state := syncthingProgress(item, scan, later.Add(2*syncthingStall)); state != syncDone || scan.have != 300 {
+	if state := syncthingProgress(item, scan, later.Add(2*syncthingStall)); state != syncReached || scan.have != 300 {
 		t.Fatalf("complete: have %d state %d, want 300 done", scan.have, state)
 	}
 
-	if state := syncthingProgress(&Extract{Path: dir}, scanFor(dir), start); state != syncDone {
-		t.Fatalf("unknown size: state %d, want done", state)
+	if state := syncthingProgress(&Extract{Path: dir}, scanFor(dir), start); state != syncUnknown {
+		t.Fatalf("unknown size: state %d, want unknown", state)
 	}
 }
 
@@ -163,7 +165,9 @@ func TestSyncthingProgressSingleFile(t *testing.T) {
 	writeSized(t, file, 50)
 
 	scan := scanFor(file)
-	if state := syncthingProgress(&Extract{Path: file, Size: 50}, scan, time.Now()); state != syncDone || scan.have != 50 {
+	state := syncthingProgress(&Extract{Path: file, Size: 50}, scan, time.Now())
+
+	if state != syncReached || scan.have != 50 {
 		t.Fatalf("single file download: have %d state %d, want 50 done", scan.have, state)
 	}
 
@@ -307,5 +311,135 @@ func TestRestoredSyncthingItemGetsSizeBeforeExtract(t *testing.T) {
 
 	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
 		t.Fatalf("after the poll: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+}
+
+// write7zVolume writes a 32-byte .7z.001 start header. recorded is the set
+// length the header claims. CheckVolumes treats a claim past those 32 bytes
+// as a missing volume, and a claim of 32 as a whole set.
+func write7zVolume(t *testing.T, path string, recorded uint64) {
+	t.Helper()
+
+	const headerLen = 32
+
+	if recorded < headerLen {
+		t.Fatalf("7z volume shorter than a start header: recorded %d", recorded)
+	}
+
+	header := make([]byte, headerLen)
+	copy(header, []byte("7z\xbc\xaf\x27\x1c"))
+	binary.LittleEndian.PutUint64(header[20:28], recorded-headerLen)
+	binary.LittleEndian.PutUint32(header[8:12], crc32.ChecksumIEEE(header[12:]))
+
+	if err := os.WriteFile(path, header, defaultFileMode); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExtractCompletedDownloadStallsOnIncompleteSet(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 1000)
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 200)
+
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item) // starts the stall clock.
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("stalled incomplete set: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(2*syncthingStall), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("still stalled: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+}
+
+func TestExtractCompletedDownloadStallsOnWholeSet(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 1000)
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 32)
+
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("stalled whole set: status %s, want queued", item.Status)
+	}
+}
+
+func TestExtractCompletedDownloadUnknownSizeIncompleteSet(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 0)
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 200)
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("unknown size, incomplete set: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+}
+
+func TestExtractCompletedDownloadFirstAttemptSkipsSetCheck(t *testing.T) {
+	t.Parallel()
+
+	// show.rar is 100 bytes and the volume header is 32, so the reported size is on disk.
+	unpack, item := newSyncthingTestItem(t, 132)
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 200)
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("first attempt with every byte: status %s, want queued", item.Status)
+	}
+}
+
+func TestExtractCompletedDownloadRetryWaitsOnLeftoverBytes(t *testing.T) {
+	t.Parallel()
+
+	// The leftover file is what makes the byte count reach the reported size.
+	unpack, item := newSyncthingTestItem(t, 182)
+	item.Retries = 1
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 200)
+	writeSized(t, filepath.Join(item.Path, "Show.S01E01.mkv"), 50)
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("retry with leftover bytes: status %s note %q, want waiting for syncthing", item.Status, item.Note)
+	}
+}
+
+func TestExtractCompletedDownloadRetryQueuesWholeSet(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 132)
+	item.Retries = 1
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 32)
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("retry with a whole set: status %s, want queued", item.Status)
+	}
+}
+
+func TestExtractCompletedDownloadSyncthingOffQueuesIncompleteSet(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 132)
+	item.Syncthing = false
+	write7zVolume(t, filepath.Join(item.Path, "show.7z.001"), 200)
+
+	unpack.extractCompletedDownload("Show.Name", time.Now(), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("syncthing off: status %s, want queued", item.Status)
 	}
 }

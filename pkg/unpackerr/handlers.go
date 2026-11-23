@@ -170,7 +170,7 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
-	if item.Syncthing && u.syncthingWait(name, item, scan, now) {
+	if item.Syncthing && u.syncthingWait(name, item, scan, files, now) {
 		return
 	}
 

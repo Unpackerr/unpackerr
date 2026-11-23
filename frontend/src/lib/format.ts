@@ -92,6 +92,7 @@ const ERROR_PHRASE: Record<string, string> = {
   'no compressed files found': 'errors.NoCompressedFiles',
   'no extractable files': 'errors.NoExtractableFiles',
   'waiting for syncthing': 'errors.WaitingSyncthing',
+  'waiting for command hook': 'errors.WaitingGate',
   'interrupted by restart': 'errors.InterruptedRestart',
   'unknown archive file type': 'errors.UnknownArchiveType',
   'archived file checksum mismatch': 'errors.Checksum',

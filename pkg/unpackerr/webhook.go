@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"runtime"
@@ -30,10 +31,46 @@ func (u *Unpackerr) runAllHooks(itemID string, item, live *Extract) {
 
 	for _, entry := range u.cmdhookEntries() {
 		hook := entry.Val
-		if hook.HasEvent(item.Status) && !hook.Excluded(item.App, item.Name) {
-			u.queueHook(itemID, entry.Key, live, &hooks.Item{Config: hook, Payload: payload})
+		if hook.Gate || !hook.HasEvent(item.Status) || hook.Excluded(item.App, item.Name) {
+			continue
 		}
+
+		u.queueHook(itemID, entry.Key, live, &hooks.Item{Config: hook, Payload: payload})
 	}
+}
+
+// commandGateWaiting runs gating command hooks before a Starr download is queued.
+// Exit 75 holds the item. Any other failure is logged and does not hold it.
+func (u *Unpackerr) commandGateWaiting(name string, item *Extract) bool {
+	payload := u.hookPayload(item)
+
+	for _, entry := range u.cmdhookEntries() {
+		hook := entry.Val
+		if hook == nil || !hook.Gate || hook.Excluded(item.App, item.Name) {
+			continue
+		}
+
+		err := hooks.RunSync(hook, payload)
+		if err == nil {
+			continue
+		}
+
+		label := hook.Name
+		if label == "" {
+			label = entry.Key
+		}
+
+		if errors.Is(err, hooks.ErrGateNotReady) {
+			u.Printf("[%s] Completed item still waiting: %s, command hook %s is not ready", item.Label(), name, label)
+			u.setItemNote(name, item, noteWaitingGate)
+
+			return true
+		}
+
+		u.Errorf("[%s] Command hook %s: %v", item.Label(), label, err)
+	}
+
+	return false
 }
 
 func (u *Unpackerr) hookExtras() (map[string]string, HookTitles) {

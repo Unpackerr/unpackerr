@@ -3,6 +3,7 @@ package hooks
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,10 @@ import (
 
 	"golift.io/cnfg"
 )
+
+// gateNotReadyExit is the command exit code that means "not yet".
+// Any other non-zero exit, or a timeout, is not an opinion.
+const gateNotReadyExit = 75
 
 func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) error {
 	out, err := runCmd(context.Background(), hook, payload)
@@ -89,4 +94,29 @@ func runCmd(ctx context.Context, hook *Config, payload *Payload) (*bytes.Buffer,
 	}
 
 	return &out, nil
+}
+
+// RunSync runs a command hook in the caller's goroutine, bounded by the hook
+// timeout. Exit 0 returns nil. Exit 75 returns ErrGateNotReady. Any other
+// exit, a timeout, or a spawn error is returned as-is.
+func RunSync(hook *Config, payload *Payload) error {
+	if hook == nil {
+		return ErrNilConfig
+	}
+
+	out, err := runCmd(context.Background(), hook, payload)
+	if err == nil {
+		return nil
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == gateNotReadyExit {
+		if text := strings.TrimSpace(out.String()); text != "" {
+			return fmt.Errorf("%w: %s", ErrGateNotReady, text)
+		}
+
+		return ErrGateNotReady
+	}
+
+	return err
 }

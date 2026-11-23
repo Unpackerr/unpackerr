@@ -564,6 +564,12 @@ passwords = []
 # name = ""
 ## Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
 # shell = false
+## When true, this hook is not an event hook. Unpackerr runs it
+## before queueing a Starr download and waits up to the timeout.
+## Exit 0 means ready. Exit 75 means not yet, and the download is
+## tried again on the next poll. Any other exit, or a timeout, does
+## not hold the download.
+# gate = false
 ## Do not log command's output.
 # silent = false
 ## List of event ids to run command for, [0] for all.
@@ -575,4 +581,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 23 NOV 2026 00:42 UTC
+## => Content Auto Generated, 23 NOV 2026 02:30 UTC

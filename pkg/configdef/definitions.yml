@@ -1306,6 +1306,17 @@ sections:
         recommend: *BOOLEAN
         short: Run command inside a shell.
         desc: Runs the command inside /bin/sh ('nix) or cmd.exe (Windows).
+      - name: gate
+        envvar: GATE
+        default: false
+        recommend: *BOOLEAN
+        short: Hold the queue until this command exits 0.
+        desc: |
+          When true, this hook is not an event hook. Unpackerr runs it
+          before queueing a Starr download and waits up to the timeout.
+          Exit 0 means ready. Exit 75 means not yet, and the download is
+          tried again on the next poll. Any other exit, or a timeout, does
+          not hold the download.
       - name: silent
         envvar: SILENT
         default: false

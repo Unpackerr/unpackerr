@@ -255,8 +255,8 @@ func (u *Unpackerr) logCmdhook(printf configLine) {
 	}
 
 	for _, hook := range cmds {
-		printf("%s: %s, timeout: %v, silent: %v, events: %v, shell: %v, cmd: %s",
-			prefix, hook.Name, hook.Timeout, hook.Silent, hooks.LogEvents(hook.Events), hook.Shell, hook.Command)
+		printf("%s: %s, timeout: %v, silent: %v, events: %v, shell: %v, gate: %v, cmd: %s",
+			prefix, hook.Name, hook.Timeout, hook.Silent, hooks.LogEvents(hook.Events), hook.Shell, hook.Gate, hook.Command)
 	}
 }
 

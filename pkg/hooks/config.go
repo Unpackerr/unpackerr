@@ -23,11 +23,13 @@ var (
 	ErrUnknownEvent  = errors.New("unknown extract event")
 	ErrWebhookNoURL  = errors.New("webhook without a URL configured; fix it")
 	ErrCmdhookNoCmd  = errors.New("cmdhook without a command configured; fix it")
-	ErrNilConfig     = errors.New("nil config entry")
-	ErrMessageGone   = errors.New("previous message is gone")
-	ErrHeaderName    = errors.New("webhook header name must be letters, digits, underscore, or hyphen")
-	ErrHeaderValue   = errors.New("webhook header value cannot contain a newline")
-	ErrHeaderDup     = errors.New("duplicate webhook header name")
+	// ErrGateNotReady is a gating command hook exiting 75: the download is not ready yet.
+	ErrGateNotReady = errors.New("command hook is not ready")
+	ErrNilConfig    = errors.New("nil config entry")
+	ErrMessageGone  = errors.New("previous message is gone")
+	ErrHeaderName   = errors.New("webhook header name must be letters, digits, underscore, or hyphen")
+	ErrHeaderValue  = errors.New("webhook header value cannot contain a newline")
+	ErrHeaderDup    = errors.New("duplicate webhook header name")
 )
 
 // Logger is the logging surface hooks need from the daemon.
@@ -42,23 +44,27 @@ type HeaderMap = map[string]string
 
 // Config defines a webhook or command hook.
 type Config struct {
-	Name       string        `json:"name"         toml:"name"          xml:"name"                    yaml:"name"`
-	URL        string        `json:"url"          toml:"url"           xml:"url,omitempty"           yaml:"url"`
-	Command    string        `json:"command"      toml:"command"       xml:"command,omitempty"       yaml:"command"`
-	CType      string        `json:"contentType"  toml:"content_type"  xml:"content_type,omitempty"  yaml:"contentType"`
-	TmplPath   string        `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
-	TempName   string        `json:"template"     toml:"template"      xml:"template,omitempty"      yaml:"template"`
-	Timeout    cnfg.Duration `json:"timeout"      toml:"timeout"       xml:"timeout"                 yaml:"timeout"`
-	Shell      bool          `json:"shell"        toml:"shell"         xml:"shell"                   yaml:"shell"`
-	IgnoreSSL  bool          `json:"ignoreSsl"    toml:"ignore_ssl"    xml:"ignore_ssl,omitempty"    yaml:"ignoreSsl"`
-	Silent     bool          `json:"silent"       toml:"silent"        xml:"silent"                  yaml:"silent"`
-	Events     Statuses      `json:"events"       toml:"events"        xml:"events"                  yaml:"events"`
-	Exclude    StringSlice   `json:"exclude"      toml:"exclude"       xml:"exclude"                 yaml:"exclude"`
-	Nickname   string        `json:"nickname"     toml:"nickname"      xml:"nickname,omitempty"      yaml:"nickname"`
-	Token      string        `json:"token"        toml:"token"         xml:"token,omitempty"         yaml:"token"`
-	Channel    string        `json:"channel"      toml:"channel"       xml:"channel,omitempty"       yaml:"channel"`
-	Update     *bool         `json:"update"       toml:"update"        xml:"update,omitempty"        yaml:"update"`
-	Headers    HeaderMap     `json:"headers"      toml:"headers"       xml:"headers,omitempty"       yaml:"headers"`
+	Name     string        `json:"name"         toml:"name"          xml:"name"                    yaml:"name"`
+	URL      string        `json:"url"          toml:"url"           xml:"url,omitempty"           yaml:"url"`
+	Command  string        `json:"command"      toml:"command"       xml:"command,omitempty"       yaml:"command"`
+	CType    string        `json:"contentType"  toml:"content_type"  xml:"content_type,omitempty"  yaml:"contentType"`
+	TmplPath string        `json:"templatePath" toml:"template_path" xml:"template_path,omitempty" yaml:"templatePath"`
+	TempName string        `json:"template"     toml:"template"      xml:"template,omitempty"      yaml:"template"`
+	Timeout  cnfg.Duration `json:"timeout"      toml:"timeout"       xml:"timeout"                 yaml:"timeout"`
+	Shell    bool          `json:"shell"        toml:"shell"         xml:"shell"                   yaml:"shell"`
+	// Gate runs this command hook synchronously before a Starr download is
+	// queued. It is not an event hook. Exit 0 is ready, exit 75 is not yet,
+	// and any other exit or a timeout leaves the decision to the disk gate.
+	Gate       bool        `json:"gate"      toml:"gate"       xml:"gate"                 yaml:"gate"`
+	IgnoreSSL  bool        `json:"ignoreSsl" toml:"ignore_ssl" xml:"ignore_ssl,omitempty" yaml:"ignoreSsl"`
+	Silent     bool        `json:"silent"    toml:"silent"     xml:"silent"               yaml:"silent"`
+	Events     Statuses    `json:"events"    toml:"events"     xml:"events"               yaml:"events"`
+	Exclude    StringSlice `json:"exclude"   toml:"exclude"    xml:"exclude"              yaml:"exclude"`
+	Nickname   string      `json:"nickname"  toml:"nickname"   xml:"nickname,omitempty"   yaml:"nickname"`
+	Token      string      `json:"token"     toml:"token"      xml:"token,omitempty"      yaml:"token"`
+	Channel    string      `json:"channel"   toml:"channel"    xml:"channel,omitempty"    yaml:"channel"`
+	Update     *bool       `json:"update"    toml:"update"     xml:"update,omitempty"     yaml:"update"`
+	Headers    HeaderMap   `json:"headers"   toml:"headers"    xml:"headers,omitempty"    yaml:"headers"`
 	client     *http.Client
 	fails      uint
 	posts      uint
@@ -238,6 +244,7 @@ func CloneList(src []*Config) []*Config {
 			TempName:  hook.TempName,
 			Timeout:   hook.Timeout,
 			Shell:     hook.Shell,
+			Gate:      hook.Gate,
 			IgnoreSSL: hook.IgnoreSSL,
 			Silent:    hook.Silent,
 			Events:    append(Statuses(nil), hook.Events...),

@@ -212,6 +212,7 @@
       template: '',
       timeout: '10s',
       shell: false,
+      gate: false,
       ignoreSsl: false,
       silent: false,
       events: [],
@@ -238,6 +239,7 @@
       url: applied.url,
       headers: applied.headers,
       update: h?.update ?? true,
+      gate: h?.gate ?? false,
     }
   }
 
@@ -820,6 +822,18 @@
                 original={prev?.silent}
                 disabled={!canWrite}
                 envVar={envField(envPrefix, slug, 'SILENT')}
+              />
+            </Col>
+            <Col md="4">
+              <Input
+                id={`${section}-${row.id}-gate`}
+                helpKey="config.hooks.gate"
+                type="select"
+                label={$_('config.hooks.gate.label')}
+                bind:value={hook.gate}
+                original={prev?.gate}
+                disabled={!canWrite}
+                envVar={envField(envPrefix, slug, 'GATE')}
               />
             </Col>
           {:else}

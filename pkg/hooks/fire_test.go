@@ -5,6 +5,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -55,12 +58,43 @@ func TestFireWebhook(t *testing.T) {
 	}
 }
 
+func echoCommand(t *testing.T) string {
+	t.Helper()
+
+	// runCmd splits the command with strings.Fields, so a path like
+	// "C:\Program Files\Git\usr\bin\echo.exe" becomes "C:\Program".
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "echo.cmd")
+		if strings.ContainsAny(path, " \t") {
+			t.Skip("command hook tests need a temp path without spaces")
+		}
+
+		if err := os.WriteFile(path, []byte("@echo ok\r\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		return path
+	}
+
+	shell, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh not found in PATH")
+	}
+
+	path := filepath.Join(t.TempDir(), "echo.sh")
+	if strings.ContainsAny(shell, " \t") || strings.ContainsAny(path, " \t") {
+		t.Skip("command hook tests need paths without spaces")
+	}
+
+	if err := os.WriteFile(path, []byte("printf '%s\\n' ok\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	return shell + " " + path
+}
+
 func TestFireCmdhook(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
-	}
 
 	payload := SamplePayload()
 	if err := PrepareSample(payload, extract.QUEUED); err != nil {
@@ -69,7 +103,7 @@ func TestFireCmdhook(t *testing.T) {
 
 	hook := &Config{
 		Name:    "echo",
-		Command: "/bin/echo ok",
+		Command: echoCommand(t),
 		Timeout: cnfg.Duration{Duration: 2 * time.Second},
 	}
 

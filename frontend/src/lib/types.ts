@@ -166,6 +166,8 @@ export interface HistoryRecord {
   origFiles?: string[]
   extraFiles?: string[]
   preFiles?: string[]
+  unpacked?: string[]
+  outputFiles?: string[]
   forgotten?: boolean
   ids?: Record<string, unknown>
   event?: 'fsnotify' | 'polling'

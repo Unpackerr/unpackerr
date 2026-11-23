@@ -290,6 +290,54 @@ func TestRescanIgnoresVolumeNamesInOutput(t *testing.T) {
 	}
 }
 
+// An extract can move a whole folder into the download. The files that were
+// in it then are output. An archive Syncthing delivers into that folder later
+// is a late archive like any other.
+func TestRescanTakesArchiveDeliveredIntoExtractedFolder(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	pack, late := filepath.Join(dir, "pack.zip"), filepath.Join(dir, "Sub", "late.zip")
+	writeZip(t, pack, map[string]string{"Sub/clip.txt": "clip", "Sub/disc.r01": "volume"})
+
+	unpack, item := newRescanItem(t, dir)
+	now := time.Now()
+	rescanPass(t, unpack, item, now)
+
+	want := []string{filepath.Join(dir, "Sub", "clip.txt"), filepath.Join(dir, "Sub", "disc.r01")}
+	if got := slices.Sorted(slices.Values(item.OutputFiles)); item.Status != EXTRACTED || !slices.Equal(got, want) {
+		t.Fatalf("first extract: status %s output files %v, want %v", item.Status, got, want)
+	}
+
+	writeZip(t, late, map[string]string{"late.txt": "late"})
+
+	if count := rescanPass(t, unpack, item, now); count != 1 || item.Status != EXTRACTED {
+		t.Fatalf("archive delivered into an extracted folder: %d archives extracted, status %s note %q, want 1",
+			count, item.Status, item.Note)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "Sub", "late.txt")); err != nil {
+		t.Fatalf("late archive was not extracted: %v", err)
+	}
+
+	var delivered uint64
+
+	for _, path := range []string{pack, late} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		delivered += uint64(max(info.Size(), 0))
+	}
+
+	files, scan := findDownloadArchives(item)
+	if len(files) != 0 || len(scan.tails) != 0 || scan.have != delivered {
+		t.Fatalf("search after both extracts: archives %v, volumes %v, %d bytes counted, want only the %d delivered",
+			files, scan.tails, scan.have, delivered)
+	}
+}
+
 // The search that decides whether to queue uses the extract's own list of
 // archive types. A file the extract leaves alone must not queue an extract
 // that then finds nothing to do.
@@ -629,6 +677,52 @@ func TestRetryWithNothingNewReturnsToExtracted(t *testing.T) {
 	}
 }
 
+// A late archive that failed and then left the folder ends its extract, and
+// the snapshot taken for it. A file Syncthing delivers after that belongs to
+// the download: the next late archive must not take it for a leftover.
+func TestFailedLateArchiveThatLeavesEndsItsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	movie, notes := filepath.Join(dir, "movie.zip"), filepath.Join(dir, "notes.txt")
+	writeZip(t, filepath.Join(dir, "subs.zip"), map[string]string{"subs.srt": "subs"})
+
+	unpack, item := newRescanItem(t, dir)
+	now := time.Now()
+	rescanPass(t, unpack, item, now)
+
+	writeSized(t, movie, 64) // the late archive arrives damaged, and Syncthing takes it away again.
+	rescanPass(t, unpack, item, now)
+
+	if err := os.Remove(movie); err != nil {
+		t.Fatal(err)
+	}
+
+	unpack.checkExtractDone(now.Add(time.Hour))
+	rescanPass(t, unpack, item, now.Add(time.Hour))
+
+	if item.Status != EXTRACTED || item.PreFiles != nil {
+		t.Fatalf("failed archive is gone: status %s snapshot %v, want extracted with no snapshot",
+			item.Status, item.PreFiles)
+	}
+
+	if err := os.WriteFile(notes, []byte("delivered"), defaultFileMode); err != nil {
+		t.Fatal(err)
+	}
+
+	writeZip(t, filepath.Join(dir, "extras.zip"), map[string]string{"notes.txt": "archived", "extra.txt": "extra"})
+	rescanPass(t, unpack, item, now.Add(2*time.Hour))
+
+	want := []string{"extra.txt", "extras.zip", "notes.txt", "subs.srt", "subs.zip"}
+	if got := sortedFiles(dir); item.Status != EXTRACTED || !slices.Equal(got, want) {
+		t.Fatalf("next late archive: status %s files %v, want %v", item.Status, got, want)
+	}
+
+	if got, err := os.ReadFile(notes); err != nil || string(got) != "delivered" {
+		t.Fatalf("notes.txt holds %q (%v), want the delivered file", got, err)
+	}
+}
+
 // Deleting the extracted files ends the record of what was unpacked: a
 // download the Starr app lists again is extracted from the start. When
 // nothing is deleted the record stays.
@@ -648,6 +742,7 @@ func TestDeleteForgetsUnpacked(t *testing.T) {
 			DeleteDelay: delay,
 			Updated:     time.Now().Add(-time.Hour),
 			Unpacked:    []string{filepath.Join(dir, name+".zip")},
+			OutputFiles: []string{filepath.Join(dir, name, "clip.txt")},
 			Resp:        &xtractr.Response{NewFiles: []string{filepath.Join(dir, name+".srt")}},
 			XProg:       &ExtractProgress{},
 		}
@@ -655,12 +750,48 @@ func TestDeleteForgetsUnpacked(t *testing.T) {
 
 	unpack.checkExtractDone(time.Now())
 
-	if item := unpack.Map["Deleted"]; item.Status != DELETED || item.Unpacked != nil {
-		t.Fatalf("extracted files deleted: status %s unpacked %v, want none", item.Status, item.Unpacked)
+	if item := unpack.Map["Deleted"]; item.Status != DELETED || item.Unpacked != nil || item.OutputFiles != nil {
+		t.Fatalf("extracted files deleted: status %s unpacked %v output %v, want none",
+			item.Status, item.Unpacked, item.OutputFiles)
 	}
 
-	if item := unpack.Map["Kept"]; item.Status != DELETED || len(item.Unpacked) != 1 {
-		t.Fatalf("extracted files kept: status %s unpacked %v, want the record kept", item.Status, item.Unpacked)
+	if item := unpack.Map["Kept"]; item.Status != DELETED || len(item.Unpacked) != 1 || len(item.OutputFiles) != 1 {
+		t.Fatalf("extracted files kept: status %s unpacked %v output %v, want the record kept",
+			item.Status, item.Unpacked, item.OutputFiles)
+	}
+}
+
+// A download can stay in the Starr queue for longer than history rows are
+// normally restored. Its row is restored at any age: without the record of
+// unpacked archives the next poll would extract everything from the start.
+func TestOldRowWithUnpackedIsRestored(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	old := time.Now().Add(-2 * historyRestoreAge)
+	unpack := restoreTestUnpackerr(t)
+
+	for name, unpacked := range map[string][]string{"kept": {filepath.Join("dl", "kept", "subs.zip")}, "plain": nil} {
+		unpack.upsertHistory(HistoryRecord{
+			ID: name, Kind: string(starr.Sonarr), URL: url, Path: filepath.Join("dl", name), Status: EXTRACTED,
+			Updated: old, Syncthing: true, Unpacked: unpacked,
+		})
+	}
+
+	unpack.upsertHistory(HistoryRecord{
+		ID: "other", Kind: string(starr.Sonarr), URL: url, Path: filepath.Join("dl", "other"), Status: EXTRACTED,
+		Updated: old, Unpacked: []string{filepath.Join("dl", "other", "subs.zip")},
+	})
+	unpack.restoreQueueFromHistory()
+
+	if item := unpack.Map["kept"]; item == nil || item.Status != EXTRACTED || len(item.Unpacked) != 1 {
+		t.Fatalf("old Syncthing row with unpacked archives: %+v, want it restored", item)
+	}
+
+	if unpack.Map["plain"] != nil || unpack.Map["other"] != nil {
+		t.Fatalf("old rows without that record: %+v %+v, want the age limit to hold",
+			unpack.Map["plain"], unpack.Map["other"])
 	}
 }
 
@@ -672,12 +803,12 @@ func TestHistoryKeepsUnpacked(t *testing.T) {
 
 	const url = "http://sonarr:8989"
 
-	subs := filepath.Join("dl", "show", "subs.zip")
+	subs, clip := filepath.Join("dl", "show", "subs.zip"), filepath.Join("dl", "show", "Sub", "clip.txt")
 	old := []string{filepath.Join("dl", "old", "old.rar"), filepath.Join("dl", "old", "old.r00")}
 	unpack := restoreTestUnpackerr(t)
 	unpack.maybeRecordHistory("show", &Extract{
 		App: starr.Sonarr, URL: url, Path: filepath.Join("dl", "show"), Status: EXTRACTED, Updated: time.Now(),
-		Syncthing: true, Unpacked: []string{subs},
+		Syncthing: true, Unpacked: []string{subs}, OutputFiles: []string{clip},
 		Resp: &xtractr.Response{NewFiles: []string{filepath.Join("dl", "show", "subs.srt")}},
 	})
 	unpack.upsertHistory(HistoryRecord{
@@ -690,8 +821,9 @@ func TestHistoryKeepsUnpacked(t *testing.T) {
 	})
 	unpack.restoreQueueFromHistory()
 
-	if item := unpack.Map["show"]; item == nil || !slices.Equal(item.Unpacked, []string{subs}) {
-		t.Fatalf("restored row: %+v, want its unpacked archives", item)
+	if item := unpack.Map["show"]; item == nil || !slices.Equal(item.Unpacked, []string{subs}) ||
+		!slices.Equal(item.OutputFiles, []string{clip}) {
+		t.Fatalf("restored row: %+v, want its unpacked archives and output files", item)
 	}
 
 	if item := unpack.Map["old"]; item == nil || !slices.Equal(item.Unpacked, old) || item.PreFiles != nil {
@@ -792,6 +924,48 @@ func TestKeepUnpackedMergesResponses(t *testing.T) {
 	item.Unpacked = nil
 	if got := keepUnpacked(item, next, true); got != next {
 		t.Fatalf("item with nothing unpacked: %+v, want the new response as it is", got)
+	}
+}
+
+// Only files that reached the download folder are listed as output, and only
+// for an item whose later searches skip them. A first extract that failed
+// starts over, so its leftovers are left to the remnant snapshot.
+func TestRecordOutputFiles(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	moved := filepath.Join(dir, "Sub", "clip.txt")
+	writeSized(t, moved, 1)
+	writeSized(t, filepath.Join(dir, "loose.txt"), 1) // the response names this one itself.
+	writeSized(t, filepath.Join(dir+suffix, "Tmp", "part.txt"), 1)
+
+	failed := &xtractr.Response{
+		Error: errLateArchive, Output: dir + suffix,
+		NewFiles: []string{
+			filepath.Join(dir, "Sub"), filepath.Join(dir, "loose.txt"),
+			filepath.Join(dir+suffix, "Tmp"), filepath.Join(dir, "gone"),
+		},
+	}
+
+	files := outputFiles(failed, false)
+	if !slices.Equal(files, []string{moved}) || len(outputFiles(failed, true)) != 2 {
+		t.Fatalf("failed attempt: %v, finished: %v", files, outputFiles(failed, true))
+	}
+
+	first, plain := &Extract{Syncthing: true}, &Extract{}
+	late := &Extract{Syncthing: true, Unpacked: []string{filepath.Join(dir, "subs.zip")}}
+
+	recordOutputFiles(first, files, false)
+	recordOutputFiles(plain, files, true)
+	recordOutputFiles(late, files, false)
+	recordOutputFiles(late, files, false)
+
+	if first.OutputFiles != nil || plain.OutputFiles != nil || !slices.Equal(late.OutputFiles, files) {
+		t.Fatalf("first failed %v, not Syncthing %v, late failed %v", first.OutputFiles, plain.OutputFiles, late.OutputFiles)
+	}
+
+	if recordOutputFiles(first, files, true); !slices.Equal(first.OutputFiles, files) {
+		t.Fatalf("first finished: %v, want %v", first.OutputFiles, files)
 	}
 }
 

@@ -189,6 +189,7 @@ export const STARR_ENV_FIELDS: Record<string, string> = {
   delete_orig: 'DELETE_ORIG',
   delete_delay: 'DELETE_DELAY',
   syncthing: 'SYNCTHING',
+  syncthing_stall: 'SYNCTHING_STALL',
   valid_ssl: 'VALID_SSL',
   timeout: 'TIMEOUT',
   maxBytes: 'MAX_BYTES',

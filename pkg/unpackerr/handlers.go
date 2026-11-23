@@ -21,14 +21,15 @@ const (
 // StarrConfig is the shared config items for all starr apps.
 type StarrConfig struct {
 	starr.Config
-	Name        string        `json:"name"         toml:"name"         xml:"name"         yaml:"name"`
-	Paths       []string      `json:"paths"        toml:"paths"        xml:"paths"        yaml:"paths"`
-	Protocols   string        `json:"protocols"    toml:"protocols"    xml:"protocols"    yaml:"protocols"`
-	DeleteOrig  bool          `json:"delete_orig"  toml:"delete_orig"  xml:"delete_orig"  yaml:"delete_orig"`
-	DeleteDelay cnfg.Duration `json:"delete_delay" toml:"delete_delay" xml:"delete_delay" yaml:"delete_delay"`
-	Syncthing   bool          `json:"syncthing"    toml:"syncthing"    xml:"syncthing"    yaml:"syncthing"`
-	ValidSSL    bool          `json:"valid_ssl"    toml:"valid_ssl"    xml:"valid_ssl"    yaml:"valid_ssl"`
-	Timeout     cnfg.Duration `json:"timeout"      toml:"timeout"      xml:"timeout"      yaml:"timeout"`
+	Name           string        `json:"name"            toml:"name"            xml:"name"            yaml:"name"`
+	Paths          []string      `json:"paths"           toml:"paths"           xml:"paths"           yaml:"paths"`
+	Protocols      string        `json:"protocols"       toml:"protocols"       xml:"protocols"       yaml:"protocols"`
+	DeleteOrig     bool          `json:"delete_orig"     toml:"delete_orig"     xml:"delete_orig"     yaml:"delete_orig"`
+	DeleteDelay    cnfg.Duration `json:"delete_delay"    toml:"delete_delay"    xml:"delete_delay"    yaml:"delete_delay"`
+	Syncthing      bool          `json:"syncthing"       toml:"syncthing"       xml:"syncthing"       yaml:"syncthing"`
+	SyncthingStall cnfg.Duration `json:"syncthing_stall" toml:"syncthing_stall" xml:"syncthing_stall" yaml:"syncthing_stall"` //nolint:lll
+	ValidSSL       bool          `json:"valid_ssl"       toml:"valid_ssl"       xml:"valid_ssl"       yaml:"valid_ssl"`
+	Timeout        cnfg.Duration `json:"timeout"         toml:"timeout"         xml:"timeout"         yaml:"timeout"`
 	// MaxBytes overrides the app default (Sonarr 20GB, Radarr 75GB, Lidarr 4GB, Readarr 1GB).
 	// Empty uses that default. `0` or `0B` is unlimited.
 	MaxBytes string `json:"maxBytes" toml:"max_bytes" xml:"max_bytes" yaml:"maxBytes"`

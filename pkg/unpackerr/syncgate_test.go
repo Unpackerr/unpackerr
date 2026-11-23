@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"golift.io/cnfg"
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
 	"golift.io/xtractr"
@@ -339,6 +340,54 @@ func TestRestoredSyncthingItemGetsSizeBeforeExtract(t *testing.T) {
 	}
 }
 
+// A queue poll copies the instance stall window onto the matching item, and a
+// later poll picks up a change. An item for another instance keeps its window.
+func TestCheckStarrQueueRefreshesSyncthingStall(t *testing.T) {
+	t.Parallel()
+
+	const (
+		tvURL  = "http://sonarr:8989"
+		uhdURL = "http://sonarr-uhd:8989"
+	)
+
+	unpack := New()
+	show := &Extract{App: starr.Sonarr, URL: tvURL, Status: WAITING}
+	movie := &Extract{App: starr.Sonarr, URL: uhdURL, Status: WAITING, SyncStall: 15 * time.Minute}
+	unpack.Map["Show.TV"] = show
+	unpack.Map["Show.UHD"] = movie
+
+	tvApp := &SonarrConfig{
+		URL: tvURL, Protocols: defaultProtocol,
+		SyncthingStall: cnfg.Duration{Duration: time.Minute},
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{
+			Title: "Show.TV", Status: "completed", Protocol: starr.Protocol("torrent"),
+		}}},
+	}
+	uhd := &SonarrConfig{
+		URL: uhdURL, Protocols: defaultProtocol,
+		SyncthingStall: cnfg.Duration{Duration: 15 * time.Minute},
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{
+			Title: "Show.UHD", Status: "completed", Protocol: starr.Protocol("torrent"),
+		}}},
+	}
+	unpack.Sonarr = instanceMap([]*SonarrConfig{tvApp, uhd})
+
+	now := time.Now()
+	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, now)
+
+	if show.SyncStall != time.Minute || movie.SyncStall != 15*time.Minute {
+		t.Fatalf("after the first poll: show %s movie %s, want 1m and 15m", show.SyncStall, movie.SyncStall)
+	}
+
+	tvApp.SyncthingStall.Duration = 2 * time.Hour
+
+	checkStarrQueue(unpack, unpack.Sonarr, starr.Sonarr, now)
+
+	if show.SyncStall != 2*time.Hour || movie.SyncStall != 15*time.Minute {
+		t.Fatalf("after the stall change: show %s movie %s, want 2h and 15m", show.SyncStall, movie.SyncStall)
+	}
+}
+
 // write7zVolume writes a 32-byte .7z.001 start header. recorded is the set
 // length the header claims. CheckVolumes treats a claim past those 32 bytes
 // as a missing volume, and a claim of 32 as a whole set.
@@ -452,6 +501,26 @@ func TestExtractCompletedDownloadRetryQueuesWholeSet(t *testing.T) {
 
 	if item.Status != QUEUED {
 		t.Fatalf("retry with a whole set: status %s, want queued", item.Status)
+	}
+}
+
+func TestExtractCompletedDownloadShortStallWindow(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 300)
+	item.SyncStall = time.Second
+	now := time.Now()
+
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("inside a short stall window: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Second), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("after the short stall window: status %s, want queued", item.Status)
 	}
 }
 

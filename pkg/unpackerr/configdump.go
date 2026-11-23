@@ -134,7 +134,7 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list Insta
 		c := server.conf()
 		printf(" => %s Config: 1 server: %s"+starrLogLine+"%s",
 			app, starrNamePrefix(c.Name), c.URL, c.APIKey != "", c.Timeout.String(),
-			c.ValidSSL, c.Protocols, c.Syncthing,
+			c.ValidSSL, c.Protocols, c.Syncthing, c.SyncthingStall.String(),
 			c.DeleteOrig, c.DeleteDelay.String(),
 			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, server.logExtra())
 
@@ -149,7 +149,7 @@ func logStarr[T any, P starrApp[T]](printf configLine, app starr.App, list Insta
 		printf(starrLogPfx+"%s"+starrLogLine+"%s",
 			starrNamePrefix(c.Name),
 			c.URL, c.APIKey != "", c.Timeout.String(), c.ValidSSL, c.Protocols,
-			c.Syncthing, c.DeleteOrig, c.DeleteDelay.String(),
+			c.Syncthing, c.SyncthingStall.String(), c.DeleteOrig, c.DeleteDelay.String(),
 			logMaxBytes(c.MaxBytes, defaultAppMaxBytes(app)), c.Paths, server.logExtra())
 	}
 }

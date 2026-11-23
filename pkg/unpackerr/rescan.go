@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -158,11 +159,35 @@ func recordUnpacked(item *Extract, resp *xtractr.Response) {
 	item.PreFiles = nil
 }
 
+// tempFiles lists the files in an extract's temp folder, relative to it.
+// Nothing but the extract writes there, so this is what the extract wrote.
+// The result is never nil: an empty folder is an answer too.
+func tempFiles(dir string) map[string]struct{} {
+	files := make(map[string]struct{})
+
+	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil //nolint:nilerr // a path that is gone is not listed.
+		}
+
+		if rel, relErr := filepath.Rel(dir, path); relErr == nil {
+			files[rel] = struct{}{}
+		}
+
+		return nil
+	})
+
+	return files
+}
+
 // outputFiles lists the files inside the folders an extract moved into the
-// download. xtractr reports such a folder as one path. Listing its files now,
-// right after the extract, is what tells them apart from a file Syncthing
-// adds to that folder later. A path that is gone is skipped.
-func outputFiles(resp *xtractr.Response, finished bool) []string {
+// download. xtractr reports such a folder as one path. wrote is what the
+// extract had in its temp folder, relative to it, and xtractr moves that
+// folder's children into place under the same names. A file in a moved
+// folder that is not in wrote arrived after the move: Syncthing delivered it.
+// With no record of the temp folder (nil), every file found counts. A path
+// that is gone is skipped.
+func outputFiles(resp *xtractr.Response, finished bool, wrote map[string]struct{}) []string {
 	moved := resp.NewFiles
 	if !finished {
 		moved = movedIntoPlace(resp)
@@ -171,8 +196,14 @@ func outputFiles(resp *xtractr.Response, finished bool) []string {
 	var files []string
 
 	for _, root := range moved {
+		dest := filepath.Dir(root)
+
 		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-			if err == nil && path != root && !entry.IsDir() {
+			if err != nil || path == root || entry.IsDir() {
+				return nil //nolint:nilerr // a path that is gone is not listed.
+			}
+
+			if wroteFile(wrote, dest, path) {
 				files = append(files, path)
 			}
 
@@ -181,6 +212,23 @@ func outputFiles(resp *xtractr.Response, finished bool) []string {
 	}
 
 	return files
+}
+
+// wroteFile reports whether path, taken relative to dest, is on the list of
+// what an extract wrote. Every path is on a list that was never made.
+func wroteFile(wrote map[string]struct{}, dest, path string) bool {
+	if wrote == nil {
+		return true
+	}
+
+	rel, err := filepath.Rel(dest, path)
+	if err != nil {
+		return false
+	}
+
+	_, ok := wrote[rel]
+
+	return ok
 }
 
 // recordOutputFiles adds those files to the item. An extract that did not
@@ -192,6 +240,63 @@ func recordOutputFiles(item *Extract, files []string, finished bool) {
 	}
 
 	item.OutputFiles = appendUnique(item.OutputFiles, files)
+}
+
+// exactDeletePaths splits the cleanup list of an item that knows which files
+// its extracts wrote. A folder is not deleted with everything in it: of what
+// is inside, only the listed files are returned for deletion. The folders
+// come back on their own, to be removed once they are empty.
+func exactDeletePaths(paths, files []string) ([]string, []string) {
+	var remove, folders []string
+
+	for _, path := range paths {
+		if info, err := os.Lstat(path); err == nil && info.IsDir() {
+			folders = append(folders, path)
+		} else {
+			remove = append(remove, path)
+		}
+	}
+
+	for _, file := range files {
+		info, err := os.Lstat(file)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		if slices.ContainsFunc(folders, func(dir string) bool { return pathWithin(file, dir) }) {
+			remove = append(remove, file)
+		}
+	}
+
+	return remove, folders
+}
+
+// removeEmptyFolders removes each folder, and the folders inside it, that
+// hold nothing. os.Remove refuses a folder with something in it, so a file
+// that arrives while this runs stays, and so does the folder around it.
+func (u *Unpackerr) removeEmptyFolders(folders []string) {
+	for _, root := range folders {
+		var dirs []string
+
+		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				dirs = append(dirs, path)
+			}
+
+			return nil
+		})
+
+		// The walk lists a folder before what is in it. Go the other way.
+		for _, dir := range slices.Backward(dirs) {
+			if os.Remove(dir) == nil {
+				u.Printf("Deleted empty folder: %s", dir)
+			}
+		}
+
+		if _, err := os.Lstat(root); err == nil {
+			u.Printf("Kept folder, it holds files that were not extracted: %s", root)
+		}
+	}
 }
 
 // movedIntoPlace is the part of a response's NewFiles that reached the

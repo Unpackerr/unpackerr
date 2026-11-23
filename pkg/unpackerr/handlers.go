@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -458,8 +459,12 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 				webhook = true //nolint:wsl_v5
 			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
 				// Delete extracted files and purge empty parents up to and including the download path.
+				// A Syncthing item names the files inside its extracted folders, so a file
+				// Syncthing delivered into one of them is left where it is.
 				u.queueDelete(&fileDeleteReq{
 					Paths:            item.Resp.NewFiles,
+					Exact:            hasUnpacked(item),
+					Files:            slices.Clone(item.OutputFiles),
 					PurgeEmptyParent: true,
 					PurgeEmptyRoot:   item.Path,
 				})
@@ -512,6 +517,12 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	retries := item.Retries
 	syncthing := item.Syncthing
 
+	// What the extract wrote, listed while it was still in the temp folder.
+	var staged map[string]struct{}
+	if item.XProg != nil {
+		staged = item.XProg.TempFiles
+	}
+
 	u.unlockHistory()
 	u.updateMetrics(resp, app, url)
 
@@ -524,7 +535,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	}
 
 	if syncthing {
-		wrote = outputFiles(resp, finished)
+		wrote = outputFiles(resp, finished, staged)
 	}
 
 	u.lockHistory()

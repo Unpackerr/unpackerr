@@ -2,6 +2,7 @@ package unpackerr
 
 import (
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -80,9 +81,9 @@ func stopRescanQueue(unpack *Unpackerr) {
 	close(done)
 }
 
-// finishExtract hands the responses of the queued extract to the handlers,
-// the way the main loop does, and returns the last one.
-func finishExtract(t *testing.T, unpack *Unpackerr) *xtractr.Response {
+// awaitExtract hands the progress of the queued extract to the handlers, the
+// way the main loop does, and returns its last response before it is handled.
+func awaitExtract(t *testing.T, unpack *Unpackerr) *xtractr.Response {
 	t.Helper()
 
 	timeout := time.NewTimer(time.Minute)
@@ -91,17 +92,28 @@ func finishExtract(t *testing.T, unpack *Unpackerr) *xtractr.Response {
 	for {
 		select {
 		case resp := <-unpack.updates:
-			unpack.handleXtractrCallback(resp)
-
 			if resp.Done {
 				return resp
 			}
+
+			unpack.handleXtractrCallback(resp)
 		case prog := <-unpack.progChan:
 			unpack.handleProgress(prog)
 		case <-timeout.C:
 			t.Fatal("timed out waiting for the extract to finish")
 		}
 	}
+}
+
+// finishExtract runs the queued extract to the end and returns its last
+// response, handled.
+func finishExtract(t *testing.T, unpack *Unpackerr) *xtractr.Response {
+	t.Helper()
+
+	resp := awaitExtract(t, unpack)
+	unpack.handleXtractrCallback(resp)
+
+	return resp
 }
 
 // rescanPass runs one pass of the extract loop and returns how many archives
@@ -335,6 +347,171 @@ func TestRescanTakesArchiveDeliveredIntoExtractedFolder(t *testing.T) {
 	if len(files) != 0 || len(scan.tails) != 0 || scan.have != delivered {
 		t.Fatalf("search after both extracts: archives %v, volumes %v, %d bytes counted, want only the %d delivered",
 			files, scan.tails, scan.have, delivered)
+	}
+}
+
+// Syncthing can deliver a file into an extracted folder after the move and
+// before the response is handled. The extract listed its own files while
+// they were still in the temp folder, so that file is a delivery.
+func TestDeliveryRightAfterMoveIsNotOutput(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	clip, late := filepath.Join(dir, "Sub", "clip.txt"), filepath.Join(dir, "Sub", "late.zip")
+	writeZip(t, filepath.Join(dir, "pack.zip"), map[string]string{"Sub/clip.txt": "clip", "top.txt": "top"})
+
+	unpack, item := newRescanItem(t, dir)
+	now := time.Now()
+	unpack.extractCompletedDownloads(now)
+
+	resp := awaitExtract(t, unpack)
+
+	writeZip(t, late, map[string]string{"late.txt": "late"})
+	unpack.handleXtractrCallback(resp)
+
+	want := map[string]struct{}{filepath.Join("Sub", "clip.txt"): {}, "top.txt": {}}
+	if !maps.Equal(item.XProg.TempFiles, want) {
+		t.Fatalf("files listed in the temp folder: %v, want %v", item.XProg.TempFiles, want)
+	}
+
+	if item.Status != EXTRACTED || !slices.Equal(item.OutputFiles, []string{clip}) {
+		t.Fatalf("status %s output files %v, want only %s", item.Status, item.OutputFiles, clip)
+	}
+
+	if count := rescanPass(t, unpack, item, now); count != 1 {
+		t.Fatalf("archive delivered right after the move: %d archives extracted, note %q, want 1", count, item.Note)
+	}
+}
+
+// With no list from the temp folder, every file in a moved folder counts as
+// output. With one, only the files on it do.
+func TestOutputFilesKeepsToWhatTheExtractWrote(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	clip, late := filepath.Join(dir, "Sub", "deep", "clip.txt"), filepath.Join(dir, "Sub", "late.zip")
+	writeSized(t, clip, 1)
+	writeSized(t, late, 1)
+
+	resp := &xtractr.Response{NewFiles: []string{filepath.Join(dir, "Sub")}}
+	if got := outputFiles(resp, true, nil); len(got) != 2 {
+		t.Fatalf("no list: %v, want both files", got)
+	}
+
+	if got := outputFiles(resp, true, map[string]struct{}{}); len(got) != 0 {
+		t.Fatalf("empty list: %v, want nothing", got)
+	}
+
+	if got := outputFiles(resp, true, tempFiles(dir)); len(got) != 2 {
+		t.Fatalf("both files listed: %v, want both", got)
+	}
+
+	wrote := map[string]struct{}{filepath.Join("Sub", "deep", "clip.txt"): {}}
+	if got := outputFiles(resp, true, wrote); !slices.Equal(got, []string{clip}) {
+		t.Fatalf("one file listed: %v, want %s", got, clip)
+	}
+}
+
+// Cleanup after import removes what the extracts wrote. An archive Syncthing
+// delivered into an extracted folder stays, with the folder around it. A
+// folder that holds only extracted files is removed whole.
+func TestCleanupKeepsDeliveryInExtractedFolder(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeZip(t, filepath.Join(dir, "pack.zip"), map[string]string{
+		"Sub/clip.txt": "clip", "Sub/deep/more.txt": "more", "Gone/a/b.txt": "b", "top.txt": "top",
+	})
+
+	unpack, item := newRescanItem(t, dir)
+	now := time.Now()
+	rescanPass(t, unpack, item, now)
+	writeZip(t, filepath.Join(dir, "Sub", "late.zip"), map[string]string{"late.txt": "late"})
+
+	if count := rescanPass(t, unpack, item, now); count != 1 {
+		t.Fatalf("late archive: %d archives extracted, want 1", count)
+	}
+
+	if want := map[string]struct{}{"late.txt": {}}; !maps.Equal(item.XProg.TempFiles, want) {
+		t.Fatalf("files listed in the temp folder: %v, want those of the late archive alone", item.XProg.TempFiles)
+	}
+
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{} // imported: the Starr app no longer lists it.
+	item.Status = IMPORTED
+
+	unpack.checkExtractDone(now.Add(time.Hour))
+
+	select {
+	case req := <-unpack.delChan:
+		unpack.deleteRequest(req)
+	default:
+		t.Fatal("no cleanup was queued")
+	}
+
+	want := []string{filepath.Join("Sub", "late.zip"), "pack.zip"}
+	if got := sortedFiles(dir); item.Status != DELETED || !slices.Equal(got, want) {
+		t.Fatalf("after cleanup: status %s files %v, want %v", item.Status, got, want)
+	}
+
+	for _, gone := range []string{"Gone", filepath.Join("Sub", "deep")} {
+		if _, err := os.Stat(filepath.Join(dir, gone)); !os.IsNotExist(err) {
+			t.Fatalf("empty folder %s is still there (%v)", gone, err)
+		}
+	}
+}
+
+// Only a listed file inside one of the folders is deleted by name. A folder
+// is never on the list of paths to delete.
+func TestExactDeletePaths(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	sub, top := filepath.Join(dir, "Sub"), filepath.Join(dir, "top.txt")
+	clip, other := filepath.Join(sub, "clip.txt"), filepath.Join(dir, "Other", "keep.txt")
+
+	for _, path := range []string{top, clip, other, filepath.Join(sub, "deep", "more.txt")} {
+		writeSized(t, path, 1)
+	}
+
+	gone := filepath.Join(dir, "gone.txt")
+	files := []string{clip, other, filepath.Join(sub, "deep"), filepath.Join(sub, "missing.txt")}
+	remove, folders := exactDeletePaths([]string{sub, top, gone}, files)
+
+	if !slices.Equal(remove, []string{top, gone, clip}) || !slices.Equal(folders, []string{sub}) {
+		t.Fatalf("delete %v, folders %v", remove, folders)
+	}
+}
+
+// A row written before output files were listed has none. The files in its
+// extracted folders at the restart are taken for output.
+func TestRestoreListsOutputFilesOfOlderRow(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	dir := t.TempDir()
+	clip := filepath.Join(dir, "Sub", "clip.txt")
+	writeSized(t, clip, 1)
+	writeSized(t, filepath.Join(dir, "subs.srt"), 1)
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: url, Path: dir, Status: EXTRACTED, Updated: time.Now(),
+		Syncthing: true, OrigFiles: []string{filepath.Join(dir, "pack.zip")},
+		NewFiles: []string{filepath.Join(dir, "Sub"), filepath.Join(dir, "subs.srt")},
+	})
+	unpack.upsertHistory(HistoryRecord{
+		ID: "plain", Kind: string(starr.Sonarr), URL: url, Path: dir, Status: EXTRACTED, Updated: time.Now(),
+		OrigFiles: []string{filepath.Join(dir, "pack.zip")}, NewFiles: []string{filepath.Join(dir, "Sub")},
+	})
+	unpack.restoreQueueFromHistory()
+
+	if item := unpack.Map["show"]; item == nil || !slices.Equal(item.OutputFiles, []string{clip}) {
+		t.Fatalf("restored row: %+v, want %s as its output file", item, clip)
+	}
+
+	if item := unpack.Map["plain"]; item == nil || item.OutputFiles != nil {
+		t.Fatalf("row of an item without Syncthing: %+v, want no output files", item)
 	}
 }
 
@@ -947,9 +1124,9 @@ func TestRecordOutputFiles(t *testing.T) {
 		},
 	}
 
-	files := outputFiles(failed, false)
-	if !slices.Equal(files, []string{moved}) || len(outputFiles(failed, true)) != 2 {
-		t.Fatalf("failed attempt: %v, finished: %v", files, outputFiles(failed, true))
+	files := outputFiles(failed, false, nil)
+	if !slices.Equal(files, []string{moved}) || len(outputFiles(failed, true, nil)) != 2 {
+		t.Fatalf("failed attempt: %v, finished: %v", files, outputFiles(failed, true, nil))
 	}
 
 	first, plain := &Extract{Syncthing: true}, &Extract{}

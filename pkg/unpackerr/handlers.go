@@ -129,7 +129,13 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 	jobs := make([]pending, 0)
 
 	for name, item := range u.Map {
-		if item.App != FolderString && item.Status < QUEUED && u.queueSnapshotReady(item) {
+		if item.App == FolderString || !u.queueSnapshotReady(item) {
+			continue
+		}
+
+		// EXTRACTED stays in this loop while Syncthing can still deliver
+		// archives that were not on disk for the first extract.
+		if item.Status < QUEUED || (item.Syncthing && item.Status == EXTRACTED && u.haveQitem(name, item.App)) {
 			jobs = append(jobs, pending{name: name, item: item})
 		}
 	}
@@ -144,30 +150,20 @@ func (u *Unpackerr) extractCompletedDownloads(now time.Time) {
 // extractCompletedDownload checks if a completed starr download needs to be queued for extraction.
 // This is called by extractCompletedDownloads() via the main routine in start.go.
 func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *Extract) {
-	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
-		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.Label(), name, d.Round(time.Second))
+	// A finished Syncthing download stays EXTRACTED until Starr imports it.
+	// Archives that arrive after the first extract are queued from here.
+	rescan := item.Syncthing && item.Status == EXTRACTED
+	if item.Status >= QUEUED && !rescan {
 		return
 	}
 
-	filter := xtractr.Filter{Path: item.Path}
-	scan := &syncScan{}
-
-	if item.Syncthing {
-		filter.Observe = scan.observe // fills the scan during the archive search; no second walk.
+	if !rescan && u.waitingForStartDelay(name, item, now) {
+		return
 	}
 
-	files := xtractr.FindCompressedFiles(filter)
+	files, scan, accept := findDownloadArchives(item, rescan)
 	if len(files) == 0 {
-		if _, err := os.Stat(item.Path); err != nil {
-			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
-				item.Label(), name, item.Path, err)
-		} else {
-			u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (%s Activity Queue status: %v)",
-				item.Label(), name, item.Path, item.Label(), item.IDs["reason"])
-		}
-
-		u.setItemNote(name, item, noteNoExtractable)
-
+		u.noteNothingToExtract(name, item, rescan)
 		return
 	}
 
@@ -175,17 +171,76 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
+	u.queueDownloadExtract(name, item, files, accept, now)
+}
+
+func (u *Unpackerr) waitingForStartDelay(name string, item *Extract, now time.Time) bool {
+	if d := u.StartDelay.Duration - now.Sub(item.Updated); d > time.Second { // wiggle room.
+		u.Printf("[%s] Waiting for Start Delay: %v (%v remains)", item.Label(), name, d.Round(time.Second))
+		return true
+	}
+
+	return false
+}
+
+// findDownloadArchives lists archives for this download. A rescan skips paths
+// already extracted and remembers them so a leftover later volume is not a
+// missing head.
+func findDownloadArchives(
+	item *Extract, rescan bool,
+) (xtractr.ArchiveList, *syncScan, func(xtractr.ArchiveCandidate) bool) {
+	filter := xtractr.Filter{Path: item.Path}
+	scan := &syncScan{}
+
+	var accept func(xtractr.ArchiveCandidate) bool
+
+	if item.Syncthing {
+		filter.Observe = scan.observe // fills the scan during the archive search; no second walk.
+	}
+
+	if rescan {
+		scan.extracted = extractedArchiveKeys(item)
+		accept = acceptNewArchives(scan.extracted)
+		filter.Accept = accept
+	}
+
+	return xtractr.FindCompressedFiles(filter), scan, accept
+}
+
+func (u *Unpackerr) noteNothingToExtract(name string, item *Extract, rescan bool) {
+	if rescan {
+		u.clearSyncthingNote(name, item)
+		return
+	}
+
+	if _, err := os.Stat(item.Path); err != nil {
+		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (stat err: %v)",
+			item.Label(), name, item.Path, err)
+	} else {
+		u.Printf("[%s] Completed item still waiting: %s, no extractable files found at: %s (%s Activity Queue status: %v)",
+			item.Label(), name, item.Path, item.Label(), item.IDs["reason"])
+	}
+
+	u.setItemNote(name, item, noteNoExtractable)
+}
+
+func (u *Unpackerr) queueDownloadExtract(
+	name string, item *Extract, files xtractr.ArchiveList, accept func(xtractr.ArchiveCandidate) bool, now time.Time,
+) {
 	// Snapshot once per queue item: retries must not recapture leftovers that
 	// failed to clear into download content.
 	snap, err := keepDirSnapshot(item.PreFiles, archiveSnapshotPaths(item.Path, files)...)
 	u.markItemQueued(name, item, snap, err, now)
 
 	// This queues the extraction. Which may start right away.
+	// Accept skips archives from the previous extract so a late volume does
+	// not unpack subs.zip again.
 	queueSize, _ := u.Extract(&xtractr.Xtract{
 		Password:       u.getPasswordFromPath(item.Path),
 		Passwords:      u.Passwords,
 		Name:           name,
 		Path:           item.Path,
+		Accept:         accept,
 		ExcludeSuffix:  xtractr.AllExcept(starrArchiveTypes(item)...),
 		APEOpts:        apeOpts(item),
 		MaxBytes:       item.MaxBytes,
@@ -200,6 +255,47 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 	})
 
 	u.logQueuedDownload(queueSize, item, files)
+}
+
+// extractedArchiveKeys is the archives already extracted for item, keyed for
+// a case-insensitive path compare.
+func extractedArchiveKeys(item *Extract) map[string]struct{} {
+	if item == nil || item.Resp == nil {
+		return nil
+	}
+
+	list := item.Resp.Archives.List()
+	if len(list) == 0 {
+		return nil
+	}
+
+	keys := make(map[string]struct{}, len(list))
+	for _, path := range list {
+		keys[volumeKey(path)] = struct{}{}
+	}
+
+	return keys
+}
+
+// acceptNewArchives skips archives that were already extracted. An empty set
+// accepts everything, which is the first extract.
+func acceptNewArchives(extracted map[string]struct{}) func(xtractr.ArchiveCandidate) bool {
+	if len(extracted) == 0 {
+		return nil
+	}
+
+	return func(cand xtractr.ArchiveCandidate) bool {
+		_, skip := extracted[volumeKey(cand.Path)]
+		return !skip
+	}
+}
+
+func (u *Unpackerr) clearSyncthingNote(name string, item *Extract) {
+	if item.Note != noteWaitingSyncthing {
+		return
+	}
+
+	u.setItemNote(name, item, "")
 }
 
 func (u *Unpackerr) markItemQueued(
@@ -382,7 +478,15 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		resetExtractProgress(item, resp.Archives.Count()+resp.Extras.Count())
 
 		u.Printf("Extraction Started: %s, items in queue: %d", resp.X.Name, resp.Queued)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTING, Resp: resp}, now, true)
+
+		// A second extract must not drop the files and archives recorded for
+		// the first one. The finished response is merged when this one ends.
+		update := &newStatus{Name: resp.X.Name, Status: EXTRACTING}
+		if !finishedExtractResp(item.Resp) {
+			update.Resp = resp
+		}
+
+		u.updateQueueStatus(update, now, true)
 		u.unlockHistory()
 
 		return
@@ -411,6 +515,10 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		return
 	}
 
+	// This run's counts are logged below. The stored response keeps every
+	// extract so delete still removes the first archive's output.
+	stored := mergeExtractResp(item.Resp, resp)
+
 	switch {
 	case remnants && remnantStatus == WAITING:
 		// Every blocker was cleared; re-extract into the empty destination.
@@ -424,7 +532,7 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		item.Retries++
 		item.Status = WAITING
 		item.Updated = now
-		item.Resp = resp
+		item.Resp = stored
 		u.Printf("[%s] Cleared interrupted-extraction remnant(s), restarting extraction: %s", item.Label(), resp.X.Name)
 		u.notifyQueueLocked()
 	case remnants:
@@ -433,25 +541,87 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 		}
 
 		u.Errorf("[%s] Extraction blocked by interrupted-extraction remnant(s): %s", item.Label(), resp.X.Name)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: stored}, now, true)
 	case resp.Error != nil:
 		if xtractr.IsLimitError(resp.Error) {
 			item.NoRetry = true
 		}
 
 		u.Errorf("Extraction Failed: %s: %v", resp.X.Name, resp.Error)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: resp}, now, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTFAILED, Resp: stored}, now, true)
 	default:
 		u.Printf("Extraction Finished: %s => elapsed: %v, archives: %d, extra archives: %d, "+
 			"files extracted: %d, wrote: %sB", resp.X.Name, resp.Elapsed.Round(time.Second),
 			resp.Archives.Count(), resp.Extras.Count(), len(resp.NewFiles), bytefmt.ByteSize(resp.Size))
 		u.Debugf("Extraction Finished: %d files in path: %s", len(files), files)
-		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: resp}, now, true)
+		u.updateQueueStatus(&newStatus{Name: resp.X.Name, Status: EXTRACTED, Resp: stored}, now, true)
 
 		if item.App == starr.Lidarr && lidarrImportsTracks(item) && resp.Size > 0 {
 			go u.importSplitFlacTracks(item, u.lidarrServerByURL(item.URL))
 		}
 	}
+}
+
+// finishedExtractResp reports a response that already recorded an extract.
+// The start notification has archives too, and Done is false, so it does not count.
+func finishedExtractResp(resp *xtractr.Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	if len(resp.NewFiles) > 0 {
+		return true
+	}
+
+	return resp.Done && resp.Archives.Count() > 0
+}
+
+// mergeExtractResp appends a follow-up extract onto the response already
+// stored. The follow-up is the one whose search skipped archives; a first
+// extract and a full retry replace the stored response.
+func mergeExtractResp(prev, next *xtractr.Response) *xtractr.Response {
+	if next == nil || next.X == nil || next.X.Accept == nil || !finishedExtractResp(prev) {
+		return next
+	}
+
+	merged := *next
+	merged.NewFiles = append(append([]string{}, prev.NewFiles...), next.NewFiles...)
+
+	if next.Error != nil {
+		merged.Size = prev.Size
+		merged.Archives = prev.Archives
+		merged.Extras = prev.Extras
+
+		return &merged
+	}
+
+	merged.Size += prev.Size
+	merged.Archives = mergeArchiveLists(prev.Archives, next.Archives)
+	merged.Extras = mergeArchiveLists(prev.Extras, next.Extras)
+
+	return &merged
+}
+
+func mergeArchiveLists(prev, next xtractr.ArchiveList) xtractr.ArchiveList {
+	out := make(xtractr.ArchiveList, len(prev)+len(next))
+	seen := make(map[string]struct{}, prev.Count()+next.Count())
+
+	for _, list := range []xtractr.ArchiveList{prev, next} {
+		for dir, paths := range list {
+			for _, path := range paths {
+				key := volumeKey(path)
+				if _, ok := seen[key]; ok {
+					continue
+				}
+
+				seen[key] = struct{}{}
+
+				out[dir] = append(out[dir], path)
+			}
+		}
+	}
+
+	return out
 }
 
 // Looking for a message that looks like:

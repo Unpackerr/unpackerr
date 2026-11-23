@@ -192,6 +192,7 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 	}
 
 	item.Resp = &xtractr.Response{
+		Done:     true,
 		NewFiles: append([]string(nil), rec.NewFiles...),
 		Size:     rec.Bytes,
 		Output:   rec.Output,

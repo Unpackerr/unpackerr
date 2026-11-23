@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -84,10 +85,32 @@ func syncthingTempNames(path string) []string {
 // The archive search fills it through xtractr's Filter.Observe, so it costs no
 // extra walk of the download folder.
 type syncScan struct {
-	have uint64 // bytes of finished regular files.
-	temp string // a Syncthing temp file, "" when none.
-	seen bool   // the search listed at least one folder entry.
+	have  uint64       // bytes of finished regular files.
+	temp  string       // a Syncthing temp file, "" when none.
+	seen  bool         // the search listed at least one folder entry.
+	tails []volumeTail // continuation volumes whose first volume may still be absent.
+	// extracted are archive paths already extracted for this item. A volume
+	// head in this set counts as present, so leftovers from that set do not
+	// hold a later rescan.
+	extracted map[string]struct{}
 }
+
+// volumeTail is one continuation volume and the first-volume names that
+// would make its set visible to the finder.
+type volumeTail struct {
+	path     string // the continuation file.
+	head     string // the missing name to log when no head is present.
+	alt      string // old-style .r00, which the finder treats as the head when .rar is absent.
+	partStem string // lowercased "dir/stem" for .partN.rar, so any part0*1 width counts.
+}
+
+// Continuation volumes the finder does not return. .r00, .part1/.part01, and
+// .7z.001 are heads. .7z.1000 is four digits and is not a volume suffix here.
+var (
+	rarOldContinuation  = regexp.MustCompile(`(?i)^(.+)\.r(\d{2})$`)
+	rarPartContinuation = regexp.MustCompile(`(?i)^(.+)\.part(\d+)\.rar$`)
+	sevenContinuation   = regexp.MustCompile(`(?i)^(.+\.7z)\.(\d{3})$`)
+)
 
 // observe is an xtractr Filter.Observe callback. Temp files do not count as
 // delivered: Syncthing may size a temp file to its final length before writing it.
@@ -100,6 +123,10 @@ func (s *syncScan) observe(path string, info os.FileInfo) {
 		s.temp = path
 	default:
 		s.have += uint64(max(info.Size(), 0))
+
+		if tail, ok := continuationVolume(path); ok {
+			s.tails = append(s.tails, tail)
+		}
 	}
 }
 
@@ -115,6 +142,10 @@ func (s *syncScan) singleFile(path string) {
 		return
 	} else if info.Mode().IsRegular() {
 		s.have = uint64(max(info.Size(), 0))
+
+		if tail, ok := continuationVolume(path); ok {
+			s.tails = append(s.tails, tail)
+		}
 	}
 
 	for _, temp := range syncthingTempNames(path) {
@@ -144,9 +175,10 @@ const (
 // So wait while any temp file exists, at any depth, and while the bytes on
 // disk are short of the size the Starr app reports. An incomplete archive
 // set also waits when that size is unknown, the stall window has run out,
-// or a retry already has every reported byte. That wait has no time limit of
-// its own. A first attempt that has every reported byte queues without
-// reading headers.
+// or a retry already has every reported byte. A continuation volume whose
+// first volume is not on disk is one of those sets, even though the finder
+// does not return it. That wait has no time limit of its own. A first
+// attempt that has every reported byte queues without reading headers.
 func (u *Unpackerr) syncthingWait(
 	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, now time.Time,
 ) bool {
@@ -167,7 +199,7 @@ func (u *Unpackerr) syncthingWait(
 
 		return true
 	case syncStalled, syncUnknown, syncReached:
-		if u.syncthingSetShort(name, item, files, state) {
+		if u.syncthingSetShort(name, item, scan, files, state) {
 			u.setItemNote(name, item, noteWaitingSyncthing)
 
 			return true
@@ -189,10 +221,17 @@ func (u *Unpackerr) syncthingWait(
 // and a set is not all on disk. A first attempt that already has every reported
 // byte skips the check: the byte count is trusted until a retry.
 func (u *Unpackerr) syncthingSetShort(
-	name string, item *Extract, files xtractr.ArchiveList, state syncState,
+	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, state syncState,
 ) bool {
 	if state == syncReached && item.Retries == 0 {
 		return false
+	}
+
+	if tail, head := missingVolumeHead(scan, files); tail != "" {
+		u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %s: missing %s",
+			item.Label(), name, tail, head)
+
+		return true
 	}
 
 	_, err := u.incompleteSet(item, files)
@@ -203,6 +242,117 @@ func (u *Unpackerr) syncthingSetShort(
 	u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %v", item.Label(), name, err)
 
 	return true
+}
+
+// continuationVolume reports a volume the finder skips because it is not the
+// head of its set. The head names are what a later poll needs to see.
+func continuationVolume(path string) (volumeTail, bool) {
+	base := filepath.Base(path)
+	dir := filepath.Dir(path)
+
+	if match := rarOldContinuation.FindStringSubmatch(base); match != nil {
+		if match[2] == "00" {
+			return volumeTail{}, false
+		}
+
+		return volumeTail{
+			path: path,
+			head: filepath.Join(dir, match[1]+".rar"),
+			alt:  filepath.Join(dir, match[1]+".r00"),
+		}, true
+	}
+
+	if match := rarPartContinuation.FindStringSubmatch(base); match != nil {
+		if partOneVolume(match[2]) {
+			return volumeTail{}, false
+		}
+
+		headNum := fmt.Sprintf("%0*d", len(match[2]), 1)
+
+		return volumeTail{
+			path:     path,
+			head:     filepath.Join(dir, match[1]+".part"+headNum+".rar"),
+			partStem: volumeKey(filepath.Join(dir, match[1])),
+		}, true
+	}
+
+	if match := sevenContinuation.FindStringSubmatch(base); match != nil {
+		if match[2] == "001" {
+			return volumeTail{}, false
+		}
+
+		return volumeTail{path: path, head: filepath.Join(dir, match[1]+".001")}, true
+	}
+
+	return volumeTail{}, false
+}
+
+// partOneVolume reports a .partN.rar index that the finder treats as the
+// first volume: 1 with any number of leading zeros.
+func partOneVolume(digits string) bool {
+	return strings.TrimLeft(digits, "0") == "1"
+}
+
+// missingVolumeHead returns a continuation path and the head name to log
+// when that head is not in this find and was not already extracted.
+func missingVolumeHead(scan *syncScan, files xtractr.ArchiveList) (string, string) {
+	if scan == nil || len(scan.tails) == 0 {
+		return "", ""
+	}
+
+	found := make(map[string]struct{}, files.Count()+len(scan.extracted))
+	for key := range scan.extracted {
+		found[key] = struct{}{}
+	}
+
+	for _, path := range files.List() {
+		found[volumeKey(path)] = struct{}{}
+	}
+
+	for _, tail := range scan.tails {
+		if volumeHeadFound(found, tail) {
+			continue
+		}
+
+		return tail.path, tail.head
+	}
+
+	return "", ""
+}
+
+func volumeHeadFound(found map[string]struct{}, tail volumeTail) bool {
+	if _, ok := found[volumeKey(tail.head)]; ok {
+		return true
+	}
+
+	if tail.alt != "" {
+		if _, ok := found[volumeKey(tail.alt)]; ok {
+			return true
+		}
+	}
+
+	if tail.partStem == "" {
+		return false
+	}
+
+	prefix := tail.partStem + ".part"
+
+	for key := range found {
+		rest, ok := strings.CutPrefix(key, prefix)
+		if !ok || !strings.HasSuffix(rest, ".rar") {
+			continue
+		}
+
+		if partOneVolume(strings.TrimSuffix(rest, ".rar")) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func volumeKey(path string) string {
+	return strings.ToLower(filepath.Clean(path))
 }
 
 // incompleteSet returns the first archive set whose volumes are not all on disk.

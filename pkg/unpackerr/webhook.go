@@ -50,7 +50,7 @@ func (u *Unpackerr) commandGateWaiting(name string, item *Extract) bool {
 			continue
 		}
 
-		err := hooks.RunSync(hook, payload)
+		said, err := hooks.RunSync(hook, payload)
 		if err == nil {
 			continue
 		}
@@ -60,14 +60,22 @@ func (u *Unpackerr) commandGateWaiting(name string, item *Extract) bool {
 			label = entry.Key
 		}
 
+		// The first line the command printed says why, unless the hook is silent.
+		if said != "" && !hook.Silent {
+			said = ": " + said
+		} else {
+			said = ""
+		}
+
 		if errors.Is(err, hooks.ErrGateNotReady) {
-			u.Printf("[%s] Completed item still waiting: %s, command hook %s is not ready", item.Label(), name, label)
+			u.Printf("[%s] Completed item still waiting: %s, command hook %s is not ready%s",
+				item.Label(), name, label, said)
 			u.setItemNote(name, item, noteWaitingGate)
 
 			return true
 		}
 
-		u.Errorf("[%s] Command hook %s: %v", item.Label(), label, err)
+		u.Errorf("[%s] Command hook %s: %v%s", item.Label(), label, err, said)
 	}
 
 	return false

@@ -568,7 +568,8 @@ passwords = []
 ## before queueing a Starr download and waits up to the timeout.
 ## Exit 0 means ready. Exit 75 means not yet, and the download is
 ## tried again on the next poll. Any other exit, or a timeout, does
-## not hold the download.
+## not hold the download. The first line the command prints is
+## logged when it holds the download or fails.
 # gate = false
 ## Do not log command's output.
 # silent = false
@@ -581,4 +582,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 23 NOV 2026 02:30 UTC
+## => Content Auto Generated, 23 NOV 2026 17:29 UTC

@@ -1316,7 +1316,8 @@ sections:
           before queueing a Starr download and waits up to the timeout.
           Exit 0 means ready. Exit 75 means not yet, and the download is
           tried again on the next poll. Any other exit, or a timeout, does
-          not hold the download.
+          not hold the download. The first line the command prints is
+          logged when it holds the download or fails.
       - name: silent
         envvar: SILENT
         default: false

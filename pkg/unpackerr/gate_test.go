@@ -109,8 +109,8 @@ func TestCommandGateNotYetKeepsExtractedRescan(t *testing.T) {
 
 	unpack, item := newSyncthingTestItem(t, 100)
 	item.Status = EXTRACTED
+	item.Unpacked = []string{filepath.Join(item.Path, "subs.zip")}
 	item.Resp = &xtractr.Response{
-		Done:     true,
 		NewFiles: []string{filepath.Join(item.Path, "subs.srt")},
 		Archives: xtractr.ArchiveList{item.Path: {filepath.Join(item.Path, "subs.zip")}},
 		Size:     1,

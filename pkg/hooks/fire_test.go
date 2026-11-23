@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -60,27 +61,36 @@ func TestFireWebhook(t *testing.T) {
 func echoCommand(t *testing.T) string {
 	t.Helper()
 
-	path := filepath.Join(t.TempDir(), "echo.sh")
-	script := "#!/bin/sh\nprintf '%s\\n' ok\n"
-	command := "/bin/sh " + path
-
-	if runtime.GOOS == "windows" {
-		path = filepath.Join(t.TempDir(), "echo.cmd")
-		script = "@echo ok\r\n"
-		command = path
-	}
-
 	// runCmd splits the command with strings.Fields, so a path like
 	// "C:\Program Files\Git\usr\bin\echo.exe" becomes "C:\Program".
-	if strings.ContainsAny(path, " \t") {
-		t.Skip("command hook tests need a temp path without spaces")
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "echo.cmd")
+		if strings.ContainsAny(path, " \t") {
+			t.Skip("command hook tests need a temp path without spaces")
+		}
+
+		if err := os.WriteFile(path, []byte("@echo ok\r\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		return path
 	}
 
-	if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+	shell, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh not found in PATH")
+	}
+
+	path := filepath.Join(t.TempDir(), "echo.sh")
+	if strings.ContainsAny(shell, " \t") || strings.ContainsAny(path, " \t") {
+		t.Skip("command hook tests need paths without spaces")
+	}
+
+	if err := os.WriteFile(path, []byte("printf '%s\\n' ok\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	return command
+	return shell + " " + path
 }
 
 func TestFireCmdhook(t *testing.T) {

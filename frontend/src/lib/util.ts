@@ -93,6 +93,11 @@ export function explicitDeleteDelay(raw: string | undefined): string {
   return explicitDuration(raw, '5m')
 }
 
+/** File 0s uses the 30 minute Syncthing stall. Show and save 30m. */
+export function explicitSyncthingStall(raw: string | undefined): string {
+  return explicitDuration(raw, '30m')
+}
+
 function explicitDuration(raw: string | undefined, fallback: string): string {
   const s = (raw ?? '').trim()
   if (!s || s === '0' || s === '0s') return fallback

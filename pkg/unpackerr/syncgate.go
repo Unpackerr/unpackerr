@@ -21,6 +21,16 @@ import (
 // is never reached (ignored or skipped files) from waiting forever.
 const syncthingStall = 30 * time.Minute
 
+// stallWindow is the item's syncthing_stall, or the 30 minute default when
+// the item has not been given one yet.
+func stallWindow(item *Extract) time.Duration {
+	if item != nil && item.SyncStall > 0 {
+		return item.SyncStall
+	}
+
+	return syncthingStall
+}
+
 // Syncthing writes each file it is receiving to a temp file next to it and
 // renames it into place when done: ".syncthing.<name>.tmp", or
 // "~syncthing~<name>.tmp" on Windows. A <name> longer than
@@ -120,7 +130,7 @@ const (
 	syncUnknown                  // Starr reported no size.
 	syncTemp                     // a Syncthing temp file exists: a file is still being copied.
 	syncWaiting                  // data is missing and still arriving.
-	syncStalled                  // data is missing and nothing changed for syncthingStall.
+	syncStalled                  // data is missing and nothing changed for the stall window.
 )
 
 // syncthingWait reports whether a Syncthing item must keep waiting, and logs why.
@@ -156,7 +166,7 @@ func (u *Unpackerr) syncthingWait(
 
 		if state == syncStalled {
 			u.Printf("[%s] Completed item has %sB of %sB on disk with no change for %v, extracting anyway: %s",
-				item.Label(), bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size), syncthingStall, name)
+				item.Label(), bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size), stallWindow(item), name)
 		}
 
 		return false
@@ -232,7 +242,7 @@ func syncthingProgress(item *Extract, scan *syncScan, now time.Time) syncState {
 		return syncUnknown
 	case scan.have >= item.Size:
 		return syncReached
-	case now.Sub(item.SyncSeenAt) < syncthingStall:
+	case now.Sub(item.SyncSeenAt) < stallWindow(item):
 		return syncWaiting
 	default:
 		return syncStalled

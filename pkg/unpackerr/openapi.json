@@ -356,6 +356,7 @@
           "delete_orig": {"type": "boolean"},
           "delete_delay": {"type": "string", "description": "Go duration"},
           "syncthing": {"type": "boolean"},
+          "syncthing_stall": {"type": "string", "description": "Go duration. Empty or 0s becomes 30m."},
           "valid_ssl": {"type": "boolean"},
           "timeout": {"type": "string", "description": "Go duration"},
           "maxBytes": {"type": "string"},

@@ -310,6 +310,10 @@ func TestEmptyIndexedStarrPathUsesDefault(t *testing.T) {
 	if len(conf.Paths) != 1 || conf.Paths[0] != defaultSavePath {
 		t.Fatalf("paths %+v", conf.Paths)
 	}
+
+	if conf.SyncthingStall.Duration != syncthingStall {
+		t.Fatalf("syncthing stall %s, want %s", conf.SyncthingStall, syncthingStall)
+	}
 }
 
 // UN_SONARR_0_PATHS=/a,/b is the pre-index form, still accepted when PATHS_0 is unset.
@@ -787,7 +791,9 @@ func TestWriteConfigFileFullRoundTrip(t *testing.T) { //nolint:funlen // one fie
 			URL: url, APIKey: secret,
 			Paths: StringSlice{"/downloads", "/mnt/dl"}, Protocols: "torrent",
 			DeleteOrig: true, Syncthing: true, ValidSSL: true, MaxBytes: "10GB",
-			DeleteDelay: cnfg.Duration{Duration: 7 * time.Minute}, Timeout: cnfg.Duration{Duration: 42 * time.Second},
+			DeleteDelay:    cnfg.Duration{Duration: 7 * time.Minute},
+			SyncthingStall: cnfg.Duration{Duration: 2 * time.Hour},
+			Timeout:        cnfg.Duration{Duration: 42 * time.Second},
 		}
 	}
 

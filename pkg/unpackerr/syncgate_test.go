@@ -430,6 +430,26 @@ func TestExtractCompletedDownloadRetryQueuesWholeSet(t *testing.T) {
 	}
 }
 
+func TestExtractCompletedDownloadShortStallWindow(t *testing.T) {
+	t.Parallel()
+
+	unpack, item := newSyncthingTestItem(t, 300)
+	item.SyncStall = time.Second
+	now := time.Now()
+
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("inside a short stall window: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(time.Second), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("after the short stall window: status %s, want queued", item.Status)
+	}
+}
+
 func TestExtractCompletedDownloadSyncthingOffQueuesIncompleteSet(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -666,17 +667,56 @@ func TestConfigTestWebhookUnknownEvent(t *testing.T) {
 	}
 }
 
+func echoCommand(t *testing.T) string {
+	t.Helper()
+
+	// runCmd splits the command with strings.Fields, so a path like
+	// "C:\Program Files\Git\usr\bin\echo.exe" becomes "C:\Program".
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "echo.cmd")
+		if strings.ContainsAny(path, " \t") {
+			t.Skip("command hook tests need a temp path without spaces")
+		}
+
+		if err := os.WriteFile(path, []byte("@echo ok\r\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		return path
+	}
+
+	shell, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh not found in PATH")
+	}
+
+	path := filepath.Join(t.TempDir(), "echo.sh")
+	if strings.ContainsAny(shell, " \t") || strings.ContainsAny(path, " \t") {
+		t.Skip("command hook tests need paths without spaces")
+	}
+
+	if err := os.WriteFile(path, []byte("printf '%s\\n' ok\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	return shell + " " + path
+}
+
 func TestConfigTestCmdhook(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
+	unpack := testAuthUnpackerr(t)
+
+	body, err := json.Marshal(map[string]string{
+		"command": echoCommand(t),
+		"event":   "waiting",
+		"timeout": "2s",
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	unpack := testAuthUnpackerr(t)
-	body := `{"command":"/bin/echo","event":"waiting","timeout":"2s"}`
-
-	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", body, putKey(unpack))
+	rec := doAuth(t, unpack, http.MethodPost, "/api/config/cmdhooks/test", string(body), putKey(unpack))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("cmdhook %d %s", rec.Code, rec.Body.String())
 	}
@@ -687,12 +727,8 @@ func TestConfigTestCmdhook(t *testing.T) {
 func TestConfigTestCmdhookFilepathCommand(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("no /bin/echo")
-	}
-
 	cmdFile := filepath.Join(t.TempDir(), "hook.cmd")
-	if err := os.WriteFile(cmdFile, []byte("/bin/echo\n"), 0o600); err != nil {
+	if err := os.WriteFile(cmdFile, []byte(echoCommand(t)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

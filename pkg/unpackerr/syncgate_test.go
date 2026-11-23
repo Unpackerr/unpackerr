@@ -709,6 +709,31 @@ func TestExtractCompletedDownloadWaitsForLaterVolume(t *testing.T) {
 	}
 }
 
+// Every reported byte on disk does not end the wait for a first volume. The
+// folder can hold files the Starr app did not count, and the check reads
+// names only.
+func TestExtractCompletedDownloadWaitsForFirstVolumeWithEveryByte(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeSized(t, filepath.Join(dir, "subs.zip"), 10)
+	writeSized(t, filepath.Join(dir, "movie.r01"), 10)
+
+	unpack, item := newSyncthingItem(t, dir, 20)
+	now := time.Now()
+	unpack.extractCompletedDownload("Show.Name", now, item)
+
+	if item.Status != WAITING || item.Note != noteWaitingSyncthing {
+		t.Fatalf("first attempt, later volume without its head: status %s note %q, want waiting", item.Status, item.Note)
+	}
+
+	unpack.extractCompletedDownload("Show.Name", now.Add(syncthingStall), item)
+
+	if item.Status != QUEUED {
+		t.Fatalf("no change for the stall window: status %s note %q, want queued", item.Status, item.Note)
+	}
+}
+
 // A change on disk restarts the wait for a first volume, the same as it
 // restarts the wait for the reported size.
 func TestExtractCompletedDownloadLaterVolumeWaitRestartsOnChange(t *testing.T) {

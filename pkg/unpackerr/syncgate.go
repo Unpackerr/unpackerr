@@ -222,20 +222,21 @@ func (u *Unpackerr) syncthingWait(
 	return false
 }
 
-// syncthingSetShort reports whether this wait state must look at archive headers,
-// and a set is not all on disk. A first attempt that already has every reported
-// byte skips the check: the byte count is trusted until a retry. An item with
-// earlier extracts always checks. A failed extract would mark a download as
-// failed while its earlier output is ready to import.
+// syncthingSetShort reports an archive set that is not all on disk. A later
+// volume with no first volume is found from file names alone, so that check
+// runs in every state. The header check is skipped for a first attempt that
+// already has every reported byte: the byte count is trusted until a retry.
+// An item with earlier extracts always reads headers. A failed extract would
+// mark a download as failed while its earlier output is ready to import.
 func (u *Unpackerr) syncthingSetShort(
 	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, state syncState, idle bool,
 ) bool {
-	if state == syncReached && item.Retries == 0 && !hasUnpacked(item) {
-		return false
-	}
-
 	if u.waitingForVolumeHead(name, item, scan, files, idle) {
 		return true
+	}
+
+	if state == syncReached && item.Retries == 0 && !hasUnpacked(item) {
+		return false
 	}
 
 	_, err := u.incompleteSet(item, files)

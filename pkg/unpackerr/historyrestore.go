@@ -99,8 +99,11 @@ func (u *Unpackerr) historyRestoreGate(
 		return "", time.Time{}, 0, "", "", false
 	}
 
+	// A Syncthing download with a record of unpacked archives is restored at
+	// any age. It stays in the queue for as long as the Starr app lists it,
+	// and without the record the next poll would extract it from the start.
 	stamp := historyStamp(rec)
-	if stamp.IsZero() || stamp.Before(cutoff) {
+	if stamp.IsZero() || (stamp.Before(cutoff) && (!rec.Syncthing || len(rec.Unpacked) == 0)) {
 		return "", time.Time{}, 0, "", "", false
 	}
 
@@ -153,6 +156,7 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		MaxBytes:       rec.MaxBytes,
 		PreFiles:       preFilesFromKeys(rec.PreFiles),
 		Unpacked:       slices.Clone(rec.Unpacked),
+		OutputFiles:    slices.Clone(rec.OutputFiles),
 		IDs:            cloneIDs(rec.IDs),
 		Event:          rec.Event,
 	}

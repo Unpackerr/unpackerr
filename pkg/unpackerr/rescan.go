@@ -1,6 +1,7 @@
 package unpackerr
 
 import (
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -9,8 +10,9 @@ import (
 )
 
 // A Syncthing download can keep growing after its first extract. Each extract
-// that finishes adds its archives to Extract.Unpacked. From then on the item
-// is searched as a follow-up in every status: EXTRACTED while the Starr app
+// that finishes adds its archives to Extract.Unpacked, and the files inside
+// any folder it moved in to Extract.OutputFiles. From then on the item is
+// searched as a follow-up in every status: EXTRACTED while the Starr app
 // still lists it, and WAITING for a retry. A follow-up leaves out those
 // archives and the files they produced, so a late archive or a retry never
 // unpacks anything twice.
@@ -29,10 +31,9 @@ func (u *Unpackerr) rescans(name string, item *Extract) bool {
 
 // unpackedSet is what earlier extracts already handled for one item.
 type unpackedSet struct {
-	root     string              // the download path; the walk up from a file stops here.
 	archives map[string]struct{} // archives already unpacked, every volume.
 	heads    map[string]struct{} // the same archives, keyed by headKey.
-	output   map[string]struct{} // files and folders those extracts moved into place.
+	output   map[string]struct{} // every file those extracts put in the download.
 }
 
 // newUnpackedSet returns nil for an item with no finished extract.
@@ -42,10 +43,9 @@ func newUnpackedSet(item *Extract) *unpackedSet {
 	}
 
 	set := &unpackedSet{
-		root:     filepath.Clean(item.Path),
 		archives: make(map[string]struct{}, len(item.Unpacked)),
 		heads:    make(map[string]struct{}, len(item.Unpacked)),
-		output:   make(map[string]struct{}),
+		output:   make(map[string]struct{}, len(item.OutputFiles)),
 	}
 
 	for _, path := range item.Unpacked {
@@ -57,6 +57,10 @@ func newUnpackedSet(item *Extract) *unpackedSet {
 		for _, path := range item.Resp.NewFiles {
 			set.output[filepath.Clean(path)] = struct{}{}
 		}
+	}
+
+	for _, path := range item.OutputFiles {
+		set.output[filepath.Clean(path)] = struct{}{}
 	}
 
 	return set
@@ -75,29 +79,19 @@ func (s *unpackedSet) archive(path string) bool {
 	return ok
 }
 
-// ours reports a path an earlier extract wrote: one of its files, or anything
-// inside a folder it created. An archive that was packed inside another one
-// lands in the download folder this way. It is output, and it is not counted
-// as delivered data or listed as a new archive.
+// ours reports a file an earlier extract wrote. An archive that was packed
+// inside another one lands in the download folder this way. It is output, and
+// it is not counted as delivered data or listed as a new archive. The match is
+// the exact path: a file Syncthing adds later to a folder an extract created
+// is a delivery like any other.
 func (s *unpackedSet) ours(path string) bool {
-	if s == nil || len(s.output) == 0 {
+	if s == nil {
 		return false
 	}
 
-	path = filepath.Clean(path)
+	_, ok := s.output[filepath.Clean(path)]
 
-	for {
-		if _, ok := s.output[path]; ok {
-			return true
-		}
-
-		parent := filepath.Dir(path)
-		if path == s.root || parent == path {
-			return false
-		}
-
-		path = parent
-	}
+	return ok
 }
 
 // accept is an xtractr Filter.Accept that lists only archives new to this item.
@@ -162,6 +156,42 @@ func recordUnpacked(item *Extract, resp *xtractr.Response) {
 
 	item.Unpacked = appendUnique(item.Unpacked, archives)
 	item.PreFiles = nil
+}
+
+// outputFiles lists the files inside the folders an extract moved into the
+// download. xtractr reports such a folder as one path. Listing its files now,
+// right after the extract, is what tells them apart from a file Syncthing
+// adds to that folder later. A path that is gone is skipped.
+func outputFiles(resp *xtractr.Response, finished bool) []string {
+	moved := resp.NewFiles
+	if !finished {
+		moved = movedIntoPlace(resp)
+	}
+
+	var files []string
+
+	for _, root := range moved {
+		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err == nil && path != root && !entry.IsDir() {
+				files = append(files, path)
+			}
+
+			return nil
+		})
+	}
+
+	return files
+}
+
+// recordOutputFiles adds those files to the item. An extract that did not
+// finish adds them only for an item with earlier extracts. Without those the
+// retry starts over, and leftovers are told apart by the remnant snapshot.
+func recordOutputFiles(item *Extract, files []string, finished bool) {
+	if len(files) == 0 || !item.Syncthing || (!finished && !hasUnpacked(item)) {
+		return
+	}
+
+	item.OutputFiles = appendUnique(item.OutputFiles, files)
 }
 
 // movedIntoPlace is the part of a response's NewFiles that reached the

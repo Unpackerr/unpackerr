@@ -239,6 +239,11 @@ func (u *Unpackerr) nothingNewToExtract(name string, item *Extract, now time.Tim
 		return
 	}
 
+	// The failed extract is over, and so is its snapshot. A file Syncthing
+	// delivered since then is not in it, and the next late archive must not
+	// take that file for a leftover.
+	item.PreFiles = nil
+
 	u.Printf("[%s] Nothing new to extract, the earlier extract stands: %s", item.Label(), name)
 	u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTED, Resp: withoutError(item.Resp)}, now, false)
 }
@@ -465,6 +470,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 				// The extracted files are going away. A download the Starr app
 				// lists again after this is extracted from the start.
 				item.Unpacked = nil
+				item.OutputFiles = nil
 			}
 
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
@@ -504,15 +510,21 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	url := item.URL
 	preFiles := item.PreFiles
 	retries := item.Retries
+	syncthing := item.Syncthing
 
 	u.unlockHistory()
 	u.updateMetrics(resp, app, url)
 
 	remnantStatus, remnants := u.handleRemnants(resp, preFiles, retries)
+	finished := !remnants && resp.Error == nil
 
-	var files []string
-	if !remnants && resp.Error == nil {
+	var files, wrote []string
+	if finished {
 		files = fileList(resp.X.Path)
+	}
+
+	if syncthing {
+		wrote = outputFiles(resp, finished)
 	}
 
 	u.lockHistory()
@@ -527,7 +539,8 @@ func (u *Unpackerr) handleXtractrCallback(resp *xtractr.Response) { //nolint:fun
 	// the stored response keeps what they recorded, so delete still removes
 	// their output. Only an extract that finished adds its archives to the
 	// ones a later search skips.
-	stored := keepUnpacked(item, resp, !remnants && resp.Error == nil)
+	stored := keepUnpacked(item, resp, finished)
+	recordOutputFiles(item, wrote, finished)
 
 	switch {
 	case remnants && remnantStatus == WAITING:

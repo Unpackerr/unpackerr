@@ -432,6 +432,7 @@
     "NoCompressedFiles": "No compressed files found",
     "NoExtractableFiles": "No extractable files",
     "WaitingSyncthing": "Waiting for Syncthing",
+    "WaitingGate": "Waiting for command hook",
     "InterruptedRestart": "Interrupted by restart",
     "UnknownArchiveType": "Unknown archive file type",
     "Checksum": "Archived file checksum mismatch",
@@ -878,6 +879,11 @@
         "label": "Run in shell",
         "description": "Run the command inside a shell.",
         "tooltip": "Uses /bin/sh -c on Unix and cmd.exe /c on Windows. Needed if the command is a pipeline or uses shell syntax."
+      },
+      "gate": {
+        "label": "Gate the queue",
+        "description": "Run this command before queueing, and wait when it exits 75.",
+        "tooltip": "This hook does not run on extract events. Exit 0 queues the download. Exit 75 leaves it waiting until the next poll. Any other exit, or a timeout, does not hold it. The wait is the hook's timeout."
       },
       "contentType": {
         "label": "Content type",

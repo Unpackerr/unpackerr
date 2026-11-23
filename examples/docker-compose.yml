@@ -171,6 +171,7 @@ services:
     - UN_CMDHOOK_0_COMMAND=/downloads/scripts/command.sh
     - UN_CMDHOOK_0_NAME=
     - UN_CMDHOOK_0_SHELL=false
+    - UN_CMDHOOK_0_GATE=false
     - UN_CMDHOOK_0_SILENT=false
     - UN_CMDHOOK_0_EVENTS_0=1
     - UN_CMDHOOK_0_EVENTS_1=4
@@ -179,4 +180,4 @@ services:
     - UN_CMDHOOK_0_EXCLUDE_1=lidarr
     - UN_CMDHOOK_0_TIMEOUT=10s
 
-## => Content Auto Generated, 23 NOV 2026 00:42 UTC
+## => Content Auto Generated, 23 NOV 2026 17:29 UTC

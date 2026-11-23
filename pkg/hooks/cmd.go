@@ -3,15 +3,26 @@ package hooks
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"golift.io/cnfg"
 )
+
+// gateNotReadyExit is the command exit code that means "not yet".
+// Any other non-zero exit, or a timeout, is not an opinion.
+const gateNotReadyExit = 75
+
+// outputWait is how long a command's output is still read after the command
+// has ended or was stopped at its timeout. A process the command started can
+// keep that output open for as long as it lives, and nothing waits for it.
+const outputWait = time.Second
 
 func runCmdWithLog(log Logger, hook *Config, payload *Payload, qlen, qcap int) error {
 	out, err := runCmd(context.Background(), hook, payload)
@@ -83,10 +94,57 @@ func runCmd(ctx context.Context, hook *Config, payload *Payload) (*bytes.Buffer,
 	cmd.Stderr = &out
 	cmd.Env = env.Env()
 	cmd.Env = append(cmd.Env, "PATH="+os.Getenv("PATH"))
+	cmd.WaitDelay = outputWait
 
-	if err := cmd.Run(); err != nil {
+	// ErrWaitDelay is a command that ended well and left its output open.
+	// The command's own result stands.
+	if err := cmd.Run(); err != nil && !errors.Is(err, exec.ErrWaitDelay) {
 		return &out, fmt.Errorf("running cmd %q: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	return &out, nil
+}
+
+// RunSync runs a command hook in the caller's goroutine. The command is
+// stopped at the hook timeout, and its output is read for outputWait more at
+// most. The first line the command printed is returned with every result.
+// Exit 0 returns a nil error. Exit 75 returns ErrGateNotReady. Any other
+// exit, a timeout, or a spawn error is returned as-is.
+func RunSync(hook *Config, payload *Payload) (string, error) {
+	if hook == nil {
+		return "", ErrNilConfig
+	}
+
+	out, err := runCmd(context.Background(), hook, payload)
+	line := firstLine(out)
+
+	// Exit 75 ran and said "not yet". It counts as a run, and it is not a failure.
+	var exitErr *exec.ExitError
+
+	held := errors.As(err, &exitErr) && exitErr.ExitCode() == gateNotReadyExit
+	if held {
+		err = ErrGateNotReady
+	}
+
+	hook.Lock()
+	hook.posts++
+
+	if err != nil && !held {
+		hook.fails++
+	}
+
+	hook.Unlock()
+
+	return line, err
+}
+
+// firstLine is the first line of a command's output that is not blank.
+func firstLine(out *bytes.Buffer) string {
+	if out == nil {
+		return ""
+	}
+
+	line, _, _ := strings.Cut(strings.TrimSpace(out.String()), "\n")
+
+	return strings.TrimSpace(line)
 }

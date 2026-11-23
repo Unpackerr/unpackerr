@@ -432,6 +432,7 @@
     "NoCompressedFiles": "No se encontraron archivos comprimidos",
     "NoExtractableFiles": "No hay archivos extraíbles",
     "WaitingSyncthing": "Esperando a Syncthing",
+    "WaitingGate": "Esperando al gancho de comando",
     "InterruptedRestart": "Interrumpido por reinicio",
     "UnknownArchiveType": "Tipo de archivo desconocido",
     "Checksum": "La suma de comprobación del archivo no coincide",
@@ -878,6 +879,11 @@
         "label": "Ejecutar en el shell",
         "description": "Ejecutar el comando dentro de un shell.",
         "tooltip": "Usa /bin/sh -c en Unix y cmd.exe /c en Windows. Hace falta si el comando es una tubería o usa sintaxis de shell."
+      },
+      "gate": {
+        "label": "Retener la cola",
+        "description": "Ejecutar este comando antes de encolar, y esperar si sale con 75.",
+        "tooltip": "Este gancho no se ejecuta en los eventos de extracción. La salida 0 encola la descarga. La salida 75 la deja en espera hasta el siguiente ciclo. Cualquier otra salida, o un tiempo agotado, no la retiene. La espera es el tiempo límite del gancho."
       },
       "contentType": {
         "label": "Tipo de contenido",

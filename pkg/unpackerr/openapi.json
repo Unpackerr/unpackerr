@@ -421,6 +421,7 @@
           "template": {"type": "string"},
           "timeout": {"type": "string", "description": "Go duration"},
           "shell": {"type": "boolean"},
+          "gate": {"type": "boolean", "description": "Command hook only. Run synchronously before queueing a Starr download. Exit 0 is ready, exit 75 is not yet, anything else does not hold the download. Not an event hook."},
           "ignoreSsl": {"type": "boolean"},
           "silent": {"type": "boolean"},
           "events": {"type": "array", "items": {"oneOf": [{"type": "integer"}, {"type": "string"}]}},

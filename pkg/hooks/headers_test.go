@@ -55,6 +55,7 @@ func TestCloneListCopiesHeaders(t *testing.T) {
 
 	src := []*Config{{
 		URL:     "https://example/hook",
+		Gate:    true,
 		Headers: map[string]string{"X-Api-Key": "k"},
 	}}
 	got := CloneList(src)
@@ -62,5 +63,9 @@ func TestCloneListCopiesHeaders(t *testing.T) {
 
 	if src[0].Headers["X-Api-Key"] != "k" {
 		t.Fatal("clone shared the headers map")
+	}
+
+	if !got[0].Gate {
+		t.Fatal("clone dropped the gate flag")
 	}
 }

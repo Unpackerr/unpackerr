@@ -432,6 +432,7 @@
     "NoCompressedFiles": "Geen gecomprimeerde bestanden gevonden",
     "NoExtractableFiles": "Geen uitpakbare bestanden",
     "WaitingSyncthing": "Wachten op Syncthing",
+    "WaitingGate": "Wachten op opdracht-hook",
     "InterruptedRestart": "Onderbroken door herstart",
     "UnknownArchiveType": "Onbekend archieftype",
     "Checksum": "Checksum van gearchiveerd bestand komt niet overeen",
@@ -878,6 +879,11 @@
         "label": "In shell uitvoeren",
         "description": "De opdracht in een shell uitvoeren.",
         "tooltip": "Gebruikt /bin/sh -c op Unix en cmd.exe /c op Windows. Nodig als de opdracht een pijplijn is of shellsyntax gebruikt."
+      },
+      "gate": {
+        "label": "Wachtrij tegenhouden",
+        "description": "Voer deze opdracht uit vóór het in de wachtrij plaatsen, en wacht bij exitcode 75.",
+        "tooltip": "Deze hook draait niet bij uitpakgebeurtenissen. Exitcode 0 zet de download in de wachtrij. Exitcode 75 laat hem wachten tot de volgende ronde. Elke andere code, of een time-out, houdt hem niet tegen. Het wachten is de time-out van de hook."
       },
       "contentType": {
         "label": "Contenttype",

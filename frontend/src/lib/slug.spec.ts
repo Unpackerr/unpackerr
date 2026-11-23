@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { env } from './env.svelte'
 import {
+  HOOK_ENV_FIELDS,
   instanceMap,
   mapFromPairs,
   mapKeysInvalid,
@@ -55,6 +56,13 @@ describe('slugs', () => {
       interval: '1m',
     })
     expect(row).toEqual({ path: '/data', interval: '1m' })
+
+    env.pairs = { CMDHOOK_gate_GATE: 'false' }
+    const hook = { command: '/bin/true', gate: true, shell: false }
+    expect(omitEnvFields('CMDHOOK', 'gate', hook, HOOK_ENV_FIELDS)).toEqual({
+      command: '/bin/true',
+      shell: false,
+    })
 
     expect(mapFromPairs([{ key: ' a ', value: '1' }, { key: '', value: '2' }])).toEqual({
       a: '1',

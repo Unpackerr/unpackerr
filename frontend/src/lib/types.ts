@@ -323,6 +323,7 @@ export interface WebhookConfig {
   template: string
   timeout: string
   shell: boolean
+  gate: boolean
   ignoreSsl: boolean
   silent: boolean
   events: (number | string)[]

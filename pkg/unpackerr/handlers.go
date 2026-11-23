@@ -17,6 +17,7 @@ import (
 const (
 	noteNoExtractable    = "no extractable files"
 	noteWaitingSyncthing = "waiting for syncthing"
+	noteWaitingGate      = "waiting for command hook"
 )
 
 // StarrConfig is the shared config items for all starr apps.
@@ -173,6 +174,12 @@ func (u *Unpackerr) extractCompletedDownload(name string, now time.Time, item *E
 		return
 	}
 
+	// The disk gate already decided this download is ready. A command hook
+	// can only hold it, or let it through.
+	if u.commandGateWaiting(name, item) {
+		return
+	}
+
 	u.queueDownloadExtract(name, item, files, now)
 }
 
@@ -229,7 +236,7 @@ func (u *Unpackerr) noteNothingToExtract(name string, item *Extract, now time.Ti
 // to import, so an item that went back to WAITING returns to EXTRACTED.
 func (u *Unpackerr) nothingNewToExtract(name string, item *Extract, now time.Time) {
 	if item.Status == EXTRACTED {
-		u.clearSyncthingNote(name, item)
+		u.clearWaitingNote(name, item)
 		return
 	}
 
@@ -292,8 +299,8 @@ func (u *Unpackerr) queueDownloadExtract(name string, item *Extract, files xtrac
 	u.logQueuedDownload(queueSize, item, files)
 }
 
-func (u *Unpackerr) clearSyncthingNote(name string, item *Extract) {
-	if item.Note != noteWaitingSyncthing {
+func (u *Unpackerr) clearWaitingNote(name string, item *Extract) {
+	if item.Note != noteWaitingSyncthing && item.Note != noteWaitingGate {
 		return
 	}
 

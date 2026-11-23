@@ -724,6 +724,11 @@
         "description": "Esperar a que Syncthing termine antes de extraer.",
         "tooltip": "Actívalo si las descargas llegan por Syncthing y las extracciones empiezan demasiado pronto."
       },
+      "syncthing_stall": {
+        "label": "Espera de Syncthing",
+        "description": "Extraer de todos modos tras este tiempo sin archivos nuevos.",
+        "tooltip": "Una descarga que deja de crecer espera este tiempo y luego extrae lo que ya está en disco. El valor predeterminado es 30 minutos. Un archivo incompleto sigue esperando."
+      },
       "valid_ssl": {
         "label": "Solo SSL válido"
       },

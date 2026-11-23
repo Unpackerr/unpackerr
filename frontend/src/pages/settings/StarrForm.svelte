@@ -30,6 +30,7 @@
     deepCopy,
     deepEqual,
     explicitDeleteDelay,
+    explicitSyncthingStall,
     explicitTimeout,
   } from '../../lib/util'
   import { trackDirty } from '../../lib/dirty.svelte'
@@ -176,6 +177,7 @@
       delete_orig: false,
       delete_delay: '5m',
       syncthing: false,
+      syncthing_stall: '30m',
       valid_ssl: false,
       timeout: '10s',
       maxBytes: defaultMaxBytes(section),
@@ -198,6 +200,7 @@
       maxBytes,
       timeout: explicitTimeout(a.timeout),
       delete_delay: explicitDeleteDelay(a.delete_delay),
+      syncthing_stall: explicitSyncthingStall(a.syncthing_stall),
     }
     if (section === 'lidarr') {
       row.split_flac = a.split_flac ?? false
@@ -254,6 +257,7 @@
         ...rest,
         paths: pathLines(pathsText[row.id] ?? ''),
         delete_delay: explicitDeleteDelay(value.delete_delay),
+        syncthing_stall: explicitSyncthingStall(value.syncthing_stall),
       }
       if (section === 'lidarr') {
         item.split_flac = split_flac ?? false
@@ -633,6 +637,18 @@
               original={prev?.syncthing}
               disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'SYNCTHING')}
+            />
+          </Col>
+          <Col md="6">
+            <Input
+              id={`${section}-${row.id}-syncthing-stall`}
+              helpKey="config.starr.syncthing_stall"
+              type="stall"
+              label={$_('config.starr.syncthing_stall.label')}
+              bind:value={app.syncthing_stall}
+              original={prev?.syncthing_stall}
+              disabled={!canWrite}
+              envVar={envField(envPrefix, slug, 'SYNCTHING_STALL')}
             />
           </Col>
           {#if section === 'lidarr'}

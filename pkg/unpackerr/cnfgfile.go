@@ -564,6 +564,10 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
 	}
 
+	if conf.SyncthingStall.Duration == 0 {
+		conf.SyncthingStall.Duration = syncthingStall
+	}
+
 	for idx, path := range conf.Paths {
 		conf.Paths[idx] = strings.TrimSpace(expandHomedir(path))
 	}

@@ -3,6 +3,7 @@ import {
   deepCopy,
   deepEqual,
   explicitDeleteDelay,
+  explicitSyncthingStall,
   explicitTimeout,
   helpToHtml,
   helpToInline,
@@ -49,5 +50,7 @@ describe('cookies and inherited durations', () => {
     expect(explicitTimeout('0s')).toBe('10s')
     expect(explicitTimeout('30s')).toBe('30s')
     expect(explicitDeleteDelay('')).toBe('5m')
+    expect(explicitSyncthingStall('0s')).toBe('30m')
+    expect(explicitSyncthingStall('2h')).toBe('2h')
   })
 })

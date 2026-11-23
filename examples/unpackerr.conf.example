@@ -240,6 +240,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## How long a Syncthing download may sit unchanged before Unpackerr
+## extracts the files already on disk. An incomplete archive set keeps
+## waiting. Zero uses 30 minutes.
+# syncthing_stall = "30m"
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -285,6 +289,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## How long a Syncthing download may sit unchanged before Unpackerr
+## extracts the files already on disk. An incomplete archive set keeps
+## waiting. Zero uses 30 minutes.
+# syncthing_stall = "30m"
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -330,6 +338,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## How long a Syncthing download may sit unchanged before Unpackerr
+## extracts the files already on disk. An incomplete archive set keeps
+## waiting. Zero uses 30 minutes.
+# syncthing_stall = "30m"
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -387,6 +399,10 @@ passwords = []
 # delete_orig = false
 ## If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
 # syncthing = false
+## How long a Syncthing download may sit unchanged before Unpackerr
+## extracts the files already on disk. An incomplete archive set keeps
+## waiting. Zero uses 30 minutes.
+# syncthing_stall = "30m"
 ## When true, Unpackerr verifies the Starr app HTTPS certificate.
 ## The default is false for backward compatibility.
 # valid_ssl = false
@@ -559,4 +575,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 04 OCT 2026 06:03 UTC
+## => Content Auto Generated, 23 NOV 2026 00:42 UTC

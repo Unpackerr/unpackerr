@@ -3,20 +3,35 @@ package unpackerr
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
+	"golift.io/xtractr"
 )
 
 // syncthingStall is how long a Syncthing item may show no progress, while it is
-// still smaller than the size the Starr app reports, before we stop waiting and
-// extract anyway. Progress is a change in the bytes of finished files, or any
-// Syncthing temp file being present. This keeps a download whose reported size
-// is never reached (ignored or skipped files) from waiting forever.
+// still smaller than the size the Starr app reports, before we extract the files
+// already on disk. Progress is a change in the bytes of finished files, or any
+// Syncthing temp file being present. That covers a download whose reported size
+// is never reached, such as ignored or skipped files. An incomplete archive set
+// the finder can see is not cut off here: it keeps waiting until the volumes
+// arrive or the Starr app drops the download.
 const syncthingStall = 30 * time.Minute
+
+// stallWindow is the item's syncthing_stall, or the 30 minute default when
+// the item has not been given one yet.
+func stallWindow(item *Extract) time.Duration {
+	if item != nil && item.SyncStall > 0 {
+		return item.SyncStall
+	}
+
+	return syncthingStall
+}
 
 // Syncthing writes each file it is receiving to a temp file next to it and
 // renames it into place when done: ".syncthing.<name>.tmp", or
@@ -113,10 +128,11 @@ func (s *syncScan) singleFile(path string) {
 type syncState int
 
 const (
-	syncDone    syncState = iota // every reported byte is here, or the size is unknown.
+	syncReached syncState = iota // the bytes on disk reach the size Starr reported.
+	syncUnknown                  // Starr reported no size.
 	syncTemp                     // a Syncthing temp file exists: a file is still being copied.
 	syncWaiting                  // data is missing and still arriving.
-	syncStalled                  // data is missing and nothing changed for syncthingStall.
+	syncStalled                  // data is missing and nothing changed for the stall window.
 )
 
 // syncthingWait reports whether a Syncthing item must keep waiting, and logs why.
@@ -126,28 +142,86 @@ const (
 // sit half-delivered with no temp file present, and extracting it then fails:
 // a missing first volume, or a ratio error from missing later volumes.
 // So wait while any temp file exists, at any depth, and while the bytes on
-// disk are short of the size the Starr app reports.
-func (u *Unpackerr) syncthingWait(name string, item *Extract, scan *syncScan, now time.Time) bool {
+// disk are short of the size the Starr app reports. An incomplete archive
+// set also waits when that size is unknown, the stall window has run out,
+// or a retry already has every reported byte. That wait has no time limit of
+// its own. A first attempt that has every reported byte queues without
+// reading headers.
+func (u *Unpackerr) syncthingWait(
+	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, now time.Time,
+) bool {
 	scan.singleFile(item.Path)
 
-	switch state := u.lockedSyncthingProgress(item, scan, now); state {
+	state := u.lockedSyncthingProgress(item, scan, now)
+
+	switch state {
 	case syncTemp:
 		u.Printf("[%s] Completed item still syncing: %s, found Syncthing .tmp file: %s", item.Label(), name, scan.temp)
+		u.setItemNote(name, item, noteWaitingSyncthing)
+
+		return true
 	case syncWaiting:
 		u.Printf("[%s] Completed item still syncing: %s, %sB of %sB on disk",
 			item.Label(), name, bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size))
-	case syncStalled:
-		u.Printf("[%s] Completed item has %sB of %sB on disk with no change for %v, extracting anyway: %s",
-			item.Label(), bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size), syncthingStall, name)
+		u.setItemNote(name, item, noteWaitingSyncthing)
 
-		return false
-	case syncDone:
+		return true
+	case syncStalled, syncUnknown, syncReached:
+		if u.syncthingSetShort(name, item, files, state) {
+			u.setItemNote(name, item, noteWaitingSyncthing)
+
+			return true
+		}
+
+		if state == syncStalled {
+			u.Printf("[%s] Completed item has %sB of %sB on disk with no change for %v, extracting anyway: %s",
+				item.Label(), bytefmt.ByteSize(scan.have), bytefmt.ByteSize(item.Size), stallWindow(item), name)
+		}
+
 		return false
 	}
 
-	u.setItemNote(name, item, noteWaitingSyncthing)
+	// Every named state returns above. A state added later queues.
+	return false
+}
+
+// syncthingSetShort reports whether this wait state must look at archive headers,
+// and a set is not all on disk. A first attempt that already has every reported
+// byte skips the check: the byte count is trusted until a retry.
+func (u *Unpackerr) syncthingSetShort(
+	name string, item *Extract, files xtractr.ArchiveList, state syncState,
+) bool {
+	if state == syncReached && item.Retries == 0 {
+		return false
+	}
+
+	_, err := u.incompleteSet(item, files)
+	if err == nil {
+		return false
+	}
+
+	u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %v", item.Label(), name, err)
 
 	return true
+}
+
+// incompleteSet returns the first archive set whose volumes are not all on disk.
+// Any other header error is left for the extract to report.
+func (u *Unpackerr) incompleteSet(item *Extract, files xtractr.ArchiveList) (string, error) {
+	password := u.getPasswordFromPath(item.Path)
+
+	for _, archive := range files.List() {
+		err := xtractr.CheckVolumes(&xtractr.XFile{
+			FilePath:  archive,
+			Password:  password,
+			Passwords: []string(u.Passwords),
+		})
+		if errors.Is(err, xtractr.ErrMissingVolume) {
+			return archive, fmt.Errorf("%s: %w", archive, err)
+		}
+	}
+
+	return "", nil
 }
 
 // lockedSyncthingProgress runs syncthingProgress under History.mu.
@@ -172,9 +246,11 @@ func syncthingProgress(item *Extract, scan *syncScan, now time.Time) syncState {
 	switch {
 	case scan.temp != "":
 		return syncTemp
-	case item.Size == 0 || scan.have >= item.Size:
-		return syncDone // size unknown, or every reported byte is here.
-	case now.Sub(item.SyncSeenAt) < syncthingStall:
+	case item.Size == 0:
+		return syncUnknown
+	case scan.have >= item.Size:
+		return syncReached
+	case now.Sub(item.SyncSeenAt) < stallWindow(item):
 		return syncWaiting
 	default:
 		return syncStalled

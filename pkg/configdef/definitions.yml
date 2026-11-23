@@ -699,6 +699,29 @@ sections:
         recommend: *BOOLEAN
         short: Setting this to true makes unpackerr wait for syncthing to finish.
         desc: If you use Syncthing, setting this to true will make unpackerr wait for syncs to finish.
+      - name: syncthing_stall
+        envvar: SYNCTHING_STALL
+        default: 30m
+        recommend:
+          - name: 5 minutes
+            value: 5m
+          - name: 10 minutes
+            value: 10m
+          - name: 15 minutes
+            value: 15m
+          - name: 30 minutes
+            value: 30m
+          - name: 1 hour
+            value: 1h
+          - name: 2 hours
+            value: 2h
+          - name: 6 hours
+            value: 6h
+        short: Extract anyway after this long with no new Syncthing files.
+        desc: |
+          How long a Syncthing download may sit unchanged before Unpackerr
+          extracts the files already on disk. An incomplete archive set keeps
+          waiting. Zero uses 30 minutes.
       - name: valid_ssl
         envvar: VALID_SSL
         default: false

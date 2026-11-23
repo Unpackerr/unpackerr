@@ -275,6 +275,7 @@ export interface StarrConfig {
   delete_orig: boolean
   delete_delay: string
   syncthing: boolean
+  syncthing_stall: string
   valid_ssl: boolean
   timeout: string
   maxBytes: string

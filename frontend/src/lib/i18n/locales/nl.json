@@ -724,6 +724,11 @@
         "description": "Wachten tot Syncthing klaar is voordat er wordt uitgepakt.",
         "tooltip": "Zet dit aan als downloads via Syncthing binnenkomen en uitpakken te vroeg start."
       },
+      "syncthing_stall": {
+        "label": "Syncthing-wachttijd",
+        "description": "Toch uitpakken na deze tijd zonder nieuwe bestanden.",
+        "tooltip": "Een download die niet meer groeit wacht zo lang en pakt daarna uit wat al op schijf staat. De standaard is 30 minuten. Een onvolledige set blijft wachten."
+      },
       "valid_ssl": {
         "label": "Alleen geldige SSL"
       },

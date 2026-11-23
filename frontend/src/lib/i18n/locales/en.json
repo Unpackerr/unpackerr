@@ -724,6 +724,11 @@
         "description": "Wait until Syncthing finishes before extracting.",
         "tooltip": "Enable this if downloads land through Syncthing and extracts start too early."
       },
+      "syncthing_stall": {
+        "label": "Syncthing stall",
+        "description": "Extract anyway after this long with no new files.",
+        "tooltip": "A download that stops growing waits this long, then extracts what is already on disk. The default is 30 minutes. An incomplete archive set keeps waiting."
+      },
       "valid_ssl": {
         "label": "Valid SSL only"
       },

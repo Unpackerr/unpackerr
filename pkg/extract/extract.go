@@ -67,6 +67,10 @@ type Extract struct {
 	// last seen. Used to tell a slow sync from a stalled one.
 	SyncSeen   uint64
 	SyncSeenAt time.Time
+	// SyncStall is how long this item may show no progress before a short
+	// download is extracted anyway. Zero uses the 30 minute default. Every
+	// queue poll refreshes it from the instance's syncthing_stall.
+	SyncStall time.Duration
 }
 
 // Label is the human-facing instance name, or the dialect when Name is empty.

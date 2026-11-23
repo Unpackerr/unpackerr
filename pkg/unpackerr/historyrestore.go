@@ -152,6 +152,7 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		NoRetry:        rec.NoRetry,
 		MaxBytes:       rec.MaxBytes,
 		PreFiles:       preFilesFromKeys(rec.PreFiles),
+		Unpacked:       slices.Clone(rec.Unpacked),
 		IDs:            cloneIDs(rec.IDs),
 		Event:          rec.Event,
 	}
@@ -162,10 +163,28 @@ func (u *Unpackerr) extractFromHistoryRecord(
 
 	applyHistoryRestoreDelay(item, rec.DeleteDelay, u.DeleteDelay.Duration)
 	applyHistoryRestoreResp(item, rec, errMsg)
+	applyHistoryRestoreUnpacked(item, rec)
 	applyHistoryRestoreClock(item, rec.Status, now, stamp, u.RetryDelay.Duration)
 	item.XProg = &ExtractProgress{Extract: item}
 
 	return item
+}
+
+// applyHistoryRestoreUnpacked fills Unpacked for a Syncthing row written
+// before that field existed. A row saved after a finished extract lists that
+// extract's archives. Its snapshot is from before the extract, so it is
+// dropped the way a finished extract drops it now.
+func applyHistoryRestoreUnpacked(item *Extract, rec HistoryRecord) {
+	if !rec.Syncthing || len(rec.Unpacked) > 0 || rec.Error != "" || len(rec.OrigFiles) == 0 {
+		return
+	}
+
+	if rec.Status != EXTRACTED && rec.Status != IMPORTED {
+		return
+	}
+
+	item.Unpacked = appendUnique(nil, rec.OrigFiles)
+	item.PreFiles = nil
 }
 
 func applyHistoryRestoreDelay(item *Extract, delay string, fallback time.Duration) {
@@ -192,7 +211,6 @@ func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {
 	}
 
 	item.Resp = &xtractr.Response{
-		Done:     true,
 		NewFiles: append([]string(nil), rec.NewFiles...),
 		Size:     rec.Bytes,
 		Output:   rec.Output,

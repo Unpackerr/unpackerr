@@ -19,8 +19,9 @@ import (
 // still smaller than the size the Starr app reports, before we extract the files
 // already on disk. Progress is a change in the bytes of finished files, or any
 // Syncthing temp file being present. That covers a download whose reported size
-// is never reached, such as ignored or skipped files. An incomplete archive set
-// the finder can see is not cut off here: it keeps waiting until the volumes
+// is never reached, such as ignored or skipped files. The same window ends the
+// wait for a first volume that is not on disk. An incomplete archive set the
+// finder can see is not cut off here: it keeps waiting until the volumes
 // arrive or the Starr app drops the download.
 const syncthingStall = 30 * time.Minute
 
@@ -89,10 +90,10 @@ type syncScan struct {
 	temp  string       // a Syncthing temp file, "" when none.
 	seen  bool         // the search listed at least one folder entry.
 	tails []volumeTail // continuation volumes whose first volume may still be absent.
-	// extracted are archive paths already extracted for this item. A volume
-	// head in this set counts as present, so leftovers from that set do not
-	// hold a later rescan.
-	extracted map[string]struct{}
+	// unpacked is what earlier extracts of this item already handled, nil
+	// when there are none. Their output is not delivered data, and a first
+	// volume they unpacked counts as present for the volumes after it.
+	unpacked *unpackedSet
 }
 
 // volumeTail is one continuation volume and the first-volume names that
@@ -101,7 +102,7 @@ type volumeTail struct {
 	path     string // the continuation file.
 	head     string // the missing name to log when no head is present.
 	alt      string // old-style .r00, which the finder treats as the head when .rar is absent.
-	partStem string // lowercased "dir/stem" for .partN.rar, so any part0*1 width counts.
+	partStem string // headKey of "dir/stem" for .partN.rar, so any part0*1 width counts.
 }
 
 // Continuation volumes the finder does not return. .r00, .part1/.part01, and
@@ -114,6 +115,9 @@ var (
 
 // observe is an xtractr Filter.Observe callback. Temp files do not count as
 // delivered: Syncthing may size a temp file to its final length before writing it.
+// Files an earlier extract wrote do not count either: the size the Starr app
+// reports is the download alone, and a volume packed inside another archive
+// is not a set that is still arriving.
 func (s *syncScan) observe(path string, info os.FileInfo) {
 	s.seen = true
 
@@ -121,6 +125,7 @@ func (s *syncScan) observe(path string, info os.FileInfo) {
 	case info == nil || !info.Mode().IsRegular():
 	case isSyncthingTemp(filepath.Base(path)):
 		s.temp = path
+	case s.unpacked.ours(path):
 	default:
 		s.have += uint64(max(info.Size(), 0))
 
@@ -175,16 +180,16 @@ const (
 // So wait while any temp file exists, at any depth, and while the bytes on
 // disk are short of the size the Starr app reports. An incomplete archive
 // set also waits when that size is unknown, the stall window has run out,
-// or a retry already has every reported byte. A continuation volume whose
-// first volume is not on disk is one of those sets, even though the finder
-// does not return it. That wait has no time limit of its own. A first
-// attempt that has every reported byte queues without reading headers.
+// or a retry already has every reported byte. That wait has no time limit
+// of its own. A continuation volume whose first volume is not on disk waits
+// too, until nothing has changed for the stall window. A first attempt that
+// has every reported byte queues without reading headers.
 func (u *Unpackerr) syncthingWait(
 	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, now time.Time,
 ) bool {
 	scan.singleFile(item.Path)
 
-	state := u.lockedSyncthingProgress(item, scan, now)
+	state, idle := u.lockedSyncthingProgress(item, scan, now)
 
 	switch state {
 	case syncTemp:
@@ -199,7 +204,7 @@ func (u *Unpackerr) syncthingWait(
 
 		return true
 	case syncStalled, syncUnknown, syncReached:
-		if u.syncthingSetShort(name, item, scan, files, state) {
+		if u.syncthingSetShort(name, item, scan, files, state, idle) {
 			u.setItemNote(name, item, noteWaitingSyncthing)
 
 			return true
@@ -219,18 +224,17 @@ func (u *Unpackerr) syncthingWait(
 
 // syncthingSetShort reports whether this wait state must look at archive headers,
 // and a set is not all on disk. A first attempt that already has every reported
-// byte skips the check: the byte count is trusted until a retry.
+// byte skips the check: the byte count is trusted until a retry. An item with
+// earlier extracts always checks. A failed extract would mark a download as
+// failed while its earlier output is ready to import.
 func (u *Unpackerr) syncthingSetShort(
-	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, state syncState,
+	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, state syncState, idle bool,
 ) bool {
-	if state == syncReached && item.Retries == 0 {
+	if state == syncReached && item.Retries == 0 && !hasUnpacked(item) {
 		return false
 	}
 
-	if tail, head := missingVolumeHead(scan, files); tail != "" {
-		u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %s: missing %s",
-			item.Label(), name, tail, head)
-
+	if u.waitingForVolumeHead(name, item, scan, files, idle) {
 		return true
 	}
 
@@ -240,6 +244,31 @@ func (u *Unpackerr) syncthingSetShort(
 	}
 
 	u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %v", item.Label(), name, err)
+
+	return true
+}
+
+// waitingForVolumeHead reports a continuation volume whose first volume is not
+// on disk, while the download is still changing. None of the archives that were
+// found needs that volume, so once nothing has changed for the stall window they
+// are extracted. A first volume that arrives after that is found on a later pass.
+func (u *Unpackerr) waitingForVolumeHead(
+	name string, item *Extract, scan *syncScan, files xtractr.ArchiveList, idle bool,
+) bool {
+	tail, head := missingVolumeHead(scan, files)
+	if tail == "" {
+		return false
+	}
+
+	if idle {
+		u.Printf("[%s] Completed item has no %s for %s after %v with no change, not waiting for it: %s",
+			item.Label(), head, tail, stallWindow(item), name)
+
+		return false
+	}
+
+	u.Printf("[%s] Completed item still syncing: %s, archive set not complete: %s: missing %s",
+		item.Label(), name, tail, head)
 
 	return true
 }
@@ -272,7 +301,7 @@ func continuationVolume(path string) (volumeTail, bool) {
 		return volumeTail{
 			path:     path,
 			head:     filepath.Join(dir, match[1]+".part"+headNum+".rar"),
-			partStem: volumeKey(filepath.Join(dir, match[1])),
+			partStem: headKey(filepath.Join(dir, match[1])),
 		}, true
 	}
 
@@ -294,23 +323,24 @@ func partOneVolume(digits string) bool {
 }
 
 // missingVolumeHead returns a continuation path and the head name to log
-// when that head is not in this find and was not already extracted.
+// when that head is not in this find and an earlier extract did not unpack it.
 func missingVolumeHead(scan *syncScan, files xtractr.ArchiveList) (string, string) {
 	if scan == nil || len(scan.tails) == 0 {
 		return "", ""
 	}
 
-	found := make(map[string]struct{}, files.Count()+len(scan.extracted))
-	for key := range scan.extracted {
-		found[key] = struct{}{}
+	found := make(map[string]struct{}, files.Count())
+	for _, path := range files.List() {
+		found[headKey(path)] = struct{}{}
 	}
 
-	for _, path := range files.List() {
-		found[volumeKey(path)] = struct{}{}
+	var unpacked map[string]struct{}
+	if scan.unpacked != nil {
+		unpacked = scan.unpacked.heads
 	}
 
 	for _, tail := range scan.tails {
-		if volumeHeadFound(found, tail) {
+		if volumeHeadFound(found, tail) || volumeHeadFound(unpacked, tail) {
 			continue
 		}
 
@@ -320,13 +350,15 @@ func missingVolumeHead(scan *syncScan, files xtractr.ArchiveList) (string, strin
 	return "", ""
 }
 
-func volumeHeadFound(found map[string]struct{}, tail volumeTail) bool {
-	if _, ok := found[volumeKey(tail.head)]; ok {
+// volumeHeadFound reports whether heads, a set of headKey values, holds a
+// first volume for tail.
+func volumeHeadFound(heads map[string]struct{}, tail volumeTail) bool {
+	if _, ok := heads[headKey(tail.head)]; ok {
 		return true
 	}
 
 	if tail.alt != "" {
-		if _, ok := found[volumeKey(tail.alt)]; ok {
+		if _, ok := heads[headKey(tail.alt)]; ok {
 			return true
 		}
 	}
@@ -337,7 +369,7 @@ func volumeHeadFound(found map[string]struct{}, tail volumeTail) bool {
 
 	prefix := tail.partStem + ".part"
 
-	for key := range found {
+	for key := range heads {
 		rest, ok := strings.CutPrefix(key, prefix)
 		if !ok || !strings.HasSuffix(rest, ".rar") {
 			continue
@@ -351,8 +383,14 @@ func volumeHeadFound(found map[string]struct{}, tail volumeTail) bool {
 	return false
 }
 
-func volumeKey(path string) string {
-	return strings.ToLower(filepath.Clean(path))
+// headKey is an archive path in the form used to match a continuation volume
+// to its first volume. The finder matches those names without regard to case,
+// so the file name is folded. The folder is compared as written: on a
+// case-sensitive filesystem it can be a different folder.
+func headKey(path string) string {
+	dir, base := filepath.Split(filepath.Clean(path))
+
+	return dir + strings.ToLower(base)
 }
 
 // incompleteSet returns the first archive set whose volumes are not all on disk.
@@ -376,12 +414,16 @@ func (u *Unpackerr) incompleteSet(item *Extract, files xtractr.ArchiveList) (str
 
 // lockedSyncthingProgress runs syncthingProgress under History.mu.
 // checkStarrQueue updates item.Size under that lock, and the Sync* fields are
-// item state like any other that a queue snapshot may read.
-func (u *Unpackerr) lockedSyncthingProgress(item *Extract, scan *syncScan, now time.Time) syncState {
+// item state like any other that a queue snapshot may read. idle is true when
+// nothing changed for the stall window, whatever the state: no finished bytes
+// arrived and no Syncthing temp file was seen.
+func (u *Unpackerr) lockedSyncthingProgress(item *Extract, scan *syncScan, now time.Time) (syncState, bool) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
-	return syncthingProgress(item, scan, now)
+	state := syncthingProgress(item, scan, now)
+
+	return state, now.Sub(item.SyncSeenAt) >= stallWindow(item)
 }
 
 // syncthingProgress turns a scan into one wait decision.

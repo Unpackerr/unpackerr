@@ -230,6 +230,7 @@ export const HOOK_ENV_FIELDS: Record<string, string> = {
   template: 'TEMPLATE',
   timeout: 'TIMEOUT',
   shell: 'SHELL',
+  gate: 'GATE',
   ignoreSsl: 'IGNORE_SSL',
   silent: 'SILENT',
   events: 'EVENTS',

@@ -118,10 +118,22 @@ func RunSync(hook *Config, payload *Payload) (string, error) {
 	out, err := runCmd(context.Background(), hook, payload)
 	line := firstLine(out)
 
+	// Exit 75 ran and said "not yet". It counts as a run, and it is not a failure.
 	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && exitErr.ExitCode() == gateNotReadyExit {
-		return line, ErrGateNotReady
+
+	held := errors.As(err, &exitErr) && exitErr.ExitCode() == gateNotReadyExit
+	if held {
+		err = ErrGateNotReady
 	}
+
+	hook.Lock()
+	hook.posts++
+
+	if err != nil && !held {
+		hook.fails++
+	}
+
+	hook.Unlock()
 
 	return line, err
 }

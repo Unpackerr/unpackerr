@@ -587,3 +587,39 @@ func TestFolderConfigForPathRootWatch(t *testing.T) {
 		t.Fatalf("trailing-sep watch missed %q", item)
 	}
 }
+
+func TestRestoreDeleteDelayDefault(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	now := time.Now()
+
+	for _, rec := range []HistoryRecord{
+		{ID: "omitted", Path: "/dl/omitted"},
+		{ID: "zero", Path: "/dl/zero", DeleteDelay: "0s"},
+		{ID: "explicit", Path: "/dl/explicit", DeleteDelay: "20m"},
+		{ID: "disabled", Path: "/dl/disabled", DeleteDelay: "-1s"},
+	} {
+		rec.Kind = string(starr.Sonarr)
+		rec.URL = "http://sonarr:8989"
+		rec.Status = EXTRACTED
+		rec.Updated = now
+		unpack.upsertHistory(rec)
+	}
+
+	unpack.restoreQueueFromHistory()
+
+	want := map[string]time.Duration{
+		"omitted":  5 * time.Minute,
+		"zero":     5 * time.Minute,
+		"explicit": 20 * time.Minute,
+		"disabled": -time.Second,
+	}
+
+	for id, delay := range want {
+		got := unpack.Map[id]
+		if got == nil || got.DeleteDelay != delay {
+			t.Fatalf("%s delay %v, want %s", id, got, delay)
+		}
+	}
+}

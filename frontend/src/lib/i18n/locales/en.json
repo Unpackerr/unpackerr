@@ -15,6 +15,7 @@
       "InstanceDisabled": "Disabled",
       "NoTimeout": "No timeout",
       "ChecksDisabled": "Disabled",
+      "DeletesDisabled": "Deletes Disabled",
       "Unlimited": "Unlimited",
       "NoRotation": "(no rotation)"
     }
@@ -708,7 +709,7 @@
       "delete_delay": {
         "label": "Delete delay",
         "description": "How long to keep extracts after this app imports them.",
-        "tooltip": "Overrides the general delete delay for this instance."
+        "tooltip": "How long this instance keeps extracts after import. Deletes Disabled leaves the files in place."
       },
       "maxBytes": {
         "label": "Max bytes",

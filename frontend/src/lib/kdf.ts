@@ -7,8 +7,10 @@
 //
 // crypto.subtle exists only in a secure context (HTTPS or localhost). HTTP on a
 // LAN hostname has no SubtleCrypto, so we fall back to @noble/hashes.
+// The sync function is required there. pbkdf2Async yields once per round through
+// scheduler.yield or setTimeout(0), and 210000 of those turns takes minutes.
 
-import { pbkdf2Async } from '@noble/hashes/pbkdf2.js'
+import { pbkdf2 } from '@noble/hashes/pbkdf2.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
 
@@ -57,7 +59,12 @@ async function deriveNoble(
   username: string,
   password: string,
 ): Promise<string> {
-  const key = await pbkdf2Async(sha256, password, SALT_PREFIX + username, {
+  // One turn so the login spinner can paint, then one blocking hash.
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0)
+  })
+
+  const key = pbkdf2(sha256, password, SALT_PREFIX + username, {
     c: ITERATIONS,
     dkLen: KEY_LEN_BYTES,
   })

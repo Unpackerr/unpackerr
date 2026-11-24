@@ -227,7 +227,6 @@ export interface GeneralConfig {
   logQueues: string
   interval: string
   timeout: string
-  deleteDelay: string
   startDelay: string
   retryDelay: string
   progress: string

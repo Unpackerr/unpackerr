@@ -155,10 +155,6 @@ func (u *Unpackerr) validateConfig() (uint64, uint64) {
 // *Config so a config PUT can clamp a staged copy and compare that against live,
 // instead of comparing raw input against already-clamped values.
 func clampConfig(cfg *Config) (uint64, uint64) { //nolint:cyclop
-	if cfg.DeleteDelay.Duration > 0 && cfg.DeleteDelay.Duration < minimumDeleteDelay {
-		cfg.DeleteDelay.Duration = minimumDeleteDelay
-	}
-
 	// Always rewrite so "0644" and "644" compare equal after clamp. The general
 	// form padStarts to four octal digits; FormatUint does not.
 	cfg.LogFileMode = clampUnixMode(cfg.LogFileMode, defaultLogFileMode)
@@ -561,7 +557,7 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 	}
 
 	if conf.DeleteDelay.Duration == 0 {
-		conf.DeleteDelay.Duration = u.DeleteDelay.Duration
+		conf.DeleteDelay.Duration = defaultDeleteDelay
 	}
 
 	if conf.SyncthingStall.Duration == 0 {

@@ -82,7 +82,6 @@ type Config struct {
 	LogQueues     cnfg.Duration              `json:"logQueues"         toml:"log_queues"     xml:"log_queues"     yaml:"logQueues"`
 	Interval      cnfg.Duration              `json:"interval"          toml:"interval"       xml:"interval"       yaml:"interval"`
 	Timeout       cnfg.Duration              `json:"timeout"           toml:"timeout"        xml:"timeout"        yaml:"timeout"`
-	DeleteDelay   cnfg.Duration              `json:"deleteDelay"       toml:"delete_delay"   xml:"delete_delay"   yaml:"deleteDelay"`
 	StartDelay    cnfg.Duration              `json:"startDelay"        toml:"start_delay"    xml:"start_delay"    yaml:"startDelay"`
 	RetryDelay    cnfg.Duration              `json:"retryDelay"        toml:"retry_delay"    xml:"retry_delay"    yaml:"retryDelay"`
 	Progress      cnfg.Duration              `json:"progress"          toml:"progress"       xml:"progress"       yaml:"progress"`

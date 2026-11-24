@@ -25,7 +25,6 @@ type generalConfig struct {
 	LogQueues     cnfg.Duration `json:"logQueues"`
 	Interval      cnfg.Duration `json:"interval"`
 	Timeout       cnfg.Duration `json:"timeout"`
-	DeleteDelay   cnfg.Duration `json:"deleteDelay"`
 	StartDelay    cnfg.Duration `json:"startDelay"`
 	RetryDelay    cnfg.Duration `json:"retryDelay"`
 	Progress      cnfg.Duration `json:"progress"`
@@ -160,7 +159,6 @@ func generalConfigFrom(cfg *Config) generalConfig {
 		LogQueues:     cfg.LogQueues,
 		Interval:      cfg.Interval,
 		Timeout:       cfg.Timeout,
-		DeleteDelay:   cfg.DeleteDelay,
 		StartDelay:    cfg.StartDelay,
 		RetryDelay:    cfg.RetryDelay,
 		Progress:      cfg.Progress,

@@ -589,6 +589,10 @@ func (u *Unpackerr) validateApp(conf *StarrConfig, app starr.App, slug string) e
 		},
 	}
 
+	if conf.DeleteDelay.Duration < 0 {
+		conf.DeleteOrig = false
+	}
+
 	return nil
 }
 

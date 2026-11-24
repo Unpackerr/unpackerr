@@ -192,6 +192,7 @@
 
   function normalizeOne(a: StarrConfig): StarrConfig {
     const maxBytes = (a.maxBytes ?? '').trim() || defaultMaxBytes(section)
+    const deleteDelay = explicitDeleteDelay(a.delete_delay)
     const row = {
       ...a,
       name: a.name ?? '',
@@ -199,7 +200,8 @@
       protocols: canonicalizeProtocols(a.protocols),
       maxBytes,
       timeout: explicitTimeout(a.timeout),
-      delete_delay: explicitDeleteDelay(a.delete_delay),
+      delete_delay: deleteDelay,
+      delete_orig: deleteDelay === '-1s' ? false : a.delete_orig,
       syncthing_stall: explicitSyncthingStall(a.syncthing_stall),
     }
     if (section === 'lidarr') {
@@ -232,6 +234,11 @@
       .filter(Boolean)
   }
 
+  function setDeleteDelay(app: StarrConfig, value: string) {
+    app.delete_delay = value
+    if (value === '-1s') app.delete_orig = false
+  }
+
   function setName(row: InstanceRow<StarrConfig>, name: string) {
     row.value.name = name
     if (row.locked || !row.autoSlug) return
@@ -253,10 +260,12 @@
       const value = current[row.slug]
       if (!value) continue
       const { split_flac, ape_format, ape_compression, ...rest } = value
+      const deleteDelay = explicitDeleteDelay(value.delete_delay)
       const item: StarrConfig = {
         ...rest,
         paths: pathLines(pathsText[row.id] ?? ''),
-        delete_delay: explicitDeleteDelay(value.delete_delay),
+        delete_delay: deleteDelay,
+        delete_orig: deleteDelay === '-1s' ? false : value.delete_orig,
         syncthing_stall: explicitSyncthingStall(value.syncthing_stall),
       }
       if (section === 'lidarr') {
@@ -596,7 +605,7 @@
               helpKey="config.starr.delete_delay"
               type="deletedelay"
               label={$_('config.starr.delete_delay.label')}
-              bind:value={app.delete_delay}
+              bind:value={() => app.delete_delay, (v) => setDeleteDelay(app, v)}
               original={prev?.delete_delay}
               disabled={!canWrite}
               envVar={envField(envPrefix, slug, 'DELETE_DELAY')}
@@ -623,7 +632,7 @@
               label={$_('config.starr.delete_orig.label')}
               bind:value={app.delete_orig}
               original={prev?.delete_orig}
-              disabled={!canWrite}
+              disabled={!canWrite || app.delete_delay === '-1s'}
               envVar={envField(envPrefix, slug, 'DELETE_ORIG')}
             />
           </Col>

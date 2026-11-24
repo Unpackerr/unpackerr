@@ -709,7 +709,7 @@
       "delete_delay": {
         "label": "Delete delay",
         "description": "How long to keep extracts after this app imports them.",
-        "tooltip": "How long this instance keeps extracts after import. Deletes Disabled leaves the files in place."
+        "tooltip": "How long this instance keeps extracts after import. Deletes Disabled leaves the files in place and turns off delete originals."
       },
       "maxBytes": {
         "label": "Max bytes",

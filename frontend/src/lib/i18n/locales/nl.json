@@ -709,7 +709,7 @@
       "delete_delay": {
         "label": "Verwijdervertraging",
         "description": "Hoe lang uitpakkingen bewaren nadat deze app ze importeert.",
-        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Verwijderen uitgeschakeld laat de bestanden staan."
+        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Verwijderen uitgeschakeld laat de bestanden staan en zet originelen verwijderen uit."
       },
       "maxBytes": {
         "label": "Max. bytes",

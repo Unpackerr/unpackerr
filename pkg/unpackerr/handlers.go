@@ -406,6 +406,14 @@ func (u *Unpackerr) getPasswordFromPath(path string) string {
 	return path[start+2 : end]
 }
 
+// disableOriginalDelete turns off delete-original when the delete delay is negative.
+// The cleanup that follows then removes neither the download nor the extracted files.
+func disableOriginalDelete(item *Extract) {
+	if item != nil && item.DeleteDelay < 0 {
+		item.DeleteOrig = false
+	}
+}
+
 // checkExtractDone checks if an extracted and imported item needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 // This runs at a short interval to check for extraction state changes, and should return quickly.
@@ -459,6 +467,9 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// reset IMPORTED→EXTRACTED when the title is back in the queue.
 			u.Debugf("%s: not deleting imported item still queued or unpolled: %s", item.Label(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
+			// A negative delay means deletes are off, including the original download.
+			disableOriginalDelete(item)
+
 			var webhook bool
 
 			if item.DeleteOrig {

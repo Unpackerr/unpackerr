@@ -96,10 +96,13 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 					data.Label(), data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
-				if data.DeleteDelay < 0 {
+				switch {
+				case data.DeleteDelay < 0 && (data.Status == QUEUED || data.Status == EXTRACTING):
+					// The extract callback still records files, hooks, and a Lidarr import.
+				case data.DeleteDelay < 0:
 					// Deletes are off. Skip Imported and leave the files alone.
 					u.retireDisabledDelete(name, data, now)
-				} else {
+				default:
 					u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
 					u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
 				}
@@ -457,6 +460,7 @@ func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Ti
 	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, false)
 	u.Finished++
 	u.deleteExtract(name)
+	u.notifyQueueLocked()
 	u.Printf("[%s] Deletes disabled: %s", item.Label(), name)
 }
 

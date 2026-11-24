@@ -625,6 +625,51 @@ func TestDisabledDeleteLeavesHistory(t *testing.T) {
 	}
 }
 
+func TestDisabledDeleteKeepsInflightExtract(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{URL: url, Protocols: defaultProtocol, Queue: &sonarr.Queue{}}})
+	unpack.Sonarr["0"].polled = true
+
+	for name, status := range map[string]ExtractStatus{"queued": QUEUED, "running": EXTRACTING} {
+		item := &Extract{
+			App: starr.Sonarr, URL: url, Path: "/dl/" + name, Status: status,
+			DeleteDelay: -time.Second, Updated: time.Now(),
+		}
+		item.XProg = &ExtractProgress{Extract: item}
+		unpack.Map[name] = item
+	}
+
+	unpack.checkQueueChanges(time.Now())
+
+	if unpack.Map["queued"] == nil || unpack.Map["queued"].Status != QUEUED ||
+		unpack.Map["running"] == nil || unpack.Map["running"].Status != EXTRACTING || unpack.Finished != 0 {
+		t.Fatalf("inflight %+v finished %d", unpack.Map, unpack.Finished)
+	}
+
+	unpack.Map["running"].Status = EXTRACTED
+
+	client := &liveClient{
+		topics: map[string]struct{}{topicQueue: {}},
+		send:   make(chan []byte, 4),
+	}
+	unpack.hub.clients[client] = struct{}{}
+	unpack.checkQueueChanges(time.Now())
+	unpack.hub.flushQueue()
+
+	if unpack.Map["running"] != nil || unpack.Map["queued"] == nil || unpack.Finished != 1 {
+		t.Fatalf("after callback map %+v finished %d", unpack.Map, unpack.Finished)
+	}
+
+	got := decodeQueue(t, <-client.send)
+	if got.Stats == nil || got.Stats.Finished != 1 || len(got.Items) != 1 || got.Items[0].ID != "queued" {
+		t.Fatalf("queue frame stats %+v items %+v", got.Stats, got.Items)
+	}
+}
+
 func TestFolderConfigForPathPrefersLongerWatch(t *testing.T) {
 	t.Parallel()
 

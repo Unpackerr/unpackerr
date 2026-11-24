@@ -987,6 +987,27 @@ func TestCheckStarrName(t *testing.T) {
 	}
 }
 
+func TestValidateAppDisablesDeleteOriginal(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	conf := &StarrConfig{
+		Name:        "Sportarr",
+		URL:         "http://127.0.0.1:8989",
+		APIKey:      strings.Repeat("a", apiKeyMinLength),
+		DeleteOrig:  true,
+		DeleteDelay: cnfg.Duration{Duration: -time.Second},
+	}
+
+	if err := unpack.validateApp(conf, starr.Sonarr, "uhd"); err != nil {
+		t.Fatal(err)
+	}
+
+	if conf.DeleteOrig {
+		t.Fatal("negative delete delay left delete_orig enabled")
+	}
+}
+
 func TestValidateAppDeleteDelay(t *testing.T) {
 	t.Parallel()
 

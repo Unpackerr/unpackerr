@@ -938,6 +938,37 @@ func TestDeleteForgetsUnpacked(t *testing.T) {
 	}
 }
 
+func TestNegativeDelayDisablesDeleteOriginal(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	dir := t.TempDir()
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{URL: url, Protocols: defaultProtocol, Queue: &sonarr.Queue{}}})
+	unpack.Sonarr["0"].polled = true
+	unpack.Map["Kept"] = &Extract{
+		App: starr.Sonarr, URL: url, Path: dir, Status: IMPORTED, DeleteOrig: true,
+		DeleteDelay: -time.Second,
+		Updated:     time.Now().Add(-time.Hour),
+		Resp:        &xtractr.Response{NewFiles: []string{filepath.Join(dir, "ep.mkv")}},
+		XProg:       &ExtractProgress{},
+	}
+
+	unpack.checkExtractDone(time.Now())
+
+	item := unpack.Map["Kept"]
+	if item == nil || item.Status != DELETED || item.DeleteOrig {
+		t.Fatalf("item %+v, want DELETED with delete-original off", item)
+	}
+
+	select {
+	case req := <-unpack.delChan:
+		t.Fatalf("queued a delete: %+v", req)
+	default:
+	}
+}
+
 // A download can stay in the Starr queue for longer than history rows are
 // normally restored. Its row is restored at any age: without the record of
 // unpacked archives the next poll would extract everything from the start.

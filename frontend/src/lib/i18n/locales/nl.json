@@ -15,6 +15,7 @@
       "InstanceDisabled": "Uitgeschakeld",
       "NoTimeout": "Geen time-out",
       "ChecksDisabled": "Uitgeschakeld",
+      "DeletesDisabled": "Verwijderen uitgeschakeld",
       "Unlimited": "Onbeperkt",
       "NoRotation": "(geen rotatie)"
     }
@@ -703,7 +704,7 @@
       "delete_delay": {
         "label": "Verwijdervertraging",
         "description": "Hoe lang uitpakkingen bewaren nadat deze app ze importeert.",
-        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Een lege waarde of 0s gebruikt 5 minuten."
+        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Een lege waarde of 0s gebruikt 5 minuten. Verwijderen uitgeschakeld laat de bestanden staan en zet originelen verwijderen uit."
       },
       "maxBytes": {
         "label": "Max. bytes",

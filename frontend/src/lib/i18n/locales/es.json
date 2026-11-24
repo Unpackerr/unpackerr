@@ -15,6 +15,7 @@
       "InstanceDisabled": "Desactivado",
       "NoTimeout": "Sin tiempo de espera",
       "ChecksDisabled": "Desactivado",
+      "DeletesDisabled": "Borrados desactivados",
       "Unlimited": "Ilimitado",
       "NoRotation": "(sin rotación)"
     }
@@ -703,7 +704,7 @@
       "delete_delay": {
         "label": "Retraso de borrado",
         "description": "Cuánto conservar las extracciones tras importarlas esta app.",
-        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Un valor vacío o 0s usa 5 minutos."
+        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Un valor vacío o 0s usa 5 minutos. Con los borrados desactivados, los archivos se quedan en su sitio y se desactiva Eliminar originales."
       },
       "maxBytes": {
         "label": "Bytes máximos",

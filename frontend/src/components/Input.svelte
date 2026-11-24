@@ -321,6 +321,7 @@
 
     if (type === 'deletedelay') {
       return [
+        { value: '-1s', name: $_('words.select-option.DeletesDisabled') },
         { value: '5s', name: unit(5, 'second', 'seconds') },
         { value: '15s', name: unit(15, 'second', 'seconds') },
         { value: '30s', name: unit(30, 'second', 'seconds') },

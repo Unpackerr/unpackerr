@@ -88,7 +88,7 @@ export function explicitTimeout(raw: string | undefined): string {
   return explicitDuration(raw, '10s')
 }
 
-/** File 0s inherits the global delete delay (5m). Show and save 5m so the file stops inheriting. */
+/** Omitted, 0, and 0s save as the 5 minute default. */
 export function explicitDeleteDelay(raw: string | undefined): string {
   return explicitDuration(raw, '5m')
 }

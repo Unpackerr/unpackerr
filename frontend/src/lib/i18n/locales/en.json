@@ -491,11 +491,6 @@
         "description": "Pause between extraction retries.",
         "tooltip": "After a failure, Unpackerr waits this long before treating the item as new and trying again."
       },
-      "deleteDelay": {
-        "label": "Delete delay",
-        "description": "How long to keep extracted files after import.",
-        "tooltip": "Applies to Starr apps. Already-running apps pick this up after a restart. The shortest choice is 1 second."
-      },
       "progress": {
         "label": "Progress interval",
         "description": "How often to print in-progress extract status.",
@@ -708,7 +703,7 @@
       "delete_delay": {
         "label": "Delete delay",
         "description": "How long to keep extracts after this app imports them.",
-        "tooltip": "Overrides the general delete delay for this instance."
+        "tooltip": "How long this instance keeps extracts after import. An empty value or 0s uses 5 minutes."
       },
       "maxBytes": {
         "label": "Max bytes",

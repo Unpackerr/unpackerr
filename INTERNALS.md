@@ -225,7 +225,7 @@ Env-only (no config path): skip write, still apply live.
 
 **Webhooks / cmdhooks PUT:** slug maps, same file-body / live overlay as Starr. Env-only overlay slugs that fail validation are dropped from live, not 400. PUT-body hooks still validate (including HTTP client) then publish. First-ever hook starts the hook worker.
 
-**General PUT:** applies interval / delays / remnant action / keep_history / passwords in place and **`resetTickers()`**. Interval is **not** `restartRequired`. Logger construction, `parallel` (xtractr), `file_mode` / `dir_mode`, `timeout` / `delete_delay` (copied into apps at validate time) **are** restart.
+**General PUT:** applies interval / start and retry delays / remnant action / keep_history / passwords in place and **`resetTickers()`**. Interval is **not** `restartRequired`. Logger construction, `parallel` (xtractr), `file_mode` / `dir_mode`, and `timeout` (copied into apps at validate time) **are** restart.
 
 **Webserver PUT:** keys/roles/password/upstreams apply in place under `uiPassMu`. `listen_addr`, `urlbase`, TLS, metrics, pprof, HTTP log file settings stay on the running `http.Server` and set `restartRequired`. `urlbase` must not contain `{` or `}`.
 
@@ -394,7 +394,7 @@ Two admins saving at once is not a design target. Do not add snapshot-merge.
 
 | Section | Live apply | Restart |
 | --- | --- | --- |
-| general | Yes; `resetTickers`; expand passwords | Logger / parallel / file+dir mode / timeout / delete_delay |
+| general | Yes; `resetTickers`; expand passwords | Logger / parallel / file+dir mode / timeout |
 | webserver | Auth fields in place | listen, urlbase, TLS, metrics, pprof, HTTP log |
 | sonarr…readarr | Rebuild clients, carry queues, grow workers | No |
 | folders | Live map updated | **Always** (watcher) |

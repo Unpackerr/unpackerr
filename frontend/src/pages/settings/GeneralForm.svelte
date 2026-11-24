@@ -277,16 +277,6 @@
         </Col>
         <Col md="6">
           <Input
-            id="config.general.deleteDelay"
-            type="deletedelay"
-            bind:value={cfg.deleteDelay}
-            original={orig.deleteDelay}
-            disabled={!canWrite}
-            envVar="DELETE_DELAY"
-          />
-        </Col>
-        <Col md="6">
-          <Input
             id="config.general.keepHistory"
             type="select"
             bind:value={cfg.keepHistory}

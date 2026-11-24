@@ -216,6 +216,38 @@ func haveStarrQitem[T any, P starrApp[T]](list InstanceMap[T], name string) bool
 	return false
 }
 
+// instanceDeleteDelay is the delete delay of the Starr instance with this URL.
+// The second result is false when no configured instance has that URL.
+func (u *Unpackerr) instanceDeleteDelay(app starr.App, url string) (time.Duration, bool) {
+	switch app {
+	case starr.Lidarr:
+		return starrDeleteDelay[LidarrConfig, *LidarrConfig](u.Lidarr, url)
+	case starr.Radarr:
+		return starrDeleteDelay[RadarrConfig, *RadarrConfig](u.Radarr, url)
+	case starr.Readarr:
+		return starrDeleteDelay[ReadarrConfig, *ReadarrConfig](u.Readarr, url)
+	case starr.Sonarr:
+		return starrDeleteDelay[SonarrConfig, *SonarrConfig](u.Sonarr, url)
+	default:
+		return 0, false
+	}
+}
+
+func starrDeleteDelay[T any, P starrApp[T]](list InstanceMap[T], url string) (time.Duration, bool) {
+	if url == "" {
+		return 0, false
+	}
+
+	for _, item := range instanceValues(list) {
+		server := asStarr[T, P](item)
+		if server.conf().URL == url {
+			return server.conf().DeleteDelay.Duration, true
+		}
+	}
+
+	return 0, false
+}
+
 // queueSnapshotReady is true when "not in the Starr queue" may mean imported.
 // A fresh process has Queue == nil until the first successful poll; treating
 // that as imported deletes restored extracts while the app is still down.

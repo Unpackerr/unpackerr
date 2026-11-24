@@ -74,6 +74,8 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
+	u.honorDisabledDeletes()
+
 	for name, data := range u.Map {
 		switch {
 		case data.App == FolderString:
@@ -452,6 +454,26 @@ func (u *Unpackerr) finishImported(name string, item *Extract, now time.Time) {
 	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
 }
 
+// honorDisabledDeletes applies a negative instance delay to tracked items.
+// Caller holds History.mu.
+func (u *Unpackerr) honorDisabledDeletes() {
+	changed := false
+
+	for name, item := range u.Map {
+		if !u.applyDisabledDelete(item) {
+			continue
+		}
+
+		u.stampQueueDue(name, item)
+
+		changed = true
+	}
+
+	if changed {
+		u.notifyQueueLocked()
+	}
+}
+
 // retireDisabledDelete records DELETED without deleting files or sending the
 // file-delete webhook, then drops the live queue row. The history row stays
 // until keep_history trims it. Caller holds History.mu.
@@ -472,6 +494,8 @@ func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Ti
 func (u *Unpackerr) checkExtractDone(now time.Time) {
 	u.lockHistory()
 	defer u.unlockHistory()
+
+	u.honorDisabledDeletes()
 
 	for name, item := range u.Map {
 		switch elapsed := now.Sub(item.Updated); {

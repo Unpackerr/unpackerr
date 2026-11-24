@@ -337,10 +337,9 @@ func generalRestartRequired(cur, next *Config) bool {
 		next.ErrorStdErr != cur.ErrorStdErr ||
 		!sameUnixMode(cur.FileMode, next.FileMode, defaultFileMode) ||
 		!sameUnixMode(cur.DirMode, next.DirMode, defaultDirMode) ||
-		// Both only seed per-app values in validateApp and validate*HookList,
+		// Timeout only seeds per-app values in validateApp and validate*HookList,
 		// so running clients keep the old value until they are rebuilt.
-		next.Timeout != cur.Timeout ||
-		next.DeleteDelay != cur.DeleteDelay
+		next.Timeout != cur.Timeout
 }
 
 type webserverPut struct {
@@ -540,7 +539,6 @@ func applyGeneral(dst *Config, next generalConfig) {
 	dst.LogQueues = next.LogQueues
 	dst.Interval = next.Interval
 	dst.Timeout = next.Timeout
-	dst.DeleteDelay = next.DeleteDelay
 	dst.StartDelay = next.StartDelay
 	dst.RetryDelay = next.RetryDelay
 	dst.Progress = next.Progress

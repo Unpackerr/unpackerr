@@ -165,7 +165,7 @@ func (u *Unpackerr) extractFromHistoryRecord(
 		item.Name = rec.App
 	}
 
-	applyHistoryRestoreDelay(item, rec.DeleteDelay, u.DeleteDelay.Duration)
+	applyHistoryRestoreDelay(item, rec.DeleteDelay, defaultDeleteDelay)
 	applyHistoryRestoreResp(item, rec, errMsg)
 	applyHistoryRestoreUnpacked(item, rec)
 	applyHistoryRestoreOutputFiles(item)

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/Unpackerr/unpackerr/pkg/configdef"
 	"github.com/Unpackerr/unpackerr/pkg/hooks"
 	"golift.io/cnfg"
@@ -1004,6 +1005,46 @@ func TestValidateAppDisablesDeleteOriginal(t *testing.T) {
 
 	if conf.DeleteOrig {
 		t.Fatal("negative delete delay left delete_orig enabled")
+	}
+}
+
+func TestValidateAppDeleteDelay(t *testing.T) {
+	t.Parallel()
+
+	unpack := New()
+	key := strings.Repeat("a", apiKeyMinLength)
+
+	tests := []struct {
+		name  string
+		field string
+		want  time.Duration
+	}{
+		{name: "omitted", want: 5 * time.Minute},
+		{name: "zero", field: "delete_delay = \"0s\"\n", want: 5 * time.Minute},
+		{name: "explicit", field: "delete_delay = \"20m\"\n", want: 20 * time.Minute},
+		{name: "disabled", field: "delete_delay = \"-1s\"\n", want: -time.Second},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			var conf StarrConfig
+			if err := toml.Unmarshal([]byte(test.field), &conf); err != nil {
+				t.Fatal(err)
+			}
+
+			conf.URL = "http://127.0.0.1:8989"
+			conf.APIKey = key
+
+			if err := unpack.validateApp(&conf, starr.Sonarr, "tv"); err != nil {
+				t.Fatal(err)
+			}
+
+			if conf.DeleteDelay.Duration != test.want {
+				t.Fatalf("delay %s, want %s", conf.DeleteDelay.Duration, test.want)
+			}
+		})
 	}
 }
 

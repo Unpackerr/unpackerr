@@ -43,7 +43,6 @@ const (
 	cleanerInterval        = 5 * time.Second
 	defaultRetryDelay      = 5 * time.Minute
 	defaultStartDelay      = time.Minute
-	minimumDeleteDelay     = time.Second
 	defaultDeleteDelay     = 5 * time.Minute
 	staleItemTimeout       = 24 * time.Hour // Safety net: items stuck at intermediate states are cleaned up.
 	defaultHistory         = 400            // JSONL cap for unpackerr.history.jsonl and the history API.
@@ -173,7 +172,6 @@ func New() *Unpackerr {
 			Interval:      cnfg.Duration{Duration: defaultInterval},
 			RetryDelay:    cnfg.Duration{Duration: defaultRetryDelay},
 			StartDelay:    cnfg.Duration{Duration: defaultStartDelay},
-			DeleteDelay:   cnfg.Duration{Duration: defaultDeleteDelay},
 			Webserver: &WebServer{
 				Metrics:    false,
 				LogFiles:   defaultLogFiles,

@@ -492,11 +492,6 @@
         "description": "Pausa entre reintentos de extracción.",
         "tooltip": "Tras un fallo, Unpackerr espera este tiempo antes de tratar el elemento como nuevo e intentarlo otra vez."
       },
-      "deleteDelay": {
-        "label": "Retraso de borrado",
-        "description": "Cuánto tiempo conservar los archivos extraídos tras la importación.",
-        "tooltip": "Aplica a las apps Starr. Las apps que ya están en marcha lo toman tras un reinicio. La opción más corta es 1 segundo."
-      },
       "progress": {
         "label": "Intervalo de progreso",
         "description": "Con qué frecuencia imprimir el estado de una extracción en curso.",
@@ -709,7 +704,7 @@
       "delete_delay": {
         "label": "Retraso de borrado",
         "description": "Cuánto conservar las extracciones tras importarlas esta app.",
-        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Con los borrados desactivados, los archivos se quedan en su sitio y se desactiva Eliminar originales."
+        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Un valor vacío o 0s usa 5 minutos. Con los borrados desactivados, los archivos se quedan en su sitio y se desactiva Eliminar originales."
       },
       "maxBytes": {
         "label": "Bytes máximos",

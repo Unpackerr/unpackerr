@@ -492,11 +492,6 @@
         "description": "Pauze tussen uitpakpogingen.",
         "tooltip": "Na een mislukking wacht Unpackerr dit lang voordat het item als nieuw wordt behandeld en opnieuw wordt geprobeerd."
       },
-      "deleteDelay": {
-        "label": "Verwijdervertraging",
-        "description": "Hoe lang uitgepakte bestanden na import bewaard blijven.",
-        "tooltip": "Geldt voor Starr-apps. Al draaiende apps nemen dit over na een herstart. De kortste keuze is 1 seconde."
-      },
       "progress": {
         "label": "Voortgangsinterval",
         "description": "Hoe vaak de status van een lopende uitpak wordt afgedrukt.",
@@ -709,7 +704,7 @@
       "delete_delay": {
         "label": "Verwijdervertraging",
         "description": "Hoe lang uitpakkingen bewaren nadat deze app ze importeert.",
-        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Verwijderen uitgeschakeld laat de bestanden staan en zet originelen verwijderen uit."
+        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Een lege waarde of 0s gebruikt 5 minuten. Verwijderen uitgeschakeld laat de bestanden staan en zet originelen verwijderen uit."
       },
       "maxBytes": {
         "label": "Max. bytes",

@@ -103,7 +103,7 @@ func (u *Unpackerr) logGeneral(printf configLine) {
 	printf(" => Parallel: %d", u.Parallel)
 	printf(" => Passwords: %d (rar/7z)", len(u.Passwords))
 	printf(" => Interval / Progress: %s/%s", u.Interval.String(), u.Progress.String())
-	printf(" => Start/Delete Delay: %s/%s", u.StartDelay.String(), u.DeleteDelay.String())
+	printf(" => Start Delay: %s", u.StartDelay.String())
 	printf(" => Retry Delay: %v, max: %d", u.RetryDelay, u.maxRetries())
 	printf(" => Remnant Action: %s", u.RemnantAction)
 	printf(" => GUI / StdErr: %v / %v", ui.HasGUI(), u.ErrorStdErr)

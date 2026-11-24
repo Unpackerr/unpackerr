@@ -709,7 +709,7 @@
       "delete_delay": {
         "label": "Retraso de borrado",
         "description": "Cuánto conservar las extracciones tras importarlas esta app.",
-        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Borrados desactivados deja los archivos en su sitio y desactiva eliminar originales."
+        "tooltip": "Cuánto tiempo esta instancia conserva las extracciones tras importarlas. Con los borrados desactivados, los archivos se quedan en su sitio y se desactiva Eliminar originales."
       },
       "maxBytes": {
         "label": "Bytes máximos",

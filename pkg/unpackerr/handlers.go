@@ -96,8 +96,13 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 					data.Label(), data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
-				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
-				u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
+				if data.DeleteDelay < 0 {
+					// Deletes are off. Skip Imported and leave the files alone.
+					u.retireDisabledDelete(name, data, now)
+				} else {
+					u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
+					u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
+				}
 			}
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
@@ -406,6 +411,54 @@ func (u *Unpackerr) getPasswordFromPath(path string) string {
 	return path[start+2 : end]
 }
 
+// finishImported deletes an imported item's files once its delay has elapsed,
+// or retires a disabled delay without touching the files.
+// Caller holds History.mu.
+func (u *Unpackerr) finishImported(name string, item *Extract, now time.Time) {
+	if item.DeleteDelay < 0 {
+		u.retireDisabledDelete(name, item, now)
+		return
+	}
+
+	var webhook bool
+
+	if item.DeleteOrig {
+		u.queueDelete(&fileDeleteReq{Paths: []string{item.Path}})
+		webhook = true //nolint:wsl_v5
+	} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 {
+		// Delete extracted files and purge empty parents up to and including the download path.
+		// A Syncthing item names the files inside its extracted folders, so a file
+		// Syncthing delivered into one of them is left where it is.
+		u.queueDelete(&fileDeleteReq{
+			Paths:            item.Resp.NewFiles,
+			Exact:            hasUnpacked(item),
+			Files:            slices.Clone(item.OutputFiles),
+			PurgeEmptyParent: true,
+			PurgeEmptyRoot:   item.Path,
+		})
+		webhook = true //nolint:wsl_v5
+	}
+
+	if webhook {
+		// The extracted files are going away. A download the Starr app
+		// lists again after this is extracted from the start.
+		item.Unpacked = nil
+		item.OutputFiles = nil
+	}
+
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
+}
+
+// retireDisabledDelete records DELETED without deleting files or sending the
+// file-delete webhook, then drops the live queue row. The history row stays
+// until keep_history trims it. Caller holds History.mu.
+func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Time) {
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, false)
+	u.Finished++
+	u.deleteExtract(name)
+	u.Printf("[%s] Deletes disabled: %s", item.Label(), name)
+}
+
 // checkExtractDone checks if an extracted and imported item needs to be deleted.
 // Or if an extraction failed and needs to be restarted.
 // This runs at a short interval to check for extraction state changes, and should return quickly.
@@ -459,33 +512,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// reset IMPORTED→EXTRACTED when the title is back in the queue.
 			u.Debugf("%s: not deleting imported item still queued or unpolled: %s", item.Label(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
-			var webhook bool
-
-			if item.DeleteOrig {
-				u.queueDelete(&fileDeleteReq{Paths: []string{item.Path}})
-				webhook = true //nolint:wsl_v5
-			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
-				// Delete extracted files and purge empty parents up to and including the download path.
-				// A Syncthing item names the files inside its extracted folders, so a file
-				// Syncthing delivered into one of them is left where it is.
-				u.queueDelete(&fileDeleteReq{
-					Paths:            item.Resp.NewFiles,
-					Exact:            hasUnpacked(item),
-					Files:            slices.Clone(item.OutputFiles),
-					PurgeEmptyParent: true,
-					PurgeEmptyRoot:   item.Path,
-				})
-				webhook = true //nolint:wsl_v5
-			}
-
-			if webhook {
-				// The extracted files are going away. A download the Starr app
-				// lists again after this is extracted from the start.
-				item.Unpacked = nil
-				item.OutputFiles = nil
-			}
-
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
+			u.finishImported(name, item, now)
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"golift.io/starr"
+	"golift.io/starr/sonarr"
 	"golift.io/xtractr"
 )
 
@@ -549,6 +550,68 @@ func TestMaybeRecordHistoryWritesOrigFiles(t *testing.T) {
 		unpack.records[0].OrigFiles[0] != "/watch/a/a.rar" ||
 		len(unpack.records[0].ExtraFiles) != 1 || unpack.records[0].ExtraFiles[0] != "/watch/a/nested.rar" {
 		t.Fatalf("%+v", unpack.records)
+	}
+}
+
+func TestDisabledDeleteLeavesHistory(t *testing.T) {
+	t.Parallel()
+
+	const (
+		url   = "http://sonarr:8989"
+		title = "show"
+	)
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: title}}}
+	unpack.Sonarr["0"].polled = true
+	unpack.upsertHistory(HistoryRecord{
+		ID: title, Kind: string(starr.Sonarr), App: "Sportarr", URL: url,
+		Path: "/dl/show", Status: EXTRACTED, Updated: time.Now().Add(-time.Hour),
+		DeleteDelay: "-1s",
+		NewFiles:    []string{"/dl/show/ep.mkv"},
+		Unpacked:    []string{"/dl/show/show.rar"},
+	})
+	unpack.restoreQueueFromHistory()
+
+	if item := unpack.Map[title]; item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second {
+		t.Fatalf("restored while the queue still lists it: %+v", item)
+	}
+
+	unpack.checkQueueChanges(time.Now())
+
+	if item := unpack.Map[title]; item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second {
+		t.Fatalf("still listed: %+v", item)
+	}
+
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{}
+	unpack.checkQueueChanges(time.Now())
+
+	if unpack.Map[title] != nil {
+		t.Fatalf("still in the live queue: %+v", unpack.Map[title])
+	}
+
+	var kept HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == title {
+			kept = rec
+		}
+	}
+
+	if kept.Status != DELETED || kept.DeleteDelay != "-1s" || len(kept.NewFiles) != 1 || len(kept.Unpacked) != 1 {
+		t.Fatalf("history %+v", kept)
+	}
+
+	select {
+	case req := <-unpack.delChan:
+		t.Fatalf("queued a delete: %+v", req)
+	default:
+	}
+
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map[title] != nil {
+		t.Fatalf("restart restored a deleted row: %+v", unpack.Map[title])
 	}
 }
 

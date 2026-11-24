@@ -703,7 +703,7 @@
       "delete_delay": {
         "label": "Verwijdervertraging",
         "description": "Hoe lang uitpakkingen bewaren nadat deze app ze importeert.",
-        "tooltip": "Overschrijft de algemene verwijdervertraging voor deze instantie."
+        "tooltip": "Hoe lang deze instantie uitpakkingen bewaart na het importeren. Een lege waarde of 0s gebruikt 5 minuten."
       },
       "maxBytes": {
         "label": "Max. bytes",

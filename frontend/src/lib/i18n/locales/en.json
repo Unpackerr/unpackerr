@@ -703,7 +703,7 @@
       "delete_delay": {
         "label": "Delete delay",
         "description": "How long to keep extracts after this app imports them.",
-        "tooltip": "Overrides the general delete delay for this instance."
+        "tooltip": "How long this instance keeps extracts after import. An empty value or 0s uses 5 minutes."
       },
       "maxBytes": {
         "label": "Max bytes",

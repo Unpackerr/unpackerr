@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -932,9 +933,41 @@ func TestDeleteForgetsUnpacked(t *testing.T) {
 			item.Status, item.Unpacked, item.OutputFiles)
 	}
 
-	if item := unpack.Map["Kept"]; item.Status != DELETED || len(item.Unpacked) != 1 || len(item.OutputFiles) != 1 {
-		t.Fatalf("extracted files kept: status %s unpacked %v output %v, want the record kept",
-			item.Status, item.Unpacked, item.OutputFiles)
+	if unpack.Map["Kept"] != nil {
+		t.Fatalf("disabled item still in the live queue: %+v", unpack.Map["Kept"])
+	}
+
+	var kept HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "Kept" {
+			kept = rec
+		}
+	}
+
+	if kept.Status != DELETED || len(kept.Unpacked) != 1 || len(kept.OutputFiles) != 1 || len(kept.NewFiles) != 1 {
+		t.Fatalf("history row %+v, want DELETED with its files", kept)
+	}
+
+	queued := drainDeletePaths(unpack)
+
+	for _, path := range queued {
+		if strings.Contains(path, "Kept") {
+			t.Fatalf("disabled item queued a delete: %v", queued)
+		}
+	}
+}
+
+func drainDeletePaths(unpack *Unpackerr) []string {
+	var queued []string
+
+	for {
+		select {
+		case req := <-unpack.delChan:
+			queued = append(queued, req.Paths...)
+		default:
+			return queued
+		}
 	}
 }
 
@@ -957,9 +990,20 @@ func TestNegativeDelayDisablesDeleteOriginal(t *testing.T) {
 
 	unpack.checkExtractDone(time.Now())
 
-	item := unpack.Map["Kept"]
-	if item == nil || item.Status != DELETED || item.DeleteOrig {
-		t.Fatalf("item %+v, want DELETED with delete-original off", item)
+	if unpack.Map["Kept"] != nil {
+		t.Fatalf("disabled item still in the live queue: %+v", unpack.Map["Kept"])
+	}
+
+	var kept HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "Kept" {
+			kept = rec
+		}
+	}
+
+	if kept.Status != DELETED || kept.DeleteOrig || len(kept.NewFiles) != 1 {
+		t.Fatalf("history %+v, want DELETED with delete-original off and the file kept", kept)
 	}
 
 	select {

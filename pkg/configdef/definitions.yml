@@ -683,7 +683,11 @@ sections:
         default: 5m
         recommend: *GLOBAL_INTERVALS
         short: Extracts are deleted this long after import, `-1s` to disable.
-        desc: How long to wait after import before deleting the extracted items.
+        desc: |
+          How long to wait after import before deleting the extracted items.
+          Set this to -1s to keep those files. Once the app stops listing the
+          download, the item is marked deleted and leaves the queue. Delete
+          originals stays off.
       - name: delete_orig
         envvar: DELETE_ORIG
         default: false

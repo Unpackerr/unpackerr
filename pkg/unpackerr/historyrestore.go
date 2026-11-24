@@ -166,6 +166,16 @@ func (u *Unpackerr) extractFromHistoryRecord(
 	}
 
 	applyHistoryRestoreDelay(item, rec.DeleteDelay, defaultDeleteDelay)
+
+	if u.applyDisabledDelete(item) {
+		itemID := rec.ID
+		if itemID == "" {
+			itemID = rec.Path
+		}
+
+		u.persistDeletePolicy(itemID, item)
+	}
+
 	applyHistoryRestoreResp(item, rec, errMsg)
 	applyHistoryRestoreUnpacked(item, rec)
 	applyHistoryRestoreOutputFiles(item)
@@ -215,6 +225,32 @@ func applyHistoryRestoreDelay(item *Extract, delay string, fallback time.Duratio
 	if item.DeleteDelay == 0 {
 		item.DeleteDelay = fallback
 	}
+
+	if item.DeleteDelay < 0 {
+		item.DeleteOrig = false
+	}
+}
+
+// applyDisabledDelete copies a negative instance delay onto an item that still
+// has a positive one, and turns delete originals off. A delay already below
+// zero stays there when the instance is later given a positive delay, so
+// turning deletes back on does not clean up files that were kept. Items that
+// are already deleting or deleted keep the delay they finished with.
+// Returns true when the item changed.
+func (u *Unpackerr) applyDisabledDelete(item *Extract) bool {
+	if item == nil || item.App == FolderString || item.DeleteDelay < 0 || item.Status > IMPORTED {
+		return false
+	}
+
+	delay, ok := u.instanceDeleteDelay(item.App, item.URL)
+	if !ok || delay >= 0 {
+		return false
+	}
+
+	item.DeleteDelay = delay
+	item.DeleteOrig = false
+
+	return true
 }
 
 func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {

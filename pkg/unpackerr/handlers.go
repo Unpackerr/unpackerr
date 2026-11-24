@@ -74,6 +74,8 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 	u.lockHistory()
 	defer u.unlockHistory()
 
+	u.honorDisabledDeletes()
+
 	for name, data := range u.Map {
 		switch {
 		case data.App == FolderString:
@@ -96,8 +98,16 @@ func (u *Unpackerr) checkQueueChanges(now time.Time) {
 				u.Debugf("%v: Awaiting Delete Delay (%v remains): %v",
 					data.Label(), data.DeleteDelay-elapsed.Round(time.Second), name)
 			default:
-				u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
-				u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
+				switch {
+				case data.DeleteDelay < 0 && (data.Status == QUEUED || data.Status == EXTRACTING):
+					// The extract callback still records files, hooks, and a Lidarr import.
+				case data.DeleteDelay < 0:
+					// Deletes are off. Skip Imported and leave the files alone.
+					u.retireDisabledDelete(name, data, now)
+				default:
+					u.updateQueueStatus(&newStatus{Name: name, Status: IMPORTED, Resp: data.Resp}, now, true)
+					u.Printf("[%v] Imported: %v (delete in %v)", data.Label(), name, data.DeleteDelay)
+				}
 			}
 		case data.Status == IMPORTED:
 			// The item fell out of the app queue and came back. Reset it.
@@ -406,11 +416,89 @@ func (u *Unpackerr) getPasswordFromPath(path string) string {
 	return path[start+2 : end]
 }
 
-// disableOriginalDelete turns off delete-original when the delete delay is negative.
-// The cleanup that follows then removes neither the download nor the extracted files.
-func disableOriginalDelete(item *Extract) {
-	if item != nil && item.DeleteDelay < 0 {
-		item.DeleteOrig = false
+// finishImported deletes an imported item's files once its delay has elapsed,
+// or retires a disabled delay without touching the files.
+// Caller holds History.mu.
+func (u *Unpackerr) finishImported(name string, item *Extract, now time.Time) {
+	if item.DeleteDelay < 0 {
+		u.retireDisabledDelete(name, item, now)
+		return
+	}
+
+	var webhook bool
+
+	if item.DeleteOrig {
+		u.queueDelete(&fileDeleteReq{Paths: []string{item.Path}})
+		webhook = true //nolint:wsl_v5
+	} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 {
+		// Delete extracted files and purge empty parents up to and including the download path.
+		// A Syncthing item names the files inside its extracted folders, so a file
+		// Syncthing delivered into one of them is left where it is.
+		u.queueDelete(&fileDeleteReq{
+			Paths:            item.Resp.NewFiles,
+			Exact:            hasUnpacked(item),
+			Files:            slices.Clone(item.OutputFiles),
+			PurgeEmptyParent: true,
+			PurgeEmptyRoot:   item.Path,
+		})
+		webhook = true //nolint:wsl_v5
+	}
+
+	if webhook {
+		// The extracted files are going away. A download the Starr app
+		// lists again after this is extracted from the start.
+		item.Unpacked = nil
+		item.OutputFiles = nil
+	}
+
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
+}
+
+// honorDisabledDeletes applies a negative instance delay to tracked items.
+// Caller holds History.mu.
+func (u *Unpackerr) honorDisabledDeletes() {
+	changed := false
+
+	for name, item := range u.Map {
+		if !u.applyDisabledDelete(item) {
+			continue
+		}
+
+		u.stampQueueDue(name, item)
+		u.persistDeletePolicy(name, item)
+
+		changed = true
+	}
+
+	if changed {
+		u.notifyQueueLocked()
+	}
+}
+
+// retireDisabledDelete records DELETED without deleting files or sending the
+// file-delete webhook, then drops the live queue row. The history row stays
+// until keep_history trims it. Caller holds History.mu.
+func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Time) {
+	item.DeleteOrig = false
+	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, false)
+	u.Finished++
+	u.deleteExtract(name)
+	u.notifyQueueLocked()
+	u.Printf("[%s] Deletes disabled: %s", item.Label(), name)
+}
+
+// staleSweepDue is the 24 hour safety net for a Starr item that never finishes.
+// A negative delete delay stays tracked instead.
+func staleSweepDue(item *Extract, elapsed time.Duration) bool {
+	if item.DeleteDelay < 0 {
+		return false
+	}
+
+	switch item.Status {
+	case EXTRACTED, EXTRACTING, QUEUED:
+		return elapsed >= staleItemTimeout
+	default:
+		return false
 	}
 }
 
@@ -422,6 +510,8 @@ func disableOriginalDelete(item *Extract) {
 func (u *Unpackerr) checkExtractDone(now time.Time) {
 	u.lockHistory()
 	defer u.unlockHistory()
+
+	u.honorDisabledDeletes()
 
 	for name, item := range u.Map {
 		switch elapsed := now.Sub(item.Updated); {
@@ -452,12 +542,13 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTFAILED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
 				item.Label(), item.Retries, u.maxRetries(), name)
-		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
-			elapsed >= staleItemTimeout && !u.rescans(name, item):
+		case staleSweepDue(item, elapsed) && !u.rescans(name, item):
 			// Safety net: items stuck at intermediate states for too long are cleaned up
 			// to prevent unbounded map growth (e.g. Starr app never imports the item).
 			// A finished Syncthing download the Starr app still lists is searched on
 			// every pass for late archives. It keeps its place for as long as it is listed.
+			// A negative delete delay is not swept: that would send a file-delete hook
+			// and drop a queued extract before its callback finishes.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Stale item removed after %v at status %s: %v",
 				item.Label(), elapsed.Round(time.Second), item.Status.Desc(), name)
@@ -467,36 +558,7 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			// reset IMPORTED→EXTRACTED when the title is back in the queue.
 			u.Debugf("%s: not deleting imported item still queued or unpolled: %s", item.Label(), name)
 		case item.Status == IMPORTED && elapsed >= item.DeleteDelay:
-			// A negative delay means deletes are off, including the original download.
-			disableOriginalDelete(item)
-
-			var webhook bool
-
-			if item.DeleteOrig {
-				u.queueDelete(&fileDeleteReq{Paths: []string{item.Path}})
-				webhook = true //nolint:wsl_v5
-			} else if item.Resp != nil && len(item.Resp.NewFiles) > 0 && item.DeleteDelay >= 0 {
-				// Delete extracted files and purge empty parents up to and including the download path.
-				// A Syncthing item names the files inside its extracted folders, so a file
-				// Syncthing delivered into one of them is left where it is.
-				u.queueDelete(&fileDeleteReq{
-					Paths:            item.Resp.NewFiles,
-					Exact:            hasUnpacked(item),
-					Files:            slices.Clone(item.OutputFiles),
-					PurgeEmptyParent: true,
-					PurgeEmptyRoot:   item.Path,
-				})
-				webhook = true //nolint:wsl_v5
-			}
-
-			if webhook {
-				// The extracted files are going away. A download the Starr app
-				// lists again after this is extracted from the start.
-				item.Unpacked = nil
-				item.OutputFiles = nil
-			}
-
-			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, webhook)
+			u.finishImported(name, item, now)
 		}
 	}
 }

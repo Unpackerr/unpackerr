@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"golift.io/starr"
+	"golift.io/starr/sonarr"
 	"golift.io/xtractr"
 )
 
@@ -549,6 +550,370 @@ func TestMaybeRecordHistoryWritesOrigFiles(t *testing.T) {
 		unpack.records[0].OrigFiles[0] != "/watch/a/a.rar" ||
 		len(unpack.records[0].ExtraFiles) != 1 || unpack.records[0].ExtraFiles[0] != "/watch/a/nested.rar" {
 		t.Fatalf("%+v", unpack.records)
+	}
+}
+
+func disabledDeleteFixture(t *testing.T) (*Unpackerr, string) {
+	t.Helper()
+
+	const (
+		url   = "http://sonarr:8989"
+		title = "show"
+	)
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: title}}}
+	unpack.Sonarr["0"].polled = true
+	unpack.upsertHistory(HistoryRecord{
+		ID: title, Kind: string(starr.Sonarr), App: "Sportarr", URL: url,
+		Path: "/dl/show", Status: EXTRACTED, Updated: time.Now().Add(-time.Hour),
+		DeleteOrig: true, DeleteDelay: "-1s",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+		Unpacked: []string{"/dl/show/show.rar"},
+	})
+	unpack.restoreQueueFromHistory()
+
+	return unpack, title
+}
+
+func TestDisabledDeleteLeavesHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack, title := disabledDeleteFixture(t)
+	item := unpack.Map[title]
+
+	if item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second || item.DeleteOrig {
+		t.Fatalf("restored while the queue still lists it: %+v", item)
+	}
+
+	unpack.checkQueueChanges(time.Now())
+
+	if item := unpack.Map[title]; item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second {
+		t.Fatalf("still listed: %+v", item)
+	}
+
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{}
+	unpack.checkQueueChanges(time.Now())
+
+	if unpack.Map[title] != nil {
+		t.Fatalf("still in the live queue: %+v", unpack.Map[title])
+	}
+
+	var kept HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == title {
+			kept = rec
+		}
+	}
+
+	if kept.Status != DELETED || kept.DeleteOrig || kept.DeleteDelay != "-1s" ||
+		len(kept.NewFiles) != 1 || len(kept.Unpacked) != 1 {
+		t.Fatalf("history %+v", kept)
+	}
+
+	select {
+	case req := <-unpack.delChan:
+		t.Fatalf("queued a delete: %+v", req)
+	default:
+	}
+
+	unpack.restoreQueueFromHistory()
+
+	if unpack.Map[title] != nil {
+		t.Fatalf("restart restored a deleted row: %+v", unpack.Map[title])
+	}
+}
+
+func TestRestoreFollowsDisabledInstance(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: "http://sonarr:8989",
+		Path: "/dl/show", Status: EXTRACTED, Updated: time.Now(),
+		DeleteOrig: true, DeleteDelay: "30m",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map["show"]
+	if item == nil || item.DeleteDelay != -time.Second || item.DeleteOrig {
+		t.Fatalf("instance -1s: %+v", item)
+	}
+}
+
+func TestRestoreKeepsSavedDisabledDelay(t *testing.T) {
+	t.Parallel()
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].DeleteDelay.Duration = 30 * time.Minute
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: "http://sonarr:8989",
+		Path: "/dl/show", Status: EXTRACTED, Updated: time.Now(),
+		DeleteOrig: true, DeleteDelay: "-1s",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+	})
+	unpack.restoreQueueFromHistory()
+
+	item := unpack.Map["show"]
+	if item == nil || item.DeleteDelay != -time.Second || item.DeleteOrig {
+		t.Fatalf("saved -1s: %+v", item)
+	}
+}
+
+func TestLiveItemFollowsDisabledInstance(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
+		URL: url, Protocols: defaultProtocol,
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "listed"}}},
+	}})
+	unpack.Sonarr["0"].polled = true
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	unpack.Sonarr["0"].DeleteOrig = true
+
+	for _, name := range []string{"gone", "listed"} {
+		item := &Extract{
+			App: starr.Sonarr, URL: url, Path: "/dl/" + name, Status: IMPORTED,
+			DeleteOrig: true, DeleteDelay: 30 * time.Minute,
+			Updated: time.Now().Add(-time.Hour),
+			Resp:    &xtractr.Response{NewFiles: []string{"/dl/" + name + "/a.mkv"}},
+		}
+		item.XProg = &ExtractProgress{Extract: item}
+		unpack.Map[name] = item
+	}
+
+	unpack.checkQueueChanges(time.Now())
+
+	listed := unpack.Map["listed"]
+	if listed == nil || listed.Status != EXTRACTED || listed.DeleteDelay != -time.Second || listed.DeleteOrig {
+		t.Fatalf("still listed: %+v", listed)
+	}
+
+	gone := unpack.Map["gone"]
+	if gone == nil || gone.Status != IMPORTED || gone.DeleteDelay != -time.Second || gone.DeleteOrig {
+		t.Fatalf("saved delay still armed: %+v", gone)
+	}
+
+	unpack.checkExtractDone(time.Now())
+
+	if unpack.Map["gone"] != nil || unpack.Map["listed"] == nil || unpack.Map["listed"].DeleteDelay != -time.Second {
+		t.Fatalf("after cleanup %+v", unpack.Map)
+	}
+
+	select {
+	case req := <-unpack.delChan:
+		t.Fatalf("queued a delete: %+v", req)
+	default:
+	}
+
+	var kept HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "gone" {
+			kept = rec
+		}
+	}
+
+	if kept.Status != DELETED || kept.DeleteOrig || kept.DeleteDelay != "-1s" || len(kept.NewFiles) != 1 {
+		t.Fatalf("history %+v", kept)
+	}
+}
+
+func TestDisabledDelayIsSavedOnTheHistoryRow(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].polled = true
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	updated := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: url,
+		Path: "/dl/show", Status: EXTRACTED, Updated: updated,
+		DeleteOrig: true, DeleteDelay: "30m",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+	})
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show", Status: EXTRACTED,
+		DeleteOrig: true, DeleteDelay: 30 * time.Minute, Updated: updated,
+		Resp: &xtractr.Response{NewFiles: []string{"/dl/show/ep.mkv"}},
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+	unpack.checkQueueChanges(time.Now())
+
+	if item.Status != EXTRACTED || item.DeleteDelay != -time.Second || item.DeleteOrig || !item.Updated.Equal(updated) {
+		t.Fatalf("live %+v", item)
+	}
+
+	var saved HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "show" {
+			saved = rec
+		}
+	}
+
+	if saved.Status != EXTRACTED || saved.DeleteOrig || saved.DeleteDelay != "-1s" || !saved.Updated.Equal(updated) {
+		t.Fatalf("history %+v", saved)
+	}
+
+	unpack.Sonarr["0"].DeleteDelay.Duration = 30 * time.Minute
+	delete(unpack.Map, "show")
+	unpack.restoreQueueFromHistory()
+
+	if got := unpack.Map["show"]; got == nil || got.DeleteDelay != -time.Second || got.DeleteOrig {
+		t.Fatalf("restored after deletes were turned back on: %+v", got)
+	}
+}
+
+func TestWaitingRetryKeepsDisabledDelay(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].polled = true
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	updated := time.Now().Add(-time.Minute).UTC().Truncate(time.Second)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: url,
+		Path: "/dl/show", Status: EXTRACTFAILED, Updated: updated,
+		DeleteOrig: true, DeleteDelay: "30m",
+	})
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show", Status: WAITING,
+		DeleteOrig: true, DeleteDelay: 30 * time.Minute, Updated: updated,
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+	unpack.Map["fresh"] = &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/fresh", Status: WAITING,
+		DeleteDelay: 30 * time.Minute, Updated: updated,
+		XProg: &ExtractProgress{},
+	}
+	unpack.checkQueueChanges(time.Now())
+
+	if item.Status != WAITING || item.DeleteDelay != -time.Second || item.DeleteOrig {
+		t.Fatalf("live %+v", item)
+	}
+
+	var saved HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "fresh" {
+			t.Fatalf("created a waiting row: %+v", rec)
+		}
+
+		if rec.ID == "show" {
+			saved = rec
+		}
+	}
+
+	if saved.Status != EXTRACTFAILED || saved.DeleteOrig || saved.DeleteDelay != "-1s" ||
+		!saved.Updated.Equal(updated) {
+		t.Fatalf("history %+v", saved)
+	}
+
+	unpack.Sonarr["0"].DeleteDelay.Duration = 30 * time.Minute
+	delete(unpack.Map, "show")
+	unpack.restoreQueueFromHistory()
+
+	got := unpack.Map["show"]
+	if got == nil || got.Status != EXTRACTFAILED || got.DeleteDelay != -time.Second || got.DeleteOrig {
+		t.Fatalf("restored %+v", got)
+	}
+}
+
+func TestStaleSweepSkipsDisabledDelete(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
+		URL: url, Protocols: defaultProtocol,
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "kept"}, {Title: "running"}}},
+	}})
+	unpack.Sonarr["0"].polled = true
+	old := time.Now().Add(-staleItemTimeout - time.Hour)
+
+	for name, status := range map[string]ExtractStatus{"kept": EXTRACTED, "running": QUEUED, "stale": EXTRACTED} {
+		delay := 5 * time.Minute
+		if name != "stale" {
+			delay = -time.Second
+		}
+
+		item := &Extract{
+			App: starr.Sonarr, URL: url, Path: "/dl/" + name, Status: status,
+			DeleteDelay: delay, Updated: old,
+		}
+		item.XProg = &ExtractProgress{Extract: item}
+		unpack.Map[name] = item
+	}
+
+	unpack.checkExtractDone(time.Now())
+
+	if unpack.Map["kept"].Status != EXTRACTED || unpack.Map["running"].Status != QUEUED ||
+		unpack.Map["stale"].Status != DELETED {
+		t.Fatalf("kept %s running %s stale %s",
+			unpack.Map["kept"].Status, unpack.Map["running"].Status, unpack.Map["stale"].Status)
+	}
+}
+
+func TestDisabledDeleteKeepsInflightExtract(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{URL: url, Protocols: defaultProtocol, Queue: &sonarr.Queue{}}})
+	unpack.Sonarr["0"].polled = true
+
+	for name, status := range map[string]ExtractStatus{"queued": QUEUED, "running": EXTRACTING} {
+		item := &Extract{
+			App: starr.Sonarr, URL: url, Path: "/dl/" + name, Status: status,
+			DeleteDelay: -time.Second, Updated: time.Now(),
+		}
+		item.XProg = &ExtractProgress{Extract: item}
+		unpack.Map[name] = item
+	}
+
+	unpack.checkQueueChanges(time.Now())
+
+	if unpack.Map["queued"] == nil || unpack.Map["queued"].Status != QUEUED ||
+		unpack.Map["running"] == nil || unpack.Map["running"].Status != EXTRACTING || unpack.Finished != 0 {
+		t.Fatalf("inflight %+v finished %d", unpack.Map, unpack.Finished)
+	}
+
+	unpack.Map["running"].Status = EXTRACTED
+
+	client := &liveClient{
+		topics: map[string]struct{}{topicQueue: {}},
+		send:   make(chan []byte, 4),
+	}
+	unpack.hub.clients[client] = struct{}{}
+	unpack.checkQueueChanges(time.Now())
+	unpack.hub.flushQueue()
+
+	if unpack.Map["running"] != nil || unpack.Map["queued"] == nil || unpack.Finished != 1 {
+		t.Fatalf("after callback map %+v finished %d", unpack.Map, unpack.Finished)
+	}
+
+	got := decodeQueue(t, <-client.send)
+	if got.Stats == nil || got.Stats.Finished != 1 || len(got.Items) != 1 || got.Items[0].ID != "queued" {
+		t.Fatalf("queue frame stats %+v items %+v", got.Stats, got.Items)
 	}
 }
 

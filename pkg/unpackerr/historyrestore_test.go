@@ -776,6 +776,66 @@ func TestDisabledDelayIsSavedOnTheHistoryRow(t *testing.T) {
 	}
 }
 
+func TestWaitingRetryKeepsDisabledDelay(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].polled = true
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	updated := time.Now().Add(-time.Minute).UTC().Truncate(time.Second)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: url,
+		Path: "/dl/show", Status: EXTRACTFAILED, Updated: updated,
+		DeleteOrig: true, DeleteDelay: "30m",
+	})
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show", Status: WAITING,
+		DeleteOrig: true, DeleteDelay: 30 * time.Minute, Updated: updated,
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+	unpack.Map["fresh"] = &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/fresh", Status: WAITING,
+		DeleteDelay: 30 * time.Minute, Updated: updated,
+		XProg: &ExtractProgress{},
+	}
+	unpack.checkQueueChanges(time.Now())
+
+	if item.Status != WAITING || item.DeleteDelay != -time.Second || item.DeleteOrig {
+		t.Fatalf("live %+v", item)
+	}
+
+	var saved HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "fresh" {
+			t.Fatalf("created a waiting row: %+v", rec)
+		}
+
+		if rec.ID == "show" {
+			saved = rec
+		}
+	}
+
+	if saved.Status != EXTRACTFAILED || saved.DeleteOrig || saved.DeleteDelay != "-1s" ||
+		!saved.Updated.Equal(updated) {
+		t.Fatalf("history %+v", saved)
+	}
+
+	unpack.Sonarr["0"].DeleteDelay.Duration = 30 * time.Minute
+	delete(unpack.Map, "show")
+	unpack.restoreQueueFromHistory()
+
+	got := unpack.Map["show"]
+	if got == nil || got.Status != EXTRACTFAILED || got.DeleteDelay != -time.Second || got.DeleteOrig {
+		t.Fatalf("restored %+v", got)
+	}
+}
+
 func TestStaleSweepSkipsDisabledDelete(t *testing.T) {
 	t.Parallel()
 

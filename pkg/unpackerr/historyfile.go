@@ -296,7 +296,7 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 // existing history row. Status and timestamps stay, so a later restart keeps
 // the protection after deletes are turned back on. Caller may hold History.mu.
 func (u *Unpackerr) persistDeletePolicy(itemID string, item *Extract) {
-	if u.KeepHistory == 0 || item == nil || !isPersistedHistory(item) {
+	if u.KeepHistory == 0 || item == nil {
 		return
 	}
 

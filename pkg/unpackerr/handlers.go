@@ -465,6 +465,7 @@ func (u *Unpackerr) honorDisabledDeletes() {
 		}
 
 		u.stampQueueDue(name, item)
+		u.persistDeletePolicy(name, item)
 
 		changed = true
 	}
@@ -484,6 +485,21 @@ func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Ti
 	u.deleteExtract(name)
 	u.notifyQueueLocked()
 	u.Printf("[%s] Deletes disabled: %s", item.Label(), name)
+}
+
+// staleSweepDue is the 24 hour safety net for a Starr item that never finishes.
+// A negative delete delay stays tracked instead.
+func staleSweepDue(item *Extract, elapsed time.Duration) bool {
+	if item.DeleteDelay < 0 {
+		return false
+	}
+
+	switch item.Status {
+	case EXTRACTED, EXTRACTING, QUEUED:
+		return elapsed >= staleItemTimeout
+	default:
+		return false
+	}
 }
 
 // checkExtractDone checks if an extracted and imported item needs to be deleted.
@@ -526,12 +542,13 @@ func (u *Unpackerr) checkExtractDone(now time.Time) {
 			u.updateQueueStatus(&newStatus{Name: name, Status: EXTRACTFAILED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Retries exhausted (%d/%d), giving up: %v",
 				item.Label(), item.Retries, u.maxRetries(), name)
-		case (item.Status == EXTRACTED || item.Status == EXTRACTING || item.Status == QUEUED) &&
-			elapsed >= staleItemTimeout && !u.rescans(name, item):
+		case staleSweepDue(item, elapsed) && !u.rescans(name, item):
 			// Safety net: items stuck at intermediate states for too long are cleaned up
 			// to prevent unbounded map growth (e.g. Starr app never imports the item).
 			// A finished Syncthing download the Starr app still lists is searched on
 			// every pass for late archives. It keeps its place for as long as it is listed.
+			// A negative delete delay is not swept: that would send a file-delete hook
+			// and drop a queued extract before its callback finishes.
 			u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, true)
 			u.Printf("[%s] Stale item removed after %v at status %s: %v",
 				item.Label(), elapsed.Round(time.Second), item.Status.Desc(), name)

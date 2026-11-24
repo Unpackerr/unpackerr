@@ -725,6 +725,93 @@ func TestLiveItemFollowsDisabledInstance(t *testing.T) {
 	}
 }
 
+func TestDisabledDelayIsSavedOnTheHistoryRow(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := restoreTestUnpackerr(t)
+	unpack.Sonarr["0"].polled = true
+	unpack.Sonarr["0"].Queue = &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "show"}}}
+	unpack.Sonarr["0"].DeleteDelay.Duration = -time.Second
+	updated := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	unpack.upsertHistory(HistoryRecord{
+		ID: "show", Kind: string(starr.Sonarr), URL: url,
+		Path: "/dl/show", Status: EXTRACTED, Updated: updated,
+		DeleteOrig: true, DeleteDelay: "30m",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+	})
+
+	item := &Extract{
+		App: starr.Sonarr, URL: url, Path: "/dl/show", Status: EXTRACTED,
+		DeleteOrig: true, DeleteDelay: 30 * time.Minute, Updated: updated,
+		Resp: &xtractr.Response{NewFiles: []string{"/dl/show/ep.mkv"}},
+	}
+	item.XProg = &ExtractProgress{Extract: item}
+	unpack.Map["show"] = item
+	unpack.checkQueueChanges(time.Now())
+
+	if item.Status != EXTRACTED || item.DeleteDelay != -time.Second || item.DeleteOrig || !item.Updated.Equal(updated) {
+		t.Fatalf("live %+v", item)
+	}
+
+	var saved HistoryRecord
+
+	for _, rec := range unpack.records {
+		if rec.ID == "show" {
+			saved = rec
+		}
+	}
+
+	if saved.Status != EXTRACTED || saved.DeleteOrig || saved.DeleteDelay != "-1s" || !saved.Updated.Equal(updated) {
+		t.Fatalf("history %+v", saved)
+	}
+
+	unpack.Sonarr["0"].DeleteDelay.Duration = 30 * time.Minute
+	delete(unpack.Map, "show")
+	unpack.restoreQueueFromHistory()
+
+	if got := unpack.Map["show"]; got == nil || got.DeleteDelay != -time.Second || got.DeleteOrig {
+		t.Fatalf("restored after deletes were turned back on: %+v", got)
+	}
+}
+
+func TestStaleSweepSkipsDisabledDelete(t *testing.T) {
+	t.Parallel()
+
+	const url = "http://sonarr:8989"
+
+	unpack := New()
+	unpack.Sonarr = instanceMap([]*SonarrConfig{{
+		URL: url, Protocols: defaultProtocol,
+		Queue: &sonarr.Queue{Records: []*sonarr.QueueRecord{{Title: "kept"}, {Title: "running"}}},
+	}})
+	unpack.Sonarr["0"].polled = true
+	old := time.Now().Add(-staleItemTimeout - time.Hour)
+
+	for name, status := range map[string]ExtractStatus{"kept": EXTRACTED, "running": QUEUED, "stale": EXTRACTED} {
+		delay := 5 * time.Minute
+		if name != "stale" {
+			delay = -time.Second
+		}
+
+		item := &Extract{
+			App: starr.Sonarr, URL: url, Path: "/dl/" + name, Status: status,
+			DeleteDelay: delay, Updated: old,
+		}
+		item.XProg = &ExtractProgress{Extract: item}
+		unpack.Map[name] = item
+	}
+
+	unpack.checkExtractDone(time.Now())
+
+	if unpack.Map["kept"].Status != EXTRACTED || unpack.Map["running"].Status != QUEUED ||
+		unpack.Map["stale"].Status != DELETED {
+		t.Fatalf("kept %s running %s stale %s",
+			unpack.Map["kept"].Status, unpack.Map["running"].Status, unpack.Map["stale"].Status)
+	}
+}
+
 func TestDisabledDeleteKeepsInflightExtract(t *testing.T) {
 	t.Parallel()
 

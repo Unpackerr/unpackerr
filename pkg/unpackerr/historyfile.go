@@ -292,6 +292,45 @@ func (u *Unpackerr) capHistoryLocked(list []HistoryRecord) []HistoryRecord {
 	return out
 }
 
+// persistDeletePolicy writes a disabled delay and delete-original flag onto the
+// existing history row. Status and timestamps stay, so a later restart keeps
+// the protection after deletes are turned back on. Caller may hold History.mu.
+func (u *Unpackerr) persistDeletePolicy(itemID string, item *Extract) {
+	if u.KeepHistory == 0 || item == nil || !isPersistedHistory(item) {
+		return
+	}
+
+	if itemID == "" {
+		itemID = item.Path
+	}
+
+	if itemID == "" {
+		return
+	}
+
+	delay := ""
+	if item.DeleteDelay != 0 {
+		delay = item.DeleteDelay.String()
+	}
+
+	u.histMu.Lock()
+	defer u.histMu.Unlock()
+
+	idx := slices.IndexFunc(u.records, func(r HistoryRecord) bool { return r.ID == itemID })
+	if idx < 0 {
+		return
+	}
+
+	rec := u.records[idx]
+	if rec.DeleteDelay == delay && rec.DeleteOrig == item.DeleteOrig {
+		return
+	}
+
+	rec.DeleteDelay = delay
+	rec.DeleteOrig = item.DeleteOrig
+	u.upsertHistoryLocked(rec)
+}
+
 func (u *Unpackerr) maybeRecordHistory(itemID string, item *Extract) {
 	if u.KeepHistory == 0 || !isPersistedHistory(item) {
 		return

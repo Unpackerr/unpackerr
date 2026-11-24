@@ -166,7 +166,16 @@ func (u *Unpackerr) extractFromHistoryRecord(
 	}
 
 	applyHistoryRestoreDelay(item, rec.DeleteDelay, defaultDeleteDelay)
-	u.applyDisabledDelete(item)
+
+	if u.applyDisabledDelete(item) {
+		itemID := rec.ID
+		if itemID == "" {
+			itemID = rec.Path
+		}
+
+		u.persistDeletePolicy(itemID, item)
+	}
+
 	applyHistoryRestoreResp(item, rec, errMsg)
 	applyHistoryRestoreUnpacked(item, rec)
 	applyHistoryRestoreOutputFiles(item)

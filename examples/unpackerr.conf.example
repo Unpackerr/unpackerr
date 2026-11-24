@@ -233,6 +233,9 @@ passwords = []
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
+## Set this to -1s to keep those files. Once the app stops listing the
+## download, the item is marked deleted and leaves the queue. Delete
+## originals stays off.
 # delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
@@ -282,6 +285,9 @@ passwords = []
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
+## Set this to -1s to keep those files. Once the app stops listing the
+## download, the item is marked deleted and leaves the queue. Delete
+## originals stays off.
 # delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
@@ -331,6 +337,9 @@ passwords = []
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
+## Set this to -1s to keep those files. Once the app stops listing the
+## download, the item is marked deleted and leaves the queue. Delete
+## originals stays off.
 # delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
@@ -392,6 +401,9 @@ passwords = []
 ## How long to wait for a reply from the backend.
 # timeout = "10s"
 ## How long to wait after import before deleting the extracted items.
+## Set this to -1s to keep those files. Once the app stops listing the
+## download, the item is marked deleted and leaves the queue. Delete
+## originals stays off.
 # delete_delay = "5m"
 ## If you use this app with NZB you may wish to delete archives after extraction.
 ## General recommendation is: do not enable this for torrent use.
@@ -582,4 +594,4 @@ passwords = []
 ## You can adjust how long to wait for the command to run.
 # timeout = "10s"
 
-## => Content Auto Generated, 23 NOV 2026 17:29 UTC
+## => Content Auto Generated, 24 NOV 2026 05:57 UTC

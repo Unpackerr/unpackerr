@@ -356,7 +356,7 @@
           "paths": {"type": "array", "items": {"type": "string"}},
           "protocols": {"type": "string"},
           "delete_orig": {"type": "boolean"},
-          "delete_delay": {"type": "string", "description": "Go duration"},
+          "delete_delay": {"type": "string", "description": "Go duration. -1s keeps extracted files, turns off delete originals, and retires the item once the app stops listing it."},
           "syncthing": {"type": "boolean"},
           "syncthing_stall": {"type": "string", "description": "Go duration. Empty or 0s becomes 30m."},
           "valid_ssl": {"type": "boolean"},

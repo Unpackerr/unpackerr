@@ -173,7 +173,7 @@ func checkStarrQueue[T any, P starrApp[T]](unpack *Unpackerr, list InstanceMap[T
 					URL:         cfg.URL,
 					Updated:     now,
 					Status:      WAITING,
-					DeleteOrig:  cfg.DeleteOrig,
+					DeleteOrig:  cfg.DeleteOrig && cfg.DeleteDelay.Duration >= 0,
 					DeleteDelay: cfg.DeleteDelay.Duration,
 					Syncthing:   cfg.Syncthing,
 					SyncStall:   cfg.SyncthingStall.Duration,

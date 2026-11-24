@@ -215,6 +215,10 @@ func applyHistoryRestoreDelay(item *Extract, delay string, fallback time.Duratio
 	if item.DeleteDelay == 0 {
 		item.DeleteDelay = fallback
 	}
+
+	if item.DeleteDelay < 0 {
+		item.DeleteOrig = false
+	}
 }
 
 func applyHistoryRestoreResp(item *Extract, rec HistoryRecord, errMsg string) {

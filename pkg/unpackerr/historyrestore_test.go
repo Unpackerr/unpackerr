@@ -553,8 +553,8 @@ func TestMaybeRecordHistoryWritesOrigFiles(t *testing.T) {
 	}
 }
 
-func TestDisabledDeleteLeavesHistory(t *testing.T) {
-	t.Parallel()
+func disabledDeleteFixture(t *testing.T) (*Unpackerr, string) {
+	t.Helper()
 
 	const (
 		url   = "http://sonarr:8989"
@@ -567,13 +567,22 @@ func TestDisabledDeleteLeavesHistory(t *testing.T) {
 	unpack.upsertHistory(HistoryRecord{
 		ID: title, Kind: string(starr.Sonarr), App: "Sportarr", URL: url,
 		Path: "/dl/show", Status: EXTRACTED, Updated: time.Now().Add(-time.Hour),
-		DeleteDelay: "-1s",
-		NewFiles:    []string{"/dl/show/ep.mkv"},
-		Unpacked:    []string{"/dl/show/show.rar"},
+		DeleteOrig: true, DeleteDelay: "-1s",
+		NewFiles: []string{"/dl/show/ep.mkv"},
+		Unpacked: []string{"/dl/show/show.rar"},
 	})
 	unpack.restoreQueueFromHistory()
 
-	if item := unpack.Map[title]; item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second {
+	return unpack, title
+}
+
+func TestDisabledDeleteLeavesHistory(t *testing.T) {
+	t.Parallel()
+
+	unpack, title := disabledDeleteFixture(t)
+	item := unpack.Map[title]
+
+	if item == nil || item.Status != EXTRACTED || item.DeleteDelay != -time.Second || item.DeleteOrig {
 		t.Fatalf("restored while the queue still lists it: %+v", item)
 	}
 
@@ -598,7 +607,8 @@ func TestDisabledDeleteLeavesHistory(t *testing.T) {
 		}
 	}
 
-	if kept.Status != DELETED || kept.DeleteDelay != "-1s" || len(kept.NewFiles) != 1 || len(kept.Unpacked) != 1 {
+	if kept.Status != DELETED || kept.DeleteOrig || kept.DeleteDelay != "-1s" ||
+		len(kept.NewFiles) != 1 || len(kept.Unpacked) != 1 {
 		t.Fatalf("history %+v", kept)
 	}
 

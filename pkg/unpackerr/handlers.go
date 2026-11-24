@@ -453,6 +453,7 @@ func (u *Unpackerr) finishImported(name string, item *Extract, now time.Time) {
 // file-delete webhook, then drops the live queue row. The history row stays
 // until keep_history trims it. Caller holds History.mu.
 func (u *Unpackerr) retireDisabledDelete(name string, item *Extract, now time.Time) {
+	item.DeleteOrig = false
 	u.updateQueueStatus(&newStatus{Name: name, Status: DELETED, Resp: item.Resp}, now, false)
 	u.Finished++
 	u.deleteExtract(name)
